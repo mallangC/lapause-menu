@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import Image from "next/image";
 import { Product, ProductInput } from "@/types";
-import { PRODUCT_TYPES, FLOWER_COLORS, WRAPPING_COLORS, FLOWER_COLOR_MAP, STORAGE_BUCKET } from "@/lib/constants";
+import { PRODUCT_TYPES, FLOWER_COLORS, WRAPPING_COLORS, FLOWER_COLOR_MAP, SEASONS, STORAGE_BUCKET } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
 
 interface ProductFormProps {
@@ -19,6 +19,7 @@ const DEFAULT_INPUT: ProductInput = {
   product_type: "다발",
   flower_colors: [],
   wrapping_color: "밝은 계열",
+  seasons: [],
   is_popular: false,
   is_recommended: false,
 };
@@ -33,6 +34,7 @@ export default function ProductForm({ initialData, onSubmit, onCancel }: Product
           product_type: initialData.product_type,
           flower_colors: initialData.flower_colors,
           wrapping_color: initialData.wrapping_color,
+          seasons: initialData.seasons,
           is_popular: initialData.is_popular,
           is_recommended: initialData.is_recommended,
         }
@@ -50,6 +52,13 @@ export default function ProductForm({ initialData, onSubmit, onCancel }: Product
       flower_colors: prev.flower_colors.includes(color)
         ? prev.flower_colors.filter((c) => c !== color)
         : [...prev.flower_colors, color],
+    }));
+  };
+
+  const toggleSeason = (season: string) => {
+    setData((prev) => ({
+      ...prev,
+      seasons: prev.seasons.includes(season) ? [] : [season],
     }));
   };
 
@@ -275,6 +284,28 @@ export default function ProductForm({ initialData, onSubmit, onCancel }: Product
               }`}
             >
               {wc}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-foreground mb-2">
+          시즌
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {SEASONS.map((season) => (
+            <button
+              key={season}
+              type="button"
+              onClick={() => toggleSeason(season)}
+              className={`px-3 py-1.5 rounded-lg border-2 text-sm transition-all ${
+                data.seasons.includes(season)
+                  ? "border-gold-500 bg-gold-500 text-white font-medium shadow-sm"
+                  : "border-beige-200 bg-beige-50 text-foreground hover:border-beige-300"
+              }`}
+            >
+              {season}
             </button>
           ))}
         </div>

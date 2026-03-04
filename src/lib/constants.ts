@@ -15,6 +15,8 @@ export const FLOWER_COLORS = [
 
 export const WRAPPING_COLORS = ["밝은 계열", "어두운 계열", "기타"] as const;
 
+export const SEASONS = ["어버이날", "크리스마스", "이벤트"] as const;
+
 export const FLOWER_COLOR_MAP: Record<string, string> = {
   핑크색: "#f472b6",
   빨간색: "#ef4444",

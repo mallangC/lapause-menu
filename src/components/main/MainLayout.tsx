@@ -11,42 +11,42 @@ const EMPTY_FILTER: FilterState = {
   productTypes: [],
   flowerColors: [],
   wrappingColors: [],
+  seasons: [],
 };
 
 function hasActiveFilter(filter: FilterState): boolean {
   return (
     filter.productTypes.length > 0 ||
     filter.flowerColors.length > 0 ||
-    filter.wrappingColors.length > 0
+    filter.wrappingColors.length > 0 ||
+    filter.seasons.length > 0
   );
 }
 
 function applyFilter(products: Product[], filter: FilterState): Product[] {
+  // 시즌 필터가 활성화된 경우: 해당 시즌 상품만 표시
+  if (filter.seasons.length > 0) {
+    return products.filter((p) => filter.seasons.some((s) => p.seasons.includes(s)));
+  }
+  // 일반 필터: 시즌 상품 제외 후 필터 적용
   return products.filter((p) => {
-    if (
-      filter.productTypes.length > 0 &&
-      !filter.productTypes.includes(p.product_type)
-    ) {
-      return false;
-    }
-    if (
-      filter.flowerColors.length > 0 &&
-      !filter.flowerColors.some((c) => p.flower_colors.includes(c))
-    ) {
-      return false;
-    }
-    return !(filter.wrappingColors.length > 0 &&
-        !filter.wrappingColors.includes(p.wrapping_color));
-
+    if (p.seasons.length > 0) return false;
+    if (filter.productTypes.length > 0 && !filter.productTypes.includes(p.product_type)) return false;
+    if (filter.flowerColors.length > 0 && !filter.flowerColors.some((c) => p.flower_colors.includes(c))) return false;
+    if (filter.wrappingColors.length > 0 && !filter.wrappingColors.includes(p.wrapping_color)) return false;
+    return true;
   });
 }
 
 interface MainLayoutProps {
   products: Product[];
+  companyName?: string;
+  logoImage?: string | null;
 }
 
-export default function MainLayout({ products }: MainLayoutProps) {
+export default function MainLayout({ products, companyName = "Lapause Fleur", logoImage }: MainLayoutProps) {
   const [filter, setFilter] = useState<FilterState>(EMPTY_FILTER);
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isFilterActive = hasActiveFilter(filter);
@@ -75,25 +75,35 @@ export default function MainLayout({ products }: MainLayoutProps) {
   const filteredProducts = isFilterActive ? applyFilter(products, filter) : [];
 
   return (
-    <div className="min-h-screen bg-beige-100">
+    <div className="min-h-screen bg-beige-100 pb-14 md:pb-0">
       {/* 헤더 */}
       <header className="border-b border-beige-200 bg-beige-50">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-xl font-light tracking-widest text-gold-500">
-            Lapause Fleur
-          </h1>
+          {logoImage ? (
+            <img src={logoImage} alt={companyName} className="h-8 object-contain" />
+          ) : (
+            <span className="text-xl font-light tracking-widest text-gold-500">
+              {companyName}
+            </span>
+          )}
         </div>
       </header>
 
       <div className="max-w-6xl mx-auto px-4 py-6 flex gap-8">
-        {/* 사이드바 */}
         <FilterSidebar
           filter={filter}
-          onFilterChange={setFilter}
+          onFilterChange={(next) => setFilter({ ...next, seasons: [] })}
+          onSeasonSelect={(season) =>
+            setFilter((prev) => ({
+              ...EMPTY_FILTER,
+              seasons: prev.seasons.includes(season) ? [] : [season],
+            }))
+          }
           onClearAll={() => setFilter(EMPTY_FILTER)}
+          mobileOpen={mobileFilterOpen}
+          onMobileToggle={() => setMobileFilterOpen((prev) => !prev)}
         />
 
-        {/* 메인 콘텐츠 */}
         <main className="flex-1 min-w-0">
           {isFilterActive ? (
             <ProductGrid products={filteredProducts} />

@@ -31,18 +31,23 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // /admin/dashboard 비인증 → /admin 리다이렉트
-  if (pathname.startsWith("/admin/dashboard") && !user) {
-    const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/admin";
-    return NextResponse.redirect(redirectUrl);
-  }
+  // /:slug/admin 라우트 처리
+  const slugMatch = pathname.match(/^\/([^/]+)\/admin(\/.*)?$/);
+  if (slugMatch) {
+    const slug = slugMatch[1];
+    const isOnDashboard = pathname.includes("/admin/dashboard");
 
-  // /admin 이미 인증 → /admin/dashboard 리다이렉트
-  if (pathname === "/admin" && user) {
-    const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/admin/dashboard";
-    return NextResponse.redirect(redirectUrl);
+    if (isOnDashboard && !user) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = `/${slug}/admin`;
+      return NextResponse.redirect(redirectUrl);
+    }
+    if (!isOnDashboard && user) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = `/${slug}/admin/dashboard`;
+      return NextResponse.redirect(redirectUrl);
+    }
+    return supabaseResponse;
   }
 
   return supabaseResponse;

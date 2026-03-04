@@ -4,7 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-export default function LoginForm() {
+interface Props {
+  slug: string;
+}
+
+export default function LoginForm({ slug }: Props) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +32,7 @@ export default function LoginForm() {
       return;
     }
 
-    router.push("/admin/dashboard");
+    router.push(`/${slug}/admin/dashboard`);
   };
 
   return (
