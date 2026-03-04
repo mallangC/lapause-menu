@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Lapause Fleur | 꽃집 메뉴",
-  description: "Lapause Fleur 꽃집 메뉴 - 다발, 바구니, 센터피스, 화병꽂이",
+  title: "꽃집 메뉴",
+  description: "꽃집 메뉴 - 다발, 바구니, 센터피스, 화병꽂이",
 };
 
 export default function RootLayout({

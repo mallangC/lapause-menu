@@ -130,7 +130,7 @@ export default function SetupForm() {
           value={name}
           onChange={(e) => handleNameChange(e.target.value)}
           className="w-full border border-beige-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gold-400"
-          placeholder="라포즈 플러르"
+          placeholder="라포즈 플레르"
         />
       </div>
 
