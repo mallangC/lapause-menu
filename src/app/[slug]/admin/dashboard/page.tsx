@@ -1,4 +1,4 @@
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import DashboardClient from "./DashboardClient";
 import { Product } from "@/types";
@@ -23,7 +23,8 @@ export default async function DashboardPage({ params }: Props) {
     .eq("owner_id", user.id)
     .single();
 
-  if (!company) notFound();
+  // 해당 slug의 회사가 없거나 다른 계정 소유 → 루트로
+  if (!company) redirect("/");
 
   const { data: products } = await supabase
     .from("product_menus")

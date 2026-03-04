@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import LoginForm from "./LoginForm";
 
@@ -16,7 +16,7 @@ export default async function AdminLoginPage({ params }: Props) {
     .eq("slug", slug)
     .single();
 
-  if (!company) notFound();
+  if (!company) redirect("/");
 
   return (
     <div className="min-h-screen bg-beige-100 flex items-center justify-center px-4">
