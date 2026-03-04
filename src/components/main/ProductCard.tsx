@@ -101,7 +101,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                 ))}
               </div>
             )}
-            <span className="text-xs text-beige-400">{product.wrapping_color}</span>
+            <span className="text-xs text-foreground/60">{product.wrapping_color}</span>
           </div>
         </div>
       </div>

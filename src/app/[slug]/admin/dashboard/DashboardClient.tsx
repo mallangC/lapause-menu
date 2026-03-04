@@ -1,11 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Product, ProductInput } from "@/types";
 import { createClient } from "@/lib/supabase/client";
+import { generateThemeVars } from "@/lib/theme";
 import ProductForm from "@/components/admin/ProductForm";
 import ProductTable from "@/components/admin/ProductTable";
 import CompanyInfoTab from "./CompanyInfoTab";
+import SettingsTab from "./SettingsTab";
 
 type Tab = "products" | "company" | "settings";
 
@@ -14,15 +17,18 @@ interface Props {
   companyId: string;
   companyName: string;
   logoImage: string | null;
+  themeBg: string;
+  themeAccent: string;
   initialProducts: Product[];
 }
 
-export default function DashboardClient({ slug, companyId, companyName, logoImage, initialProducts }: Props) {
+export default function DashboardClient({ slug, companyId, companyName, logoImage, themeBg, themeAccent, initialProducts }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("products");
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [themeVars, setThemeVars] = useState(generateThemeVars(themeBg, themeAccent));
   const supabase = createClient();
 
   const handleAdd = async (data: ProductInput) => {
@@ -71,37 +77,27 @@ export default function DashboardClient({ slug, companyId, companyName, logoImag
   ];
 
   return (
-    <div className="min-h-screen bg-beige-100 flex flex-col">
-      {/* 헤더 */}
+    <div className="min-h-screen bg-beige-100 flex flex-col" style={themeVars as React.CSSProperties}>
       <header className="border-b border-beige-200 bg-beige-50 shrink-0">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-lg font-medium text-gold-500">{companyName} — 관리자</h1>
-          <button
-            onClick={handleSignOut}
-            className="text-sm text-beige-400 hover:text-gold-500 transition-colors"
-          >
+          <Link href={`/${slug}`} className="text-lg font-medium text-gold-500 hover:text-gold-600 transition-colors">
+            {companyName} — 관리자
+          </Link>
+          <button onClick={handleSignOut} className="text-sm text-beige-400 hover:text-gold-500 transition-colors">
             로그아웃
           </button>
         </div>
       </header>
 
       <div className="flex flex-1 max-w-6xl w-full mx-auto px-4 py-6 gap-6">
-        {/* 좌측 탭 메뉴 */}
         <nav className="w-44 shrink-0">
           <ul className="space-y-1">
             {tabs.map((tab) => (
               <li key={tab.key}>
                 <button
-                  onClick={() => {
-                    setActiveTab(tab.key);
-                    setShowForm(false);
-                    setEditingProduct(null);
-                    setError(null);
-                  }}
+                  onClick={() => { setActiveTab(tab.key); setShowForm(false); setEditingProduct(null); setError(null); }}
                   className={`w-full text-left px-4 py-2.5 rounded-lg text-sm transition-colors ${
-                    activeTab === tab.key
-                      ? "bg-gold-400 text-white font-medium"
-                      : "text-foreground hover:bg-beige-200"
+                    activeTab === tab.key ? "bg-gold-400 text-white font-medium" : "text-foreground hover:bg-beige-200"
                   }`}
                 >
                   {tab.label}
@@ -111,48 +107,32 @@ export default function DashboardClient({ slug, companyId, companyName, logoImag
           </ul>
         </nav>
 
-        {/* 우측 콘텐츠 */}
         <main className="flex-1 min-w-0">
-          {/* 상품 관리 탭 */}
           {activeTab === "products" && (
             <div>
               {error && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
-                  {error}
-                </div>
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
               )}
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-medium text-foreground">
-                  상품 목록 ({products.length}개)
-                </h2>
+                <h2 className="text-xl font-medium text-foreground">상품 목록 ({products.length}개)</h2>
                 {!showForm && !editingProduct && (
-                  <button
-                    onClick={() => setShowForm(true)}
-                    className="bg-gold-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gold-600 transition-colors"
-                  >
+                  <button onClick={() => setShowForm(true)} className="bg-gold-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gold-600 transition-colors">
                     + 상품 추가
                   </button>
                 )}
               </div>
-
               {showForm && (
                 <div className="mb-6 bg-beige-50 border border-beige-200 rounded-xl p-6">
                   <h3 className="font-medium text-foreground mb-4">새 상품 추가</h3>
                   <ProductForm onSubmit={handleAdd} onCancel={() => setShowForm(false)} />
                 </div>
               )}
-
               {editingProduct && (
                 <div className="mb-6 bg-beige-50 border border-beige-200 rounded-xl p-6">
                   <h3 className="font-medium text-foreground mb-4">상품 수정</h3>
-                  <ProductForm
-                    initialData={editingProduct}
-                    onSubmit={handleEdit}
-                    onCancel={() => setEditingProduct(null)}
-                  />
+                  <ProductForm initialData={editingProduct} onSubmit={handleEdit} onCancel={() => setEditingProduct(null)} />
                 </div>
               )}
-
               <div className="bg-beige-50 border border-beige-200 rounded-xl p-6">
                 <ProductTable
                   products={products}
@@ -163,33 +143,21 @@ export default function DashboardClient({ slug, companyId, companyName, logoImag
             </div>
           )}
 
-          {/* 회사 정보 탭 */}
           {activeTab === "company" && (
             <div className="bg-beige-50 border border-beige-200 rounded-xl p-6">
-              <CompanyInfoTab
-                companyId={companyId}
-                initialName={companyName}
-                initialLogo={logoImage}
-                slug={slug}
-              />
+              <CompanyInfoTab companyId={companyId} initialName={companyName} initialLogo={logoImage} slug={slug} />
             </div>
           )}
 
-          {/* 설정 탭 */}
           {activeTab === "settings" && (
             <div className="bg-beige-50 border border-beige-200 rounded-xl p-6">
-              <h2 className="text-xl font-medium text-foreground mb-6">설정</h2>
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm text-beige-400 mb-3">계정 관리</p>
-                  <button
-                    onClick={handleSignOut}
-                    className="px-4 py-2 rounded-lg border border-red-200 text-red-500 text-sm hover:bg-red-50 transition-colors"
-                  >
-                    로그아웃
-                  </button>
-                </div>
-              </div>
+              <SettingsTab
+                companyId={companyId}
+                initialBg={themeBg}
+                initialAccent={themeAccent}
+                onThemeChange={(bg, accent) => setThemeVars(generateThemeVars(bg, accent))}
+                onSignOut={handleSignOut}
+              />
             </div>
           )}
         </main>

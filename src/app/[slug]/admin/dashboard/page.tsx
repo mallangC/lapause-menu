@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import DashboardClient from "./DashboardClient";
 import { Product } from "@/types";
+import { DEFAULT_THEME_BG, DEFAULT_THEME_ACCENT } from "@/lib/theme";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -17,7 +18,7 @@ export default async function DashboardPage({ params }: Props) {
   // 로그인한 사용자의 회사 확인 (slug와 owner_id 일치 검증)
   const { data: company } = await supabase
     .from("companies")
-    .select("id, name, logo_image")
+    .select("id, name, logo_image, theme_bg, theme_accent")
     .eq("slug", slug)
     .eq("owner_id", user.id)
     .single();
@@ -36,6 +37,8 @@ export default async function DashboardPage({ params }: Props) {
       companyId={company.id}
       companyName={company.name}
       logoImage={company.logo_image}
+      themeBg={company.theme_bg ?? DEFAULT_THEME_BG}
+      themeAccent={company.theme_accent ?? DEFAULT_THEME_ACCENT}
       initialProducts={(products as Product[]) ?? []}
     />
   );

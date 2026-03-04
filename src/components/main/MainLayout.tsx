@@ -33,8 +33,8 @@ function applyFilter(products: Product[], filter: FilterState): Product[] {
     if (p.seasons.length > 0) return false;
     if (filter.productTypes.length > 0 && !filter.productTypes.includes(p.product_type)) return false;
     if (filter.flowerColors.length > 0 && !filter.flowerColors.some((c) => p.flower_colors.includes(c))) return false;
-    if (filter.wrappingColors.length > 0 && !filter.wrappingColors.includes(p.wrapping_color)) return false;
-    return true;
+    return !(filter.wrappingColors.length > 0 && !filter.wrappingColors.includes(p.wrapping_color));
+
   });
 }
 
@@ -42,9 +42,10 @@ interface MainLayoutProps {
   products: Product[];
   companyName?: string;
   logoImage?: string | null;
+  themeVars?: Record<string, string>;
 }
 
-export default function MainLayout({ products, companyName = "Lapause Fleur", logoImage }: MainLayoutProps) {
+export default function MainLayout({ products, companyName = "Lapause Fleur", logoImage, themeVars }: MainLayoutProps) {
   const [filter, setFilter] = useState<FilterState>(EMPTY_FILTER);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -75,7 +76,7 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
   const filteredProducts = isFilterActive ? applyFilter(products, filter) : [];
 
   return (
-    <div className="min-h-screen bg-beige-100 pb-14 md:pb-0">
+    <div className="min-h-screen bg-beige-100 pb-14 md:pb-0" style={themeVars as React.CSSProperties}>
       {/* 헤더 */}
       <header className="border-b border-beige-200 bg-beige-50">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
@@ -92,13 +93,7 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
       <div className="max-w-6xl mx-auto px-4 py-6 flex gap-8">
         <FilterSidebar
           filter={filter}
-          onFilterChange={(next) => setFilter({ ...next, seasons: [] })}
-          onSeasonSelect={(season) =>
-            setFilter((prev) => ({
-              ...EMPTY_FILTER,
-              seasons: prev.seasons.includes(season) ? [] : [season],
-            }))
-          }
+          onFilterChange={setFilter}
           onClearAll={() => setFilter(EMPTY_FILTER)}
           mobileOpen={mobileFilterOpen}
           onMobileToggle={() => setMobileFilterOpen((prev) => !prev)}

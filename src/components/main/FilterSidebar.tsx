@@ -1,14 +1,17 @@
+"use client";
+
 import { FilterState } from "@/types";
 import { PRODUCT_TYPES, FLOWER_COLORS, WRAPPING_COLORS, FLOWER_COLOR_MAP, SEASONS } from "@/lib/constants";
 
 interface FilterSidebarProps {
   filter: FilterState;
   onFilterChange: (filter: FilterState) => void;
-  onSeasonSelect: (season: string) => void;
   onClearAll: () => void;
   mobileOpen: boolean;
   onMobileToggle: () => void;
 }
+
+const EMPTY: FilterState = { productTypes: [], flowerColors: [], wrappingColors: [], seasons: [] };
 
 function toggleItem(arr: string[], item: string): string[] {
   return arr.includes(item) ? arr.filter((v) => v !== item) : [...arr, item];
@@ -17,7 +20,6 @@ function toggleItem(arr: string[], item: string): string[] {
 export default function FilterSidebar({
   filter,
   onFilterChange,
-  onSeasonSelect,
   onClearAll,
   mobileOpen,
   onMobileToggle,
@@ -27,6 +29,14 @@ export default function FilterSidebar({
     filter.flowerColors.length > 0 ||
     filter.wrappingColors.length > 0 ||
     filter.seasons.length > 0;
+
+  // 일반 필터: 시즌 초기화
+  const setNormal = (partial: Partial<FilterState>) =>
+    onFilterChange({ ...filter, ...partial, seasons: [] });
+
+  // 시즌 필터: 다른 필터 초기화, 단일 선택
+  const setSeason = (season: string) =>
+    onFilterChange({ ...EMPTY, seasons: filter.seasons.includes(season) ? [] : [season] });
 
   const filterContent = (
     <div className="space-y-6">
@@ -39,12 +49,7 @@ export default function FilterSidebar({
           {PRODUCT_TYPES.map((type) => (
             <button
               key={type}
-              onClick={() =>
-                onFilterChange({
-                  ...filter,
-                  productTypes: toggleItem(filter.productTypes, type),
-                })
-              }
+              onClick={() => setNormal({ productTypes: toggleItem(filter.productTypes, type) })}
               className={`text-left text-sm px-3 py-1.5 rounded-lg transition-colors ${
                 filter.productTypes.includes(type)
                   ? "bg-gold-400 text-white font-medium"
@@ -66,12 +71,7 @@ export default function FilterSidebar({
           {FLOWER_COLORS.map((color) => (
             <button
               key={color}
-              onClick={() =>
-                onFilterChange({
-                  ...filter,
-                  flowerColors: toggleItem(filter.flowerColors, color),
-                })
-              }
+              onClick={() => setNormal({ flowerColors: toggleItem(filter.flowerColors, color) })}
               className={`w-7 h-7 rounded-full border-2 transition-all ${
                 filter.flowerColors.includes(color)
                   ? "border-gold-500 scale-110"
@@ -93,12 +93,7 @@ export default function FilterSidebar({
           {WRAPPING_COLORS.map((wc) => (
             <button
               key={wc}
-              onClick={() =>
-                onFilterChange({
-                  ...filter,
-                  wrappingColors: toggleItem(filter.wrappingColors, wc),
-                })
-              }
+              onClick={() => setNormal({ wrappingColors: toggleItem(filter.wrappingColors, wc) })}
               className={`text-left text-sm px-3 py-1.5 rounded-lg transition-colors ${
                 filter.wrappingColors.includes(wc)
                   ? "bg-gold-400 text-white font-medium"
@@ -120,7 +115,7 @@ export default function FilterSidebar({
           {SEASONS.map((season) => (
             <button
               key={season}
-              onClick={() => onSeasonSelect(season)}
+              onClick={() => setSeason(season)}
               className={`text-left text-sm px-3 py-1.5 rounded-lg transition-colors ${
                 filter.seasons.includes(season)
                   ? "bg-gold-400 text-white font-medium"
@@ -154,31 +149,22 @@ export default function FilterSidebar({
 
       {/* 모바일 하단 고정 패널 */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-beige-50 border-t border-beige-200 shadow-lg">
-        {/* 필터 내용 - 열렸을 때만 표시 */}
         {mobileOpen && (
           <div className="px-4 pt-4 pb-2 max-h-[60vh] overflow-y-auto">
             {filterContent}
           </div>
         )}
-
-        {/* 토글 버튼 */}
         <button
           onClick={onMobileToggle}
           className="w-full flex items-center justify-between px-4 py-3"
         >
           <span className="flex items-center gap-2">
-            <span className="text-gold-500 font-semibold tracking-wider text-xs uppercase">
-              필터
-            </span>
+            <span className="text-gold-500 font-semibold tracking-wider text-xs uppercase">필터</span>
             {hasFilter && (
-              <span className="bg-gold-400 text-white text-xs px-1.5 py-0.5 rounded-full">
-                ON
-              </span>
+              <span className="bg-gold-400 text-white text-xs px-1.5 py-0.5 rounded-full">ON</span>
             )}
           </span>
-          <span className="text-gold-500 text-lg leading-none">
-            {mobileOpen ? "▼" : "▲"}
-          </span>
+          <span className="text-gold-500 text-lg leading-none">{mobileOpen ? "▼" : "▲"}</span>
         </button>
       </div>
     </>
