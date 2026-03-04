@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import { Product, FilterState } from "@/types";
 import { INACTIVITY_TIMEOUT_MS } from "@/lib/constants";
 import FilterSidebar from "./FilterSidebar";
@@ -43,9 +44,10 @@ interface MainLayoutProps {
   companyName?: string;
   logoImage?: string | null;
   themeVars?: Record<string, string>;
+  slug?: string;
 }
 
-export default function MainLayout({ products, companyName = "Lapause Fleur", logoImage, themeVars }: MainLayoutProps) {
+export default function MainLayout({ products, companyName = "Lapause Fleur", logoImage, themeVars, slug }: MainLayoutProps) {
   const [filter, setFilter] = useState<FilterState>(EMPTY_FILTER);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -78,8 +80,8 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
   return (
     <div className="min-h-screen bg-beige-100 pb-14 md:pb-0" style={themeVars as React.CSSProperties}>
       {/* 헤더 */}
-      <header className="border-b border-beige-200 bg-beige-50">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+      <header className="border-b border-beige-200 bg-beige-50 relative">
+        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center">
           {logoImage ? (
             <img src={logoImage} alt={companyName} className="h-8 object-contain" />
           ) : (
@@ -88,6 +90,9 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
             </span>
           )}
         </div>
+        {slug && (
+          <Link href={`/${slug}/admin`} className="absolute right-0 top-0 bottom-0 w-12" aria-hidden />
+        )}
       </header>
 
       <div className="max-w-6xl mx-auto px-4 py-6 flex gap-8">

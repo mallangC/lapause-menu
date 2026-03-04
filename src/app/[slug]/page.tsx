@@ -33,6 +33,7 @@ export default async function CompanyMenuPage({ params }: Props) {
 
   return (
     <MainLayout
+      slug={slug}
       companyName={slug}
       logoImage={company.logo_image}
       themeVars={themeVars}
