@@ -80,9 +80,19 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
   return (
     <div className="min-h-screen bg-beige-100 pb-14 md:pb-0" style={themeVars as React.CSSProperties}>
       {/* 헤더 */}
-      <header className="border-b border-beige-200 bg-beige-50 relative">
+      <header className="border-b border-beige-200 bg-beige-50">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center">
-          {logoImage ? (
+          {slug ? (
+            <Link href={`/${slug}/admin`}>
+              {logoImage ? (
+                <img src={logoImage} alt={companyName} className="h-8 object-contain" />
+              ) : (
+                <span className="text-xl font-light tracking-widest text-gold-500">
+                  {companyName}
+                </span>
+              )}
+            </Link>
+          ) : logoImage ? (
             <img src={logoImage} alt={companyName} className="h-8 object-contain" />
           ) : (
             <span className="text-xl font-light tracking-widest text-gold-500">
@@ -90,9 +100,6 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
             </span>
           )}
         </div>
-        {slug && (
-          <Link href={`/${slug}/admin`} className="absolute right-0 top-0 bottom-0 w-12" aria-hidden />
-        )}
       </header>
 
       <div className="max-w-6xl mx-auto px-4 py-6 flex gap-8">
