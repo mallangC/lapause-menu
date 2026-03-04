@@ -29,4 +29,4 @@ export interface FilterState {
   seasons: string[];
 }
 
-export type ProductInput = Omit<Product, "id" | "created_at">;
+export type ProductInput = Omit<Product, "id" | "created_at" | "company_id">;
