@@ -13,11 +13,15 @@ const EMPTY_FILTER: FilterState = {
   wrappingColors: [],
   seasons: [],
   featured: false,
+  isSeason: false,
 };
 
 function applyFilter(products: Product[], filter: FilterState): Product[] {
-  if (filter.seasons.length > 0) {
-    return products.filter((p) => filter.seasons.some((s) => p.seasons.includes(s)));
+  if (filter.isSeason) {
+    if (filter.seasons.length > 0) {
+      return products.filter((p) => filter.seasons.some((s) => p.seasons.includes(s)));
+    }
+    return products.filter((p) => p.seasons.length > 0);
   }
   return products.filter((p) => {
     if (p.seasons.length > 0) return false;
@@ -78,8 +82,8 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
     dropdownTimer.current = setTimeout(() => setOpenDropdown(null), 150);
   };
 
-  const isAll = !filter.featured && filter.seasons.length === 0;
-  const isSeason = filter.seasons.length > 0;
+  const isAll = !filter.featured && !filter.isSeason;
+  const isSeason = filter.isSeason;
 
   const filteredProducts = applyFilter(products, filter);
 
@@ -122,7 +126,7 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
               onMouseLeave={handleLeave}
             >
               <button
-                onClick={() => setFilter(EMPTY_FILTER)}
+                onClick={() => { setFilter(EMPTY_FILTER); setMobileFilterOpen(true); }}
                 className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
                   isAll
                     ? "border-gold-500 text-gold-500"
@@ -132,7 +136,7 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
                 모든 꽃
               </button>
               {openDropdown === "ALL" && (
-                <div className="hidden md:block absolute top-full left-1/2 -translate-x-1/2 z-50 pt-1">
+                <div className="hidden md:block absolute top-full left-1/2 -translate-x-1/2 z-50">
                   <div className="bg-white border border-gray-200 rounded-xl shadow-lg p-4 w-72">
                     {/* 상품 유형 */}
                     <div className="mb-4">
@@ -154,7 +158,7 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
                             className={`text-center text-sm px-3 py-1.5 rounded-lg border transition-colors ${
                               filter.productTypes.includes(type)
                                 ? "border-gold-400 bg-gold-400 text-white font-medium"
-                                : "border-gray-300 text-foreground hover:border-gray-400 hover:bg-gray-100"
+                                : "border-gold-500/50 text-foreground hover:bg-gold-500/50"
                             }`}
                           >
                             {type}
@@ -194,7 +198,7 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
 
                     {/* 포장지 색상 */}
                     <div>
-                      <h3 className="text-xs font-semibold uppercase tracking-wider text-gold-500 mb-2">포장지 색상</h3>
+                      <h3 className="text-sm font-semibold uppercase tracking-wider text-gold-500 mb-2">포장지 색상</h3>
                       <div className="grid grid-cols-3 gap-1">
                         {WRAPPING_COLORS.map((wc) => (
                           <button
@@ -209,10 +213,10 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
                                   : [...f.wrappingColors, wc],
                               }))
                             }
-                            className={`text-center text-xs px-2.5 py-1.5 rounded-lg border transition-colors whitespace-nowrap ${
+                            className={`text-center text-sm px-2.5 py-1.5 rounded-lg border transition-colors whitespace-nowrap ${
                               filter.wrappingColors.includes(wc)
                                 ? "border-gold-400 bg-gold-400 text-white font-medium"
-                                : "border-gray-300 text-foreground hover:border-gray-400 hover:bg-gray-100"
+                                : "border-gold-500/50 text-foreground hover:bg-gold-500/50"
                             }`}
                           >
                             {wc}
@@ -243,7 +247,7 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
               <button
                 onClick={() => {
                   if (isSeason) return;
-                  setFilter({ ...EMPTY_FILTER, seasons: [...SEASONS] });
+                  setFilter({ ...EMPTY_FILTER, isSeason: true });
                 }}
                 className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
                   isSeason
@@ -254,7 +258,7 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
                 시즌
               </button>
               {openDropdown === "시즌" && (
-                <div className="hidden md:block absolute top-full left-1/2 -translate-x-1/2 z-50 pt-1">
+                <div className="hidden md:block absolute top-full left-1/2 -translate-x-1/2 z-50">
                   <div className="bg-white border border-gray-200 rounded-xl shadow-lg p-3 min-w-36">
                     <div className="flex flex-col gap-1">
                       {SEASONS.map((season) => (
@@ -263,13 +267,14 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
                           onClick={() =>
                             setFilter({
                               ...EMPTY_FILTER,
+                              isSeason: true,
                               seasons: filter.seasons.length === 1 && filter.seasons.includes(season) ? [] : [season],
                             })
                           }
                           className={`text-center text-sm px-3 py-1.5 rounded-lg border transition-colors ${
                             filter.seasons.includes(season)
                               ? "border-gold-400 bg-gold-400 text-white font-medium"
-                              : "border-gray-300 text-foreground hover:border-gray-400 hover:bg-gray-100"
+                              : "border-gold-500/50 text-foreground hover:bg-gold-500/50"
                           }`}
                         >
                           {season}
@@ -290,9 +295,8 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
         <div className="md:hidden border-b border-gray-100 bg-white">
           <button
             onClick={() => setMobileFilterOpen((v) => !v)}
-            className="w-full flex items-center justify-between px-4 py-3"
+            className="w-full flex items-center justify-end px-4 py-3"
           >
-            <span className="text-xs font-semibold uppercase tracking-wider text-gold-500">필터</span>
             <span className="text-gold-500 text-sm">{mobileFilterOpen ? "▲" : "▼"}</span>
           </button>
           {mobileFilterOpen && (
@@ -319,7 +323,7 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
                       className={`text-center text-sm py-2 rounded-lg border transition-colors ${
                         filter.productTypes.includes(type)
                           ? "border-gold-400 bg-gold-400 text-white font-medium"
-                          : "border-gray-300 text-foreground hover:border-gray-400 hover:bg-gray-100"
+                          : "border-gold-500/50 text-foreground hover:bg-gold-500/50"
                       }`}
                     >
                       {type}
@@ -374,10 +378,10 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
                             : [...f.wrappingColors, wc],
                         }))
                       }
-                      className={`text-center text-xs py-2 rounded-lg border transition-colors whitespace-nowrap ${
+                      className={`text-center text-sm py-2 rounded-lg border transition-colors whitespace-nowrap ${
                         filter.wrappingColors.includes(wc)
                           ? "border-gold-400 bg-gold-400 text-white font-medium"
-                          : "border-gray-300 text-foreground hover:border-gray-400 hover:bg-gray-100"
+                          : "border-gold-500/50 text-foreground hover:bg-gold-500/50"
                       }`}
                     >
                       {wc}
@@ -399,7 +403,6 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
 
           {isSeason && (
             <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-gold-500 mb-2">시즌 선택</h3>
               <div className="grid grid-cols-3 gap-1.5">
                 {SEASONS.map((season) => (
                   <button
@@ -407,13 +410,14 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
                     onClick={() =>
                       setFilter({
                         ...EMPTY_FILTER,
+                        isSeason: true,
                         seasons: filter.seasons.length === 1 && filter.seasons.includes(season) ? [] : [season],
                       })
                     }
                     className={`text-center text-sm py-2 rounded-lg border transition-colors ${
                       filter.seasons.includes(season)
                         ? "border-gold-400 bg-gold-400 text-white font-medium"
-                        : "border-gray-300 text-foreground hover:border-gray-400 hover:bg-gray-100"
+                        : "border-gold-500/50 text-foreground hover:bg-gold-500/50"
                     }`}
                   >
                     {season}
@@ -435,7 +439,7 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
             {[
               { label: "추천/인기", image: landingFeaturedImage, onClick: () => { setFilter({ ...EMPTY_FILTER, featured: true }); setShowLanding(false); } },
               { label: "모든 꽃", image: landingAllImage, onClick: () => { setFilter(EMPTY_FILTER); setShowLanding(false); } },
-              { label: "시즌", image: landingSeasonImage, onClick: () => { setFilter({ ...EMPTY_FILTER, seasons: [...SEASONS] }); setShowLanding(false); } },
+              { label: "시즌", image: landingSeasonImage, onClick: () => { setFilter({ ...EMPTY_FILTER, isSeason: true }); setShowLanding(false); } },
             ].map(({ label, image, onClick }) => (
               <button
                 key={label}

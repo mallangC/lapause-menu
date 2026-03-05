@@ -28,6 +28,7 @@ export interface FilterState {
   wrappingColors: string[];
   seasons: string[];
   featured: boolean;
+  isSeason: boolean;
 }
 
 export type ProductInput = Omit<Product, "id" | "created_at" | "company_id">;
