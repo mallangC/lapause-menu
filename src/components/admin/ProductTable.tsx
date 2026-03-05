@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { Product } from "@/types";
+import { BADGE_COLORS } from "@/lib/constants";
 
 interface ProductTableProps {
   products: Product[];
@@ -21,12 +22,21 @@ export default function ProductTable({ products, onEdit, onDelete }: ProductTabl
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
+        <colgroup>
+          <col className="w-12 md:w-20" />
+          <col />
+          <col className="hidden md:table-column" />
+          <col className="hidden md:table-column" />
+          <col />
+          <col className="w-28" />
+        </colgroup>
         <thead>
           <tr className="border-b border-gray-200 text-center">
-            <th className="pb-2 pr-4 font-medium text-gray-400">이미지</th>
-            <th className="pb-2 pr-4 font-medium text-gray-400">상품명</th>
-            <th className="pb-2 pr-4 font-medium text-gray-400">유형</th>
-            <th className="pb-2 pr-4 font-medium text-gray-400">가격</th>
+            <th className="pb-2 font-medium text-gray-400">이미지</th>
+            <th className="pb-2 font-medium text-gray-400">상품명</th>
+            <th className="pb-2 font-medium text-gray-400 hidden md:table-cell">뱃지</th>
+            <th className="pb-2 font-medium text-gray-400 hidden md:table-cell">유형</th>
+            <th className="pb-2 font-medium text-gray-400">가격</th>
             <th className="pb-2 font-medium text-gray-400">관리</th>
           </tr>
         </thead>
@@ -36,29 +46,43 @@ export default function ProductTable({ products, onEdit, onDelete }: ProductTabl
               key={product.id}
               className="border-b border-gray-100 hover:bg-gray-50 transition-colors text-center"
             >
-              <td className="py-3 pr-4">
-                <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-100 mx-auto">
+              <td className="py-3">
+                <div className="w-10 h-10 md:w-16 md:h-16 rounded-lg overflow-hidden bg-gray-100 mx-auto">
                   {product.image_url ? (
-                    <Image src={product.image_url} alt={product.name} width={80} height={80} className="w-full h-full object-cover" />
+                    <Image src={product.image_url} alt={product.name} width={64} height={64} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full" />
                   )}
                 </div>
               </td>
-              <td className="py-3 pr-4 font-medium">{product.name}</td>
-              <td className="py-3 pr-4 text-gray-700">{product.product_type}</td>
-              <td className="py-3 pr-4">{product.price.toLocaleString()}원</td>
-              <td className="py-3">
-                <div className="flex gap-2 justify-center">
+              <td className="py-3 px-2 font-medium break-keep">{product.name}</td>
+              <td className="py-3 px-2 hidden md:table-cell">
+                <div className="flex gap-1 flex-wrap justify-center">
+                  {product.is_popular && (
+                    <span className="text-white text-xs px-1.5 py-0.5 rounded-full whitespace-nowrap" style={{ backgroundColor: BADGE_COLORS.popular.bg }}>
+                      {BADGE_COLORS.popular.label}
+                    </span>
+                  )}
+                  {product.is_recommended && (
+                    <span className="text-white text-xs px-1.5 py-0.5 rounded-full whitespace-nowrap" style={{ backgroundColor: BADGE_COLORS.recommended.bg }}>
+                      {BADGE_COLORS.recommended.label}
+                    </span>
+                  )}
+                </div>
+              </td>
+              <td className="py-3 px-2 text-gray-700 hidden md:table-cell whitespace-nowrap">{product.product_type}</td>
+              <td className="py-3 px-2 whitespace-nowrap">{product.price.toLocaleString()}원</td>
+              <td className="py-3 px-2">
+                <div className="flex gap-1.5 justify-center">
                   <button
                     onClick={() => onEdit(product)}
-                    className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 transition-colors"
+                    className="text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 transition-colors whitespace-nowrap"
                   >
                     수정
                   </button>
                   <button
                     onClick={() => onDelete(product.id)}
-                    className="text-xs px-3 py-1.5 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition-colors"
+                    className="text-xs px-2.5 py-1.5 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition-colors whitespace-nowrap"
                   >
                     삭제
                   </button>
