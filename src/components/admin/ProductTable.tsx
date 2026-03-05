@@ -1,74 +1,12 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { createPortal } from "react-dom";
+import Image from "next/image";
 import { Product } from "@/types";
-import { BADGE_COLORS } from "@/lib/constants";
 
 interface ProductTableProps {
   products: Product[];
   onEdit: (product: Product) => void;
   onDelete: (id: string) => void;
-}
-
-function ActionMenu({ product, onEdit, onDelete }: { product: Product; onEdit: (p: Product) => void; onDelete: (id: string) => void }) {
-  const [open, setOpen] = useState(false);
-  const [pos, setPos] = useState({ top: 0, right: 0 });
-  const btnRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      const target = e.target as Node;
-      if (
-        btnRef.current && !btnRef.current.contains(target) &&
-        menuRef.current && !menuRef.current.contains(target)
-      ) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  const handleOpen = () => {
-    if (btnRef.current) {
-      const rect = btnRef.current.getBoundingClientRect();
-      setPos({ top: rect.bottom + window.scrollY + 4, right: window.innerWidth - rect.right });
-    }
-    setOpen((v) => !v);
-  };
-
-  return (
-    <>
-      <button
-        ref={btnRef}
-        onClick={handleOpen}
-        className="w-7 h-7 flex items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors text-lg leading-none"
-      >
-        ···
-      </button>
-      {open && createPortal(
-        <div
-          ref={menuRef}
-          style={{ position: "absolute", top: pos.top, right: pos.right }}
-          className="z-9999 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden w-20"
-        >
-          <button
-            onClick={() => { onEdit(product); setOpen(false); }}
-            className="w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 text-center"
-          >
-            수정
-          </button>
-          <button
-            onClick={() => { onDelete(product.id); setOpen(false); }}
-            className="w-full px-3 py-2 text-sm text-red-500 hover:bg-red-50 text-center border-t border-gray-100"
-          >
-            삭제
-          </button>
-        </div>,
-        document.body
-      )}
-    </>
-  );
 }
 
 export default function ProductTable({ products, onEdit, onDelete }: ProductTableProps) {
@@ -85,11 +23,10 @@ export default function ProductTable({ products, onEdit, onDelete }: ProductTabl
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-gray-200 text-center">
+            <th className="pb-2 pr-4 font-medium text-gray-400">이미지</th>
             <th className="pb-2 pr-4 font-medium text-gray-400">상품명</th>
             <th className="pb-2 pr-4 font-medium text-gray-400">유형</th>
             <th className="pb-2 pr-4 font-medium text-gray-400">가격</th>
-            <th className="pb-2 pr-4 font-medium text-gray-400">포장</th>
-            <th className="pb-2 pr-4 font-medium text-gray-400">뱃지</th>
             <th className="pb-2 font-medium text-gray-400">관리</th>
           </tr>
         </thead>
@@ -99,27 +36,32 @@ export default function ProductTable({ products, onEdit, onDelete }: ProductTabl
               key={product.id}
               className="border-b border-gray-100 hover:bg-gray-50 transition-colors text-center"
             >
-              <td className="py-3 pr-4 font-medium">{product.name}</td>
-              <td className="py-3 pr-4 text-gray-700">{product.product_type}</td>
-              <td className="py-3 pr-4">{product.price.toLocaleString()}원</td>
-              <td className="py-3 pr-4 text-gray-400">{product.wrapping_color}</td>
               <td className="py-3 pr-4">
-                <div className="flex gap-1 justify-center">
-                  {product.is_popular && (
-                    <span className="text-white text-xs px-1.5 py-0.5 rounded-full" style={{ backgroundColor: BADGE_COLORS.popular.bg }}>
-                      {BADGE_COLORS.popular.label}
-                    </span>
-                  )}
-                  {product.is_recommended && (
-                    <span className="text-white text-xs px-1.5 py-0.5 rounded-full" style={{ backgroundColor: BADGE_COLORS.recommended.bg }}>
-                      {BADGE_COLORS.recommended.label}
-                    </span>
+                <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-100 mx-auto">
+                  {product.image_url ? (
+                    <Image src={product.image_url} alt={product.name} width={80} height={80} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full" />
                   )}
                 </div>
               </td>
+              <td className="py-3 pr-4 font-medium">{product.name}</td>
+              <td className="py-3 pr-4 text-gray-700">{product.product_type}</td>
+              <td className="py-3 pr-4">{product.price.toLocaleString()}원</td>
               <td className="py-3">
-                <div className="flex justify-center">
-                  <ActionMenu product={product} onEdit={onEdit} onDelete={onDelete} />
+                <div className="flex gap-2 justify-center">
+                  <button
+                    onClick={() => onEdit(product)}
+                    className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 transition-colors"
+                  >
+                    수정
+                  </button>
+                  <button
+                    onClick={() => onDelete(product.id)}
+                    className="text-xs px-3 py-1.5 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition-colors"
+                  >
+                    삭제
+                  </button>
                 </div>
               </td>
             </tr>
