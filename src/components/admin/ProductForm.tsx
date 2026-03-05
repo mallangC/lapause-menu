@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import Image from "next/image";
 import { Product, ProductInput } from "@/types";
-import { PRODUCT_TYPES, FLOWER_COLORS, WRAPPING_COLORS, FLOWER_COLOR_MAP, SEASONS, STORAGE_BUCKET } from "@/lib/constants";
+import { PRODUCT_TYPES, FLOWER_COLORS, WRAPPING_COLORS, FLOWER_COLOR_MAP, SEASONS, STORAGE_BUCKET, BADGE_COLORS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
 
 interface ProductFormProps {
@@ -322,10 +322,9 @@ export default function ProductForm({ initialData, onSubmit, onCancel }: Product
               setData({ ...data, is_popular: !data.is_popular, is_recommended: false })
             }
             className={`flex-1 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
-              data.is_popular
-                ? "border-red-300 bg-red-300 text-white shadow-sm scale-[1.02]"
-                : "border-gray-200 bg-white text-gray-700 hover:border-gray-400"
+              data.is_popular ? "text-white shadow-sm scale-[1.02]" : "border-gray-200 bg-white text-gray-700 hover:border-gray-400"
             }`}
+            style={data.is_popular ? { backgroundColor: BADGE_COLORS.popular.bg, borderColor: BADGE_COLORS.popular.bg } : undefined}
           >
             인기 상품
           </button>
@@ -335,10 +334,9 @@ export default function ProductForm({ initialData, onSubmit, onCancel }: Product
               setData({ ...data, is_recommended: !data.is_recommended, is_popular: false })
             }
             className={`flex-1 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
-              data.is_recommended
-                ? "border-green-600 bg-green-600 text-white shadow-sm scale-[1.02]"
-                : "border-gray-200 bg-white text-gray-700 hover:border-gray-400"
+              data.is_recommended ? "text-white shadow-sm scale-[1.02]" : "border-gray-200 bg-white text-gray-700 hover:border-gray-400"
             }`}
+            style={data.is_recommended ? { backgroundColor: BADGE_COLORS.recommended.bg, borderColor: BADGE_COLORS.recommended.bg } : undefined}
           >
             추천 상품
           </button>
