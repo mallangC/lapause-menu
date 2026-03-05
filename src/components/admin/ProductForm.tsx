@@ -315,7 +315,7 @@ export default function ProductForm({ initialData, onSubmit, onCancel }: Product
         <label className="block text-sm font-medium text-gray-700 mb-2">
           뱃지
         </label>
-        <div className="flex gap-2">
+        <div className="flex gap-2 pb-4">
           <button
             type="button"
             onClick={() =>
@@ -345,7 +345,7 @@ export default function ProductForm({ initialData, onSubmit, onCancel }: Product
         </div>
       </div>
 
-      <div className="flex gap-3 pt-2">
+      <div className="flex gap-3 pt-8 border-t border-gray-300">
         <button
           type="submit"
           disabled={loading || uploading}
@@ -356,7 +356,7 @@ export default function ProductForm({ initialData, onSubmit, onCancel }: Product
         <button
           type="button"
           onClick={onCancel}
-          className="flex-1 border border-gray-300 text-gray-700 py-2 rounded-lg text-sm hover:bg-gray-100 transition-colors"
+          className="flex-1 border border-red-200 text-red-500 py-2 rounded-lg text-sm hover:bg-red-50 transition-colors"
         >
           취소
         </button>
