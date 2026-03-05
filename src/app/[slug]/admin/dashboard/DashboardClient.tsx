@@ -94,15 +94,33 @@ export default function DashboardClient({ slug, companyId, companyName, logoImag
         </div>
       </header>
 
+      {/* 모바일 탭 내비게이션 */}
+      <div className="md:hidden border-b border-gray-100 bg-white">
+        <div className="flex justify-center">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => { setActiveTab(tab.key); setShowForm(false); setEditingProduct(null); setError(null); }}
+              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === tab.key ? "border-gold-500 text-gold-500" : "border-transparent text-gray-400 hover:text-gray-700"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="flex flex-1 max-w-6xl w-full mx-auto px-4 py-6 gap-6">
-        <nav className="w-44 shrink-0">
+        {/* 데스크탑 사이드 탭 */}
+        <nav className="hidden md:block w-44 shrink-0">
           <ul className="space-y-1">
             {tabs.map((tab) => (
               <li key={tab.key}>
                 <button
                   onClick={() => { setActiveTab(tab.key); setShowForm(false); setEditingProduct(null); setError(null); }}
                   className={`w-full text-left px-4 py-2.5 rounded-lg text-sm transition-colors ${
-                    activeTab === tab.key ? "bg-gold-500 text-white font-medium" : "text-gray-700 hover:bg-gray-200"
+                    activeTab === tab.key ? "bg-gold-500 text-white font-medium" : "text-gray-700 hover:bg-gold-500/50"
                   }`}
                 >
                   {tab.label}
