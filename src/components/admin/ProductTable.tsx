@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import { Product } from "@/types";
 import { BADGE_COLORS } from "@/lib/constants";
@@ -11,6 +12,11 @@ interface ProductTableProps {
 }
 
 export default function ProductTable({ products, onEdit, onDelete }: ProductTableProps) {
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  const sorted = [...products].sort((a, b) => sortDir === "asc" ? a.price - b.price : b.price - a.price);
+
+  const toggleSort = () => setSortDir((prev) => prev === "asc" ? "desc" : "asc");
   if (products.length === 0) {
     return (
       <div className="text-center py-12 text-gray-400">
@@ -36,12 +42,19 @@ export default function ProductTable({ products, onEdit, onDelete }: ProductTabl
             <th className="pb-2 font-medium text-gray-400">상품명</th>
             <th className="pb-2 font-medium text-gray-400 hidden md:table-cell">뱃지</th>
             <th className="pb-2 font-medium text-gray-400 hidden md:table-cell">유형</th>
-            <th className="pb-2 font-medium text-gray-400">가격</th>
+            <th className="pb-2 font-medium text-gray-400">
+              <div className="flex items-center justify-center gap-1">
+                가격
+                <button onClick={toggleSort} className="text-xs leading-none text-gray-900 hover:text-gray-500">
+                  {sortDir === "asc" ? "↑" : "↓"}
+                </button>
+              </div>
+            </th>
             <th className="pb-2 font-medium text-gray-400">관리</th>
           </tr>
         </thead>
         <tbody>
-          {products.map((product) => (
+          {sorted.map((product) => (
             <tr
               key={product.id}
               className="border-b border-gray-100 hover:bg-gray-50 transition-colors text-center"
