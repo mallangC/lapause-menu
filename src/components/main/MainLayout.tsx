@@ -132,11 +132,11 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
                 모든 꽃
               </button>
               {openDropdown === "ALL" && (
-                <div className="absolute top-full left-1/2 -translate-x-1/2 z-50 pt-1">
+                <div className="hidden md:block absolute top-full left-1/2 -translate-x-1/2 z-50 pt-1">
                   <div className="bg-white border border-gray-200 rounded-xl shadow-lg p-4 w-72">
                     {/* 상품 유형 */}
                     <div className="mb-4">
-                      <h3 className="text-xs font-semibold uppercase tracking-wider text-gold-500 mb-2 text-center">상품 유형</h3>
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-gold-500 mb-2">상품 유형</h3>
                       <div className="grid grid-cols-2 gap-1">
                         {PRODUCT_TYPES.map((type) => (
                           <button
@@ -154,7 +154,7 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
                             className={`text-center text-sm px-3 py-1.5 rounded-lg border transition-colors ${
                               filter.productTypes.includes(type)
                                 ? "border-gold-400 bg-gold-400 text-white font-medium"
-                                : "border-gray-300 text-foreground hover:border-gray-400 hover:bg-beige-200"
+                                : "border-gray-300 text-foreground hover:border-gray-400 hover:bg-gray-100"
                             }`}
                           >
                             {type}
@@ -165,7 +165,7 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
 
                     {/* 꽃 색상 */}
                     <div className="mb-4">
-                      <h3 className="text-xs font-semibold uppercase tracking-wider text-gold-500 mb-2 text-center">꽃 색상</h3>
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-gold-500 mb-2">꽃 색상</h3>
                       <div className="grid grid-cols-5 gap-2 justify-items-center">
                         {FLOWER_COLORS.map((color) => (
                           <button
@@ -194,7 +194,7 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
 
                     {/* 포장지 색상 */}
                     <div>
-                      <h3 className="text-xs font-semibold uppercase tracking-wider text-gold-500 mb-2 text-center">포장지 색상</h3>
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-gold-500 mb-2">포장지 색상</h3>
                       <div className="grid grid-cols-3 gap-1">
                         {WRAPPING_COLORS.map((wc) => (
                           <button
@@ -212,7 +212,7 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
                             className={`text-center text-xs px-2.5 py-1.5 rounded-lg border transition-colors whitespace-nowrap ${
                               filter.wrappingColors.includes(wc)
                                 ? "border-gold-400 bg-gold-400 text-white font-medium"
-                                : "border-gray-300 text-foreground hover:border-gray-400 hover:bg-beige-200"
+                                : "border-gray-300 text-foreground hover:border-gray-400 hover:bg-gray-100"
                             }`}
                           >
                             {wc}
@@ -254,7 +254,7 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
                 시즌
               </button>
               {openDropdown === "시즌" && (
-                <div className="absolute top-full left-1/2 -translate-x-1/2 z-50 pt-1">
+                <div className="hidden md:block absolute top-full left-1/2 -translate-x-1/2 z-50 pt-1">
                   <div className="bg-white border border-gray-200 rounded-xl shadow-lg p-3 min-w-36">
                     <div className="flex flex-col gap-1">
                       {SEASONS.map((season) => (
@@ -269,7 +269,7 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
                           className={`text-center text-sm px-3 py-1.5 rounded-lg border transition-colors ${
                             filter.seasons.includes(season)
                               ? "border-gold-400 bg-gold-400 text-white font-medium"
-                              : "border-gray-300 text-foreground hover:border-gray-400 hover:bg-beige-200"
+                              : "border-gray-300 text-foreground hover:border-gray-400 hover:bg-gray-100"
                           }`}
                         >
                           {season}
@@ -319,7 +319,7 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
                       className={`text-center text-sm py-2 rounded-lg border transition-colors ${
                         filter.productTypes.includes(type)
                           ? "border-gold-400 bg-gold-400 text-white font-medium"
-                          : "border-gray-300 text-foreground hover:border-gray-400 hover:bg-beige-200"
+                          : "border-gray-300 text-foreground hover:border-gray-400 hover:bg-gray-100"
                       }`}
                     >
                       {type}
@@ -377,7 +377,7 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
                       className={`text-center text-xs py-2 rounded-lg border transition-colors whitespace-nowrap ${
                         filter.wrappingColors.includes(wc)
                           ? "border-gold-400 bg-gold-400 text-white font-medium"
-                          : "border-gray-300 text-foreground hover:border-gray-400 hover:bg-beige-200"
+                          : "border-gray-300 text-foreground hover:border-gray-400 hover:bg-gray-100"
                       }`}
                     >
                       {wc}
@@ -413,7 +413,7 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
                     className={`text-center text-sm py-2 rounded-lg border transition-colors ${
                       filter.seasons.includes(season)
                         ? "border-gold-400 bg-gold-400 text-white font-medium"
-                        : "border-gray-300 text-foreground hover:border-gray-400 hover:bg-beige-200"
+                        : "border-gray-300 text-foreground hover:border-gray-400 hover:bg-gray-100"
                     }`}
                   >
                     {season}
@@ -430,7 +430,7 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
       {/* 컨텐츠 */}
       {showLanding ? (
         /* 랜딩 페이지 */
-        <div className="max-w-4xl mx-auto px-4 pt-14 flex flex-col items-center gap-6">
+        <div className="max-w-4xl mx-auto px-4 pt-14 pb-14 flex flex-col items-center gap-6">
           <div className="grid grid-cols-1 gap-4 w-full max-w-70 mx-auto md:max-w-none md:grid-cols-3 md:gap-6">
             {[
               { label: "추천/인기", image: landingFeaturedImage, onClick: () => { setFilter({ ...EMPTY_FILTER, featured: true }); setShowLanding(false); } },
