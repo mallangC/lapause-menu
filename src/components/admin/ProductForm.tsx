@@ -141,7 +141,7 @@ export default function ProductForm({ initialData, onSubmit, onCancel }: Product
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-foreground mb-1">
+        <label className="block text-sm font-medium text-gray-700 mb-1">
           상품명 <span className="text-red-500">*</span>
         </label>
         <input
@@ -149,12 +149,12 @@ export default function ProductForm({ initialData, onSubmit, onCancel }: Product
           required
           value={data.name}
           onChange={(e) => setData({ ...data, name: e.target.value })}
-          className="w-full border border-beige-300 rounded-lg px-3 py-2 text-sm bg-beige-50 focus:outline-none focus:border-gold-400"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:border-gray-500"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-foreground mb-1">
+        <label className="block text-sm font-medium text-gray-700 mb-1">
           가격 (원) <span className="text-red-500">*</span>
         </label>
         <input
@@ -164,18 +164,18 @@ export default function ProductForm({ initialData, onSubmit, onCancel }: Product
           value={data.price === 0 ? "" : data.price}
           onChange={(e) => setData({ ...data, price: Number(e.target.value) || 0 })}
           placeholder="0"
-          className="w-full border border-beige-300 rounded-lg px-3 py-2 text-sm bg-beige-50 focus:outline-none focus:border-gold-400"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:border-gray-500"
         />
       </div>
 
       {/* 이미지 업로드 */}
       <div>
-        <label className="block text-sm font-medium text-foreground mb-1">
+        <label className="block text-sm font-medium text-gray-700 mb-1">
           이미지
         </label>
 
         {data.image_url ? (
-          <div className="relative w-64 h-64 rounded-lg overflow-hidden border border-beige-300">
+          <div className="relative w-64 h-64 rounded-lg overflow-hidden border border-gray-300">
             <Image
               src={data.image_url}
               alt="상품 이미지"
@@ -193,7 +193,7 @@ export default function ProductForm({ initialData, onSubmit, onCancel }: Product
         ) : (
           <div
             onClick={() => fileInputRef.current?.click()}
-            className="w-64 h-64 rounded-lg border-2 border-dashed border-beige-300 flex flex-col items-center justify-center cursor-pointer hover:border-gold-400 transition-colors text-beige-400 hover:text-gold-400"
+            className="w-64 h-64 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-gray-500 transition-colors text-gray-400 hover:text-gray-600"
           >
             {uploading ? (
               <span className="text-xs">업로드 중...</span>
@@ -220,7 +220,7 @@ export default function ProductForm({ initialData, onSubmit, onCancel }: Product
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-foreground mb-1">
+        <label className="block text-sm font-medium text-gray-700 mb-1">
           상품 유형 <span className="text-red-500">*</span>
         </label>
         <select
@@ -228,7 +228,7 @@ export default function ProductForm({ initialData, onSubmit, onCancel }: Product
           onChange={(e) =>
             setData({ ...data, product_type: e.target.value as ProductInput["product_type"] })
           }
-          className="w-full border border-beige-300 rounded-lg px-3 py-2 text-sm bg-beige-50 focus:outline-none focus:border-gold-400"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:border-gray-500"
         >
           {PRODUCT_TYPES.map((t) => (
             <option key={t} value={t}>
@@ -239,7 +239,7 @@ export default function ProductForm({ initialData, onSubmit, onCancel }: Product
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-foreground mb-2">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
           꽃 색상
         </label>
         <div className="flex flex-wrap gap-2">
@@ -252,8 +252,8 @@ export default function ProductForm({ initialData, onSubmit, onCancel }: Product
                 onClick={() => toggleFlowerColor(color)}
                 className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border-2 text-sm transition-all ${
                   selected
-                    ? "border-gold-500 bg-gold-500 text-white font-medium scale-105 shadow-sm"
-                    : "border-beige-200 bg-beige-50 text-foreground hover:border-beige-300"
+                    ? "border-gray-900 bg-gray-900 text-white font-medium scale-105 shadow-sm"
+                    : "border-gray-200 bg-white text-gray-700 hover:border-gray-400"
                 }`}
               >
                 <span
@@ -268,7 +268,7 @@ export default function ProductForm({ initialData, onSubmit, onCancel }: Product
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-foreground mb-2">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
           포장지 색상 <span className="text-red-500">*</span>
         </label>
         <div className="flex gap-2">
@@ -279,8 +279,8 @@ export default function ProductForm({ initialData, onSubmit, onCancel }: Product
               onClick={() => setData({ ...data, wrapping_color: wc })}
               className={`flex-1 py-2 rounded-lg border-2 text-sm transition-all ${
                 data.wrapping_color === wc
-                  ? "border-gold-500 bg-gold-500 text-white font-medium shadow-sm"
-                  : "border-beige-200 bg-beige-50 text-foreground hover:border-beige-300"
+                  ? "border-gray-900 bg-gray-900 text-white font-medium shadow-sm"
+                  : "border-gray-200 bg-white text-gray-700 hover:border-gray-400"
               }`}
             >
               {wc}
@@ -290,7 +290,7 @@ export default function ProductForm({ initialData, onSubmit, onCancel }: Product
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-foreground mb-2">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
           시즌
         </label>
         <div className="flex flex-wrap gap-2">
@@ -301,8 +301,8 @@ export default function ProductForm({ initialData, onSubmit, onCancel }: Product
               onClick={() => toggleSeason(season)}
               className={`px-3 py-1.5 rounded-lg border-2 text-sm transition-all ${
                 data.seasons.includes(season)
-                  ? "border-gold-500 bg-gold-500 text-white font-medium shadow-sm"
-                  : "border-beige-200 bg-beige-50 text-foreground hover:border-beige-300"
+                  ? "border-gray-900 bg-gray-900 text-white font-medium shadow-sm"
+                  : "border-gray-200 bg-white text-gray-700 hover:border-gray-400"
               }`}
             >
               {season}
@@ -312,7 +312,7 @@ export default function ProductForm({ initialData, onSubmit, onCancel }: Product
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-foreground mb-2">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
           뱃지
         </label>
         <div className="flex gap-2">
@@ -324,7 +324,7 @@ export default function ProductForm({ initialData, onSubmit, onCancel }: Product
             className={`flex-1 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
               data.is_popular
                 ? "border-red-300 bg-red-300 text-white shadow-sm scale-[1.02]"
-                : "border-beige-200 bg-beige-50 text-foreground hover:border-beige-300"
+                : "border-gray-200 bg-white text-gray-700 hover:border-gray-400"
             }`}
           >
             인기 상품
@@ -337,7 +337,7 @@ export default function ProductForm({ initialData, onSubmit, onCancel }: Product
             className={`flex-1 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
               data.is_recommended
                 ? "border-green-600 bg-green-600 text-white shadow-sm scale-[1.02]"
-                : "border-beige-200 bg-beige-50 text-foreground hover:border-beige-300"
+                : "border-gray-200 bg-white text-gray-700 hover:border-gray-400"
             }`}
           >
             추천 상품
@@ -356,7 +356,7 @@ export default function ProductForm({ initialData, onSubmit, onCancel }: Product
         <button
           type="button"
           onClick={onCancel}
-          className="flex-1 border border-beige-300 text-foreground py-2 rounded-lg text-sm hover:bg-beige-200 transition-colors"
+          className="flex-1 border border-gray-300 text-gray-700 py-2 rounded-lg text-sm hover:bg-gray-100 transition-colors"
         >
           취소
         </button>

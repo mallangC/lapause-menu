@@ -48,24 +48,24 @@ export default function SettingsTab({ companyId, initialBg, initialAccent, onThe
 
   return (
     <div className="max-w-md space-y-8">
-      <h2 className="text-xl font-medium text-foreground">설정</h2>
+      <h2 className="text-xl font-medium text-gray-900">설정</h2>
 
       {/* 색상 설정 */}
       <div>
-        <h3 className="text-sm font-semibold text-foreground mb-4">사이트 색상</h3>
+        <h3 className="text-sm font-semibold text-gray-900 mb-4">사이트 색상</h3>
 
         <div className="space-y-4">
           {/* 배경색 */}
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-foreground">배경색</p>
-              <p className="text-xs text-beige-400 mt-0.5">페이지 전체 배경 계열</p>
+              <p className="text-sm font-medium text-gray-700">배경색</p>
+              <p className="text-xs text-gray-400 mt-0.5">페이지 전체 배경 계열</p>
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-xs text-beige-400 font-mono">{bg}</span>
+              <span className="text-xs text-gray-400 font-mono">{bg}</span>
               <label className="relative cursor-pointer">
                 <div
-                  className="w-10 h-10 rounded-lg border-2 border-beige-300 shadow-sm overflow-hidden"
+                  className="w-10 h-10 rounded-lg border-2 border-gray-300 shadow-sm overflow-hidden"
                   style={{ backgroundColor: bg }}
                 />
                 <input
@@ -81,14 +81,14 @@ export default function SettingsTab({ companyId, initialBg, initialAccent, onThe
           {/* 포인트색 */}
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-foreground">포인트색</p>
-              <p className="text-xs text-beige-400 mt-0.5">버튼, 강조 요소 색상</p>
+              <p className="text-sm font-medium text-gray-700">포인트색</p>
+              <p className="text-xs text-gray-400 mt-0.5">버튼, 강조 요소 색상</p>
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-xs text-beige-400 font-mono">{accent}</span>
+              <span className="text-xs text-gray-400 font-mono">{accent}</span>
               <label className="relative cursor-pointer">
                 <div
-                  className="w-10 h-10 rounded-lg border-2 border-beige-300 shadow-sm overflow-hidden"
+                  className="w-10 h-10 rounded-lg border-2 border-gray-300 shadow-sm overflow-hidden"
                   style={{ backgroundColor: accent }}
                 />
                 <input
@@ -154,7 +154,7 @@ export default function SettingsTab({ companyId, initialBg, initialAccent, onThe
           </button>
           <button
             onClick={handleReset}
-            className="px-4 py-2 rounded-lg text-sm border border-beige-300 text-foreground hover:bg-beige-200 transition-colors"
+            className="px-4 py-2 rounded-lg text-sm border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors"
           >
             기본값으로
           </button>
@@ -162,8 +162,8 @@ export default function SettingsTab({ companyId, initialBg, initialAccent, onThe
       </div>
 
       {/* 계정 */}
-      <div className="border-t border-beige-200 pt-6">
-        <h3 className="text-sm font-semibold text-foreground mb-3">계정</h3>
+      <div className="border-t border-gray-200 pt-6">
+        <h3 className="text-sm font-semibold text-gray-900 mb-3">계정</h3>
         <button
           onClick={onSignOut}
           className="px-4 py-2 rounded-lg border border-red-200 text-red-500 text-sm hover:bg-red-50 transition-colors"

@@ -44,7 +44,7 @@ export default function LoginForm({ slug }: Props) {
       )}
 
       <div>
-        <label className="block text-sm font-medium text-foreground mb-1">
+        <label className="block text-sm font-medium text-gray-700 mb-1">
           이메일
         </label>
         <input
@@ -52,13 +52,13 @@ export default function LoginForm({ slug }: Props) {
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full border border-beige-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gold-400"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
           placeholder="admin@example.com"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-foreground mb-1">
+        <label className="block text-sm font-medium text-gray-700 mb-1">
           비밀번호
         </label>
         <input
@@ -66,7 +66,7 @@ export default function LoginForm({ slug }: Props) {
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full border border-beige-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gold-400"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
           placeholder="••••••••"
         />
       </div>
@@ -74,7 +74,7 @@ export default function LoginForm({ slug }: Props) {
       <button
         type="submit"
         disabled={loading}
-        className="w-full bg-gold-500 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-gold-600 disabled:opacity-50 transition-colors mt-2"
+        className="w-full bg-gray-900 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-gray-700 disabled:opacity-50 transition-colors mt-2"
       >
         {loading ? "로그인 중..." : "로그인"}
       </button>

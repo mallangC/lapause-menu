@@ -27,6 +27,7 @@ export interface FilterState {
   flowerColors: string[];
   wrappingColors: string[];
   seasons: string[];
+  featured: boolean;
 }
 
 export type ProductInput = Omit<Product, "id" | "created_at" | "company_id">;

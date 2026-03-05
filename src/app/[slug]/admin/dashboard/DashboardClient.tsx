@@ -9,8 +9,9 @@ import ProductForm from "@/components/admin/ProductForm";
 import ProductTable from "@/components/admin/ProductTable";
 import CompanyInfoTab from "./CompanyInfoTab";
 import SettingsTab from "./SettingsTab";
+import LandingPageTab from "./LandingPageTab";
 
-type Tab = "products" | "company" | "settings";
+type Tab = "products" | "company" | "landing" | "settings";
 
 interface Props {
   slug: string;
@@ -20,9 +21,12 @@ interface Props {
   themeBg: string;
   themeAccent: string;
   initialProducts: Product[];
+  landingFeaturedImage: string | null;
+  landingAllImage: string | null;
+  landingSeasonImage: string | null;
 }
 
-export default function DashboardClient({ slug, companyId, companyName, logoImage, themeBg, themeAccent, initialProducts }: Props) {
+export default function DashboardClient({ slug, companyId, companyName, logoImage, themeBg, themeAccent, initialProducts, landingFeaturedImage, landingAllImage, landingSeasonImage }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("products");
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [showForm, setShowForm] = useState(false);
@@ -72,18 +76,19 @@ export default function DashboardClient({ slug, companyId, companyName, logoImag
 
   const tabs: { key: Tab; label: string }[] = [
     { key: "products", label: "상품 관리" },
+    { key: "landing", label: "랜딩 페이지" },
     { key: "company", label: "회사 정보" },
     { key: "settings", label: "설정" },
   ];
 
   return (
     <div className="min-h-screen bg-beige-100 flex flex-col" style={themeVars as React.CSSProperties}>
-      <header className="border-b border-beige-200 bg-beige-50 shrink-0">
+      <header className="border-b border-gray-200 bg-white shrink-0">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href={`/${slug}`} className="text-lg font-medium text-gold-500 hover:text-gold-600 transition-colors">
+          <Link href={`/${slug}`} className="text-lg font-medium text-gray-900 hover:text-gray-600 transition-colors">
             {companyName} — 관리자
           </Link>
-          <button onClick={handleSignOut} className="text-sm text-beige-400 hover:text-gold-500 transition-colors">
+          <button onClick={handleSignOut} className="text-sm text-gray-400 hover:text-gray-700 transition-colors">
             로그아웃
           </button>
         </div>
@@ -97,7 +102,7 @@ export default function DashboardClient({ slug, companyId, companyName, logoImag
                 <button
                   onClick={() => { setActiveTab(tab.key); setShowForm(false); setEditingProduct(null); setError(null); }}
                   className={`w-full text-left px-4 py-2.5 rounded-lg text-sm transition-colors ${
-                    activeTab === tab.key ? "bg-gold-400 text-white font-medium" : "text-foreground hover:bg-beige-200"
+                    activeTab === tab.key ? "bg-gold-500 text-white font-medium" : "text-gray-700 hover:bg-gray-200"
                   }`}
                 >
                   {tab.label}
@@ -114,7 +119,7 @@ export default function DashboardClient({ slug, companyId, companyName, logoImag
                 <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
               )}
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-medium text-foreground">상품 목록 ({products.length}개)</h2>
+                <h2 className="text-xl font-medium text-gray-900">상품 목록 ({products.length}개)</h2>
                 {!showForm && !editingProduct && (
                   <button onClick={() => setShowForm(true)} className="bg-gold-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gold-600 transition-colors">
                     + 상품 추가
@@ -122,18 +127,18 @@ export default function DashboardClient({ slug, companyId, companyName, logoImag
                 )}
               </div>
               {showForm && (
-                <div className="mb-6 bg-beige-50 border border-beige-200 rounded-xl p-6">
-                  <h3 className="font-medium text-foreground mb-4">새 상품 추가</h3>
+                <div className="mb-6 bg-white border border-gray-200 rounded-xl p-6">
+                  <h3 className="font-medium text-gray-900 mb-4">새 상품 추가</h3>
                   <ProductForm onSubmit={handleAdd} onCancel={() => setShowForm(false)} />
                 </div>
               )}
               {editingProduct && (
-                <div className="mb-6 bg-beige-50 border border-beige-200 rounded-xl p-6">
-                  <h3 className="font-medium text-foreground mb-4">상품 수정</h3>
+                <div className="mb-6 bg-white border border-gray-200 rounded-xl p-6">
+                  <h3 className="font-medium text-gray-900 mb-4">상품 수정</h3>
                   <ProductForm initialData={editingProduct} onSubmit={handleEdit} onCancel={() => setEditingProduct(null)} />
                 </div>
               )}
-              <div className="bg-beige-50 border border-beige-200 rounded-xl p-6">
+              <div className="bg-white border border-gray-200 rounded-xl p-6">
                 <ProductTable
                   products={products}
                   onEdit={(product) => { setEditingProduct(product); setShowForm(false); }}
@@ -144,13 +149,24 @@ export default function DashboardClient({ slug, companyId, companyName, logoImag
           )}
 
           {activeTab === "company" && (
-            <div className="bg-beige-50 border border-beige-200 rounded-xl p-6">
+            <div className="bg-white border border-gray-200 rounded-xl p-6">
               <CompanyInfoTab companyId={companyId} initialName={companyName} initialLogo={logoImage} slug={slug} />
             </div>
           )}
 
+          {activeTab === "landing" && (
+            <div className="bg-white border border-gray-200 rounded-xl p-6">
+              <LandingPageTab
+                companyId={companyId}
+                initialFeaturedImage={landingFeaturedImage}
+                initialAllImage={landingAllImage}
+                initialSeasonImage={landingSeasonImage}
+              />
+            </div>
+          )}
+
           {activeTab === "settings" && (
-            <div className="bg-beige-50 border border-beige-200 rounded-xl p-6">
+            <div className="bg-white border border-gray-200 rounded-xl p-6">
               <SettingsTab
                 companyId={companyId}
                 initialBg={themeBg}

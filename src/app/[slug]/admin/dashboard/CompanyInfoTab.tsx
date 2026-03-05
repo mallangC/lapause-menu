@@ -64,7 +64,7 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
 
   return (
     <div className="max-w-md">
-      <h2 className="text-xl font-medium text-foreground mb-6">회사 정보</h2>
+      <h2 className="text-xl font-medium text-gray-900 mb-6">회사 정보</h2>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {error && (
@@ -76,9 +76,9 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
 
         {/* 로고 */}
         <div>
-          <label className="block text-sm font-medium text-foreground mb-2">로고 이미지</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">로고 이미지</label>
           {logoUrl ? (
-            <div className="relative w-28 h-28 rounded-xl overflow-hidden border border-beige-300 bg-white">
+            <div className="relative w-28 h-28 rounded-xl overflow-hidden border border-gray-300 bg-white">
               <Image src={logoUrl} alt="로고" fill className="object-contain p-2" />
               <button
                 type="button"
@@ -91,7 +91,7 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
           ) : (
             <div
               onClick={() => fileInputRef.current?.click()}
-              className="w-28 h-28 rounded-xl border-2 border-dashed border-beige-300 flex flex-col items-center justify-center cursor-pointer hover:border-gold-400 transition-colors text-beige-400 hover:text-gold-400"
+              className="w-28 h-28 rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-gray-500 transition-colors text-gray-400 hover:text-gray-600"
             >
               {uploading ? (
                 <span className="text-xs">업로드 중...</span>
@@ -105,7 +105,7 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
 
         {/* 회사 이름 */}
         <div>
-          <label className="block text-sm font-medium text-foreground mb-1">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
             회사 이름 <span className="text-red-500">*</span>
           </label>
           <input
@@ -113,16 +113,16 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full border border-beige-300 rounded-lg px-3 py-2.5 text-sm bg-beige-50 focus:outline-none focus:border-gold-400"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
           />
         </div>
 
         {/* URL (읽기 전용) */}
         <div>
-          <label className="block text-sm font-medium text-foreground mb-1">메뉴 URL</label>
-          <div className="flex items-center gap-1 px-3 py-2.5 border border-beige-200 rounded-lg bg-beige-100 text-sm text-beige-400">
+          <label className="block text-sm font-medium text-gray-700 mb-1">메뉴 URL</label>
+          <div className="flex items-center gap-1 px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-100 text-sm text-gray-400">
             <span>사이트주소/</span>
-            <span className="text-foreground font-medium">{slug}</span>
+            <span className="text-gray-900 font-medium">{slug}</span>
           </div>
         </div>
 

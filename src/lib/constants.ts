@@ -10,7 +10,6 @@ export const FLOWER_COLORS = [
   "보라색",
   "흰색",
   "검은색",
-  "기타",
 ] as const;
 
 export const WRAPPING_COLORS = ["밝은 계열", "어두운 계열", "기타"] as const;
@@ -27,8 +26,12 @@ export const FLOWER_COLOR_MAP: Record<string, string> = {
   보라색: "#a855f7",
   흰색: "#f5f5f5",
   검은색: "#1c1917",
-  기타: "#a8a29e",
 };
+
+export const BADGE_COLORS = {
+  popular: { bg: "#F08080", label: "인기" },
+  recommended: { bg: "#9CAF88", label: "추천" },
+} as const;
 
 export const INACTIVITY_TIMEOUT_MS = 60000;
 

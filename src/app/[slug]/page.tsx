@@ -14,7 +14,7 @@ export default async function CompanyMenuPage({ params }: Props) {
 
   const { data: company } = await supabase
     .from("companies")
-    .select("id, name, logo_image, theme_bg, theme_accent")
+    .select("id, name, logo_image, theme_bg, theme_accent, landing_featured_image, landing_all_image, landing_season_image")
     .eq("slug", slug)
     .single();
 
@@ -38,6 +38,9 @@ export default async function CompanyMenuPage({ params }: Props) {
       logoImage={company.logo_image}
       themeVars={themeVars}
       products={(products as Product[]) ?? []}
+      landingFeaturedImage={company.landing_featured_image ?? null}
+      landingAllImage={company.landing_all_image ?? null}
+      landingSeasonImage={company.landing_season_image ?? null}
     />
   );
 }

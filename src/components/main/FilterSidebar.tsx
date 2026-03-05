@@ -1,7 +1,7 @@
 "use client";
 
 import { FilterState } from "@/types";
-import { PRODUCT_TYPES, FLOWER_COLORS, WRAPPING_COLORS, FLOWER_COLOR_MAP, SEASONS } from "@/lib/constants";
+import { FLOWER_COLORS, WRAPPING_COLORS, FLOWER_COLOR_MAP } from "@/lib/constants";
 
 interface FilterSidebarProps {
   filter: FilterState;
@@ -10,9 +10,6 @@ interface FilterSidebarProps {
   mobileOpen: boolean;
   onMobileToggle: () => void;
 }
-
-const EMPTY: FilterState = { productTypes: [], flowerColors: [], wrappingColors: [], seasons: [] };
-
 function toggleItem(arr: string[], item: string): string[] {
   return arr.includes(item) ? arr.filter((v) => v !== item) : [...arr, item];
 }
@@ -25,43 +22,15 @@ export default function FilterSidebar({
   onMobileToggle,
 }: FilterSidebarProps) {
   const hasFilter =
-    filter.productTypes.length > 0 ||
     filter.flowerColors.length > 0 ||
-    filter.wrappingColors.length > 0 ||
-    filter.seasons.length > 0;
+    filter.wrappingColors.length > 0;
 
-  // 일반 필터: 시즌 초기화
+  // 일반 필터: 시즌·featured 유지
   const setNormal = (partial: Partial<FilterState>) =>
-    onFilterChange({ ...filter, ...partial, seasons: [] });
-
-  // 시즌 필터: 다른 필터 초기화, 단일 선택
-  const setSeason = (season: string) =>
-    onFilterChange({ ...EMPTY, seasons: filter.seasons.includes(season) ? [] : [season] });
+    onFilterChange({ ...filter, ...partial });
 
   const filterContent = (
     <div className="space-y-6">
-      {/* 상품 유형 */}
-      <div>
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-gold-500 mb-2">
-          상품 유형
-        </h3>
-        <div className="flex flex-col gap-1">
-          {PRODUCT_TYPES.map((type) => (
-            <button
-              key={type}
-              onClick={() => setNormal({ productTypes: toggleItem(filter.productTypes, type) })}
-              className={`text-left text-sm px-3 py-1.5 rounded-lg transition-colors ${
-                filter.productTypes.includes(type)
-                  ? "bg-gold-400 text-white font-medium"
-                  : "text-foreground hover:bg-beige-200"
-              }`}
-            >
-              {type}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* 꽃 색상 */}
       <div>
         <h3 className="text-xs font-semibold uppercase tracking-wider text-gold-500 mb-2">
@@ -101,28 +70,6 @@ export default function FilterSidebar({
               }`}
             >
               {wc}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* 시즌 */}
-      <div>
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-gold-500 mb-2">
-          시즌
-        </h3>
-        <div className="flex flex-col gap-1">
-          {SEASONS.map((season) => (
-            <button
-              key={season}
-              onClick={() => setSeason(season)}
-              className={`text-left text-sm px-3 py-1.5 rounded-lg transition-colors ${
-                filter.seasons.includes(season)
-                  ? "bg-gold-400 text-white font-medium"
-                  : "text-foreground hover:bg-beige-200"
-              }`}
-            >
-              {season}
             </button>
           ))}
         </div>

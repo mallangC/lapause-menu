@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Product } from "@/types";
-import { FLOWER_COLOR_MAP } from "@/lib/constants";
+import { FLOWER_COLOR_MAP, BADGE_COLORS } from "@/lib/constants";
 
 interface ProductCardProps {
   product: Product;
@@ -23,7 +23,7 @@ export default function ProductCard({ product }: ProductCardProps) {
 
   return (
     <>
-      <div className="bg-beige-50 rounded-xl overflow-hidden shadow-sm border border-beige-200 hover:shadow-md transition-shadow">
+      <div className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
         <div
           className="relative aspect-square bg-beige-200 cursor-zoom-in"
           onClick={() => product.image_url && setModalOpen(true)}
@@ -57,13 +57,13 @@ export default function ProductCard({ product }: ProductCardProps) {
           {/* 뱃지 */}
           <div className="absolute top-2 left-2 flex flex-col gap-1">
             {product.is_popular && (
-              <span className="bg-gold-500 text-white text-xs px-2 py-0.5 rounded-full font-medium">
-                인기
+              <span className="text-white text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: BADGE_COLORS.popular.bg }}>
+                {BADGE_COLORS.popular.label}
               </span>
             )}
             {product.is_recommended && (
-              <span className="bg-green-600 text-white text-xs px-2 py-0.5 rounded-full font-medium">
-                추천
+              <span className="text-white text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: BADGE_COLORS.recommended.bg }}>
+                {BADGE_COLORS.recommended.label}
               </span>
             )}
           </div>
@@ -92,7 +92,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                 {product.flower_colors.map((color) => (
                   <span
                     key={color}
-                    className="w-4 h-4 rounded-full border border-beige-300 inline-block shrink-0"
+                    className="w-4 h-4 rounded-full border border-gray-300 inline-block shrink-0"
                     style={{
                       backgroundColor: FLOWER_COLOR_MAP[color] ?? "#a8a29e",
                     }}
