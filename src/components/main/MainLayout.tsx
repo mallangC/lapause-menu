@@ -119,7 +119,7 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
               추천/인기
             </button>
 
-            {/* 모든 꽃 (ALL) */}
+            {/* 모든 상품 (ALL) */}
             <div
               className="relative"
               onMouseEnter={() => handleEnter("ALL")}
@@ -133,7 +133,7 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
                     : "border-transparent text-foreground/60 hover:text-foreground"
                 }`}
               >
-                모든 꽃
+                모든 상품
               </button>
               {openDropdown === "ALL" && (
                 <div className="hidden md:block absolute top-full left-1/2 -translate-x-1/2 z-50">
@@ -438,7 +438,7 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
           <div className="grid grid-cols-1 gap-4 w-full max-w-70 mx-auto md:max-w-none md:grid-cols-3 md:gap-6">
             {[
               { label: "추천/인기", image: landingFeaturedImage, onClick: () => { setFilter({ ...EMPTY_FILTER, featured: true }); setShowLanding(false); } },
-              { label: "모든 꽃", image: landingAllImage, onClick: () => { setFilter(EMPTY_FILTER); setShowLanding(false); } },
+              { label: "모든 상품", image: landingAllImage, onClick: () => { setFilter(EMPTY_FILTER); setShowLanding(false); } },
               { label: "시즌", image: landingSeasonImage, onClick: () => { setFilter({ ...EMPTY_FILTER, isSeason: true }); setShowLanding(false); } },
             ].map(({ label, image, onClick }) => (
               <button

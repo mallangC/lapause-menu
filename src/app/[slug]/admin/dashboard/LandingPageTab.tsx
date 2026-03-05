@@ -117,7 +117,7 @@ export default function LandingPageTab({ companyId, initialFeaturedImage, initia
 
   const sections: { key: ImageKey; label: string }[] = [
     { key: "landing_featured_image", label: "추천/인기 버튼" },
-    { key: "landing_all_image", label: "모든 꽃 버튼" },
+    { key: "landing_all_image", label: "모든 상품 버튼" },
     { key: "landing_season_image", label: "시즌 버튼" },
   ];
 
