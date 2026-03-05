@@ -12,7 +12,7 @@ export interface Product {
   name: string;
   price: number;
   image_url: string | null;
-  product_type: "다발" | "바구니" | "센터피스" | "화병꽂이";
+  product_type: "다발" | "바구니" | "센터피스" | "화병꽂이" | "식물" | "조화";
   flower_colors: string[];
   wrapping_color: "밝은 계열" | "어두운 계열" | "기타";
   seasons: string[];
