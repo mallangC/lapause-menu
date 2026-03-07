@@ -7,6 +7,7 @@ export interface Company {
   created_at: string;
   naver_talk_url: string | null;
   kakao_channel_url: string | null;
+  instagram_url: string | null;
 }
 
 export type ProductStatus = "active" | "inactive" | "soldout";

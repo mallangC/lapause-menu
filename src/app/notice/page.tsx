@@ -49,7 +49,7 @@ export default function NoticePage() {
               },
               {
                 title: "채널 연결 버튼",
-                desc: "랜딩 하단에 네이버 예약, 카카오 채널 버튼을 표시할 수 있습니다. URL을 등록한 채널만 자동으로 노출됩니다.",
+                desc: "홈 화면 하단에 네이버 예약, 카카오 채널, 인스타그램 버튼을 원형 아이콘으로 표시할 수 있습니다. URL을 등록한 채널만 자동으로 노출됩니다.",
               },
               {
                 title: "자동 복귀",
@@ -91,6 +91,8 @@ export default function NoticePage() {
                   ["상태 변경", "상태 뱃지를 클릭하면 활성 → 비활성 → 품절 순으로 전환됩니다. 비활성·품절 상품은 손님 화면에 표시되지 않습니다."],
                   ["뱃지", "인기 상품 또는 추천 상품 뱃지를 지정하면 손님 화면의 추천/인기 탭에 모아서 표시됩니다."],
                   ["시즌 상품", "시즌을 지정한 상품은 시즌 탭에만 표시되며, 모든 상품 탭에는 나오지 않습니다."],
+                  ["목록 필터", "유형, 뱃지(추천·인기·없음), 상태(활성·비활성)로 상품을 필터링할 수 있습니다. 필터는 조합해서 사용할 수 있습니다."],
+                  ["페이지 이동", "상품 목록은 10개씩 페이지로 나뉘며 이전·다음 버튼으로 이동합니다."],
                   ["가격 정렬", "가격 열의 화살표를 눌러 오름차순·내림차순으로 정렬할 수 있습니다."],
                 ].map(([label, desc]) => (
                   <div key={label} className="flex gap-3">
@@ -122,6 +124,7 @@ export default function NoticePage() {
                   ["회사 이름", "로고가 없을 때 헤더에 표시되는 상호명입니다."],
                   ["네이버 예약 URL", "입력하면 홈 화면에 네이버 예약 버튼이 나타납니다."],
                   ["카카오 채널 URL", "입력하면 홈 화면에 카카오 채널 버튼이 나타납니다."],
+                  ["인스타그램 URL", "입력하면 홈 화면에 인스타그램 버튼이 나타납니다."],
                 ].map(([label, desc]) => (
                   <div key={label} className="flex gap-3">
                     <span className="shrink-0 text-xs font-medium text-gold-600 w-24 pt-0.5">{label}</span>
@@ -172,6 +175,42 @@ export default function NoticePage() {
                 </li>
               ))}
             </ol>
+          </div>
+        </section>
+
+        {/* 업데이트 로그 */}
+        <section>
+          <div className="mb-8">
+            <p className="text-xs font-semibold tracking-widest text-gold-500 uppercase mb-2">Changelog</p>
+            <h2 className="text-xl font-medium text-gray-900">업데이트 내역</h2>
+          </div>
+
+          <div className="space-y-3">
+            <div className="bg-white rounded-2xl border border-beige-200 overflow-hidden">
+              <div className="flex items-center gap-3 px-6 py-3 border-b border-beige-100">
+                <span className="text-xs font-semibold text-gold-500 tracking-widest">2025.03</span>
+              </div>
+              <ul className="px-6 py-4 space-y-3">
+                {[
+                  { date: "03.07", text: "인스타그램 채널 버튼 추가", isNew: true },
+                  { date: "03.07", text: "관리자 상품 목록 필터 추가 — 유형·뱃지·상태별 필터링", isNew: true },
+                  { date: "03.07", text: "관리자 상품 목록 페이지 이동 추가 — 10개씩 이전/다음", isNew: true },
+                  { date: "03.06", text: "상품 상태 기능 추가 — 활성·비활성·품절 전환", isNew: false },
+                  { date: "03.06", text: "관리자 상품 추가·수정 모달 팝업 방식으로 변경", isNew: false },
+                  { date: "03.05", text: "홈 화면 네이버 예약·카카오 채널 연결 버튼 추가", isNew: false },
+                  { date: "03.05", text: "관리자 가격 오름차순·내림차순 정렬 기능 추가", isNew: false },
+                  { date: "03.04", text: "서비스 최초 출시 — 상품 관리 CRUD, 필터, 시즌, 테마 색상", isNew: false },
+                ].map(({ date, text, isNew }) => (
+                  <li key={text} className="flex items-start gap-2 text-xs leading-relaxed">
+                    <span className="text-gray-300 shrink-0 w-10 pt-0.5">{date}</span>
+                    {isNew && (
+                      <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-gold-500 text-white leading-none mt-0.5">NEW</span>
+                    )}
+                    <span className="text-gray-500">{text}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </section>
 

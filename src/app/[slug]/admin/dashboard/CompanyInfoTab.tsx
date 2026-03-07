@@ -11,13 +11,15 @@ interface Props {
   slug: string;
   initialNaverTalkUrl: string | null;
   initialKakaoChannelUrl: string | null;
+  initialInstagramUrl: string | null;
 }
 
-export default function CompanyInfoTab({ companyId, initialName, initialLogo, slug, initialNaverTalkUrl, initialKakaoChannelUrl }: Props) {
+export default function CompanyInfoTab({ companyId, initialName, initialLogo, slug, initialNaverTalkUrl, initialKakaoChannelUrl, initialInstagramUrl }: Props) {
   const [name, setName] = useState(initialName);
   const [logoUrl, setLogoUrl] = useState<string | null>(initialLogo);
   const [naverTalkUrl, setNaverTalkUrl] = useState(initialNaverTalkUrl ?? "");
   const [kakaoChannelUrl, setKakaoChannelUrl] = useState(initialKakaoChannelUrl ?? "");
+  const [instagramUrl, setInstagramUrl] = useState(initialInstagramUrl ?? "");
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -60,6 +62,7 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
         logo_image: logoUrl,
         naver_talk_url: naverTalkUrl || null,
         kakao_channel_url: kakaoChannelUrl || null,
+        instagram_url: instagramUrl || null,
       })
       .eq("id", companyId);
 
@@ -155,6 +158,18 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
             value={kakaoChannelUrl}
             onChange={(e) => setKakaoChannelUrl(e.target.value)}
             placeholder="https://pf.kakao.com/..."
+            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
+          />
+        </div>
+
+        {/* 인스타그램 */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">인스타그램 URL</label>
+          <input
+            type="url"
+            value={instagramUrl}
+            onChange={(e) => setInstagramUrl(e.target.value)}
+            placeholder="https://instagram.com/..."
             className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
           />
         </div>

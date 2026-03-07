@@ -18,7 +18,7 @@ export default async function DashboardPage({ params }: Props) {
   // 로그인한 사용자의 회사 확인 (slug와 owner_id 일치 검증)
   const { data: company } = await supabase
     .from("companies")
-    .select("id, name, logo_image, theme_bg, theme_accent, home_featured_image, home_all_image, home_season_image, naver_talk_url, kakao_channel_url")
+    .select("id, name, logo_image, theme_bg, theme_accent, home_featured_image, home_all_image, home_season_image, naver_talk_url, kakao_channel_url, instagram_url")
     .eq("slug", slug)
     .eq("owner_id", user.id)
     .single();
@@ -46,6 +46,7 @@ export default async function DashboardPage({ params }: Props) {
       homeSeasonImage={company.home_season_image ?? null}
       naverTalkUrl={company.naver_talk_url ?? null}
       kakaoChannelUrl={company.kakao_channel_url ?? null}
+      instagramUrl={company.instagram_url ?? null}
     />
   );
 }
