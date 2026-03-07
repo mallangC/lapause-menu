@@ -41,8 +41,8 @@ export default function ProductTable({ products, onEdit, onDelete, onStatusChang
       if (filterBadge === "popular" && !p.is_popular) return false;
       if (filterBadge === "recommended" && !p.is_recommended) return false;
       if (filterBadge === "none" && (p.is_popular || p.is_recommended)) return false;
-      if (filterStatus && (p.status ?? "active") !== filterStatus) return false;
-      return true;
+      return !(filterStatus && (p.status ?? "active") !== filterStatus);
+
     })
     .sort((a, b) => sortDir === "asc" ? a.price - b.price : b.price - a.price);
 
@@ -219,21 +219,33 @@ export default function ProductTable({ products, onEdit, onDelete, onStatusChang
 
       {/* 페이징 */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-4 pt-2">
+        <div className="flex items-center justify-center gap-1 pt-2">
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={currentPage === 1}
             className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
-            ← 이전
+            ←
           </button>
-          <span className="text-xs text-gray-500">{currentPage} / {totalPages}</span>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+            <button
+              key={n}
+              onClick={() => setPage(n)}
+              className={`text-xs w-8 py-1.5 rounded-lg border transition-colors ${
+                n === currentPage
+                  ? "bg-gold-500 text-white border-gold-500 font-medium"
+                  : "border-gray-200 text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              {n}
+            </button>
+          ))}
           <button
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={currentPage === totalPages}
             className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
-            다음 →
+            →
           </button>
         </div>
       )}

@@ -437,7 +437,7 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
       {/* 컨텐츠 */}
       {showHome ? (
         /* 랜딩 페이지 */
-        <div className="max-w-4xl mx-auto px-4 pt-14 pb-14 flex flex-col items-center gap-6">
+        <div className="max-w-4xl mx-auto px-4 pt-14 pb-14 flex flex-col items-center gap-16">
           <div className="grid grid-cols-1 gap-4 w-full max-w-70 mx-auto md:max-w-none md:grid-cols-3 md:gap-6">
             {[
               { label: "추천/인기", image: homeFeaturedImage, onClick: () => { setFilter({ ...EMPTY_FILTER, featured: true }); setShowHome(false); } },
