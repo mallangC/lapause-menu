@@ -1,13 +1,16 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 
+type SlugStatus = "idle" | "checking" | "available" | "taken";
+
 export default function SetupForm() {
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
+  const [slugStatus, setSlugStatus] = useState<SlugStatus>("idle");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -15,6 +18,16 @@ export default function SetupForm() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const supabase = createClient();
+
+  useEffect(() => {
+    if (!slug) { setSlugStatus("idle"); return; }
+    setSlugStatus("checking");
+    const timer = setTimeout(async () => {
+      const { data } = await supabase.from("companies").select("id").eq("slug", slug).single();
+      setSlugStatus(data ? "taken" : "available");
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [slug]);
 
   const handleNameChange = (value: string) => {
     setName(value);
@@ -59,6 +72,11 @@ export default function SetupForm() {
 
     if (!slug) {
       setError("URL 슬러그를 입력해 주세요.");
+      return;
+    }
+
+    if (slugStatus === "taken") {
+      setError("이미 사용 중인 URL입니다. 다른 슬러그를 입력해 주세요.");
       return;
     }
 
@@ -137,7 +155,7 @@ export default function SetupForm() {
       {/* URL 슬러그 */}
       <div>
         <label className="block text-sm font-medium text-foreground mb-1">
-          URL 슬러그 <span className="text-red-500">*</span>
+          가게 주소 <span className="text-red-500">*</span>
         </label>
         <div className="flex items-center gap-1">
           <span className="text-sm text-beige-400 shrink-0">사이트주소/</span>
@@ -150,12 +168,17 @@ export default function SetupForm() {
             placeholder="lapause-fleur"
           />
         </div>
-        <p className="text-xs text-beige-400 mt-1">영문 소문자, 숫자, 하이픈(-)만 사용 가능</p>
+        <div className="mt-1 h-4">
+          {slugStatus === "checking" && <p className="text-xs text-gray-400">확인 중...</p>}
+          {slugStatus === "available" && <p className="text-xs text-emerald-600">사용 가능한 URL입니다.</p>}
+          {slugStatus === "taken" && <p className="text-xs text-red-500">이미 사용 중인 URL입니다.</p>}
+          {slugStatus === "idle" && <p className="text-xs text-beige-400">영문 소문자, 숫자, 하이픈(-)만 사용 가능</p>}
+        </div>
       </div>
 
       <button
         type="submit"
-        disabled={loading || uploading}
+        disabled={loading || uploading || slugStatus === "taken" || slugStatus === "checking"}
         className="w-full bg-gold-500 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-gold-600 disabled:opacity-50 transition-colors"
       >
         {loading ? "저장 중..." : "시작하기"}
