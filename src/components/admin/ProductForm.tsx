@@ -1,10 +1,69 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { Product, ProductInput } from "@/types";
 import { PRODUCT_TYPES, FLOWER_COLORS, WRAPPING_COLORS, FLOWER_COLOR_MAP, SEASONS, STORAGE_BUCKET, BADGE_COLORS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
+
+interface FormSelectProps {
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (value: string) => void;
+  placeholder?: string;
+}
+
+function FormSelect({ value, options, onChange, placeholder }: FormSelectProps) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const selected = options.find((o) => o.value === value);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white hover:border-gray-400 transition-colors focus:outline-none"
+      >
+        <span className={selected ? "text-gray-900" : "text-gray-400"}>
+          {selected?.label ?? placeholder ?? "선택"}
+        </span>
+        <svg
+          className={`w-4 h-4 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`}
+          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {open && (
+        <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+          {options.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => { onChange(opt.value); setOpen(false); }}
+              className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
+                opt.value === value
+                  ? "bg-gold-500/10 text-gold-600 font-medium"
+                  : "text-gray-700 hover:bg-beige-100"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface ProductFormProps {
   initialData?: Product;
@@ -22,9 +81,10 @@ const DEFAULT_INPUT: ProductInput = {
   seasons: [],
   is_popular: false,
   is_recommended: false,
+  status: "active",
 };
 
-export default function ProductForm({ initialData, onSubmit, onCancel }: ProductFormProps) {
+export default function ProductForm({ initialData, onSubmit }: ProductFormProps) {
   const [data, setData] = useState<ProductInput>(
     initialData
       ? {
@@ -37,6 +97,7 @@ export default function ProductForm({ initialData, onSubmit, onCancel }: Product
           seasons: initialData.seasons,
           is_popular: initialData.is_popular,
           is_recommended: initialData.is_recommended,
+          status: initialData.status ?? "active",
         }
       : DEFAULT_INPUT
   );
@@ -52,13 +113,6 @@ export default function ProductForm({ initialData, onSubmit, onCancel }: Product
       flower_colors: prev.flower_colors.includes(color)
         ? prev.flower_colors.filter((c) => c !== color)
         : [...prev.flower_colors, color],
-    }));
-  };
-
-  const toggleSeason = (season: string) => {
-    setData((prev) => ({
-      ...prev,
-      seasons: prev.seasons.includes(season) ? [] : [season],
     }));
   };
 
@@ -223,19 +277,37 @@ export default function ProductForm({ initialData, onSubmit, onCancel }: Product
         <label className="block text-sm font-medium text-gray-700 mb-1">
           상품 유형 <span className="text-red-500">*</span>
         </label>
-        <select
+        <FormSelect
           value={data.product_type}
-          onChange={(e) =>
-            setData({ ...data, product_type: e.target.value as ProductInput["product_type"] })
-          }
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:border-gray-500"
-        >
-          {PRODUCT_TYPES.map((t) => (
-            <option key={t} value={t}>
-              {t}
-            </option>
-          ))}
-        </select>
+          options={PRODUCT_TYPES.map((t) => ({ value: t, label: t }))}
+          onChange={(v) => setData({ ...data, product_type: v as ProductInput["product_type"] })}
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">뱃지</label>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setData({ ...data, is_popular: !data.is_popular, is_recommended: false })}
+            className={`flex-1 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
+              data.is_popular ? "text-white shadow-sm scale-[1.02]" : "border-gray-200 bg-white text-gray-700 hover:border-gray-400"
+            }`}
+            style={data.is_popular ? { backgroundColor: BADGE_COLORS.popular.bg, borderColor: BADGE_COLORS.popular.bg } : undefined}
+          >
+            인기 상품
+          </button>
+          <button
+            type="button"
+            onClick={() => setData({ ...data, is_recommended: !data.is_recommended, is_popular: false })}
+            className={`flex-1 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
+              data.is_recommended ? "text-white shadow-sm scale-[1.02]" : "border-gray-200 bg-white text-gray-700 hover:border-gray-400"
+            }`}
+            style={data.is_recommended ? { backgroundColor: BADGE_COLORS.recommended.bg, borderColor: BADGE_COLORS.recommended.bg } : undefined}
+          >
+            추천 상품
+          </button>
+        </div>
       </div>
 
       <div>
@@ -268,95 +340,45 @@ export default function ProductForm({ initialData, onSubmit, onCancel }: Product
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-gray-700 mb-1">
           포장지 색상 <span className="text-red-500">*</span>
         </label>
-        <div className="flex gap-2">
-          {WRAPPING_COLORS.map((wc) => (
-            <button
-              key={wc}
-              type="button"
-              onClick={() => setData({ ...data, wrapping_color: wc })}
-              className={`flex-1 py-2 rounded-lg border-2 text-sm transition-all ${
-                data.wrapping_color === wc
-                  ? "border-gray-900 bg-gray-900 text-white font-medium shadow-sm"
-                  : "border-gray-200 bg-white text-gray-700 hover:border-gray-400"
-              }`}
-            >
-              {wc}
-            </button>
-          ))}
-        </div>
+        <FormSelect
+          value={data.wrapping_color}
+          options={WRAPPING_COLORS.map((wc) => ({ value: wc, label: wc }))}
+          onChange={(v) => setData({ ...data, wrapping_color: v as ProductInput["wrapping_color"] })}
+        />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          시즌
-        </label>
-        <div className="flex gap-2">
-          {SEASONS.map((season) => (
-            <button
-              key={season}
-              type="button"
-              onClick={() => toggleSeason(season)}
-              className={`flex-1 py-2 rounded-lg border-2 text-sm transition-all ${
-                data.seasons.includes(season)
-                  ? "border-gray-900 bg-gray-900 text-white font-medium shadow-sm"
-                  : "border-gray-200 bg-white text-gray-700 hover:border-gray-400"
-              }`}
-            >
-              {season}
-            </button>
-          ))}
-        </div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">시즌</label>
+        <FormSelect
+          value={data.seasons[0] ?? ""}
+          options={[{ value: "", label: "없음" }, ...SEASONS.map((s) => ({ value: s, label: s }))]}
+          onChange={(v) => setData({ ...data, seasons: v ? [v] : [] })}
+        />
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          뱃지
-        </label>
-        <div className="flex gap-2 pb-4">
-          <button
-            type="button"
-            onClick={() =>
-              setData({ ...data, is_popular: !data.is_popular, is_recommended: false })
-            }
-            className={`flex-1 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
-              data.is_popular ? "text-white shadow-sm scale-[1.02]" : "border-gray-200 bg-white text-gray-700 hover:border-gray-400"
-            }`}
-            style={data.is_popular ? { backgroundColor: BADGE_COLORS.popular.bg, borderColor: BADGE_COLORS.popular.bg } : undefined}
-          >
-            인기 상품
-          </button>
-          <button
-            type="button"
-            onClick={() =>
-              setData({ ...data, is_recommended: !data.is_recommended, is_popular: false })
-            }
-            className={`flex-1 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
-              data.is_recommended ? "text-white shadow-sm scale-[1.02]" : "border-gray-200 bg-white text-gray-700 hover:border-gray-400"
-            }`}
-            style={data.is_recommended ? { backgroundColor: BADGE_COLORS.recommended.bg, borderColor: BADGE_COLORS.recommended.bg } : undefined}
-          >
-            추천 상품
-          </button>
-        </div>
+      <div className="pb-2">
+        <label className="block text-sm font-medium text-gray-700 mb-1">상태</label>
+        <FormSelect
+          value={data.status}
+          options={[
+            { value: "active", label: "활성" },
+            { value: "inactive", label: "비활성" },
+            { value: "soldout", label: "품절" },
+          ]}
+          onChange={(v) => setData({ ...data, status: v as ProductInput["status"] })}
+        />
       </div>
 
-      <div className="flex gap-3 pt-8 border-t border-gray-300">
+      <div className="pt-6 border-t border-gray-300">
         <button
           type="submit"
           disabled={loading || uploading}
-          className="flex-1 bg-gold-500 text-white py-2 rounded-lg text-sm font-medium hover:bg-gold-600 disabled:opacity-50 transition-colors"
+          className="w-full bg-gold-500 text-white py-3 rounded-lg text-sm font-medium hover:bg-gold-600 disabled:opacity-50 transition-colors"
         >
           {loading ? "저장 중..." : initialData ? "수정" : "추가"}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="flex-1 border border-red-200 text-red-500 py-2 rounded-lg text-sm hover:bg-red-50 transition-colors"
-        >
-          취소
         </button>
       </div>
     </form>

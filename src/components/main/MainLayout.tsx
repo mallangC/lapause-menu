@@ -38,13 +38,15 @@ interface MainLayoutProps {
   logoImage?: string | null;
   themeVars?: Record<string, string>;
   slug?: string;
-  landingFeaturedImage?: string | null;
-  landingAllImage?: string | null;
-  landingSeasonImage?: string | null;
+  homeFeaturedImage?: string | null;
+  homeAllImage?: string | null;
+  homeSeasonImage?: string | null;
+  naverTalkUrl?: string | null;
+  kakaoChannelUrl?: string | null;
 }
 
-export default function MainLayout({ products, companyName = "Lapause Fleur", logoImage, themeVars, slug, landingFeaturedImage, landingAllImage, landingSeasonImage }: MainLayoutProps) {
-  const [showLanding, setShowLanding] = useState(true);
+export default function MainLayout({ products, companyName = "Lapause Fleur", logoImage, themeVars, slug, homeFeaturedImage, homeAllImage, homeSeasonImage, naverTalkUrl, kakaoChannelUrl }: MainLayoutProps) {
+  const [showHome, setShowHome] = useState(true);
   const [filter, setFilter] = useState<FilterState>(EMPTY_FILTER);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
@@ -53,12 +55,12 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
 
   // 비활성 타이머: 랜딩이 아닐 때만
   useEffect(() => {
-    if (showLanding) return;
+    if (showHome) return;
 
     const resetTimer = () => {
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => {
-        setShowLanding(true);
+        setShowHome(true);
         setFilter(EMPTY_FILTER);
       }, INACTIVITY_TIMEOUT_MS);
     };
@@ -71,7 +73,7 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
       events.forEach((e) => window.removeEventListener(e, resetTimer));
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [showLanding]);
+  }, [showHome]);
 
   const handleEnter = (tab: string) => {
     if (dropdownTimer.current) clearTimeout(dropdownTimer.current);
@@ -88,22 +90,22 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
   const filteredProducts = applyFilter(products, filter);
 
   const logo = logoImage ? (
-    <Image src={logoImage} alt={companyName} width={200} height={48} className={`object-contain transition-all w-auto ${showLanding ? "h-12" : "h-8"}`} />
+    <Image src={logoImage} alt={companyName} width={200} height={48} className={`object-contain transition-all w-auto ${showHome ? "h-12" : "h-8"}`} />
   ) : (
-    <span className={`font-light tracking-widest text-gold-500 transition-all ${showLanding ? "text-3xl" : "text-xl"}`}>{companyName}</span>
+    <span className={`font-light tracking-widest text-gold-500 transition-all ${showHome ? "text-3xl" : "text-xl"}`}>{companyName}</span>
   );
 
   return (
     <div className="min-h-screen bg-beige-100" style={themeVars as React.CSSProperties}>
       {/* 헤더 */}
       <header className="border-b border-gray-100 bg-white">
-        <div className={`max-w-6xl mx-auto px-4 flex items-center justify-center transition-all ${showLanding ? "py-6" : "py-4"}`}>
+        <div className={`max-w-6xl mx-auto px-4 flex items-center justify-center transition-all ${showHome ? "py-6" : "py-4"}`}>
           {slug ? <Link href={`/${slug}/admin`}>{logo}</Link> : logo}
         </div>
       </header>
 
       {/* 내비게이션: 랜딩일 때 숨김 */}
-      {!showLanding && (
+      {!showHome && (
         <nav className="border-b border-gray-100 bg-white">
           <div className="max-w-6xl mx-auto px-4 flex gap-1 justify-center">
 
@@ -291,7 +293,7 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
       )}
 
       {/* 모바일 필터 섹션 */}
-      {!showLanding && (isAll || isSeason) && (
+      {!showHome && (isAll || isSeason) && (
         <div className="md:hidden border-b border-gray-100 bg-white">
           <button
             onClick={() => setMobileFilterOpen((v) => !v)}
@@ -432,14 +434,14 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
       )}
 
       {/* 컨텐츠 */}
-      {showLanding ? (
+      {showHome ? (
         /* 랜딩 페이지 */
         <div className="max-w-4xl mx-auto px-4 pt-14 pb-14 flex flex-col items-center gap-6">
           <div className="grid grid-cols-1 gap-4 w-full max-w-70 mx-auto md:max-w-none md:grid-cols-3 md:gap-6">
             {[
-              { label: "추천/인기", image: landingFeaturedImage, onClick: () => { setFilter({ ...EMPTY_FILTER, featured: true }); setShowLanding(false); } },
-              { label: "모든 상품", image: landingAllImage, onClick: () => { setFilter(EMPTY_FILTER); setShowLanding(false); } },
-              { label: "시즌", image: landingSeasonImage, onClick: () => { setFilter({ ...EMPTY_FILTER, isSeason: true }); setShowLanding(false); } },
+              { label: "추천/인기", image: homeFeaturedImage, onClick: () => { setFilter({ ...EMPTY_FILTER, featured: true }); setShowHome(false); } },
+              { label: "모든 상품", image: homeAllImage, onClick: () => { setFilter(EMPTY_FILTER); setShowHome(false); } },
+              { label: "시즌", image: homeSeasonImage, onClick: () => { setFilter({ ...EMPTY_FILTER, isSeason: true }); setShowHome(false); } },
             ].map(({ label, image, onClick }) => (
               <button
                 key={label}
@@ -461,6 +463,40 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
               </button>
             ))}
           </div>
+
+          {/* 채널 링크 버튼 */}
+          {(naverTalkUrl || kakaoChannelUrl) && (
+            <div className="flex flex-col gap-3 w-full max-w-70 mx-auto md:max-w-sm">
+              {naverTalkUrl && (
+                <a
+                  href={naverTalkUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2.5 w-full h-12 rounded-2xl text-white font-medium text-sm shadow-sm transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: "#03C75A" }}
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style={{ flexShrink: 0 }}>
+                    <path d="M13.554 12.627 10.256 7H7v10h3.446l-.001-5.627L13.744 17H17V7h-3.446z"/>
+                  </svg>
+                  네이버 예약하기
+                </a>
+              )}
+              {kakaoChannelUrl && (
+                <a
+                  href={kakaoChannelUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2.5 w-full py-3.5 rounded-2xl font-medium text-sm shadow-sm transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: "#FEE500", color: "#191919" }}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 3C6.477 3 2 6.477 2 10.832c0 2.838 1.793 5.325 4.5 6.774L5.5 21l3.868-2.06C10.2 19.3 11.09 19.5 12 19.5c5.523 0 10-3.477 10-7.832C22 6.477 17.523 3 12 3z"/>
+                  </svg>
+                  카카오 채널 문의
+                </a>
+              )}
+            </div>
+          )}
         </div>
       ) : (
         <div className="max-w-6xl mx-auto px-4 py-6">

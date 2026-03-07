@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
 interface Props {
@@ -78,6 +79,12 @@ export default function LoginForm({ slug }: Props) {
       >
         {loading ? "로그인 중..." : "로그인"}
       </button>
+
+      <div className="text-center pt-2">
+        <Link href="/notice" className="text-xs text-gray-400 hover:text-gray-600 transition-colors underline underline-offset-2">
+          꽃메뉴 사용법
+        </Link>
+      </div>
     </form>
   );
 }

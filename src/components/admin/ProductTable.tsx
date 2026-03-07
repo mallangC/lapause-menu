@@ -2,16 +2,25 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { Product } from "@/types";
+import { Product, ProductStatus } from "@/types";
 import { BADGE_COLORS } from "@/lib/constants";
 
 interface ProductTableProps {
   products: Product[];
   onEdit: (product: Product) => void;
   onDelete: (id: string) => void;
+  onStatusChange: (id: string, status: ProductStatus) => void;
 }
 
-export default function ProductTable({ products, onEdit, onDelete }: ProductTableProps) {
+const STATUS_CYCLE: ProductStatus[] = ["active", "inactive", "soldout"];
+const STATUS_LABELS: Record<ProductStatus, string> = { active: "활성", inactive: "비활성", soldout: "품절" };
+const STATUS_STYLES: Record<ProductStatus, string> = {
+  active: "bg-emerald-100 text-emerald-700 border border-emerald-200",
+  inactive: "bg-gray-100 text-gray-500 border border-gray-200",
+  soldout: "bg-red-100 text-red-500 border border-red-200",
+};
+
+export default function ProductTable({ products, onEdit, onDelete, onStatusChange }: ProductTableProps) {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   const sorted = [...products].sort((a, b) => sortDir === "asc" ? a.price - b.price : b.price - a.price);
@@ -34,6 +43,7 @@ export default function ProductTable({ products, onEdit, onDelete }: ProductTabl
           <col className="hidden md:table-column" />
           <col className="hidden md:table-column" />
           <col />
+          <col className="w-20" />
           <col className="w-28" />
         </colgroup>
         <thead>
@@ -50,6 +60,7 @@ export default function ProductTable({ products, onEdit, onDelete }: ProductTabl
                 </button>
               </div>
             </th>
+            <th className="pb-2 font-medium text-gray-400">상태</th>
             <th className="pb-2 font-medium text-gray-400">관리</th>
           </tr>
         </thead>
@@ -85,6 +96,18 @@ export default function ProductTable({ products, onEdit, onDelete }: ProductTabl
               </td>
               <td className="py-3 px-2 text-gray-700 hidden md:table-cell whitespace-nowrap">{product.product_type}</td>
               <td className="py-3 px-2 whitespace-nowrap">{product.price.toLocaleString()}원</td>
+              <td className="py-3 px-2">
+                <button
+                  onClick={() => {
+                    const cur = product.status ?? "active";
+                    const next = STATUS_CYCLE[(STATUS_CYCLE.indexOf(cur) + 1) % STATUS_CYCLE.length];
+                    onStatusChange(product.id, next);
+                  }}
+                  className={`text-xs px-2 py-1 rounded-full font-medium transition-opacity hover:opacity-70 whitespace-nowrap ${STATUS_STYLES[product.status ?? "active"]}`}
+                >
+                  {STATUS_LABELS[product.status ?? "active"]}
+                </button>
+              </td>
               <td className="py-3 px-2">
                 <div className="flex gap-1.5 justify-center">
                   <button

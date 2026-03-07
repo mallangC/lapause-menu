@@ -5,7 +5,7 @@ import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { STORAGE_BUCKET } from "@/lib/constants";
 
-type ImageKey = "landing_featured_image" | "landing_all_image" | "landing_season_image";
+type ImageKey = "home_featured_image" | "home_all_image" | "home_season_image";
 
 interface ImageCardProps {
   companyId: string;
@@ -32,7 +32,7 @@ function ImageCard({ companyId, imageKey, label, current, onChange }: ImageCardP
     canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
     const blob = await new Promise<Blob>((resolve) => canvas.toBlob((b) => resolve(b!), "image/jpeg", 0.85));
 
-    const path = `landing/${companyId}/${imageKey}_${Date.now()}.jpg`;
+    const path = `home/${companyId}/${imageKey}_${Date.now()}.jpg`;
     const { error: uploadError } = await supabase.storage
       .from(STORAGE_BUCKET)
       .upload(path, blob, { upsert: false, contentType: "image/jpeg" });
@@ -104,11 +104,11 @@ interface Props {
   initialSeasonImage: string | null;
 }
 
-export default function LandingPageTab({ companyId, initialFeaturedImage, initialAllImage, initialSeasonImage }: Props) {
+export default function HomeTab({ companyId, initialFeaturedImage, initialAllImage, initialSeasonImage }: Props) {
   const [images, setImages] = useState<Record<ImageKey, string | null>>({
-    landing_featured_image: initialFeaturedImage,
-    landing_all_image: initialAllImage,
-    landing_season_image: initialSeasonImage,
+    home_featured_image: initialFeaturedImage,
+    home_all_image: initialAllImage,
+    home_season_image: initialSeasonImage,
   });
 
   const handleChange = (key: ImageKey, url: string | null) => {
@@ -116,15 +116,15 @@ export default function LandingPageTab({ companyId, initialFeaturedImage, initia
   };
 
   const sections: { key: ImageKey; label: string }[] = [
-    { key: "landing_featured_image", label: "추천/인기 버튼" },
-    { key: "landing_all_image", label: "모든 상품 버튼" },
-    { key: "landing_season_image", label: "시즌 버튼" },
+    { key: "home_featured_image", label: "추천/인기 버튼" },
+    { key: "home_all_image", label: "모든 상품 버튼" },
+    { key: "home_season_image", label: "시즌 버튼" },
   ];
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-medium text-gray-900">랜딩 페이지 이미지</h2>
+        <h2 className="text-lg font-medium text-gray-900">홈 화면 이미지</h2>
         <p className="text-sm text-gray-400 mt-1">첫 화면 버튼에 표시될 이미지를 업로드하세요. 이미지가 없으면 텍스트만 표시됩니다.</p>
       </div>
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">

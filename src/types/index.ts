@@ -5,7 +5,11 @@ export interface Company {
   logo_image: string | null;
   owner_id: string;
   created_at: string;
+  naver_talk_url: string | null;
+  kakao_channel_url: string | null;
 }
+
+export type ProductStatus = "active" | "inactive" | "soldout";
 
 export interface Product {
   id: string;
@@ -19,6 +23,7 @@ export interface Product {
   company_id: string;
   is_popular: boolean;
   is_recommended: boolean;
+  status: ProductStatus;
   created_at: string;
 }
 

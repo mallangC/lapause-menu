@@ -9,11 +9,15 @@ interface Props {
   initialName: string;
   initialLogo: string | null;
   slug: string;
+  initialNaverTalkUrl: string | null;
+  initialKakaoChannelUrl: string | null;
 }
 
-export default function CompanyInfoTab({ companyId, initialName, initialLogo, slug }: Props) {
+export default function CompanyInfoTab({ companyId, initialName, initialLogo, slug, initialNaverTalkUrl, initialKakaoChannelUrl }: Props) {
   const [name, setName] = useState(initialName);
   const [logoUrl, setLogoUrl] = useState<string | null>(initialLogo);
+  const [naverTalkUrl, setNaverTalkUrl] = useState(initialNaverTalkUrl ?? "");
+  const [kakaoChannelUrl, setKakaoChannelUrl] = useState(initialKakaoChannelUrl ?? "");
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -51,7 +55,12 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
 
     const { error: updateError } = await supabase
       .from("companies")
-      .update({ name, logo_image: logoUrl })
+      .update({
+        name,
+        logo_image: logoUrl,
+        naver_talk_url: naverTalkUrl || null,
+        kakao_channel_url: kakaoChannelUrl || null,
+      })
       .eq("id", companyId);
 
     if (updateError) {
@@ -124,6 +133,30 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
             <span>사이트주소/</span>
             <span className="text-gray-900 font-medium">{slug}</span>
           </div>
+        </div>
+
+        {/* 네이버 톡톡 */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">네이버 예약 URL</label>
+          <input
+            type="url"
+            value={naverTalkUrl}
+            onChange={(e) => setNaverTalkUrl(e.target.value)}
+            placeholder="https://naver.me/..."
+            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
+          />
+        </div>
+
+        {/* 카카오 채널 */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">카카오 채널 URL</label>
+          <input
+            type="url"
+            value={kakaoChannelUrl}
+            onChange={(e) => setKakaoChannelUrl(e.target.value)}
+            placeholder="https://pf.kakao.com/..."
+            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
+          />
         </div>
 
         <button
