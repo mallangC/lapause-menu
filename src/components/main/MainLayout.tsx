@@ -44,9 +44,10 @@ interface MainLayoutProps {
   naverTalkUrl?: string | null;
   kakaoChannelUrl?: string | null;
   instagramUrl?: string | null;
+  youtubeUrl?: string | null;
 }
 
-export default function MainLayout({ products, companyName = "Lapause Fleur", logoImage, themeVars, slug, homeFeaturedImage, homeAllImage, homeSeasonImage, naverTalkUrl, kakaoChannelUrl, instagramUrl }: MainLayoutProps) {
+export default function MainLayout({ products, companyName = "Lapause Fleur", logoImage, themeVars, slug, homeFeaturedImage, homeAllImage, homeSeasonImage, naverTalkUrl, kakaoChannelUrl, instagramUrl, youtubeUrl }: MainLayoutProps) {
   const [showHome, setShowHome] = useState(true);
   const [filter, setFilter] = useState<FilterState>(EMPTY_FILTER);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
@@ -466,7 +467,7 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
           </div>
 
           {/* 채널 링크 버튼 */}
-          {(naverTalkUrl || kakaoChannelUrl || instagramUrl) && (
+          {(naverTalkUrl || kakaoChannelUrl || instagramUrl || youtubeUrl) && (
             <div className="flex flex-row gap-8 justify-center">
               {naverTalkUrl && (
                 <a
@@ -511,6 +512,21 @@ export default function MainLayout({ products, companyName = "Lapause Fleur", lo
                     </svg>
                   </span>
                   <span className="text-xs text-gray-500 group-hover:text-gray-700 transition-colors">인스타그램</span>
+                </a>
+              )}
+              {youtubeUrl && (
+                <a
+                  href={youtubeUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex flex-col items-center gap-2 group"
+                >
+                  <span className="w-14 h-14 rounded-full flex items-center justify-center shadow-sm transition-opacity group-hover:opacity-80" style={{ backgroundColor: "#FF0000" }}>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+                      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                    </svg>
+                  </span>
+                  <span className="text-xs text-gray-500 group-hover:text-gray-700 transition-colors">유튜브</span>
                 </a>
               )}
             </div>

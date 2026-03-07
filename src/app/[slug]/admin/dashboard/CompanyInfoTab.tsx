@@ -12,14 +12,16 @@ interface Props {
   initialNaverTalkUrl: string | null;
   initialKakaoChannelUrl: string | null;
   initialInstagramUrl: string | null;
+  initialYoutubeUrl: string | null;
 }
 
-export default function CompanyInfoTab({ companyId, initialName, initialLogo, slug, initialNaverTalkUrl, initialKakaoChannelUrl, initialInstagramUrl }: Props) {
+export default function CompanyInfoTab({ companyId, initialName, initialLogo, slug, initialNaverTalkUrl, initialKakaoChannelUrl, initialInstagramUrl, initialYoutubeUrl }: Props) {
   const [name, setName] = useState(initialName);
   const [logoUrl, setLogoUrl] = useState<string | null>(initialLogo);
   const [naverTalkUrl, setNaverTalkUrl] = useState(initialNaverTalkUrl ?? "");
   const [kakaoChannelUrl, setKakaoChannelUrl] = useState(initialKakaoChannelUrl ?? "");
   const [instagramUrl, setInstagramUrl] = useState(initialInstagramUrl ?? "");
+  const [youtubeUrl, setYoutubeUrl] = useState(initialYoutubeUrl ?? "");
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -63,6 +65,7 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
         naver_talk_url: naverTalkUrl || null,
         kakao_channel_url: kakaoChannelUrl || null,
         instagram_url: instagramUrl || null,
+        youtube_url: youtubeUrl || null,
       })
       .eq("id", companyId);
 
@@ -172,6 +175,21 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
             placeholder="https://instagram.com/..."
             className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
           />
+        </div>
+
+        {/* 유튜브 */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">유튜브 URL</label>
+          <input
+            type="url"
+            value={youtubeUrl}
+            onChange={(e) => setYoutubeUrl(e.target.value)}
+            placeholder="https://youtube.com/@..."
+            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
+          />
+          <p className="text-xs text-gray-400 mt-2">
+            URL을 입력한 항목만 홈 화면에 버튼으로 노출됩니다.
+          </p>
         </div>
 
         <button

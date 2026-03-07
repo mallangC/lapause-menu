@@ -27,9 +27,10 @@ interface Props {
   naverTalkUrl: string | null;
   kakaoChannelUrl: string | null;
   instagramUrl: string | null;
+  youtubeUrl: string | null;
 }
 
-export default function DashboardClient({ slug, companyId, companyName, logoImage, themeBg, themeAccent, initialProducts, homeFeaturedImage, homeAllImage, homeSeasonImage, naverTalkUrl, kakaoChannelUrl, instagramUrl }: Props) {
+export default function DashboardClient({ slug, companyId, companyName, logoImage, themeBg, themeAccent, initialProducts, homeFeaturedImage, homeAllImage, homeSeasonImage, naverTalkUrl, kakaoChannelUrl, instagramUrl, youtubeUrl }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("products");
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [showForm, setShowForm] = useState(false);
@@ -206,7 +207,7 @@ export default function DashboardClient({ slug, companyId, companyName, logoImag
 
           {activeTab === "company" && (
             <div className="bg-white border border-gray-200 rounded-xl p-6">
-              <CompanyInfoTab companyId={companyId} initialName={companyName} initialLogo={logoImage} slug={slug} initialNaverTalkUrl={naverTalkUrl} initialKakaoChannelUrl={kakaoChannelUrl} initialInstagramUrl={instagramUrl} />
+              <CompanyInfoTab companyId={companyId} initialName={companyName} initialLogo={logoImage} slug={slug} initialNaverTalkUrl={naverTalkUrl} initialKakaoChannelUrl={kakaoChannelUrl} initialInstagramUrl={instagramUrl} initialYoutubeUrl={youtubeUrl} />
             </div>
           )}
 
