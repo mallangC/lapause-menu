@@ -10,9 +10,11 @@ interface MainNavProps {
   filter: FilterState;
   setFilter: Dispatch<SetStateAction<FilterState>>;
   setMobileFilterOpen: Dispatch<SetStateAction<boolean>>;
+  hiddenProductTypes?: string[];
+  hiddenSeasons?: string[];
 }
 
-export default function MainNav({ filter, setFilter, setMobileFilterOpen }: MainNavProps) {
+export default function MainNav({ filter, setFilter, setMobileFilterOpen, hiddenProductTypes = [], hiddenSeasons = [] }: MainNavProps) {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const dropdownTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -57,7 +59,7 @@ export default function MainNav({ filter, setFilter, setMobileFilterOpen }: Main
           {openDropdown === "ALL" && (
             <div className="hidden md:block absolute top-full left-1/2 -translate-x-1/2 z-50">
               <div className="bg-white border border-gray-200 rounded-xl shadow-lg p-4 w-72">
-                <FilterPanel filter={filter} setFilter={setFilter} />
+                <FilterPanel filter={filter} setFilter={setFilter} hiddenProductTypes={hiddenProductTypes} />
               </div>
             </div>
           )}
@@ -78,7 +80,7 @@ export default function MainNav({ filter, setFilter, setMobileFilterOpen }: Main
             <div className="hidden md:block absolute top-full left-1/2 -translate-x-1/2 z-50">
               <div className="bg-white border border-gray-200 rounded-xl shadow-lg p-3 min-w-36">
                 <div className="flex flex-col gap-1">
-                  {SEASONS.map((season) => (
+                  {SEASONS.filter((s) => !hiddenSeasons.includes(s)).map((season) => (
                     <button
                       key={season}
                       onClick={() =>

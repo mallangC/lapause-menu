@@ -9,6 +9,8 @@ export interface Company {
   kakao_channel_url: string | null;
   instagram_url: string | null;
   youtube_url: string | null;
+  hidden_product_types: string[];
+  hidden_seasons: string[];
 }
 
 export type ProductStatus = "active" | "inactive" | "soldout";

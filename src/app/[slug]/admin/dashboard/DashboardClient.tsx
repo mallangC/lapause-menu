@@ -10,8 +10,9 @@ import ProductTable from "@/components/admin/ProductTable";
 import CompanyInfoTab from "./CompanyInfoTab";
 import SettingsTab from "./SettingsTab";
 import HomeTab from "./HomeTab";
+import MenuSettingsTab from "./MenuSettingsTab";
 
-type Tab = "products" | "company" | "home" | "settings";
+type Tab = "products" | "company" | "home" | "menu" | "settings";
 
 interface Props {
   slug: string;
@@ -28,9 +29,11 @@ interface Props {
   kakaoChannelUrl: string | null;
   instagramUrl: string | null;
   youtubeUrl: string | null;
+  hiddenProductTypes: string[];
+  hiddenSeasons: string[];
 }
 
-export default function DashboardClient({ slug, companyId, companyName, logoImage, themeBg, themeAccent, initialProducts, homeFeaturedImage, homeAllImage, homeSeasonImage, naverTalkUrl, kakaoChannelUrl, instagramUrl, youtubeUrl }: Props) {
+export default function DashboardClient({ slug, companyId, companyName, logoImage, themeBg, themeAccent, initialProducts, homeFeaturedImage, homeAllImage, homeSeasonImage, naverTalkUrl, kakaoChannelUrl, instagramUrl, youtubeUrl, hiddenProductTypes, hiddenSeasons }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("products");
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [showForm, setShowForm] = useState(false);
@@ -93,6 +96,7 @@ export default function DashboardClient({ slug, companyId, companyName, logoImag
     { key: "products", label: "상품 관리" },
     { key: "home", label: "홈 화면" },
     { key: "company", label: "회사 정보" },
+    { key: "menu", label: "메뉴 설정" },
     { key: "settings", label: "설정" },
   ];
 
@@ -218,6 +222,16 @@ export default function DashboardClient({ slug, companyId, companyName, logoImag
                 initialFeaturedImage={homeFeaturedImage}
                 initialAllImage={homeAllImage}
                 initialSeasonImage={homeSeasonImage}
+              />
+            </div>
+          )}
+
+          {activeTab === "menu" && (
+            <div className="bg-white border border-gray-200 rounded-xl p-6">
+              <MenuSettingsTab
+                companyId={companyId}
+                initialHiddenProductTypes={hiddenProductTypes}
+                initialHiddenSeasons={hiddenSeasons}
               />
             </div>
           )}

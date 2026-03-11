@@ -74,7 +74,7 @@ export default function NoticePage() {
             메뉴 URL 뒤에{" "}
             <code className="bg-beige-200 px-1.5 py-0.5 rounded text-xs text-gray-700">/admin</code>
             을 붙이거나, 메뉴 화면 상단의{" "}
-            <strong className="text-gray-700 font-medium">로고 또는 회사 이름을 탭</strong>하면 관리자 로그인으로 이동합니다.
+            <strong className="text-gray-700 font-medium">로고 또는 회사 이름을 클릭</strong>하면 관리자 로그인으로 이동합니다.
           </p>
 
           <div className="space-y-3">
@@ -138,6 +138,24 @@ export default function NoticePage() {
             <div className="bg-white rounded-2xl border border-beige-200 overflow-hidden">
               <div className="flex items-center gap-3 px-6 py-4 border-b border-beige-100">
                 <span className="w-6 h-6 rounded-full bg-gold-500 text-white flex items-center justify-center text-xs font-semibold shrink-0">4</span>
+                <h3 className="font-medium text-gray-900 text-sm">메뉴 설정</h3>
+              </div>
+              <div className="px-6 py-4 space-y-3">
+                {[
+                  ["상품 유형 숨김", "식물, 조화 등 특정 상품 유형을 손님 화면의 필터에서 숨길 수 있습니다. 상품 자체는 그대로 노출되며 필터 버튼만 사라집니다."],
+                  ["시즌 숨김", "크리스마스, 어버이날 등 특정 시즌을 필터에서 숨길 수 있습니다. 해당 시즌이 지났거나 운영하지 않을 때 유용합니다."],
+                ].map(([label, desc]) => (
+                  <div key={label} className="flex gap-3">
+                    <span className="shrink-0 text-xs font-medium text-gold-600 w-24 pt-0.5">{label}</span>
+                    <p className="text-xs text-gray-500 leading-relaxed">{desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-beige-200 overflow-hidden">
+              <div className="flex items-center gap-3 px-6 py-4 border-b border-beige-100">
+                <span className="w-6 h-6 rounded-full bg-gold-500 text-white flex items-center justify-center text-xs font-semibold shrink-0">5</span>
                 <h3 className="font-medium text-gray-900 text-sm">설정 — 테마 색상</h3>
               </div>
               <p className="px-6 py-4 text-xs text-gray-500 leading-relaxed">
@@ -193,9 +211,10 @@ export default function NoticePage() {
               </div>
               <ul className="px-6 py-4 space-y-3">
                 {[
-                  { date: "03.07", text: "인스타그램, 유튜브 채널 버튼 추가", isNew: true },
-                  { date: "03.07", text: "관리자 상품 목록 필터 추가 — 유형·뱃지·상태별 필터링", isNew: true },
-                  { date: "03.07", text: "관리자 상품 목록 페이지 이동 추가 — 10개씩 이전/다음, 페이지 번호 클릭", isNew: true },
+                  { date: "03.12", text: "메뉴 설정 탭 추가 — 상품 유형·시즌 필터 항목 개별 숨김 기능", isNew: true },
+                  { date: "03.07", text: "인스타그램, 유튜브 채널 버튼 추가", isNew: false },
+                  { date: "03.07", text: "관리자 상품 목록 필터 추가 — 유형·뱃지·상태별 필터링", isNew: false },
+                  { date: "03.07", text: "관리자 상품 목록 페이지 이동 추가 — 10개씩 이전/다음, 페이지 번호 클릭", isNew: false },
                   { date: "03.06", text: "상품 상태 기능 추가 — 활성·비활성·품절 전환", isNew: false },
                   { date: "03.06", text: "관리자 상품 추가·수정 모달 팝업 방식으로 변경", isNew: false },
                   { date: "03.05", text: "홈 화면 네이버 예약·카카오 채널 연결 버튼 추가", isNew: false },

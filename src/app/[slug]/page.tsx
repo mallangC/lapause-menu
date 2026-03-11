@@ -14,7 +14,7 @@ export default async function CompanyMenuPage({ params }: Props) {
 
   const { data: company } = await supabase
     .from("companies")
-    .select("id, name, logo_image, theme_bg, theme_accent, home_featured_image, home_all_image, home_season_image, naver_talk_url, kakao_channel_url, instagram_url, youtube_url")
+    .select("id, name, logo_image, theme_bg, theme_accent, home_featured_image, home_all_image, home_season_image, naver_talk_url, kakao_channel_url, instagram_url, youtube_url, hidden_product_types, hidden_seasons")
     .eq("slug", slug)
     .single();
 
@@ -46,6 +46,8 @@ export default async function CompanyMenuPage({ params }: Props) {
       kakaoChannelUrl={company.kakao_channel_url ?? null}
       instagramUrl={company.instagram_url ?? null}
       youtubeUrl={company.youtube_url ?? null}
+      hiddenProductTypes={company.hidden_product_types ?? []}
+      hiddenSeasons={company.hidden_seasons ?? []}
     />
   );
 }

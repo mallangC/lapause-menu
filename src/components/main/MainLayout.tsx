@@ -24,6 +24,8 @@ interface MainLayoutProps {
   kakaoChannelUrl?: string | null;
   instagramUrl?: string | null;
   youtubeUrl?: string | null;
+  hiddenProductTypes?: string[];
+  hiddenSeasons?: string[];
 }
 
 export default function MainLayout({
@@ -39,6 +41,8 @@ export default function MainLayout({
   kakaoChannelUrl,
   instagramUrl,
   youtubeUrl,
+  hiddenProductTypes = [],
+  hiddenSeasons = [],
 }: MainLayoutProps) {
   const [showHome, setShowHome] = useState(true);
   const [filter, setFilter] = useState<FilterState>(EMPTY_FILTER);
@@ -97,6 +101,8 @@ export default function MainLayout({
           filter={filter}
           setFilter={setFilter}
           setMobileFilterOpen={setMobileFilterOpen}
+          hiddenProductTypes={hiddenProductTypes}
+          hiddenSeasons={hiddenSeasons}
         />
       )}
 
@@ -106,6 +112,8 @@ export default function MainLayout({
           setFilter={setFilter}
           isOpen={mobileFilterOpen}
           onToggle={() => setMobileFilterOpen((v) => !v)}
+          hiddenProductTypes={hiddenProductTypes}
+          hiddenSeasons={hiddenSeasons}
         />
       )}
 
