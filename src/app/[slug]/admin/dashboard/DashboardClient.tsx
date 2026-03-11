@@ -40,6 +40,14 @@ export default function DashboardClient({ slug, companyId, companyName, logoImag
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [themeVars, setThemeVars] = useState(generateThemeVars(themeBg, themeAccent));
+  const [currentCompanyName, setCurrentCompanyName] = useState(companyName);
+  const [currentLogoImage, setCurrentLogoImage] = useState(logoImage);
+  const [currentNaverTalkUrl, setCurrentNaverTalkUrl] = useState(naverTalkUrl);
+  const [currentKakaoChannelUrl, setCurrentKakaoChannelUrl] = useState(kakaoChannelUrl);
+  const [currentInstagramUrl, setCurrentInstagramUrl] = useState(instagramUrl);
+  const [currentYoutubeUrl, setCurrentYoutubeUrl] = useState(youtubeUrl);
+  const [currentHiddenProductTypes, setCurrentHiddenProductTypes] = useState(hiddenProductTypes);
+  const [currentHiddenSeasons, setCurrentHiddenSeasons] = useState(hiddenSeasons);
   const supabase = createClient();
 
   useEffect(() => {
@@ -211,7 +219,24 @@ export default function DashboardClient({ slug, companyId, companyName, logoImag
 
           {activeTab === "company" && (
             <div className="bg-white border border-gray-200 rounded-xl p-6">
-              <CompanyInfoTab companyId={companyId} initialName={companyName} initialLogo={logoImage} slug={slug} initialNaverTalkUrl={naverTalkUrl} initialKakaoChannelUrl={kakaoChannelUrl} initialInstagramUrl={instagramUrl} initialYoutubeUrl={youtubeUrl} />
+              <CompanyInfoTab
+                companyId={companyId}
+                slug={slug}
+                initialName={currentCompanyName}
+                initialLogo={currentLogoImage}
+                initialNaverTalkUrl={currentNaverTalkUrl}
+                initialKakaoChannelUrl={currentKakaoChannelUrl}
+                initialInstagramUrl={currentInstagramUrl}
+                initialYoutubeUrl={currentYoutubeUrl}
+                onSave={(name, logo, naver, kakao, instagram, youtube) => {
+                  setCurrentCompanyName(name);
+                  setCurrentLogoImage(logo);
+                  setCurrentNaverTalkUrl(naver);
+                  setCurrentKakaoChannelUrl(kakao);
+                  setCurrentInstagramUrl(instagram);
+                  setCurrentYoutubeUrl(youtube);
+                }}
+              />
             </div>
           )}
 
@@ -230,8 +255,12 @@ export default function DashboardClient({ slug, companyId, companyName, logoImag
             <div className="bg-white border border-gray-200 rounded-xl p-6">
               <MenuSettingsTab
                 companyId={companyId}
-                initialHiddenProductTypes={hiddenProductTypes}
-                initialHiddenSeasons={hiddenSeasons}
+                initialHiddenProductTypes={currentHiddenProductTypes}
+                initialHiddenSeasons={currentHiddenSeasons}
+                onSave={(types, seasons) => {
+                  setCurrentHiddenProductTypes(types);
+                  setCurrentHiddenSeasons(seasons);
+                }}
               />
             </div>
           )}

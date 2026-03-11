@@ -8,9 +8,10 @@ interface Props {
   companyId: string;
   initialHiddenProductTypes: string[];
   initialHiddenSeasons: string[];
+  onSave: (hiddenProductTypes: string[], hiddenSeasons: string[]) => void;
 }
 
-export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, initialHiddenSeasons }: Props) {
+export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, initialHiddenSeasons, onSave }: Props) {
   const [hiddenProductTypes, setHiddenProductTypes] = useState<string[]>(initialHiddenProductTypes);
   const [hiddenSeasons, setHiddenSeasons] = useState<string[]>(initialHiddenSeasons);
   const [saving, setSaving] = useState(false);
@@ -39,6 +40,7 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
       .eq("id", companyId);
     setSaving(false);
     setSaved(true);
+    onSave(hiddenProductTypes, hiddenSeasons);
   };
 
   return (

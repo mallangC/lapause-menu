@@ -13,9 +13,10 @@ interface Props {
   initialKakaoChannelUrl: string | null;
   initialInstagramUrl: string | null;
   initialYoutubeUrl: string | null;
+  onSave: (name: string, logo: string | null, naverTalkUrl: string | null, kakaoChannelUrl: string | null, instagramUrl: string | null, youtubeUrl: string | null) => void;
 }
 
-export default function CompanyInfoTab({ companyId, initialName, initialLogo, slug, initialNaverTalkUrl, initialKakaoChannelUrl, initialInstagramUrl, initialYoutubeUrl }: Props) {
+export default function CompanyInfoTab({ companyId, initialName, initialLogo, slug, initialNaverTalkUrl, initialKakaoChannelUrl, initialInstagramUrl, initialYoutubeUrl, onSave }: Props) {
   const [name, setName] = useState(initialName);
   const [logoUrl, setLogoUrl] = useState<string | null>(initialLogo);
   const [naverTalkUrl, setNaverTalkUrl] = useState(initialNaverTalkUrl ?? "");
@@ -73,6 +74,7 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
       setError(updateError.message);
     } else {
       setSuccess(true);
+      onSave(name, logoUrl, naverTalkUrl || null, kakaoChannelUrl || null, instagramUrl || null, youtubeUrl || null);
     }
     setLoading(false);
   };

@@ -72,7 +72,11 @@ export default function MainLayout({
 
   const isAll = !filter.featured && !filter.isSeason;
   const isSeason = filter.isSeason;
-  const filteredProducts = applyFilter(products, filter);
+  const filteredProducts = applyFilter(products, filter).filter((p) => {
+    if (!filter.isSeason && hiddenProductTypes.includes(p.product_type)) return false;
+    if (p.seasons.length > 0 && p.seasons.every((s) => hiddenSeasons.includes(s))) return false;
+    return true;
+  });
 
   const logo = logoImage ? (
     <Image
