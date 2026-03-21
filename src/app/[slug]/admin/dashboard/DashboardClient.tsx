@@ -58,7 +58,7 @@ export default function DashboardClient({ slug, companyId, companyName, logoImag
   const handleAdd = async (data: ProductInput) => {
     setError(null);
     const { data: newProduct, error: err } = await supabase
-      .from("product_menus")
+      .from("products")
       .insert({ ...data, company_id: companyId })
       .select()
       .single();
@@ -71,7 +71,7 @@ export default function DashboardClient({ slug, companyId, companyName, logoImag
     if (!editingProduct) return;
     setError(null);
     const { data: updated, error: err } = await supabase
-      .from("product_menus")
+      .from("products")
       .update(data)
       .eq("id", editingProduct.id)
       .select()
@@ -82,7 +82,7 @@ export default function DashboardClient({ slug, companyId, companyName, logoImag
   };
 
   const handleStatusChange = async (id: string, status: ProductStatus) => {
-    const { error: err } = await supabase.from("product_menus").update({ status }).eq("id", id);
+    const { error: err } = await supabase.from("products").update({ status }).eq("id", id);
     if (err) { setError(err.message); return; }
     setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, status } : p)));
   };
@@ -90,7 +90,7 @@ export default function DashboardClient({ slug, companyId, companyName, logoImag
   const handleDelete = async (id: string) => {
     if (!confirm("정말 삭제하시겠습니까?")) return;
     setError(null);
-    const { error: err } = await supabase.from("product_menus").delete().eq("id", id);
+    const { error: err } = await supabase.from("products").delete().eq("id", id);
     if (err) { setError(err.message); return; }
     setProducts((prev) => prev.filter((p) => p.id !== id));
   };

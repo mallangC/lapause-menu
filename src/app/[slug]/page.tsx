@@ -21,7 +21,7 @@ export default async function CompanyMenuPage({ params }: Props) {
   if (!company) notFound();
 
   const { data: products } = await supabase
-    .from("product_menus")
+    .from("products")
     .select("*")
     .eq("company_id", company.id)
     .eq("status", "active")

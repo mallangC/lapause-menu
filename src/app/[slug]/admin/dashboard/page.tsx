@@ -27,7 +27,7 @@ export default async function DashboardPage({ params }: Props) {
   if (!company) redirect("/");
 
   const { data: products } = await supabase
-    .from("product_menus")
+    .from("products")
     .select("*")
     .eq("company_id", company.id)
     .order("price", { ascending: true });
