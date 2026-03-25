@@ -15,6 +15,12 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Flo Aide",
   description: "Flo Aide - 꽃집 전자 메뉴 및 상담 예약 서비스",
+  metadataBase: new URL("https://www.flo-aide.com"),
+  verification: {
+    other: {
+      "naver-site-verification": "819c49a47101f2ab63b9d31bec18c768fb8b086e",
+    },
+  },
 };
 
 export default function RootLayout({
