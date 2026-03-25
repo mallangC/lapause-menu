@@ -20,12 +20,14 @@ interface MainLayoutProps {
   homeFeaturedImage?: string | null;
   homeAllImage?: string | null;
   homeSeasonImage?: string | null;
-  naverTalkUrl?: string | null;
+  homeConsultImage?: string | null;
+  locationUrl?: string | null;
   kakaoChannelUrl?: string | null;
   instagramUrl?: string | null;
   youtubeUrl?: string | null;
   hiddenProductTypes?: string[];
   hiddenSeasons?: string[];
+  consultEnabled?: boolean;
 }
 
 export default function MainLayout({
@@ -37,12 +39,14 @@ export default function MainLayout({
   homeFeaturedImage,
   homeAllImage,
   homeSeasonImage,
-  naverTalkUrl,
+  homeConsultImage,
+  locationUrl,
   kakaoChannelUrl,
   instagramUrl,
   youtubeUrl,
   hiddenProductTypes = [],
   hiddenSeasons = [],
+  consultEnabled = false,
 }: MainLayoutProps) {
   const [showHome, setShowHome] = useState(true);
   const [filter, setFilter] = useState<FilterState>(EMPTY_FILTER);
@@ -107,6 +111,8 @@ export default function MainLayout({
           setMobileFilterOpen={setMobileFilterOpen}
           hiddenProductTypes={hiddenProductTypes}
           hiddenSeasons={hiddenSeasons}
+          consultEnabled={consultEnabled}
+          slug={slug}
         />
       )}
 
@@ -126,10 +132,13 @@ export default function MainLayout({
           homeFeaturedImage={homeFeaturedImage}
           homeAllImage={homeAllImage}
           homeSeasonImage={homeSeasonImage}
-          naverTalkUrl={naverTalkUrl}
+          homeConsultImage={homeConsultImage}
+          locationUrl={locationUrl}
           kakaoChannelUrl={kakaoChannelUrl}
           instagramUrl={instagramUrl}
           youtubeUrl={youtubeUrl}
+          slug={slug}
+          consultEnabled={consultEnabled}
           onSelectFeatured={() => { setFilter({ ...EMPTY_FILTER, featured: true }); setShowHome(false); }}
           onSelectAll={() => { setFilter(EMPTY_FILTER); setShowHome(false); setMobileFilterOpen(true); }}
           onSelectSeason={() => { setFilter({ ...EMPTY_FILTER, isSeason: true }); setShowHome(false); }}
@@ -137,7 +146,7 @@ export default function MainLayout({
       ) : (
         <div className="max-w-6xl mx-auto px-4 py-6">
           <main>
-            <ProductGrid products={filteredProducts} />
+            <ProductGrid products={filteredProducts} consultEnabled={consultEnabled} slug={slug} />
           </main>
         </div>
       )}

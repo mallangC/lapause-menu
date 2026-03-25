@@ -33,6 +33,8 @@ export const BADGE_COLORS = {
   recommended: { bg: "#9CAF88", label: "추천" },
 } as const;
 
+export const MOODS = ["깔끔한 화이트&그린", "화사한 파스텔톤", "선명한 비비드톤", "차분한 딥컬러"] as const;
+
 export const INACTIVITY_TIMEOUT_MS = 60000;
 
 export const STORAGE_BUCKET = "product_menu";

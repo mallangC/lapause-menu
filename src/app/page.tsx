@@ -6,8 +6,16 @@ export default async function RootPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  // 이미 로그인 상태면 해당 회사 대시보드로 바로 이동
+  // 이미 로그인 상태면 role에 따라 분기
   if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("user_id", user.id)
+      .single();
+
+    if (profile?.role === "operator") redirect("/admin/dashboard");
+
     const { data: company } = await supabase
       .from("companies")
       .select("slug")

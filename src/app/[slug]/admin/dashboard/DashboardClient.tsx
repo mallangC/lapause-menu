@@ -9,13 +9,18 @@ import ProductForm from "@/components/admin/ProductForm";
 import ProductTable from "@/components/admin/ProductTable";
 import CompanyInfoTab from "./CompanyInfoTab";
 import SettingsTab from "./SettingsTab";
-import HomeTab from "./HomeTab";
-import MenuSettingsTab from "./MenuSettingsTab";
+import ReservationSettingsTab from "./ReservationSettingsTab";
+import ReservationsTab from "./ReservationsTab";
+import StatsTab from "./StatsTab";
+import ProfileSetupModal from "./ProfileSetupModal";
 
-type Tab = "products" | "company" | "home" | "menu" | "settings";
+type Tab = "reservations" | "products" | "stats" | "company" | "reservation" | "settings";
 
 interface Props {
   slug: string;
+  userId: string;
+  profileName: string;
+  profilePhone: string;
   companyId: string;
   companyName: string;
   logoImage: string | null;
@@ -25,24 +30,27 @@ interface Props {
   homeFeaturedImage: string | null;
   homeAllImage: string | null;
   homeSeasonImage: string | null;
-  naverTalkUrl: string | null;
+  homeConsultImage: string | null;
+  locationUrl: string | null;
   kakaoChannelUrl: string | null;
   instagramUrl: string | null;
   youtubeUrl: string | null;
   hiddenProductTypes: string[];
   hiddenSeasons: string[];
+  consultEnabled: boolean;
 }
 
-export default function DashboardClient({ slug, companyId, companyName, logoImage, themeBg, themeAccent, initialProducts, homeFeaturedImage, homeAllImage, homeSeasonImage, naverTalkUrl, kakaoChannelUrl, instagramUrl, youtubeUrl, hiddenProductTypes, hiddenSeasons }: Props) {
+export default function DashboardClient({ slug, userId, profileName, profilePhone, companyId, companyName, logoImage, themeBg, themeAccent, initialProducts, homeFeaturedImage, homeAllImage, homeSeasonImage, homeConsultImage, locationUrl, kakaoChannelUrl, instagramUrl, youtubeUrl, hiddenProductTypes, hiddenSeasons, consultEnabled }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("products");
   const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [showProfileSetup, setShowProfileSetup] = useState(!profileName || !profilePhone);
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [themeVars, setThemeVars] = useState(generateThemeVars(themeBg, themeAccent));
   const [currentCompanyName, setCurrentCompanyName] = useState(companyName);
   const [currentLogoImage, setCurrentLogoImage] = useState(logoImage);
-  const [currentNaverTalkUrl, setCurrentNaverTalkUrl] = useState(naverTalkUrl);
+  const [currentNaverTalkUrl, setCurrentNaverTalkUrl] = useState(locationUrl);
   const [currentKakaoChannelUrl, setCurrentKakaoChannelUrl] = useState(kakaoChannelUrl);
   const [currentInstagramUrl, setCurrentInstagramUrl] = useState(instagramUrl);
   const [currentYoutubeUrl, setCurrentYoutubeUrl] = useState(youtubeUrl);
@@ -54,6 +62,7 @@ export default function DashboardClient({ slug, companyId, companyName, logoImag
     document.body.style.overflow = (showForm || !!editingProduct) ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [showForm, editingProduct]);
+
 
   const handleAdd = async (data: ProductInput) => {
     setError(null);
@@ -102,14 +111,23 @@ export default function DashboardClient({ slug, companyId, companyName, logoImag
 
   const tabs: { key: Tab; label: string }[] = [
     { key: "products", label: "상품 관리" },
-    { key: "home", label: "홈 화면" },
+    { key: "reservations", label: "예약 관리" },
+    ...(consultEnabled ? [{ key: "stats" as Tab, label: "통계" }] : []),
     { key: "company", label: "회사 정보" },
-    { key: "menu", label: "메뉴 설정" },
+    { key: "reservation", label: "예약 설정" },
     { key: "settings", label: "설정" },
   ];
 
   return (
     <div className="min-h-screen bg-beige-100 flex flex-col" style={themeVars as React.CSSProperties}>
+      {showProfileSetup && (
+        <ProfileSetupModal
+          userId={userId}
+          initialName={profileName}
+          initialPhone={profilePhone}
+          onComplete={() => setShowProfileSetup(false)}
+        />
+      )}
       <header className="border-b border-gray-200 bg-white shrink-0">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link href={`/${slug}`} className="text-lg font-medium text-gray-900 hover:text-gray-600 transition-colors">
@@ -195,6 +213,12 @@ export default function DashboardClient({ slug, companyId, companyName, logoImag
         )}
 
         <main className="flex-1 min-w-0">
+          {activeTab === "reservations" && (
+            <div className="bg-white border border-gray-200 rounded-xl p-6">
+              <ReservationsTab companyId={companyId} />
+            </div>
+          )}
+
           {activeTab === "products" && (
             <div>
               {error && (
@@ -214,6 +238,12 @@ export default function DashboardClient({ slug, companyId, companyName, logoImag
                   onStatusChange={handleStatusChange}
                 />
               </div>
+            </div>
+          )}
+
+          {activeTab === "stats" && (
+            <div className="bg-white border border-gray-200 rounded-xl p-6">
+              <StatsTab companyId={companyId} />
             </div>
           )}
 
@@ -240,28 +270,9 @@ export default function DashboardClient({ slug, companyId, companyName, logoImag
             </div>
           )}
 
-          {activeTab === "home" && (
+          {activeTab === "reservation" && (
             <div className="bg-white border border-gray-200 rounded-xl p-6">
-              <HomeTab
-                companyId={companyId}
-                initialFeaturedImage={homeFeaturedImage}
-                initialAllImage={homeAllImage}
-                initialSeasonImage={homeSeasonImage}
-              />
-            </div>
-          )}
-
-          {activeTab === "menu" && (
-            <div className="bg-white border border-gray-200 rounded-xl p-6">
-              <MenuSettingsTab
-                companyId={companyId}
-                initialHiddenProductTypes={currentHiddenProductTypes}
-                initialHiddenSeasons={currentHiddenSeasons}
-                onSave={(types, seasons) => {
-                  setCurrentHiddenProductTypes(types);
-                  setCurrentHiddenSeasons(seasons);
-                }}
-              />
+              <ReservationSettingsTab companyId={companyId} />
             </div>
           )}
 
@@ -271,8 +282,18 @@ export default function DashboardClient({ slug, companyId, companyName, logoImag
                 companyId={companyId}
                 initialBg={themeBg}
                 initialAccent={themeAccent}
+                initialHiddenProductTypes={currentHiddenProductTypes}
+                initialHiddenSeasons={currentHiddenSeasons}
+                initialFeaturedImage={homeFeaturedImage}
+                initialAllImage={homeAllImage}
+                initialSeasonImage={homeSeasonImage}
+                initialConsultImage={homeConsultImage}
+                consultEnabled={consultEnabled}
                 onThemeChange={(bg, accent) => setThemeVars(generateThemeVars(bg, accent))}
-                onSignOut={handleSignOut}
+                onMenuSave={(types, seasons) => {
+                  setCurrentHiddenProductTypes(types);
+                  setCurrentHiddenSeasons(seasons);
+                }}
               />
             </div>
           )}

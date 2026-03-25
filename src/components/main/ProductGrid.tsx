@@ -3,9 +3,11 @@ import ProductCard from "./ProductCard";
 
 interface ProductGridProps {
   products: Product[];
+  consultEnabled?: boolean;
+  slug?: string;
 }
 
-export default function ProductGrid({ products }: ProductGridProps) {
+export default function ProductGrid({ products, consultEnabled, slug }: ProductGridProps) {
   if (products.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-beige-400">
@@ -18,7 +20,7 @@ export default function ProductGrid({ products }: ProductGridProps) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
       {products.map((product) => (
-        <ProductCard key={product.id} product={product} />
+        <ProductCard key={product.id} product={product} consultEnabled={consultEnabled} slug={slug} />
       ))}
     </div>
   );

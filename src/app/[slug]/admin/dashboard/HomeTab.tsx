@@ -5,7 +5,7 @@ import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { STORAGE_BUCKET } from "@/lib/constants";
 
-type ImageKey = "home_featured_image" | "home_all_image" | "home_season_image";
+type ImageKey = "home_featured_image" | "home_all_image" | "home_season_image" | "home_consult_image";
 
 interface ImageCardProps {
   companyId: string;
@@ -102,13 +102,16 @@ interface Props {
   initialFeaturedImage: string | null;
   initialAllImage: string | null;
   initialSeasonImage: string | null;
+  initialConsultImage: string | null;
+  consultEnabled: boolean;
 }
 
-export default function HomeTab({ companyId, initialFeaturedImage, initialAllImage, initialSeasonImage }: Props) {
+export default function HomeTab({ companyId, initialFeaturedImage, initialAllImage, initialSeasonImage, initialConsultImage, consultEnabled }: Props) {
   const [images, setImages] = useState<Record<ImageKey, string | null>>({
     home_featured_image: initialFeaturedImage,
     home_all_image: initialAllImage,
     home_season_image: initialSeasonImage,
+    home_consult_image: initialConsultImage,
   });
 
   const handleChange = (key: ImageKey, url: string | null) => {
@@ -119,6 +122,7 @@ export default function HomeTab({ companyId, initialFeaturedImage, initialAllIma
     { key: "home_featured_image", label: "추천/인기 버튼" },
     { key: "home_all_image", label: "모든 상품 버튼" },
     { key: "home_season_image", label: "시즌 버튼" },
+    ...(consultEnabled ? [{ key: "home_consult_image" as ImageKey, label: "맞춤 주문하기 버튼" }] : []),
   ];
 
   return (
@@ -127,7 +131,7 @@ export default function HomeTab({ companyId, initialFeaturedImage, initialAllIma
         <h2 className="text-lg font-medium text-gray-900">홈 화면 이미지</h2>
         <p className="text-sm text-gray-400 mt-1">첫 화면 버튼에 표시될 이미지를 업로드하세요. 이미지가 없으면 텍스트만 표시됩니다.</p>
       </div>
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-6">
         {sections.map(({ key, label }) => (
           <ImageCard
             key={key}

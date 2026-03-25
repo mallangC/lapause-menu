@@ -1,0 +1,9 @@
+name = "lapause-menu"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+# 환경 변수는 Cloudflare Dashboard > Settings > Environment Variables 에서 설정
+
+[assets]
+directory = ".open-next/assets"

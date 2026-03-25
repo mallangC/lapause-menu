@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 
@@ -13,22 +13,35 @@ interface Props {
   initialKakaoChannelUrl: string | null;
   initialInstagramUrl: string | null;
   initialYoutubeUrl: string | null;
-  onSave: (name: string, logo: string | null, naverTalkUrl: string | null, kakaoChannelUrl: string | null, instagramUrl: string | null, youtubeUrl: string | null) => void;
+  onSave: (name: string, logo: string | null, locationUrl: string | null, kakaoChannelUrl: string | null, instagramUrl: string | null, youtubeUrl: string | null) => void;
 }
 
 export default function CompanyInfoTab({ companyId, initialName, initialLogo, slug, initialNaverTalkUrl, initialKakaoChannelUrl, initialInstagramUrl, initialYoutubeUrl, onSave }: Props) {
   const [name, setName] = useState(initialName);
   const [logoUrl, setLogoUrl] = useState<string | null>(initialLogo);
-  const [naverTalkUrl, setNaverTalkUrl] = useState(initialNaverTalkUrl ?? "");
+  const [locationUrl, setNaverTalkUrl] = useState(initialNaverTalkUrl ?? "");
   const [kakaoChannelUrl, setKakaoChannelUrl] = useState(initialKakaoChannelUrl ?? "");
   const [instagramUrl, setInstagramUrl] = useState(initialInstagramUrl ?? "");
   const [youtubeUrl, setYoutubeUrl] = useState(initialYoutubeUrl ?? "");
+  const [notificationEmail, setNotificationEmail] = useState("");
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
+
+  useEffect(() => {
+    supabase
+      .from("companies")
+      .select("notification_email")
+      .eq("id", companyId)
+      .single()
+      .then(({ data }) => {
+        if (data?.notification_email) setNotificationEmail(data.notification_email);
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companyId]);
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -63,10 +76,11 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
       .update({
         name,
         logo_image: logoUrl,
-        naver_talk_url: naverTalkUrl || null,
+        location_url: locationUrl || null,
         kakao_channel_url: kakaoChannelUrl || null,
         instagram_url: instagramUrl || null,
         youtube_url: youtubeUrl || null,
+        notification_email: notificationEmail || null,
       })
       .eq("id", companyId);
 
@@ -74,7 +88,7 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
       setError(updateError.message);
     } else {
       setSuccess(true);
-      onSave(name, logoUrl, naverTalkUrl || null, kakaoChannelUrl || null, instagramUrl || null, youtubeUrl || null);
+      onSave(name, logoUrl, locationUrl || null, kakaoChannelUrl || null, instagramUrl || null, youtubeUrl || null);
     }
     setLoading(false);
   };
@@ -143,14 +157,15 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
           </div>
         </div>
 
-        {/* 네이버 톡톡 */}
+        {/* 매장 위치 */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">네이버 예약 URL</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">매장 위치 URL</label>
+          <p className="text-xs text-gray-400 mb-1.5">네이버 지도, 카카오맵 등 지도 링크를 입력하세요.</p>
           <input
             type="url"
-            value={naverTalkUrl}
+            value={locationUrl}
             onChange={(e) => setNaverTalkUrl(e.target.value)}
-            placeholder="https://naver.me/..."
+            placeholder="https://naver.me/... 또는 https://place.map.kakao.com/..."
             className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
           />
         </div>
@@ -193,6 +208,21 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
             URL을 입력한 항목만 홈 화면에 버튼으로 노출됩니다.
           </p>
         </div>
+
+        {/* 예약 알림 이메일 */}
+        {/* <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">예약 알림 이메일</label>
+          <input
+            type="email"
+            value={notificationEmail}
+            onChange={(e) => setNotificationEmail(e.target.value)}
+            placeholder="예약 접수 시 알림을 받을 이메일"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
+          />
+          <p className="text-xs text-gray-400 mt-2">
+            기본적으로 로그인 계정 이메일로 발송됩니다. 다른 이메일로 받고 싶을 때만 입력하세요.
+          </p>
+        </div> */}
 
         <button
           type="submit"

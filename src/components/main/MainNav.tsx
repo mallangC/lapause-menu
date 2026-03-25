@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, Dispatch, SetStateAction } from "react";
+import Link from "next/link";
 import { FilterState } from "@/types";
 import { SEASONS } from "@/lib/constants";
 import { EMPTY_FILTER } from "@/lib/filter";
@@ -12,9 +13,11 @@ interface MainNavProps {
   setMobileFilterOpen: Dispatch<SetStateAction<boolean>>;
   hiddenProductTypes?: string[];
   hiddenSeasons?: string[];
+  consultEnabled?: boolean;
+  slug?: string;
 }
 
-export default function MainNav({ filter, setFilter, setMobileFilterOpen, hiddenProductTypes = [], hiddenSeasons = [] }: MainNavProps) {
+export default function MainNav({ filter, setFilter, setMobileFilterOpen, hiddenProductTypes = [], hiddenSeasons = [], consultEnabled = false, slug }: MainNavProps) {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const dropdownTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -104,6 +107,15 @@ export default function MainNav({ filter, setFilter, setMobileFilterOpen, hidden
             </div>
           )}
         </div>
+
+        {consultEnabled && slug && (
+          <Link
+            href={`/${slug}/consult`}
+            className="ml-3 my-auto px-4 py-1.5 rounded-lg bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors whitespace-nowrap"
+          >
+            맞춤 주문하기
+          </Link>
+        )}
 
       </div>
     </nav>

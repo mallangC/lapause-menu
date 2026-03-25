@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "꽃집 메뉴",
-  description: "꽃집 메뉴 - 다발, 바구니, 센터피스, 화병꽂이",
+  title: "Flo Aide",
+  description: "Flo Aide - 꽃집 전자 메뉴 및 상담 예약 서비스",
 };
 
 export default function RootLayout({

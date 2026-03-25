@@ -5,7 +5,7 @@ export interface Company {
   logo_image: string | null;
   owner_id: string;
   created_at: string;
-  naver_talk_url: string | null;
+  location_url: string | null;
   kakao_channel_url: string | null;
   instagram_url: string | null;
   youtube_url: string | null;
@@ -24,6 +24,7 @@ export interface Product {
   flower_colors: string[];
   wrapping_color: "밝은 계열" | "어두운 계열" | "기타";
   seasons: string[];
+  mood: string | null;
   company_id: string;
   is_popular: boolean;
   is_recommended: boolean;
@@ -35,6 +36,7 @@ export interface FilterState {
   productTypes: string[];
   flowerColors: string[];
   wrappingColors: string[];
+  moods: string[];
   seasons: string[];
   featured: boolean;
   isSeason: boolean;

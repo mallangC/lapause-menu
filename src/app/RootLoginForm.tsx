@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
 export default function RootLoginForm() {
@@ -25,6 +26,18 @@ export default function RootLoginForm() {
     if (authError || !authData.user) {
       setError("이메일 또는 비밀번호가 올바르지 않습니다.");
       setLoading(false);
+      return;
+    }
+
+    // operator role 체크
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("user_id", authData.user.id)
+      .single();
+
+    if (profile?.role === "operator") {
+      router.push("/admin/dashboard");
       return;
     }
 
@@ -87,6 +100,12 @@ export default function RootLoginForm() {
       >
         {loading ? "로그인 중..." : "로그인"}
       </button>
+
+      <div className="flex items-center justify-center gap-3 pt-2">
+        <Link href="/terms" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">이용약관</Link>
+        <span className="text-gray-200 text-xs">·</span>
+        <Link href="/privacy" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">개인정보처리방침</Link>
+      </div>
     </form>
   );
 }

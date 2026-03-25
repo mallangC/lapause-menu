@@ -3,21 +3,36 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { generateThemeVars, DEFAULT_THEME_BG, DEFAULT_THEME_ACCENT } from "@/lib/theme";
+import { PRODUCT_TYPES, SEASONS } from "@/lib/constants";
+import HomeTab from "./HomeTab";
 
 interface Props {
   companyId: string;
   initialBg: string;
   initialAccent: string;
+  initialHiddenProductTypes: string[];
+  initialHiddenSeasons: string[];
+  initialFeaturedImage: string | null;
+  initialAllImage: string | null;
+  initialSeasonImage: string | null;
+  initialConsultImage: string | null;
+  consultEnabled: boolean;
   onThemeChange: (bg: string, accent: string) => void;
-  onSignOut: () => void;
+  onMenuSave: (hiddenProductTypes: string[], hiddenSeasons: string[]) => void;
 }
 
-export default function SettingsTab({ companyId, initialBg, initialAccent, onThemeChange, onSignOut }: Props) {
+export default function SettingsTab({ companyId, initialBg, initialAccent, initialHiddenProductTypes, initialHiddenSeasons, initialFeaturedImage, initialAllImage, initialSeasonImage, initialConsultImage, consultEnabled, onThemeChange, onMenuSave }: Props) {
   const [bg, setBg] = useState(initialBg);
   const [accent, setAccent] = useState(initialAccent);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [hiddenProductTypes, setHiddenProductTypes] = useState<string[]>(initialHiddenProductTypes);
+  const [hiddenSeasons, setHiddenSeasons] = useState<string[]>(initialHiddenSeasons);
+  const [menuSaving, setMenuSaving] = useState(false);
+  const [menuSaved, setMenuSaved] = useState(false);
+
   const supabase = createClient();
 
   const previewVars = generateThemeVars(bg, accent);
@@ -46,12 +61,105 @@ export default function SettingsTab({ companyId, initialBg, initialAccent, onThe
     setAccent(DEFAULT_THEME_ACCENT);
   };
 
+  const toggleProductType = (type: string) => {
+    setHiddenProductTypes((prev) => prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]);
+    setMenuSaved(false);
+  };
+
+  const toggleSeason = (season: string) => {
+    setHiddenSeasons((prev) => prev.includes(season) ? prev.filter((s) => s !== season) : [...prev, season]);
+    setMenuSaved(false);
+  };
+
+  const handleMenuSave = async () => {
+    setMenuSaving(true);
+    await supabase
+      .from("companies")
+      .update({ hidden_product_types: hiddenProductTypes, hidden_seasons: hiddenSeasons })
+      .eq("id", companyId);
+    setMenuSaving(false);
+    setMenuSaved(true);
+    onMenuSave(hiddenProductTypes, hiddenSeasons);
+  };
+
   return (
-    <div className="max-w-md space-y-8">
+    <div className="space-y-8">
       <h2 className="text-xl font-medium text-gray-900">설정</h2>
 
-      {/* 색상 설정 */}
+      {/* 홈 화면 이미지 */}
       <div>
+        <HomeTab
+          companyId={companyId}
+          initialFeaturedImage={initialFeaturedImage}
+          initialAllImage={initialAllImage}
+          initialSeasonImage={initialSeasonImage}
+          initialConsultImage={initialConsultImage}
+          consultEnabled={consultEnabled}
+        />
+      </div>
+
+      {/* 메뉴 설정 */}
+      <div className="border-t border-gray-200 pt-6 space-y-6">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900 mb-1">메뉴 설정</h3>
+          <p className="text-xs text-gray-400">고객 화면의 필터에서 숨길 항목을 선택하세요.</p>
+        </div>
+
+        <div>
+          <p className="text-sm font-medium text-gray-700 mb-2">상품 유형 숨김</p>
+          <div className="grid grid-cols-3 gap-2">
+            {PRODUCT_TYPES.map((type) => {
+              const isHidden = hiddenProductTypes.includes(type);
+              return (
+                <button
+                  key={type}
+                  onClick={() => toggleProductType(type)}
+                  className={`py-2 px-3 rounded-lg border text-sm transition-colors ${
+                    isHidden
+                      ? "border-red-300 bg-red-50 text-red-500 font-medium"
+                      : "border-gray-200 text-gray-700 hover:border-gray-300"
+                  }`}
+                >
+                  {isHidden ? `${type} (숨김)` : type}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div>
+          <p className="text-sm font-medium text-gray-700 mb-2">시즌 숨김</p>
+          <div className="grid grid-cols-3 gap-2">
+            {SEASONS.map((season) => {
+              const isHidden = hiddenSeasons.includes(season);
+              return (
+                <button
+                  key={season}
+                  onClick={() => toggleSeason(season)}
+                  className={`py-2 px-3 rounded-lg border text-sm transition-colors ${
+                    isHidden
+                      ? "border-red-300 bg-red-50 text-red-500 font-medium"
+                      : "border-gray-200 text-gray-700 hover:border-gray-300"
+                  }`}
+                >
+                  {isHidden ? `${season} (숨김)` : season}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <button
+          onClick={handleMenuSave}
+          disabled={menuSaving}
+          className="bg-gold-500 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-gold-600 transition-colors disabled:opacity-50"
+        >
+          {menuSaving ? "저장 중..." : menuSaved ? "저장됨 ✓" : "저장"}
+        </button>
+      </div>
+
+      {/* 사이트 색상 */}
+      <div className="border-t border-gray-200 pt-6">
         <h3 className="text-sm font-semibold text-gray-900 mb-4">사이트 색상</h3>
 
         <div className="space-y-4">
@@ -161,16 +269,6 @@ export default function SettingsTab({ companyId, initialBg, initialAccent, onThe
         </div>
       </div>
 
-      {/* 계정 */}
-      <div className="border-t border-gray-200 pt-6">
-        <h3 className="text-sm font-semibold text-gray-900 mb-3">계정</h3>
-        <button
-          onClick={onSignOut}
-          className="px-4 py-2 rounded-lg border border-red-200 text-red-500 text-sm hover:bg-red-50 transition-colors"
-        >
-          로그아웃
-        </button>
-      </div>
     </div>
   );
 }

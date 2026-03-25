@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { Product, ProductInput } from "@/types";
-import { PRODUCT_TYPES, FLOWER_COLORS, WRAPPING_COLORS, FLOWER_COLOR_MAP, SEASONS, STORAGE_BUCKET, BADGE_COLORS } from "@/lib/constants";
+import { PRODUCT_TYPES, FLOWER_COLORS, WRAPPING_COLORS, FLOWER_COLOR_MAP, SEASONS, STORAGE_BUCKET, BADGE_COLORS, MOODS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
 
 interface FormSelectProps {
@@ -79,6 +79,7 @@ const DEFAULT_INPUT: ProductInput = {
   flower_colors: [],
   wrapping_color: "밝은 계열",
   seasons: [],
+  mood: null,
   is_popular: false,
   is_recommended: false,
   status: "active",
@@ -95,6 +96,7 @@ export default function ProductForm({ initialData, onSubmit }: ProductFormProps)
           flower_colors: initialData.flower_colors,
           wrapping_color: initialData.wrapping_color,
           seasons: initialData.seasons,
+          mood: initialData.mood ?? null,
           is_popular: initialData.is_popular,
           is_recommended: initialData.is_recommended,
           status: initialData.status ?? "active",
@@ -194,32 +196,39 @@ export default function ProductForm({ initialData, onSubmit }: ProductFormProps)
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          상품명 <span className="text-red-500">*</span>
-        </label>
-        <input
-          type="text"
-          required
-          value={data.name}
-          onChange={(e) => setData({ ...data, name: e.target.value })}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:border-gray-500"
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          가격 (원) <span className="text-red-500">*</span>
-        </label>
-        <input
-          type="number"
-          required
-          min={0}
-          value={data.price === 0 ? "" : data.price}
-          onChange={(e) => setData({ ...data, price: Number(e.target.value) || 0 })}
-          placeholder="0"
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:border-gray-500"
-        />
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            상품명 <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            required
+            value={data.name}
+            onChange={(e) => setData({ ...data, name: e.target.value })}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:border-gray-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            상품 가격 <span className="text-red-500">*</span>
+          </label>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              inputMode="numeric"
+              required
+              value={data.price === 0 ? "" : data.price.toLocaleString()}
+              onChange={(e) => {
+                const raw = e.target.value.replace(/,/g, "");
+                if (/^\d*$/.test(raw)) setData({ ...data, price: Number(raw) || 0 });
+              }}
+              placeholder="0"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:border-gray-500"
+            />
+            <span className="text-sm text-gray-500 shrink-0">원</span>
+          </div>
+        </div>
       </div>
 
       {/* 이미지 업로드 */}
@@ -324,8 +333,8 @@ export default function ProductForm({ initialData, onSubmit }: ProductFormProps)
                 onClick={() => toggleFlowerColor(color)}
                 className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border-2 text-sm transition-all ${
                   selected
-                    ? "border-gray-900 bg-gray-900 text-white font-medium scale-105 shadow-sm"
-                    : "border-gray-200 bg-white text-gray-700 hover:border-gray-400"
+                    ? "border-gold-500 bg-gold-500 text-white font-medium"
+                    : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
                 }`}
               >
                 <span
@@ -348,6 +357,26 @@ export default function ProductForm({ initialData, onSubmit }: ProductFormProps)
           options={WRAPPING_COLORS.map((wc) => ({ value: wc, label: wc }))}
           onChange={(v) => setData({ ...data, wrapping_color: v as ProductInput["wrapping_color"] })}
         />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">분위기</label>
+        <div className="grid grid-cols-2 gap-2">
+          {MOODS.map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setData({ ...data, mood: data.mood === m ? null : m })}
+              className={`px-3 py-1.5 rounded-xl text-sm border-2 font-medium transition-all ${
+                data.mood === m
+                  ? "border-gold-500 bg-gold-500 text-white"
+                  : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
+              }`}
+            >
+              {m}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div>

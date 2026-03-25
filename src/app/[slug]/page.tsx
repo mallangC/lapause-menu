@@ -14,7 +14,7 @@ export default async function CompanyMenuPage({ params }: Props) {
 
   const { data: company } = await supabase
     .from("companies")
-    .select("id, name, logo_image, theme_bg, theme_accent, home_featured_image, home_all_image, home_season_image, naver_talk_url, kakao_channel_url, instagram_url, youtube_url, hidden_product_types, hidden_seasons")
+    .select("id, name, logo_image, theme_bg, theme_accent, home_featured_image, home_all_image, home_season_image, home_consult_image, location_url, kakao_channel_url, instagram_url, youtube_url, hidden_product_types, hidden_seasons, consult_enabled")
     .eq("slug", slug)
     .single();
 
@@ -42,12 +42,14 @@ export default async function CompanyMenuPage({ params }: Props) {
       homeFeaturedImage={company.home_featured_image ?? null}
       homeAllImage={company.home_all_image ?? null}
       homeSeasonImage={company.home_season_image ?? null}
-      naverTalkUrl={company.naver_talk_url ?? null}
+      homeConsultImage={company.home_consult_image ?? null}
+      locationUrl={company.location_url ?? null}
       kakaoChannelUrl={company.kakao_channel_url ?? null}
       instagramUrl={company.instagram_url ?? null}
       youtubeUrl={company.youtube_url ?? null}
       hiddenProductTypes={company.hidden_product_types ?? []}
       hiddenSeasons={company.hidden_seasons ?? []}
+      consultEnabled={company.consult_enabled ?? false}
     />
   );
 }

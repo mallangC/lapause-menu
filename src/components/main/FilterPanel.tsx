@@ -2,7 +2,7 @@
 
 import { Dispatch, SetStateAction } from "react";
 import { FilterState } from "@/types";
-import { PRODUCT_TYPES, FLOWER_COLORS, FLOWER_COLOR_MAP, WRAPPING_COLORS } from "@/lib/constants";
+import { PRODUCT_TYPES, FLOWER_COLORS, FLOWER_COLOR_MAP, WRAPPING_COLORS, MOODS } from "@/lib/constants";
 import { EMPTY_FILTER } from "@/lib/filter";
 
 interface FilterPanelProps {
@@ -15,7 +15,8 @@ export default function FilterPanel({ filter, setFilter, hiddenProductTypes = []
   const hasFilter =
     filter.productTypes.length > 0 ||
     filter.flowerColors.length > 0 ||
-    filter.wrappingColors.length > 0;
+    filter.wrappingColors.length > 0 ||
+    filter.moods.length > 0;
 
   const toggleProductType = (type: string) =>
     setFilter((f) => ({
@@ -45,6 +46,16 @@ export default function FilterPanel({ filter, setFilter, hiddenProductTypes = []
       wrappingColors: f.wrappingColors.includes(wc)
         ? f.wrappingColors.filter((c) => c !== wc)
         : [...f.wrappingColors, wc],
+    }));
+
+  const toggleMood = (mood: string) =>
+    setFilter((f) => ({
+      ...f,
+      featured: false,
+      seasons: [],
+      moods: f.moods.includes(mood)
+        ? f.moods.filter((m) => m !== mood)
+        : [...f.moods, mood],
     }));
 
   return (
@@ -101,6 +112,25 @@ export default function FilterPanel({ filter, setFilter, hiddenProductTypes = []
               }`}
             >
               {wc}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-4">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-gold-500 mb-2">분위기</h3>
+        <div className="grid grid-cols-1 gap-1">
+          {MOODS.map((mood) => (
+            <button
+              key={mood}
+              onClick={() => toggleMood(mood)}
+              className={`text-left text-sm px-3 py-1.5 rounded-lg border transition-colors ${
+                filter.moods.includes(mood)
+                  ? "border-gold-400 bg-gold-400 text-white font-medium"
+                  : "border-gold-500/50 text-foreground hover:bg-gold-500/50"
+              }`}
+            >
+              {mood}
             </button>
           ))}
         </div>

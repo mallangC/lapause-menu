@@ -8,6 +8,8 @@ import { createClient } from "@/lib/supabase/client";
 type SlugStatus = "idle" | "checking" | "available" | "taken";
 
 export default function SetupForm() {
+  const [ownerName, setOwnerName] = useState("");
+  const [ownerPhone, setOwnerPhone] = useState("");
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [slugStatus, setSlugStatus] = useState<SlugStatus>("idle");
@@ -80,6 +82,11 @@ export default function SetupForm() {
       return;
     }
 
+    if (!/^010\d{8}$/.test(ownerPhone)) {
+      setError("010으로 시작하는 11자리 숫자를 입력해주세요.");
+      return;
+    }
+
     setLoading(true);
 
     const { data: { user } } = await supabase.auth.getUser();
@@ -99,6 +106,11 @@ export default function SetupForm() {
       return;
     }
 
+    await supabase
+      .from("profiles")
+      .update({ name: ownerName, phone_number: ownerPhone })
+      .eq("user_id", user.id);
+
     router.push(`/${slug}/admin/dashboard`);
   };
 
@@ -110,9 +122,42 @@ export default function SetupForm() {
         </div>
       )}
 
+      {/* 담당자 정보 */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-sm font-medium text-gray-800 mb-1">
+            담당자 이름 <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            required
+            value={ownerName}
+            onChange={(e) => setOwnerName(e.target.value)}
+            placeholder="홍길동"
+            className="w-full border border-beige-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gold-400"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-800 mb-1">
+            휴대폰 번호 <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="tel"
+            required
+            value={ownerPhone}
+            onChange={(e) => {
+              const d = e.target.value.replace(/\D/g, "");
+              if (d.length <= 11) setOwnerPhone(d);
+            }}
+            placeholder="01012345678"
+            className="w-full border border-beige-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gold-400"
+          />
+        </div>
+      </div>
+
       {/* 로고 */}
       <div>
-        <label className="block text-sm font-medium text-foreground mb-2">로고 이미지</label>
+        <label className="block text-sm font-medium text-gray-800 mb-2">로고 이미지</label>
         {logoUrl ? (
           <div className="relative w-24 h-24 rounded-xl overflow-hidden border border-beige-300">
             <Image src={logoUrl} alt="로고" fill className="object-contain p-2" />
@@ -139,7 +184,7 @@ export default function SetupForm() {
 
       {/* 회사 이름 */}
       <div>
-        <label className="block text-sm font-medium text-foreground mb-1">
+        <label className="block text-sm font-medium text-gray-800 mb-1">
           회사 이름 <span className="text-red-500">*</span>
         </label>
         <input
@@ -154,11 +199,11 @@ export default function SetupForm() {
 
       {/* URL 슬러그 */}
       <div>
-        <label className="block text-sm font-medium text-foreground mb-1">
+        <label className="block text-sm font-medium text-gray-800 mb-1">
           가게 주소 <span className="text-red-500">*</span>
         </label>
         <div className="flex items-center gap-1">
-          <span className="text-sm text-beige-400 shrink-0">사이트주소/</span>
+          <span className="text-sm text-gray-500 shrink-0">사이트주소/</span>
           <input
             type="text"
             required
@@ -172,7 +217,7 @@ export default function SetupForm() {
           {slugStatus === "checking" && <p className="text-xs text-gray-400">확인 중...</p>}
           {slugStatus === "available" && <p className="text-xs text-emerald-600">사용 가능한 URL입니다.</p>}
           {slugStatus === "taken" && <p className="text-xs text-red-500">이미 사용 중인 URL입니다.</p>}
-          {slugStatus === "idle" && <p className="text-xs text-beige-400">영문 소문자, 숫자, 하이픈(-)만 사용 가능</p>}
+          {slugStatus === "idle" && <p className="text-xs text-gray-400">영문 소문자, 숫자, 하이픈(-)만 사용 가능</p>}
         </div>
       </div>
 

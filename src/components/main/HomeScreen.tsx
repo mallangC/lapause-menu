@@ -1,26 +1,33 @@
 import Image from "next/image";
+import Link from "next/link";
 
 interface HomeScreenProps {
+  slug?: string;
   homeFeaturedImage?: string | null;
   homeAllImage?: string | null;
   homeSeasonImage?: string | null;
-  naverTalkUrl?: string | null;
+  homeConsultImage?: string | null;
+  locationUrl?: string | null;
   kakaoChannelUrl?: string | null;
   instagramUrl?: string | null;
   youtubeUrl?: string | null;
+  consultEnabled?: boolean;
   onSelectFeatured: () => void;
   onSelectAll: () => void;
   onSelectSeason: () => void;
 }
 
 export default function HomeScreen({
+  slug,
   homeFeaturedImage,
   homeAllImage,
   homeSeasonImage,
-  naverTalkUrl,
+  homeConsultImage,
+  locationUrl,
   kakaoChannelUrl,
   instagramUrl,
   youtubeUrl,
+  consultEnabled = false,
   onSelectFeatured,
   onSelectAll,
   onSelectSeason,
@@ -31,11 +38,11 @@ export default function HomeScreen({
     { label: "시즌", image: homeSeasonImage, onClick: onSelectSeason },
   ];
 
-  const hasChannels = naverTalkUrl || kakaoChannelUrl || instagramUrl || youtubeUrl;
+  const hasChannels = locationUrl || kakaoChannelUrl || instagramUrl || youtubeUrl;
 
   return (
     <div className="max-w-4xl mx-auto px-4 pt-14 pb-14 flex flex-col items-center gap-16">
-      <div className="grid grid-cols-1 gap-4 w-full max-w-70 mx-auto md:max-w-none md:grid-cols-3 md:gap-6">
+      <div className={`grid grid-cols-1 gap-4 w-full max-w-70 mx-auto md:max-w-none md:gap-6 ${consultEnabled ? "md:grid-cols-4" : "md:grid-cols-3"}`}>
         {cards.map(({ label, image, onClick }) => (
           <button
             key={label}
@@ -59,21 +66,44 @@ export default function HomeScreen({
             </span>
           </button>
         ))}
+        {consultEnabled && (
+          <Link
+            href={`/${slug}/consult`}
+            className={`relative flex items-center justify-center overflow-hidden bg-beige-50 rounded-2xl aspect-square md:aspect-auto md:py-35 transition-all shadow-sm group ${
+              homeConsultImage ? "border-0" : "border border-gray-200 hover:border-gold-400"
+            }`}
+          >
+            {homeConsultImage && <Image src={homeConsultImage} alt="맞춤 주문하기" fill className="object-cover" />}
+            <div
+              className={`absolute inset-0 rounded-2xl transition-opacity ${
+                homeConsultImage ? "bg-black/15 group-hover:bg-black/25" : "group-hover:bg-gold-400/5"
+              }`}
+            />
+            <span
+              className={`relative text-3xl font-bold transition-colors text-center leading-tight px-4 ${
+                homeConsultImage ? "text-white" : "text-foreground group-hover:text-gold-500"
+              }`}
+            >
+              맞춤<br />주문하기
+            </span>
+          </Link>
+        )}
       </div>
 
       {hasChannels && (
         <div className="flex flex-row gap-8 justify-center">
-          {naverTalkUrl && (
-            <a href={naverTalkUrl} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-2 group">
+          {locationUrl && (
+            <a href={locationUrl} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-2 group">
               <span
                 className="w-14 h-14 rounded-full flex items-center justify-center shadow-sm transition-opacity group-hover:opacity-80"
-                style={{ backgroundColor: "#03C75A" }}
+                style={{ backgroundColor: "#56C0E0" }}
               >
-                <svg width="30" height="30" viewBox="0 0 24 24" fill="white">
-                  <path d="M13.554 12.627 10.256 7H7v10h3.446l-.001-5.627L13.744 17H17V7h-3.446z" />
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
+                  <circle cx="12" cy="9" r="2.5" />
                 </svg>
               </span>
-              <span className="text-xs text-gray-500 group-hover:text-gray-700 transition-colors">네이버 예약</span>
+              <span className="text-xs text-gray-500 group-hover:text-gray-700 transition-colors">매장 위치</span>
             </a>
           )}
           {kakaoChannelUrl && (

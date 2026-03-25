@@ -4,6 +4,7 @@ export const EMPTY_FILTER: FilterState = {
   productTypes: [],
   flowerColors: [],
   wrappingColors: [],
+  moods: [],
   seasons: [],
   featured: false,
   isSeason: false,
@@ -21,6 +22,7 @@ export function applyFilter(products: Product[], filter: FilterState): Product[]
     if (filter.featured && !p.is_popular && !p.is_recommended) return false;
     if (filter.productTypes.length > 0 && !filter.productTypes.includes(p.product_type)) return false;
     if (filter.flowerColors.length > 0 && !filter.flowerColors.some((c) => p.flower_colors.includes(c))) return false;
-    return !(filter.wrappingColors.length > 0 && !filter.wrappingColors.includes(p.wrapping_color));
+    if (filter.wrappingColors.length > 0 && !filter.wrappingColors.includes(p.wrapping_color)) return false;
+    return !(filter.moods.length > 0 && !filter.moods.includes(p.mood ?? ""));
   });
 }

@@ -82,8 +82,14 @@ export default function LoginForm({ slug }: Props) {
 
       <div className="text-center pt-2">
         <Link href="/notice" className="text-xs text-gray-400 hover:text-gray-600 transition-colors underline underline-offset-2">
-          꽃메뉴 사용법
+          Flo Aide 사용법
         </Link>
+      </div>
+
+      <div className="flex items-center justify-center gap-3">
+        <Link href="/terms" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">이용약관</Link>
+        <span className="text-gray-200 text-xs">·</span>
+        <Link href="/privacy" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">개인정보처리방침</Link>
       </div>
     </form>
   );
