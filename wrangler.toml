@@ -4,7 +4,10 @@ compatibility_flags = ["nodejs_compat"]
 main = ".open-next/worker.js"
 
 [vars]
-# 환경 변수는 Cloudflare Dashboard > Settings > Environment Variables 에서 설정
+NEXT_PUBLIC_SUPABASE_URL = ""
+NEXT_PUBLIC_SUPABASE_ANON_KEY = ""
+GMAIL_USER = ""
+GMAIL_APP_PASSWORD = ""
 
 [assets]
 directory = ".open-next/assets"
