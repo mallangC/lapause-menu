@@ -553,7 +553,7 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
 
         {/* ── STEP 3: 예약자 정보 & 확인 ── */}
         {step === 3 && (
-          <div className="space-y-6">
+          <div className="space-y-4">
             <div>
               <h2 className="text-lg font-medium text-gray-900 mb-1">예약 확인</h2>
               <p className="text-sm text-gray-500">정보를 확인하고 예약을 완료해주세요.</p>
@@ -643,7 +643,7 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
             </div>
 
             {/* 메세지 카드 / 쇼핑백 / 수령 방법 / 일시 / 요청사항 */}
-            <div className="space-y-5">
+            <div className="space-y-4">
               <div className="grid grid-cols-2 gap-6">
                 <Section title="메세지 카드" badge="+2,000원" required>
                   <div className="flex gap-2">
@@ -815,7 +815,7 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
               <h3 className="text-sm font-medium text-gray-700">
                 예약자 정보 <span className="text-red-400">*</span>
               </h3>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2 items-start">
               <input
                 type="text"
                 placeholder="이름"
