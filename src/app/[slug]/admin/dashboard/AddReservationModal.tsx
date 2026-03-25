@@ -344,8 +344,8 @@ export default function AddReservationModal({ companyId, onClose, onSaved, messa
             {/* 복사 방법 안내 모달 */}
             {showCopyInfo && (
               <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40" onClick={() => setShowCopyInfo(false)}>
-                <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 overflow-hidden" onClick={(e) => e.stopPropagation()}>
-                  <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 flex flex-col max-h-[85vh]" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
                     <h3 className="text-sm font-semibold text-gray-900">복사 방법 안내</h3>
                     <button type="button" onClick={() => setShowCopyInfo(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
                       <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -353,7 +353,7 @@ export default function AddReservationModal({ companyId, onClose, onSaved, messa
                       </svg>
                     </button>
                   </div>
-                  <div className="p-5 space-y-4">
+                  <div className="p-5 space-y-3 overflow-y-auto">
                     <div className="space-y-1.5 text-sm text-gray-600 leading-relaxed">
                       <p>네이버 예약 관리 페이지에서 예약 상세 내용을 아래 이미지의 범위대로 전체 선택 후 복사하여 붙여넣으세요.</p>
                       <ul className="list-disc list-inside text-xs text-gray-400 space-y-1 pl-1">
