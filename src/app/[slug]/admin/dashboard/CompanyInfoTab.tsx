@@ -13,16 +13,18 @@ interface Props {
   initialKakaoChannelUrl: string | null;
   initialInstagramUrl: string | null;
   initialYoutubeUrl: string | null;
+  initialPhone: string | null;
   onSave: (name: string, logo: string | null, locationUrl: string | null, kakaoChannelUrl: string | null, instagramUrl: string | null, youtubeUrl: string | null) => void;
 }
 
-export default function CompanyInfoTab({ companyId, initialName, initialLogo, slug, initialNaverTalkUrl, initialKakaoChannelUrl, initialInstagramUrl, initialYoutubeUrl, onSave }: Props) {
+export default function CompanyInfoTab({ companyId, initialName, initialLogo, slug, initialNaverTalkUrl, initialKakaoChannelUrl, initialInstagramUrl, initialYoutubeUrl, initialPhone, onSave }: Props) {
   const [name, setName] = useState(initialName);
   const [logoUrl, setLogoUrl] = useState<string | null>(initialLogo);
   const [locationUrl, setNaverTalkUrl] = useState(initialNaverTalkUrl ?? "");
   const [kakaoChannelUrl, setKakaoChannelUrl] = useState(initialKakaoChannelUrl ?? "");
   const [instagramUrl, setInstagramUrl] = useState(initialInstagramUrl ?? "");
   const [youtubeUrl, setYoutubeUrl] = useState(initialYoutubeUrl ?? "");
+  const [phone, setPhone] = useState(initialPhone ?? "");
   const [notificationEmail, setNotificationEmail] = useState("");
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -81,6 +83,7 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
         instagram_url: instagramUrl || null,
         youtube_url: youtubeUrl || null,
         notification_email: notificationEmail || null,
+        phone: phone || null,
       })
       .eq("id", companyId);
 
@@ -155,6 +158,21 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
             <span>사이트주소/</span>
             <span className="text-gray-900 font-medium">{slug}</span>
           </div>
+        </div>
+
+        {/* 매장 전화번호 */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">매장 전화번호</label>
+          <input
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
+            placeholder="01012345678"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
+          />
+          <p className="text-xs text-gray-400 mt-1.5">
+            매장 전화번호를 입력하지 않으면 고객에게 알림을 보낼 때 <span className="text-gray-500">내 정보</span>의 전화번호가 대신 사용됩니다.
+          </p>
         </div>
 
         {/* 매장 위치 */}

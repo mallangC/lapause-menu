@@ -18,7 +18,7 @@ export default async function DashboardPage({ params }: Props) {
   // 로그인한 사용자의 회사 확인 (slug와 owner_id 일치 검증)
   const { data: company } = await supabase
     .from("companies")
-    .select("id, name, logo_image, theme_bg, theme_accent, home_featured_image, home_all_image, home_season_image, home_consult_image, location_url, kakao_channel_url, instagram_url, youtube_url, hidden_product_types, hidden_seasons, consult_enabled")
+    .select("id, name, logo_image, theme_bg, theme_accent, home_featured_image, home_all_image, home_season_image, home_consult_image, location_url, kakao_channel_url, instagram_url, youtube_url, hidden_product_types, hidden_seasons, consult_enabled, phone")
     .eq("slug", slug)
     .eq("owner_id", user.id)
     .single();
@@ -42,6 +42,7 @@ export default async function DashboardPage({ params }: Props) {
     <DashboardClient
       slug={slug}
       userId={user.id}
+      userEmail={user.email ?? ""}
       profileName={profile?.name ?? ""}
       profilePhone={profile?.phone_number ?? ""}
       companyId={company.id}
@@ -58,6 +59,7 @@ export default async function DashboardPage({ params }: Props) {
       kakaoChannelUrl={company.kakao_channel_url ?? null}
       instagramUrl={company.instagram_url ?? null}
       youtubeUrl={company.youtube_url ?? null}
+      companyPhone={company.phone ?? null}
       hiddenProductTypes={company.hidden_product_types ?? []}
       hiddenSeasons={company.hidden_seasons ?? []}
       consultEnabled={company.consult_enabled ?? false}

@@ -8,17 +8,19 @@ import { generateThemeVars } from "@/lib/theme";
 import ProductForm from "@/components/admin/ProductForm";
 import ProductTable from "@/components/admin/ProductTable";
 import CompanyInfoTab from "./CompanyInfoTab";
+import MyInfoTab from "./MyInfoTab";
 import SettingsTab from "./SettingsTab";
 import ReservationSettingsTab from "./ReservationSettingsTab";
 import ReservationsTab from "./ReservationsTab";
 import StatsTab from "./StatsTab";
 import ProfileSetupModal from "./ProfileSetupModal";
 
-type Tab = "reservations" | "products" | "stats" | "company" | "reservation" | "settings";
+type Tab = "reservations" | "products" | "stats" | "company" | "reservation" | "settings" | "myinfo";
 
 interface Props {
   slug: string;
   userId: string;
+  userEmail: string;
   profileName: string;
   profilePhone: string;
   companyId: string;
@@ -35,13 +37,14 @@ interface Props {
   kakaoChannelUrl: string | null;
   instagramUrl: string | null;
   youtubeUrl: string | null;
+  companyPhone: string | null;
   hiddenProductTypes: string[];
   hiddenSeasons: string[];
   consultEnabled: boolean;
 }
 
-export default function DashboardClient({ slug, userId, profileName, profilePhone, companyId, companyName, logoImage, themeBg, themeAccent, initialProducts, homeFeaturedImage, homeAllImage, homeSeasonImage, homeConsultImage, locationUrl, kakaoChannelUrl, instagramUrl, youtubeUrl, hiddenProductTypes, hiddenSeasons, consultEnabled }: Props) {
-  const [activeTab, setActiveTab] = useState<Tab>("products");
+export default function DashboardClient({ slug, userId, userEmail, profileName, profilePhone, companyId, companyName, logoImage, themeBg, themeAccent, initialProducts, homeFeaturedImage, homeAllImage, homeSeasonImage, homeConsultImage, locationUrl, kakaoChannelUrl, instagramUrl, youtubeUrl, companyPhone, hiddenProductTypes, hiddenSeasons, consultEnabled }: Props) {
+  const [activeTab, setActiveTab] = useState<Tab>("reservations");
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [showProfileSetup, setShowProfileSetup] = useState(!profileName || !profilePhone);
   const [showForm, setShowForm] = useState(false);
@@ -110,12 +113,13 @@ export default function DashboardClient({ slug, userId, profileName, profilePhon
   };
 
   const tabs: { key: Tab; label: string }[] = [
-    { key: "products", label: "상품 관리" },
     { key: "reservations", label: "예약 관리" },
+    { key: "products", label: "상품 관리" },
     ...(consultEnabled ? [{ key: "stats" as Tab, label: "통계" }] : []),
     { key: "company", label: "회사 정보" },
     { key: "reservation", label: "예약 설정" },
     { key: "settings", label: "설정" },
+    { key: "myinfo", label: "내 정보" },
   ];
 
   return (
@@ -258,6 +262,7 @@ export default function DashboardClient({ slug, userId, profileName, profilePhon
                 initialKakaoChannelUrl={currentKakaoChannelUrl}
                 initialInstagramUrl={currentInstagramUrl}
                 initialYoutubeUrl={currentYoutubeUrl}
+                initialPhone={companyPhone}
                 onSave={(name, logo, naver, kakao, instagram, youtube) => {
                   setCurrentCompanyName(name);
                   setCurrentLogoImage(logo);
@@ -294,6 +299,17 @@ export default function DashboardClient({ slug, userId, profileName, profilePhon
                   setCurrentHiddenProductTypes(types);
                   setCurrentHiddenSeasons(seasons);
                 }}
+              />
+            </div>
+          )}
+
+          {activeTab === "myinfo" && (
+            <div className="bg-white border border-gray-200 rounded-xl p-6">
+              <MyInfoTab
+                slug={slug}
+                email={userEmail}
+                profileName={profileName}
+                profilePhone={profilePhone}
               />
             </div>
           )}

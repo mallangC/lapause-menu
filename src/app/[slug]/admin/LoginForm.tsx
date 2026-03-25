@@ -76,7 +76,7 @@ export default function LoginForm({ slug }: Props) {
       <button
         type="submit"
         disabled={loading}
-        className="w-full bg-gray-900 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-gray-700 disabled:opacity-50 transition-colors mt-2"
+        className="w-full bg-gold-500 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-gold-600 disabled:opacity-50 transition-colors mt-2"
       >
         {loading ? "로그인 중..." : "로그인"}
       </button>
