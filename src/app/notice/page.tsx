@@ -6,7 +6,7 @@ export default function NoticePage() {
     <div className="min-h-screen bg-beige-100">
 
       {/* 헤더 */}
-      <header className="border-b border-beige-200 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
+      <header className="border-b border-beige-200 bg-white/80 backdrop-blur-sm sticky top-0 z-20">
         <div className="max-w-3xl mx-auto px-5 py-4 flex items-center justify-between">
           <span className="text-base font-normal tracking-widest text-gold-500">Flo.Aide</span>
           <Link href="/" className="text-xs text-gray-400 hover:text-gray-700 transition-colors">
@@ -257,12 +257,15 @@ export default function NoticePage() {
               </div>
               <ul className="px-6 py-4 space-y-3">
                 {[
-                  { date: "03.24", text: "예약 관리 — 미확인 상태 추가, 달력에서 미확인 예약 날짜 빨간 점 표시", isNew: true },
-                  { date: "03.24", text: "통계 — 신규/재방문 고객 비율 추가", isNew: true },
-                  { date: "03.24", text: "홈 화면 이미지 — 맞춤 주문하기 버튼 배경 이미지 설정 추가", isNew: true },
-                  { date: "03.24", text: "예약자 이름 클릭 시 고객 프로필 모달 — 최근 주문 3건·메모 작성·수정", isNew: true },
-                  { date: "03.24", text: "고객 프로필 기능 추가 — 전화번호 기준 자동 생성, 신규(NEW) 뱃지 표시", isNew: true },
-                  { date: "03.24", text: "최초 가입 시 담당자 이름·연락처 입력 단계 추가", isNew: true },
+                  { date: "03.26", text: "내 정보 탭 추가 — 이메일·이름·전화번호 확인 및 비밀번호 변경", isNew: true },
+                  { date: "03.26", text: "회사 정보 — 매장 전화번호 입력 추가, 미입력 시 내 정보 전화번호 사용 안내", isNew: true },
+                  { date: "03.26", text: "비밀번호 재설정 — 이메일 링크를 통한 비밀번호 변경 기능 추가", isNew: true },
+                  { date: "03.24", text: "예약 관리 — 미확인 상태 추가, 달력에서 미확인 예약 날짜 빨간 점 표시", isNew: false },
+                  { date: "03.24", text: "통계 — 신규/재방문 고객 비율 추가", isNew: false },
+                  { date: "03.24", text: "홈 화면 이미지 — 맞춤 주문하기 버튼 배경 이미지 설정 추가", isNew: false },
+                  { date: "03.24", text: "예약자 이름 클릭 시 고객 프로필 모달 — 최근 주문 3건·메모 작성·수정", isNew: false },
+                  { date: "03.24", text: "고객 프로필 기능 추가 — 전화번호 기준 자동 생성, 신규(NEW) 뱃지 표시", isNew: false },
+                  { date: "03.24", text: "최초 가입 시 담당자 이름·연락처 입력 단계 추가", isNew: false },
                   { date: "03.23", text: "서비스 이름 Flo.Aide 확정", isNew: false },
                   { date: "03.23", text: "통계 탭 추가 — 월별 매출, 채널별·수령방법·상품유형 차트", isNew: false },
                   { date: "03.23", text: "탭 구조 개편 — 홈화면·메뉴설정을 설정 탭으로 통합", isNew: false },
