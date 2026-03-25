@@ -1,11 +1,12 @@
 import Link from "next/link";
+import FloAideFooter from "@/components/FloAideFooter";
 
 export default function TermsPage() {
   return (
     <div className="min-h-screen bg-beige-100">
       <header className="border-b border-beige-200 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-5 py-4 flex items-center justify-between">
-          <span className="text-base font-normal tracking-widest text-gold-500">Flo Aide</span>
+          <span className="text-base font-normal tracking-widest text-gold-500">Flo.Aide</span>
           <Link href="/" className="text-xs text-gray-400 hover:text-gray-700 transition-colors">
             ← 홈
           </Link>
@@ -23,7 +24,7 @@ export default function TermsPage() {
 
           <section className="bg-white rounded-2xl border border-beige-200 p-6 space-y-3">
             <h2 className="font-semibold text-gray-900 text-base">1. 서비스 소개</h2>
-            <p>Flo Aide(이하 "서비스")는 꽃집 사업자(이하 "회원")를 위한 메뉴 관리 및 예약 운영 서비스입니다. 본 약관은 서비스 운영자(이하 "운영자")와 회원 간의 이용 조건을 정합니다.</p>
+            <p>Flo.Aide(이하 "서비스")는 꽃집 사업자(이하 "회원")를 위한 메뉴 관리 및 예약 운영 서비스입니다. 본 약관은 서비스 운영자(이하 "운영자")와 회원 간의 이용 조건을 정합니다.</p>
           </section>
 
           <section className="bg-white rounded-2xl border border-beige-200 p-6 space-y-3">
@@ -96,7 +97,7 @@ export default function TermsPage() {
           <section className="bg-white rounded-2xl border border-beige-200 p-6 space-y-3">
             <h2 className="font-semibold text-gray-900 text-base">11. 문의</h2>
             <div className="bg-beige-50 rounded-xl p-4 text-xs text-gray-500 space-y-1">
-              <p><span className="font-medium text-gray-700">서비스명:</span> Flo Aide</p>
+              <p><span className="font-medium text-gray-700">서비스명:</span> Flo.Aide</p>
               <p><span className="font-medium text-gray-700">담당자:</span> 운영자</p>
               <p><span className="font-medium text-gray-700">이메일:</span> ckj9001@gmail.com</p>
             </div>
@@ -104,7 +105,7 @@ export default function TermsPage() {
 
         </div>
 
-        <div className="pb-8" />
+        <FloAideFooter />
       </main>
     </div>
   );

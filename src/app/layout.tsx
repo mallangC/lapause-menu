@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Flo Aide",
-  description: "Flo Aide - 꽃집 전자 메뉴 및 상담 예약 서비스",
+  title: "Flo.Aide",
+  description: "Flo.Aide - 꽃집 전자 메뉴 및 상담 예약 서비스",
   metadataBase: new URL("https://www.flo-aide.com"),
   verification: {
     other: {

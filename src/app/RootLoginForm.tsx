@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import FloAideFooter from "@/components/FloAideFooter";
 
 export default function RootLoginForm() {
   const [email, setEmail] = useState("");
@@ -106,6 +107,8 @@ export default function RootLoginForm() {
         <span className="text-gray-200 text-xs">·</span>
         <Link href="/privacy" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">개인정보처리방침</Link>
       </div>
+
+      <FloAideFooter />
     </form>
   );
 }

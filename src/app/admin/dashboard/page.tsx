@@ -14,7 +14,7 @@ export default async function OperatorDashboardPage() {
     .single();
   if (profile?.role !== "operator") redirect("/admin");
 
-  const [{ data: companies }, { data: reservations }] = await Promise.all([
+  const [{ data: companies }, { data: reservations }, { data: products }] = await Promise.all([
     supabase
       .from("companies")
       .select("id, name, slug, created_at, consult_enabled")
@@ -23,12 +23,16 @@ export default async function OperatorDashboardPage() {
       .from("reservations")
       .select("id, company_id, created_at, desired_date, status, final_price")
       .neq("status", "취소"),
+    supabase
+      .from("products")
+      .select("company_id"),
   ]);
 
   return (
     <OperatorDashboardClient
       companies={companies ?? []}
       reservations={reservations ?? []}
+      products={products ?? []}
     />
   );
 }

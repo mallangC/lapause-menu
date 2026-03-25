@@ -22,12 +22,17 @@ interface Reservation {
   final_price: number;
 }
 
+interface Product {
+  company_id: string;
+}
+
 interface Props {
   companies: Company[];
   reservations: Reservation[];
+  products: Product[];
 }
 
-export default function OperatorDashboardClient({ companies, reservations }: Props) {
+export default function OperatorDashboardClient({ companies, reservations, products }: Props) {
   const router = useRouter();
   const supabase = createClient();
 
@@ -92,13 +97,17 @@ export default function OperatorDashboardClient({ companies, reservations }: Pro
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paidReservations]);
 
-  // 가게별 현황
+  // 매장별 현황
   const companyRows = useMemo(() => {
     const countMap: Record<string, number> = {};
     const revenueMap: Record<string, number> = {};
     const thisMonthRevenueMap: Record<string, number> = {};
     const lastMap: Record<string, string> = {};
+    const productCountMap: Record<string, number> = {};
 
+    for (const p of products) {
+      productCountMap[p.company_id] = (productCountMap[p.company_id] ?? 0) + 1;
+    }
     for (const r of reservations) {
       if (!lastMap[r.company_id] || r.created_at > lastMap[r.company_id]) {
         lastMap[r.company_id] = r.created_at;
@@ -113,6 +122,7 @@ export default function OperatorDashboardClient({ companies, reservations }: Pro
     }
     return companies.map(c => ({
       ...c,
+      productCount: productCountMap[c.id] ?? 0,
       reservationCount: countMap[c.id] ?? 0,
       totalRevenue: revenueMap[c.id] ?? 0,
       thisMonthRevenue: thisMonthRevenueMap[c.id] ?? 0,
@@ -122,7 +132,7 @@ export default function OperatorDashboardClient({ companies, reservations }: Pro
       isInactive: !lastMap[c.id],
     }));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [companies, reservations, paidReservations]);
+  }, [companies, reservations, paidReservations, products]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -136,13 +146,13 @@ export default function OperatorDashboardClient({ companies, reservations }: Pro
     n >= 10000 ? `${(n / 10000).toFixed(1)}만` : `${n.toLocaleString()}`;
 
   const statCards = [
-    { label: "전체 가게", value: `${stats.totalCompanies}`, sub: "누적 가입" },
+    { label: "전체 매장", value: `${stats.totalCompanies}`, sub: "누적 가입" },
     { label: "이번 달 신규", value: `${stats.newThisMonth}`, sub: "가입" },
-    { label: "활성 가게", value: `${stats.activeCompanies}`, sub: "최근 30일" },
+    { label: "활성 매장", value: `${stats.activeCompanies}`, sub: "최근 30일" },
     { label: "이탈 위험", value: `${stats.atRiskCount}`, sub: "60일 이상 예약 없음", danger: stats.atRiskCount > 0 },
     { label: "누적 총 거래액", value: `${formatMoney(stats.totalGMV)}원`, sub: "취소 제외" },
     { label: "이번 달 거래액", value: `${formatMoney(stats.thisMonthGMV)}원`, sub: new Date().toLocaleDateString("ko-KR", { month: "long" }) },
-    { label: "맞춤 주문 사용률", value: `${stats.consultUsageRate}%`, sub: `${companies.filter(c => c.consult_enabled).length}/${stats.totalCompanies} 가게` },
+    { label: "맞춤 주문 사용률", value: `${stats.consultUsageRate}%`, sub: `${companies.filter(c => c.consult_enabled).length}/${stats.totalCompanies} 매장` },
   ];
 
   return (
@@ -150,7 +160,7 @@ export default function OperatorDashboardClient({ companies, reservations }: Pro
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div>
-            <span className="text-base font-medium text-gray-900">Flo Aide</span>
+            <span className="text-base font-medium text-gray-900">Flo.Aide</span>
             <span className="ml-2 text-xs text-gray-400">운영자 대시보드</span>
           </div>
           <button onClick={handleLogout} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">
@@ -194,18 +204,19 @@ export default function OperatorDashboardClient({ companies, reservations }: Pro
           </ResponsiveContainer>
         </div>
 
-        {/* 가게별 현황 */}
+        {/* 매장별 현황 */}
         <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100">
-            <h2 className="text-sm font-medium text-gray-900">가게별 현황</h2>
+            <h2 className="text-sm font-medium text-gray-900">매장별 현황</h2>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 text-xs text-gray-400">
-                  <th className="text-left px-6 py-3 font-medium">가게명</th>
+                  <th className="text-left px-6 py-3 font-medium">매장명</th>
                   <th className="text-left px-6 py-3 font-medium">URL</th>
                   <th className="text-left px-6 py-3 font-medium">가입일</th>
+                  <th className="text-right px-6 py-3 font-medium">상품 수</th>
                   <th className="text-right px-6 py-3 font-medium">총 예약</th>
                   <th className="text-right px-6 py-3 font-medium">누적 매출</th>
                   <th className="text-right px-6 py-3 font-medium">이번 달 매출</th>
@@ -220,6 +231,7 @@ export default function OperatorDashboardClient({ companies, reservations }: Pro
                     <td className="px-6 py-3.5 font-medium text-gray-900">{c.name}</td>
                     <td className="px-6 py-3.5 text-gray-400 text-xs">/{c.slug}</td>
                     <td className="px-6 py-3.5 text-gray-500">{formatDate(c.created_at)}</td>
+                    <td className="px-6 py-3.5 text-right text-gray-900 font-medium">{c.productCount}</td>
                     <td className="px-6 py-3.5 text-right text-gray-900 font-medium">{c.reservationCount}</td>
                     <td className="px-6 py-3.5 text-right text-gray-900 font-medium">{c.totalRevenue > 0 ? `${c.totalRevenue.toLocaleString()}원` : <span className="text-gray-300">—</span>}</td>
                     <td className="px-6 py-3.5 text-right text-gray-700">{c.thisMonthRevenue > 0 ? `${c.thisMonthRevenue.toLocaleString()}원` : <span className="text-gray-300">—</span>}</td>
@@ -245,7 +257,7 @@ export default function OperatorDashboardClient({ companies, reservations }: Pro
                 ))}
                 {companyRows.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="px-6 py-10 text-center text-gray-300 text-sm">가입된 가게가 없습니다.</td>
+                    <td colSpan={10} className="px-6 py-10 text-center text-gray-300 text-sm">가입된 매장이 없습니다.</td>
                   </tr>
                 )}
               </tbody>

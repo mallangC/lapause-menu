@@ -1,4 +1,5 @@
 import Link from "next/link";
+import FloAideFooter from "@/components/FloAideFooter";
 
 export default function NoticePage() {
   return (
@@ -7,7 +8,7 @@ export default function NoticePage() {
       {/* 헤더 */}
       <header className="border-b border-beige-200 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-5 py-4 flex items-center justify-between">
-          <span className="text-base font-normal tracking-widest text-gold-500">Flo Aide</span>
+          <span className="text-base font-normal tracking-widest text-gold-500">Flo.Aide</span>
           <Link href="/" className="text-xs text-gray-400 hover:text-gray-700 transition-colors">
             ← 로그인
           </Link>
@@ -262,7 +263,7 @@ export default function NoticePage() {
                   { date: "03.24", text: "예약자 이름 클릭 시 고객 프로필 모달 — 최근 주문 3건·메모 작성·수정", isNew: true },
                   { date: "03.24", text: "고객 프로필 기능 추가 — 전화번호 기준 자동 생성, 신규(NEW) 뱃지 표시", isNew: true },
                   { date: "03.24", text: "최초 가입 시 담당자 이름·연락처 입력 단계 추가", isNew: true },
-                  { date: "03.23", text: "서비스 이름 Flo Aide 확정", isNew: false },
+                  { date: "03.23", text: "서비스 이름 Flo.Aide 확정", isNew: false },
                   { date: "03.23", text: "통계 탭 추가 — 월별 매출, 채널별·수령방법·상품유형 차트", isNew: false },
                   { date: "03.23", text: "탭 구조 개편 — 홈화면·메뉴설정을 설정 탭으로 통합", isNew: false },
                   { date: "03.22", text: "고객 예약 시 관리자 이메일 알림 발송", isNew: false },
@@ -293,7 +294,7 @@ export default function NoticePage() {
           </div>
         </section>
 
-        <div className="pb-8" />
+        <FloAideFooter />
       </main>
     </div>
   );

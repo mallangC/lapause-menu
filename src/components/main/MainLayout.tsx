@@ -10,6 +10,7 @@ import ProductGrid from "./ProductGrid";
 import MainNav from "./MainNav";
 import MobileFilter from "./MobileFilter";
 import HomeScreen from "./HomeScreen";
+import FloAideFooter from "@/components/FloAideFooter";
 
 interface MainLayoutProps {
   products: Product[];
@@ -148,8 +149,10 @@ export default function MainLayout({
           <main>
             <ProductGrid products={filteredProducts} consultEnabled={consultEnabled} slug={slug} />
           </main>
+          <FloAideFooter />
         </div>
       )}
+
     </div>
   );
 }

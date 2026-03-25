@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import FloAideFooter from "@/components/FloAideFooter";
 
 interface HomeScreenProps {
   slug?: string;
@@ -147,6 +148,8 @@ export default function HomeScreen({
           )}
         </div>
       )}
+
+      <FloAideFooter />
     </div>
   );
 }
