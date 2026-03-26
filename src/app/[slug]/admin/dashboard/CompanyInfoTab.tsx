@@ -25,6 +25,9 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
   const [instagramUrl, setInstagramUrl] = useState(initialInstagramUrl ?? "");
   const [youtubeUrl, setYoutubeUrl] = useState(initialYoutubeUrl ?? "");
   const [phone, setPhone] = useState(initialPhone ?? "");
+  const [bankName, setBankName] = useState("");
+  const [bankAccount, setBankAccount] = useState("");
+  const [bankHolder, setBankHolder] = useState("");
   const [notificationEmail, setNotificationEmail] = useState("");
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -36,11 +39,14 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
   useEffect(() => {
     supabase
       .from("companies")
-      .select("notification_email")
+      .select("notification_email, bank_name, bank_account, bank_holder")
       .eq("id", companyId)
       .single()
       .then(({ data }) => {
         if (data?.notification_email) setNotificationEmail(data.notification_email);
+        if (data?.bank_name) setBankName(data.bank_name);
+        if (data?.bank_account) setBankAccount(data.bank_account);
+        if (data?.bank_holder) setBankHolder(data.bank_holder);
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId]);
@@ -84,6 +90,9 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
         youtube_url: youtubeUrl || null,
         notification_email: notificationEmail || null,
         phone: phone || null,
+        bank_name: bankName || null,
+        bank_account: bankAccount || null,
+        bank_holder: bankHolder || null,
       })
       .eq("id", companyId);
 
@@ -224,6 +233,46 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
           />
           <p className="text-xs text-gray-400 mt-2">
             URL을 입력한 항목만 홈 화면에 버튼으로 노출됩니다.
+          </p>
+        </div>
+
+        {/* 계좌 정보 */}
+        <div className="pt-2">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">계좌 정보</h3>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">은행</label>
+              <input
+                type="text"
+                value={bankName}
+                onChange={(e) => setBankName(e.target.value)}
+                placeholder="예: 국민은행"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">계좌번호</label>
+              <input
+                type="text"
+                value={bankAccount}
+                onChange={(e) => setBankAccount(e.target.value)}
+                placeholder="예: 000-0000-0000-00"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">계좌 명</label>
+              <input
+                type="text"
+                value={bankHolder}
+                onChange={(e) => setBankHolder(e.target.value)}
+                placeholder="예: 홍길동"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
+              />
+            </div>
+          </div>
+          <p className="text-xs text-gray-400 mt-3">
+            계좌번호를 확인해주세요. 계좌번호를 잘못 적어서 생기는 불이익은 책임지지 않습니다.
           </p>
         </div>
 
