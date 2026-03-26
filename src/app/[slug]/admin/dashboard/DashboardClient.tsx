@@ -113,6 +113,11 @@ export default function DashboardClient({ slug, userId, userEmail, profileName, 
     window.location.href = "/";
   };
 
+  const handleConsultToggle = (enabled: boolean) => {
+    setCurrentConsultEnabled(enabled);
+    if (!enabled && activeTab === "stats") setActiveTab("reservations");
+  };
+
   const tabs: { key: Tab; label: string; statsOnly?: boolean }[] = [
     { key: "reservations", label: "예약 관리" },
     { key: "products", label: "상품 관리" },
@@ -287,10 +292,7 @@ export default function DashboardClient({ slug, userId, userEmail, profileName, 
             <div className="bg-white border border-gray-200 rounded-xl p-6">
               <ReservationSettingsTab
                 companyId={companyId}
-                onConsultToggle={(enabled) => {
-                  setCurrentConsultEnabled(enabled);
-                  if (!enabled && activeTab === "stats") setActiveTab("reservations");
-                }}
+                onConsultToggle={handleConsultToggle}
               />
             </div>
           )}
