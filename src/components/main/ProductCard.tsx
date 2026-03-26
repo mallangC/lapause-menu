@@ -123,75 +123,74 @@ export default function ProductCard({ product, consultEnabled, slug }: ProductCa
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
           onClick={() => setModalOpen(false)}
         >
-          {consultEnabled ? (
-            /* 상품 상세 + 예약 버튼 모달 */
-            <div
-              className="bg-white rounded-2xl shadow-xl w-full max-w-xl overflow-hidden"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* 이미지 */}
-              <div className="relative aspect-square bg-beige-200">
-                {product.image_url ? (
-                  <Image src={product.image_url} alt={product.name} fill className="object-cover" />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center text-beige-400 text-5xl">🌸</div>
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 이미지 */}
+            <div className="relative aspect-square bg-beige-200">
+              {product.image_url ? (
+                <Image src={product.image_url} alt={product.name} fill className="object-cover" />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center text-beige-400 text-5xl">🌸</div>
+              )}
+              <div className="absolute top-3 left-3 flex flex-col gap-1">
+                {product.is_popular && (
+                  <span className="text-white text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: BADGE_COLORS.popular.bg }}>
+                    {BADGE_COLORS.popular.label}
+                  </span>
                 )}
-                <div className="absolute top-3 left-3 flex flex-col gap-1">
-                  {product.is_popular && (
-                    <span className="text-white text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: BADGE_COLORS.popular.bg }}>
-                      {BADGE_COLORS.popular.label}
-                    </span>
-                  )}
-                  {product.is_recommended && (
-                    <span className="text-white text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: BADGE_COLORS.recommended.bg }}>
-                      {BADGE_COLORS.recommended.label}
-                    </span>
-                  )}
-                </div>
-                <button
-                  onClick={() => setModalOpen(false)}
-                  className="absolute top-3 right-3 bg-black/40 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-black/60 transition-colors text-sm"
-                >
-                  ✕
-                </button>
+                {product.is_recommended && (
+                  <span className="text-white text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: BADGE_COLORS.recommended.bg }}>
+                    {BADGE_COLORS.recommended.label}
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={() => setModalOpen(false)}
+                className="absolute top-3 right-3 bg-black/40 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-black/60 transition-colors text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* 상품 정보 */}
+            <div className="p-4 space-y-3">
+              <div>
+                <p className="text-xs text-gold-500 font-medium">{product.product_type}</p>
+                <h3 className="font-semibold text-gray-900 text-base mt-0.5">{product.name}</h3>
+                <p className="text-lg font-bold text-gray-900 mt-2">{product.price.toLocaleString()}원</p>
               </div>
 
-              {/* 상품 정보 */}
-              <div className="p-4 space-y-3">
-                <div>
-                  <p className="text-xs text-gold-500 font-medium">{product.product_type}</p>
-                  <h3 className="font-semibold text-gray-900 text-base mt-0.5">{product.name}</h3>
-                  <p className="text-lg font-bold text-gray-900 mt-2">{product.price.toLocaleString()}원</p>
+              {(product.flower_colors.length > 0 || product.wrapping_color) && (
+                <div className="space-y-1.5 pt-3 border-t border-gray-100">
+                  {product.flower_colors.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-400 shrink-0">꽃 색상</span>
+                      <span className="text-xs text-gray-300 px-2">—</span>
+                      <div className="flex gap-1 flex-wrap">
+                        {product.flower_colors.map((color) => (
+                          <span
+                            key={color}
+                            className="w-4 h-4 rounded-full border border-gray-200 shrink-0"
+                            style={{ backgroundColor: FLOWER_COLOR_MAP[color] ?? "#a8a29e" }}
+                            title={color}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {product.wrapping_color && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-400 shrink-0">포장지</span>
+                      <span className="text-xs text-gray-300 pr-2 pl-2.5">—</span>
+                      <span className="text-xs text-gray-600">{product.wrapping_color}</span>
+                    </div>
+                  )}
                 </div>
+              )}
 
-                {(product.flower_colors.length > 0 || product.wrapping_color) && (
-                  <div className="space-y-1.5 pt-3 border-t border-gray-100">
-                    {product.flower_colors.length > 0 && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-400 shrink-0">꽃 색상</span>
-                        <span className="text-xs text-gray-300 px-2">—</span>
-                        <div className="flex gap-1 flex-wrap">
-                          {product.flower_colors.map((color) => (
-                            <span
-                              key={color}
-                              className="w-4 h-4 rounded-full border border-gray-200 shrink-0"
-                              style={{ backgroundColor: FLOWER_COLOR_MAP[color] ?? "#a8a29e" }}
-                              title={color}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {product.wrapping_color && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-400 shrink-0">포장지</span>
-                        <span className="text-xs text-gray-300 pr-2 pl-2.5">—</span>
-                        <span className="text-xs text-gray-600">{product.wrapping_color}</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-
+              {consultEnabled && (
                 <button
                   type="button"
                   onClick={() => setNoticeOpen(true)}
@@ -199,33 +198,9 @@ export default function ProductCard({ product, consultEnabled, slug }: ProductCa
                 >
                   이 상품으로 예약하기
                 </button>
-
-              </div>
+              )}
             </div>
-          ) : (
-            /* 기존 이미지 확대 모달 */
-            product.image_url && (
-              <div
-                className="relative max-w-[90vw] max-h-[90vh]"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <Image
-                  src={product.image_url}
-                  alt={product.name}
-                  width={900}
-                  height={900}
-                  className="rounded-xl object-contain max-h-[90vh] w-auto"
-                  style={{ maxWidth: "90vw" }}
-                />
-                <button
-                  onClick={() => setModalOpen(false)}
-                  className="absolute top-3 right-3 bg-black/50 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-black/70 transition-colors"
-                >
-                  ✕
-                </button>
-              </div>
-            )
-          )}
+          </div>
         </div>
       )}
 

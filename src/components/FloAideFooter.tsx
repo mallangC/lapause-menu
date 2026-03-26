@@ -27,7 +27,7 @@ export default function FloAideFooter() {
 
       {open && (
         <div className="mt-2 text-[10px] text-gray-400 space-y-0.5 leading-relaxed">
-          <p>상호명: 말랑 스튜디오 &nbsp;|&nbsp; 대표자: 최경재</p>
+          <p>상호명: 라포즈 플레르 스토어 &nbsp;|&nbsp; 대표자: 최경재</p>
           <p>사업자등록번호: 698-15-00460</p>
           {/* <p>통신판매업신고번호: 제0000-서울강남-0000호</p> */}
           <p>사업장 주소: 서울특별시 관악구 남부순환로 168나길 14-2</p>

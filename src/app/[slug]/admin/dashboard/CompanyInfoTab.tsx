@@ -171,7 +171,7 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
             className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
           />
           <p className="text-xs text-gray-400 mt-1.5">
-            매장 전화번호를 입력하지 않으면 고객에게 알림을 보낼 때 <span className="text-gray-500">내 정보</span>의 전화번호가 대신 사용됩니다.
+            매장 전화번호 입력시 고객에게 알림을 보낼 때 <span className="text-gray-500">내 정보</span>의 전화번호 대신 사용됩니다.
           </p>
         </div>
 

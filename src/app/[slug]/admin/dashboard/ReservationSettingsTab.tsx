@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 
 interface Props {
   companyId: string;
+  onConsultToggle?: (enabled: boolean) => void;
 }
 
 interface DayHours {
@@ -51,7 +52,7 @@ const DEFAULT_HOURS: BusinessHours = Object.fromEntries(
   Array.from({ length: 7 }, (_, i) => [String(i), { closed: i === 0, open: "09:00", close: "18:00" }])
 );
 
-export default function ReservationSettingsTab({ companyId }: Props) {
+export default function ReservationSettingsTab({ companyId, onConsultToggle }: Props) {
   const [consultEnabled, setConsultEnabled] = useState(false);
   const [businessHours, setBusinessHours] = useState<BusinessHours>(DEFAULT_HOURS);
   const [closedDates, setClosedDates] = useState<string[]>([]);
@@ -120,7 +121,10 @@ export default function ReservationSettingsTab({ companyId }: Props) {
       })
       .eq("id", companyId);
     if (err) setError(err.message);
-    else setSuccess(true);
+    else {
+      setSuccess(true);
+      onConsultToggle?.(consultEnabled);
+    }
     setLoading(false);
   };
 

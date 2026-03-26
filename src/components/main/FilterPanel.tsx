@@ -119,12 +119,12 @@ export default function FilterPanel({ filter, setFilter, hiddenProductTypes = []
 
       <div className="mt-4">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-gold-500 mb-2">분위기</h3>
-        <div className="grid grid-cols-1 gap-1">
+        <div className="grid grid-cols-2 gap-1">
           {MOODS.map((mood) => (
             <button
               key={mood}
               onClick={() => toggleMood(mood)}
-              className={`text-left text-sm px-3 py-1.5 rounded-lg border transition-colors ${
+              className={`text-center text-sm px-3 py-1.5 rounded-lg border transition-colors ${
                 filter.moods.includes(mood)
                   ? "border-gold-400 bg-gold-400 text-white font-medium"
                   : "border-gold-500/50 text-foreground hover:bg-gold-500/50"

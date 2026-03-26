@@ -9,7 +9,7 @@ export default function NoticePage() {
       <header className="border-b border-beige-200 bg-white/80 backdrop-blur-sm sticky top-0 z-20">
         <div className="max-w-3xl mx-auto px-5 py-4 flex items-center justify-between">
           <span className="text-base font-normal tracking-widest text-gold-500">Flo.Aide</span>
-          <Link href="/" className="text-xs text-gray-400 hover:text-gray-700 transition-colors">
+          <Link href="/login" className="text-xs text-gray-400 hover:text-gray-700 transition-colors">
             ← 로그인
           </Link>
         </div>

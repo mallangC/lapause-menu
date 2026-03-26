@@ -59,6 +59,7 @@ export default function DashboardClient({ slug, userId, userEmail, profileName, 
   const [currentYoutubeUrl, setCurrentYoutubeUrl] = useState(youtubeUrl);
   const [currentHiddenProductTypes, setCurrentHiddenProductTypes] = useState(hiddenProductTypes);
   const [currentHiddenSeasons, setCurrentHiddenSeasons] = useState(hiddenSeasons);
+  const [currentConsultEnabled, setCurrentConsultEnabled] = useState(consultEnabled);
   const supabase = createClient();
 
   useEffect(() => {
@@ -112,10 +113,10 @@ export default function DashboardClient({ slug, userId, userEmail, profileName, 
     window.location.href = "/";
   };
 
-  const tabs: { key: Tab; label: string }[] = [
+  const tabs: { key: Tab; label: string; statsOnly?: boolean }[] = [
     { key: "reservations", label: "예약 관리" },
     { key: "products", label: "상품 관리" },
-    ...(consultEnabled ? [{ key: "stats" as Tab, label: "통계" }] : []),
+    { key: "stats", label: "통계", statsOnly: true },
     { key: "company", label: "회사 정보" },
     { key: "reservation", label: "예약 설정" },
     { key: "settings", label: "설정" },
@@ -147,15 +148,19 @@ export default function DashboardClient({ slug, userId, userEmail, profileName, 
       <div className="md:hidden border-b border-gray-100 bg-white">
         <div className="flex justify-center">
           {tabs.map((tab) => (
-            <button
+            <div
               key={tab.key}
-              onClick={() => { setActiveTab(tab.key); setShowForm(false); setEditingProduct(null); setError(null); }}
-              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === tab.key ? "border-gold-500 text-gold-500" : "border-transparent text-gray-400 hover:text-gray-700"
-              }`}
+              className={`overflow-hidden transition-all duration-300 ${tab.statsOnly && !currentConsultEnabled ? "max-w-0 opacity-0" : "max-w-[120px] opacity-100"}`}
             >
-              {tab.label}
-            </button>
+              <button
+                onClick={() => { setActiveTab(tab.key); setShowForm(false); setEditingProduct(null); setError(null); }}
+                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                  activeTab === tab.key ? "border-gold-500 text-gold-500" : "border-transparent text-gray-400 hover:text-gray-700"
+                }`}
+              >
+                {tab.label}
+              </button>
+            </div>
           ))}
         </div>
       </div>
@@ -165,7 +170,10 @@ export default function DashboardClient({ slug, userId, userEmail, profileName, 
         <nav className="hidden md:block w-44 shrink-0">
           <ul className="space-y-1">
             {tabs.map((tab) => (
-              <li key={tab.key}>
+              <li
+                key={tab.key}
+                className={`overflow-hidden transition-all duration-300 ${tab.statsOnly && !currentConsultEnabled ? "max-h-0 opacity-0" : "max-h-12 opacity-100"}`}
+              >
                 <button
                   onClick={() => { setActiveTab(tab.key); setShowForm(false); setEditingProduct(null); setError(null); }}
                   className={`w-full text-left px-4 py-2.5 rounded-lg text-sm transition-colors ${
@@ -277,7 +285,13 @@ export default function DashboardClient({ slug, userId, userEmail, profileName, 
 
           {activeTab === "reservation" && (
             <div className="bg-white border border-gray-200 rounded-xl p-6">
-              <ReservationSettingsTab companyId={companyId} />
+              <ReservationSettingsTab
+                companyId={companyId}
+                onConsultToggle={(enabled) => {
+                  setCurrentConsultEnabled(enabled);
+                  if (!enabled && activeTab === "stats") setActiveTab("reservations");
+                }}
+              />
             </div>
           )}
 

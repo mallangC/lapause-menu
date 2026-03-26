@@ -76,7 +76,9 @@ export default function OperatorDashboardClient({ companies, reservations, produ
       .filter(r => new Date(r.created_at) >= thisMonthStart)
       .reduce((sum, r) => sum + (r.final_price || 0), 0);
 
-    return { totalCompanies, newThisMonth, activeCompanies, atRiskCount, totalGMV, thisMonthGMV, consultUsageRate };
+    const thisMonthReservations = reservations.filter(r => new Date(r.created_at) >= thisMonthStart).length;
+
+    return { totalCompanies, newThisMonth, activeCompanies, atRiskCount, totalGMV, thisMonthGMV, consultUsageRate, thisMonthReservations };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companies, reservations, paidReservations]);
 
@@ -153,6 +155,7 @@ export default function OperatorDashboardClient({ companies, reservations, produ
     { label: "누적 총 거래액", value: `${formatMoney(stats.totalGMV)}원`, sub: "취소 제외" },
     { label: "이번 달 거래액", value: `${formatMoney(stats.thisMonthGMV)}원`, sub: new Date().toLocaleDateString("ko-KR", { month: "long" }) },
     { label: "맞춤 주문 사용률", value: `${stats.consultUsageRate}%`, sub: `${companies.filter(c => c.consult_enabled).length}/${stats.totalCompanies} 매장` },
+    { label: "이번 달 예약 수", value: `${stats.thisMonthReservations}`, sub: new Date().toLocaleDateString("ko-KR", { month: "long" }) },
   ];
 
   return (
@@ -229,7 +232,11 @@ export default function OperatorDashboardClient({ companies, reservations, produ
                 {companyRows.map(c => (
                   <tr key={c.id} className={`transition-colors ${c.isAtRisk ? "bg-red-50/40 hover:bg-red-50" : c.isInactive ? "bg-gray-50/60 hover:bg-gray-50" : "hover:bg-gray-50"}`}>
                     <td className="px-6 py-3.5 font-medium text-gray-900">{c.name}</td>
-                    <td className="px-6 py-3.5 text-gray-400 text-xs">/{c.slug}</td>
+                    <td className="px-6 py-3.5 text-xs">
+                      <a href={`/${c.slug}`} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-600 hover:underline transition-colors">
+                        /{c.slug}
+                      </a>
+                    </td>
                     <td className="px-6 py-3.5 text-gray-500">{formatDate(c.created_at)}</td>
                     <td className="px-6 py-3.5 text-right text-gray-900 font-medium">{c.productCount}</td>
                     <td className="px-6 py-3.5 text-right text-gray-900 font-medium">{c.reservationCount}</td>

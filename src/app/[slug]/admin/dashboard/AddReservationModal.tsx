@@ -321,10 +321,10 @@ export default function AddReservationModal({ companyId, onClose, onSaved, messa
         <div className="p-6 space-y-4">
           {/* 네이버 예약 텍스트 붙여넣기 */}
           <div className="border border-dashed border-gray-200 rounded-xl overflow-hidden">
-            <button
-              type="button"
+            <div
+              role="button"
               onClick={() => setShowPaste((p) => !p)}
-              className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-gray-500 hover:bg-gray-50 transition-colors"
+              className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-gray-500 hover:bg-gray-50 transition-colors cursor-pointer"
             >
               <span className="font-medium">네이버 예약 자동 입력</span>
               <div className="flex items-center gap-2">
@@ -339,7 +339,7 @@ export default function AddReservationModal({ companyId, onClose, onSaved, messa
                   <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
                 </svg>
               </div>
-            </button>
+            </div>
 
             {/* 복사 방법 안내 모달 */}
             {showCopyInfo && (
