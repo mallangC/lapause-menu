@@ -25,10 +25,12 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
   const [instagramUrl, setInstagramUrl] = useState(initialInstagramUrl ?? "");
   const [youtubeUrl, setYoutubeUrl] = useState(initialYoutubeUrl ?? "");
   const [phone, setPhone] = useState(initialPhone ?? "");
+  const [address, setAddress] = useState("");
   const [bankName, setBankName] = useState("");
   const [bankAccount, setBankAccount] = useState("");
   const [bankHolder, setBankHolder] = useState("");
   const [notificationEmail, setNotificationEmail] = useState("");
+  const [consultEnabled, setConsultEnabled] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -39,14 +41,16 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
   useEffect(() => {
     supabase
       .from("companies")
-      .select("notification_email, bank_name, bank_account, bank_holder")
+      .select("notification_email, bank_name, bank_account, bank_holder, address, consult_enabled")
       .eq("id", companyId)
       .single()
       .then(({ data }) => {
         if (data?.notification_email) setNotificationEmail(data.notification_email);
+        if (data?.address) setAddress(data.address);
         if (data?.bank_name) setBankName(data.bank_name);
         if (data?.bank_account) setBankAccount(data.bank_account);
         if (data?.bank_holder) setBankHolder(data.bank_holder);
+        setConsultEnabled(data?.consult_enabled ?? false);
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId]);
@@ -93,6 +97,7 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
         bank_name: bankName || null,
         bank_account: bankAccount || null,
         bank_holder: bankHolder || null,
+        address: address || null,
       })
       .eq("id", companyId);
 
@@ -109,7 +114,7 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
     <div className="max-w-md">
       <h2 className="text-xl font-medium text-gray-900 mb-6">회사 정보</h2>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
           <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
         )}
@@ -169,21 +174,6 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
           </div>
         </div>
 
-        {/* 매장 전화번호 */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">매장 전화번호</label>
-          <input
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
-            placeholder="01012345678"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
-          />
-          <p className="text-xs text-gray-400 mt-1.5">
-            매장 전화번호 입력시 고객에게 알림을 보낼 때 <span className="text-gray-500">내 정보</span>의 전화번호 대신 사용됩니다.
-          </p>
-        </div>
-
         {/* 매장 위치 */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">매장 위치 URL</label>
@@ -236,10 +226,39 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
           </p>
         </div>
 
-        {/* 계좌 정보 */}
+        {/* 예약 알림 정보 */}
         <div className="pt-2">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">계좌 정보</h3>
-          <div className="space-y-3">
+          <div className="flex items-center gap-2 mb-1">
+            <h3 className="text-sm font-semibold text-gray-700">예약 알림 정보</h3>
+            {consultEnabled && (
+              <span className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">맞춤 주문 활성화 중 — 수정 불가</span>
+            )}
+          </div>
+          <p className="text-xs text-gray-400 mb-3">맞춤 주문 기능 활성화 및 카카오 알림톡 발송에 사용되는 정보입니다. <br/>5개 항목을 모두 입력해야 맞춤 주문을 활성화할 수 있습니다.</p>
+          <div className={`space-y-3 ${consultEnabled ? "opacity-50 pointer-events-none select-none" : ""}`}>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">매장 전화번호</label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
+                placeholder="01012345678"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
+              />
+              <p className="text-xs text-gray-400 mt-1.5">
+                따로 매장 전화번호가 없다면 핸드폰번호를 다시 입력해주세요.
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">매장 주소</label>
+              <input
+                type="text"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="예: 서울시 강남구 테헤란로 123"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
+              />
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">은행</label>
               <input
@@ -261,7 +280,7 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">계좌 명</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">예금주</label>
               <input
                 type="text"
                 value={bankHolder}
@@ -272,7 +291,7 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
             </div>
           </div>
           <p className="text-xs text-gray-400 mt-3">
-            계좌번호를 확인해주세요. 계좌번호를 잘못 적어서 생기는 불이익은 책임지지 않습니다.
+            계좌번호를 잘못 적어서 생기는 불이익은 책임지지 않습니다.
           </p>
         </div>
 

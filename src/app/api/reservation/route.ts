@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import nodemailer from "nodemailer";
-import { buildReservationNotificationHtml } from "@/lib/email";
+import { sendReservationConfirmedOwner } from "@/lib/solapi";
 
 interface ReservationBody {
   slug: string;
@@ -38,6 +37,7 @@ interface ReservationBody {
     name: string;
     phone: string;
   };
+  kakaoConsent?: boolean;
   delivery: {
     recipientName: string;
     recipientPhone: string;
@@ -55,14 +55,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "필수 정보가 누락되었습니다." }, { status: 400 });
     }
 
-    // 해당 꽃집 ID 조회 (SECURITY DEFINER 함수 — RLS 우회)
     const supabase = await createClient();
     const { data: companyId, error: companyError } = await supabase
       .rpc("get_company_id_by_slug", { p_slug: slug });
     if (companyError) console.error("[reservation] company 조회 실패:", companyError.message);
     if (!companyId) {
-      console.error("[reservation] company 없음, slug:", slug);
-      return NextResponse.json({ success: true, emailSent: false });
+      return NextResponse.json({ success: true });
     }
 
     // customer_profile upsert
@@ -76,10 +74,18 @@ export async function POST(request: NextRequest) {
       customerProfileId = profileId ?? null;
     }
 
+    // 계좌 정보 + 매장 전화번호 조회
+    const { data: companyInfo } = await supabase
+      .from("companies")
+      .select("name, phone, address, bank_name, bank_account, bank_holder")
+      .eq("id", companyId)
+      .single();
+
     // DB에 예약 저장
+    let savedReservationId: string | null = null;
     if (companyId) {
-      const { form, product, orderer, delivery, finalPrice } = body;
-      const { error: insertError } = await supabase.from("reservations").insert({
+      const { form, product, orderer, delivery, finalPrice, kakaoConsent } = body;
+      const { data: insertData, error: insertError } = await supabase.from("reservations").insert({
         company_id: companyId,
         customer_profile_id: customerProfileId,
         status: "미확인",
@@ -110,49 +116,49 @@ export async function POST(request: NextRequest) {
         recipient_phone: delivery?.recipientPhone || null,
         address: delivery?.address || null,
         address_detail: delivery?.addressDetail || null,
-      });
+      }).select("id");
+
       if (insertError) console.error("[reservation] insert 실패:", insertError.message);
+      else {
+        savedReservationId = insertData?.[0]?.id ?? null;
+        if (customerProfileId) {
+          await supabase.from("customer_profiles").update({ kakao_consent: kakaoConsent ?? false }).eq("id", customerProfileId);
+        }
+      }
     }
 
-    // 이메일 알림 (실패해도 예약은 성공으로 처리)
+    // 사장님에게 카카오 알림 발송
     try {
-      let toEmail = body.notificationEmail;
-      if (!toEmail) {
-        const { data: ownerEmail } = await supabase.rpc("get_owner_email_by_slug", { p_slug: slug });
-        toEmail = ownerEmail ?? null;
-      }
-      const gmailUser = process.env.GMAIL_USER;
-      const gmailPass = process.env.GMAIL_APP_PASSWORD;
-      if (toEmail && gmailUser && gmailPass) {
-        const baseUrl = request.headers.get("origin") ?? process.env.NEXT_PUBLIC_SITE_URL ?? "";
-        const datetime = `${body.form.desiredDate}${body.form.desiredTime ? ` ${body.form.desiredTime}` : ""}`;
-        const html = buildReservationNotificationHtml({
+      const { data: ownerPhone } = await supabase.rpc("get_owner_phone_by_slug", { p_slug: slug });
+      if (ownerPhone) {
+        const { form, product, orderer, finalPrice } = body;
+        const desiredDateTime = `${form.desiredDate}${form.desiredTime ? ` ${form.desiredTime}` : ""}`;
+        await sendReservationConfirmedOwner({
+          to: ownerPhone,
           companyName: body.companyName,
-          slug: body.slug,
+          productType: product.product_type,
+          deliveryType: form.deliveryType,
+          desiredDateTime,
+          finalPrice: finalPrice ?? product.price,
           ordererName: orderer.name,
           ordererPhone: orderer.phone,
-          deliveryType: body.form.deliveryType,
-          desiredDatetime: datetime || undefined,
-          productType: body.product.product_type || undefined,
-          finalPrice: body.finalPrice ?? body.product.price,
-          paid: false,
-        }, baseUrl);
-        const transporter = nodemailer.createTransport({
-          service: "gmail",
-          auth: { user: gmailUser, pass: gmailPass },
-        });
-        await transporter.sendMail({
-          from: `"${body.companyName} 예약알림" <${gmailUser}>`,
-          to: toEmail,
-          subject: `[새 예약] ${orderer.name}님`,
-          html,
+          requests: form.requests,
+          slug,
         });
       }
-    } catch (emailErr) {
-      console.warn("[reservation] 이메일 전송 실패:", emailErr);
+    } catch (alimErr) {
+      console.warn("[reservation] 사장님 알림톡 실패:", alimErr);
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      reservationId: savedReservationId,
+      bankName: companyInfo?.bank_name ?? null,
+      bankAccount: companyInfo?.bank_account ?? null,
+      bankHolder: companyInfo?.bank_holder ?? null,
+      companyPhone: companyInfo?.phone ?? null,
+      companyAddress: companyInfo?.address ?? null,
+    });
   } catch (err) {
     console.error("[reservation] 오류:", err);
     return NextResponse.json({ error: "서버 오류가 발생했습니다." }, { status: 500 });

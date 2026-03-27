@@ -1,6 +1,11 @@
 import { notFound } from "next/navigation";
-import { createServiceClient } from "@/lib/supabase/service";
+import { createClient } from "@supabase/supabase-js";
 import PayConfirmClient from "./PayConfirmClient";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 interface Props {
   params: Promise<{ reservationId: string }>;
@@ -8,7 +13,6 @@ interface Props {
 
 export default async function PayPage({ params }: Props) {
   const { reservationId } = await params;
-  const supabase = createServiceClient();
 
   const { data: reservation } = await supabase
     .from("reservations")

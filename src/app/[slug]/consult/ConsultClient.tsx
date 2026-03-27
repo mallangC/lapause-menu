@@ -69,6 +69,8 @@ interface Props {
   products: Product[];
   businessHours: BusinessHours;
   closedDates: string[];
+  minLeadTimes?: Record<string, number>;
+  consultNotice?: string | null;
   preselectedProduct?: Product | null;
 }
 
@@ -176,7 +178,7 @@ function scoreProducts(products: Product[], form: ConsultForm): Product[] {
     .map(({ product }) => product);
 }
 
-export default function ConsultClient({ slug, companyName, notificationEmail, products, businessHours, closedDates, preselectedProduct = null }: Props) {
+export default function ConsultClient({ slug, companyName, notificationEmail, products, businessHours, closedDates, minLeadTimes = {}, consultNotice, preselectedProduct = null }: Props) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [form, setForm] = useState<ConsultForm>(EMPTY_FORM);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(preselectedProduct);
@@ -191,7 +193,12 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
   const [showNotice, setShowNotice] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [privacyAgreed, setPrivacyAgreed] = useState(false);
+  const [kakaoConsent, setKakaoConsent] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [reservationId, setReservationId] = useState<string | null>(null);
+  const [bankInfo, setBankInfo] = useState<{ bankName: string | null; bankAccount: string | null; bankHolder: string | null } | null>(null);
+  const [paidConfirmed, setPaidConfirmed] = useState(false);
+  const [payLoading, setPayLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const set = (key: keyof ConsultForm, value: string) =>
@@ -233,6 +240,7 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
             image_url: selectedProduct.image_url,
           },
           orderer: { name, phone },
+          kakaoConsent,
           delivery: form.deliveryType === "배송" ? {
             recipientName,
             recipientPhone,
@@ -245,6 +253,10 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
         }),
       });
       if (!res.ok) throw new Error("예약 전송 실패");
+      const data = await res.json();
+      setReservationId(data.reservationId ?? null);
+      setBankInfo({ bankName: data.bankName, bankAccount: data.bankAccount, bankHolder: data.bankHolder });
+
       setSubmitted(true);
     } catch {
       setError("예약 중 오류가 발생했습니다. 다시 시도해주세요.");
@@ -263,18 +275,78 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
   }
 
   if (submitted) {
+    const handlePayConfirm = async () => {
+      if (!reservationId) return;
+      setPayLoading(true);
+      const res = await fetch("/api/pay/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reservationId }),
+      });
+      if (res.ok) setPaidConfirmed(true);
+      setPayLoading(false);
+    };
+
     return (
       <div className="min-h-screen bg-beige-100 flex items-center justify-center px-4">
-        <div className="text-center max-w-sm">
-          <div className="text-5xl mb-4">🌸</div>
-          <h2 className="text-xl font-medium text-gray-900 mb-2">예약이 접수되었습니다</h2>
-          <p className="text-gray-500 text-sm mb-6">
-            확인 후 연락드리겠습니다!
-            <br />감사합니다.
-          </p>
+        <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-beige-200 p-8 space-y-3">
+          <div className="text-center">
+            <div className="text-4xl mb-3">🌸</div>
+            <h2 className="text-lg font-medium text-gray-900">예약이 접수되었습니다</h2>
+            <p className="text-sm text-gray-400 mt-1">아래 계좌로 입금 후 버튼을 눌러주세요.</p>
+          </div>
+
+          {bankInfo?.bankAccount && (
+            <div className="bg-beige-50 rounded-xl p-4 space-y-2">
+              <p className="text-xs text-gray-400 mb-1">입금 계좌</p>
+              {bankInfo.bankName && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">은행</span>
+                  <span className="text-gray-900">{bankInfo.bankName}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-400">계좌번호</span>
+                <span className="text-gray-900 font-medium tracking-wide">{bankInfo.bankAccount}</span>
+              </div>
+              {bankInfo.bankHolder && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">예금주</span>
+                  <span className="text-gray-900">{bankInfo.bankHolder}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+            <span className="text-amber-500 text-base shrink-0">⚠</span>
+            <p className="text-xs text-amber-700 leading-relaxed font-medium">2시간 내 미입금 시 예약이 취소될 수 있습니다.</p>
+          </div>
+
+          {paidConfirmed ? (
+            <div className="text-center space-y-2 py-2">
+              <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center mx-auto">
+                <svg className="w-6 h-6 text-green-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                </svg>
+              </div>
+              <p className="text-sm font-medium text-gray-900">입금 확인 요청이 완료되었습니다.</p>
+              <p className="text-xs text-gray-400">매장에서 확인 후 연락드리겠습니다.</p>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={handlePayConfirm}
+              disabled={payLoading || !reservationId}
+              className="w-full bg-gold-500 text-white py-3 rounded-xl font-medium text-sm hover:bg-gold-600 disabled:opacity-50 transition-colors"
+            >
+              {payLoading ? "처리 중..." : "계좌이체 완료"}
+            </button>
+          )}
+
           <Link
             href={`/${slug}`}
-            className="text-gold-500 text-sm hover:text-gold-600 transition-colors"
+            className="block text-center text-gold-500 text-sm hover:text-gold-600 transition-colors"
           >
             홈으로 돌아가기 →
           </Link>
@@ -559,6 +631,12 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
               <p className="text-sm text-gray-500">정보를 확인하고 예약을 완료해주세요.</p>
             </div>
 
+            {consultNotice && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                <p className="text-sm text-amber-800 whitespace-pre-wrap leading-relaxed">{consultNotice}</p>
+              </div>
+            )}
+
             {/* 선택 상품 */}
             {selectedProduct && (
               <div className="bg-white rounded-xl border border-gray-200 p-4 flex gap-4">
@@ -598,7 +676,7 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
                 },
                 {
                   label: "상품 형태",
-                  value: form.productType === "기타" ? form.productTypeCustom : form.productType,
+                  value: form.productType === "기타" ? form.productTypeCustom : (form.productType || selectedProduct?.product_type || ""),
                 },
                 { label: "선호 분위기", value: form.mood },
                 {
@@ -787,7 +865,8 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
                       base.getFullYear() === now.getFullYear() &&
                       base.getMonth() === now.getMonth() &&
                       base.getDate() === now.getDate();
-                    if (isToday && time.getHours() * 60 + time.getMinutes() <= now.getHours() * 60 + now.getMinutes()) return false;
+                    const leadMins = (minLeadTimes[form.productType] ?? 2) * 60;
+                    if (isToday && time.getHours() * 60 + time.getMinutes() <= now.getHours() * 60 + now.getMinutes() + leadMins) return false;
                     return inBusiness;
                   }}
                   excludeDates={closedDates.map((d) => new Date(d + "T00:00:00"))}
@@ -860,6 +939,18 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
               />
               <span>
                 <Link href="/privacy" target="_blank" className="underline text-gold-600">개인정보처리방침</Link>에 동의합니다. (필수)
+              </span>
+            </label>
+
+            <label className="flex items-start gap-2 text-xs text-gray-500 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={kakaoConsent}
+                onChange={(e) => setKakaoConsent(e.target.checked)}
+                className="mt-0.5 accent-gold-500"
+              />
+              <span>
+                카카오톡 알림 받기(선택) - 예약 신청, 예약 취소 알림 발송
               </span>
             </label>
 

@@ -27,13 +27,29 @@ export default function ReservationDetail({
   const [memoInput, setMemoInput] = useState(r.admin_memo ?? "");
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState("");
 
   const handleStatusChange = (status: string) => {
+    if (status === r.status) return;
     if (status === "취소") {
+      setPendingStatus("취소");
+      setShowConfirmModal(true);
+    } else if (status === "준비중" && r.status === "미확인") {
+      setPendingStatus("준비중");
+      setShowConfirmModal(true);
+    } else {
+      onUpdateStatus(r.id, status);
+    }
+  };
+
+  const handleConfirmYes = () => {
+    setShowConfirmModal(false);
+    if (pendingStatus === "취소") {
       setCancelReason("");
       setShowCancelModal(true);
     } else {
-      onUpdateStatus(r.id, status);
+      onUpdateStatus(r.id, pendingStatus);
     }
   };
 
@@ -45,6 +61,33 @@ export default function ReservationDetail({
 
   return (
     <>
+    {showConfirmModal && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowConfirmModal(false)}>
+        <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4 space-y-4" onClick={(e) => e.stopPropagation()}>
+          <p className="text-sm text-gray-800">
+            {pendingStatus === "취소"
+              ? "주문이 취소됩니다. 변경하시겠습니까?"
+              : "예약이 확정됩니다. 변경하시겠습니까?"}
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={handleConfirmYes}
+              className="flex-1 bg-gray-800 text-white py-2 rounded-xl text-sm font-medium hover:bg-gray-900 transition-colors"
+            >
+              네
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowConfirmModal(false)}
+              className="flex-1 border border-gray-200 text-gray-500 py-2 rounded-xl text-sm hover:border-gray-400 transition-colors"
+            >
+              아니요
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     {showCancelModal && (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowCancelModal(false)}>
         <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4 space-y-4" onClick={(e) => e.stopPropagation()}>
@@ -101,7 +144,8 @@ export default function ReservationDetail({
           <select
             value={r.status}
             onChange={(e) => handleStatusChange(e.target.value)}
-            className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:border-gray-400"
+            disabled={r.status === "취소"}
+            className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:border-gray-400 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {STATUS_OPTIONS.map((s) => (
               <option key={s} value={s}>{s}</option>

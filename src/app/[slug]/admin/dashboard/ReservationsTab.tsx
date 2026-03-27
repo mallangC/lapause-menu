@@ -71,9 +71,12 @@ export default function ReservationsTab({ companyId }: Props) {
   }, [companyId]);
 
   const updateStatus = async (id: string, status: string, cancelReason?: string) => {
-    const update: Record<string, unknown> = { status };
-    if (status === "취소" && cancelReason) update.cancel_reason = cancelReason;
-    await supabase.from("reservations").update(update).eq("id", id);
+    const previousStatus = allReservations.find((r) => r.id === id)?.status ?? "";
+    await fetch(`/api/reservation/${id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status, previousStatus, cancelReason }),
+    });
     setAllReservations((prev) => prev.map((r) =>
       r.id === id ? { ...r, status: status as Reservation["status"], ...(cancelReason ? { cancel_reason: cancelReason } : {}) } : r
     ));

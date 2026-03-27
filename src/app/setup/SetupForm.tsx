@@ -193,7 +193,7 @@ export default function SetupForm() {
           value={name}
           onChange={(e) => handleNameChange(e.target.value)}
           className="w-full border border-beige-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gold-400"
-          placeholder="라포즈 플레르"
+          placeholder="플로에이드"
         />
       </div>
 
@@ -210,7 +210,7 @@ export default function SetupForm() {
             value={slug}
             onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
             className="flex-1 border border-beige-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gold-400"
-            placeholder="lapause-fleur"
+            placeholder="flo-aide"
           />
         </div>
         <div className="mt-1 h-4">
