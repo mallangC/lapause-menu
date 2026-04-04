@@ -31,6 +31,7 @@ export default function FloAideFooter() {
           <p>사업자등록번호: 698-15-00460</p>
           {/* <p>통신판매업신고번호: 제0000-서울강남-0000호</p> */}
           <p>사업장 주소: 서울특별시 관악구 남부순환로 168나길 14-2</p>
+          <p>전화: 010-2478-6290</p>
           <p>이메일: floaide.team@gmail.com</p>
           <p>@2026 Flo.Aide</p>
         </div>
