@@ -46,7 +46,7 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
   useEffect(() => {
     supabase
       .from("companies")
-      .select("notification_email, bank_name, bank_account, bank_holder, address, consult_enabled")
+      .select("notification_email, phone, bank_name, bank_account, bank_holder, address, consult_enabled")
       .eq("id", companyId)
       .single()
       .then(({ data }) => {
