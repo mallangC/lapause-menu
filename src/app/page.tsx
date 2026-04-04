@@ -548,10 +548,10 @@ export default function Landing1() {
           </FadeIn>
 
           <FadeIn delay={100}>
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
 
               {/* Starter */}
-              <div className="rounded-2xl border border-beige-200 p-8 flex flex-col bg-beige-50">
+              <div className="rounded-2xl border border-beige-200 p-6 sm:p-8 flex flex-col bg-beige-50">
                 <div className="mb-6">
                   <p className="text-[12px] font-semibold tracking-[0.2em] uppercase text-neutral-500 mb-3">Starter</p>
                   <div className="flex items-end gap-1.5 mb-2">
@@ -585,7 +585,7 @@ export default function Landing1() {
               </div>
 
               {/* Pro */}
-              <div className="rounded-2xl border p-8 flex flex-col relative" style={{ background: "#fdf6ee", borderColor: "#e8ddc9" }}>
+              <div className="rounded-2xl border p-6 sm:p-8 flex flex-col relative" style={{ background: "#fdf6ee", borderColor: "#e8ddc9" }}>
                 {/* Badge */}
                 <div
                   className="absolute top-5 right-5 text-[11px] font-bold tracking-widest uppercase px-3 py-1 rounded-full"

@@ -30,6 +30,7 @@ body {
   background-color: var(--color-beige-100);
   color: var(--color-foreground);
   font-family: "Pretendard Variable", Pretendard, "Apple SD Gothic Neo", sans-serif;
+  overflow-x: hidden;
 }
 
 /* react-datepicker 커스텀 */
