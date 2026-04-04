@@ -700,7 +700,7 @@ export default function Landing1() {
           {/* 사업자 정보 */}
           <div className="text-[11px] text-neutral-400 leading-relaxed space-y-0.5 border-t border-neutral-100 pt-5">
             <p>상호명: 말랑 스튜디오 &nbsp;|&nbsp; 대표자: 최경재 &nbsp;|&nbsp; 사업자등록번호: 698-15-00460</p>
-            <p>사업장 주소: 서울특별시 관악구 남부순환로 168나길 14-2 &nbsp;|&nbsp; 이메일: floaide.team@gmail.com</p>
+            <p>사업장 주소: 서울특별시 관악구 남부순환로 168나길 14-2 &nbsp;|&nbsp; 전화: 0507-1371-6290 &nbsp;|&nbsp; 이메일: floaide.team@gmail.com</p>
           </div>
         </div>
       </footer>
