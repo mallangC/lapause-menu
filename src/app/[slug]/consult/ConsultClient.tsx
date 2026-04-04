@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { formatPhone, parsePhone } from "@/lib/format";
 import Image from "next/image";
 import Link from "next/link";
 import DaumPostcodeEmbed from "react-daum-postcode";
@@ -71,7 +72,43 @@ interface Props {
   closedDates: string[];
   minLeadTimes?: Record<string, number>;
   consultNotice?: string | null;
+  storeAddress?: string | null;
+  deliveryEnabled?: boolean;
+  deliveryFees?: Record<string, number>;
   preselectedProduct?: Product | null;
+}
+
+async function geocodeKakao(address: string): Promise<{ lat: number; lng: number } | null> {
+  try {
+    const res = await fetch(`/api/geocode?address=${encodeURIComponent(address)}`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+function getDeliveryFeeByDistance(km: number, fees: Record<string, number>): number | null {
+  const key =
+    km <= 1  ? "0-1"   :
+    km <= 3  ? "1-3"   :
+    km <= 5  ? "3-5"   :
+    km <= 10 ? "5-10"  :
+    km <= 15 ? "10-15" :
+    km <= 20 ? "15-20" : null;
+  if (!key) return null;
+  return fees[key] ?? null;
+}
+
+function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 function Chip({ label, selected, onClick }: { label: string; selected: boolean; onClick: () => void }) {
@@ -178,7 +215,7 @@ function scoreProducts(products: Product[], form: ConsultForm): Product[] {
     .map(({ product }) => product);
 }
 
-export default function ConsultClient({ slug, companyName, notificationEmail, products, businessHours, closedDates, minLeadTimes = {}, consultNotice, preselectedProduct = null }: Props) {
+export default function ConsultClient({ slug, companyName, notificationEmail, products, businessHours, closedDates, minLeadTimes = {}, consultNotice, storeAddress = null, deliveryEnabled = false, deliveryFees = {}, preselectedProduct = null }: Props) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [form, setForm] = useState<ConsultForm>(EMPTY_FORM);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(preselectedProduct);
@@ -200,6 +237,11 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
   const [paidConfirmed, setPaidConfirmed] = useState(false);
   const [payLoading, setPayLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [step1FieldErrors, setStep1FieldErrors] = useState<string[]>([]);
+  const [step3FieldErrors, setStep3FieldErrors] = useState<string[]>([]);
+  const [deliveryDistance, setDeliveryDistance] = useState<number | null>(null);
+  const [deliveryFee, setDeliveryFee] = useState<number | null>(null);
+  const [distanceLoading, setDistanceLoading] = useState(false);
 
   const set = (key: keyof ConsultForm, value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -211,16 +253,38 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
   );
 
   const step1Valid =
-    form.purpose &&
-    (form.purpose !== "기타" || form.purposeCustom) &&
-    form.recipientGender &&
-    form.recipientAge &&
-    form.relationship &&
-    (form.relationship !== "기타" || form.relationshipCustom) &&
-    (preselectedProduct || (form.productType && form.mood && form.budget && (form.budget !== "기타" || form.budgetCustom)));
+    preselectedProduct || (form.productType && form.mood && form.budget && (form.budget !== "기타" || form.budgetCustom));
+
+  const handleStep1Next = () => {
+    const missing: string[] = [];
+    if (!preselectedProduct) {
+      if (!form.productType) missing.push("상품 형태");
+      if (!form.mood) missing.push("분위기");
+      if (!form.budget || (form.budget === "기타" && !form.budgetCustom)) missing.push("희망 예산");
+    }
+    if (missing.length > 0) {
+      setStep1FieldErrors(missing);
+      return;
+    }
+    setStep1FieldErrors([]);
+    setStep(preselectedProduct ? 3 : 2);
+  };
 
   const handleSubmit = async () => {
-    if (!selectedProduct || !name || !phone) return;
+    const missing: string[] = [];
+    if (!name) missing.push("예약자 이름");
+    if (parsePhone(phone).length < 10 || parsePhone(phone).length > 11) missing.push("연락처 (10~11자리)");
+    if (!form.deliveryType) missing.push("수령 방법");
+    if (!form.desiredDate) missing.push("수령 희망 일시");
+    if (form.deliveryType === "배송" && (!recipientName || !recipientPhone || !address)) missing.push("배송 정보");
+    if (form.deliveryType === "배송" && deliveryDistance !== null && deliveryFee === null) missing.push("배송 가능 여부를 매장에 문의해주세요");
+    if (!privacyAgreed) missing.push("개인정보처리방침 동의");
+    if (missing.length > 0) {
+      setStep3FieldErrors(missing);
+      return;
+    }
+    setStep3FieldErrors([]);
+    if (!selectedProduct) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -239,17 +303,18 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
             product_type: selectedProduct.product_type,
             image_url: selectedProduct.image_url,
           },
-          orderer: { name, phone },
+          orderer: { name, phone: parsePhone(phone) },
           kakaoConsent,
           delivery: form.deliveryType === "배송" ? {
             recipientName,
-            recipientPhone,
+            recipientPhone: parsePhone(recipientPhone),
             address,
             addressDetail,
           } : null,
           finalPrice: selectedProduct.price +
-            (form.messageCard === "있음" ? 2000 : 0) +
-            (form.shoppingBag === "있음" ? 2000 : 0),
+            (form.messageCard === "추가" ? 2000 : 0) +
+            (form.shoppingBag === "추가" ? 2000 : 0) +
+            (form.deliveryType === "배송" && deliveryFee !== null ? deliveryFee : 0),
         }),
       });
       if (!res.ok) throw new Error("예약 전송 실패");
@@ -409,12 +474,12 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
       </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 py-8">
+      <div className="max-w-2xl mx-auto px-4 py-5">
 
         {/* ── STEP 1: 옵션 선택 ── */}
         {step === 1 && (
-          <div className="space-y-8">
-            <Section title="선물 목적" required>
+          <div className="space-y-5">
+            <Section title="선물 목적">
               <div className="flex flex-wrap gap-2">
                 {["기념", "축하", "감사", "위로", "기타"].map((v) => (
                   <Chip key={v} label={v} selected={form.purpose === v} onClick={() => set("purpose", v)} />
@@ -431,15 +496,15 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
               )}
             </Section>
 
-            <Section title="받는 분 성별" required>
+            <Section title="받는 분 유형">
               <div className="flex flex-wrap gap-2">
-                {["여성", "남성"].map((v) => (
+                {["여성", "남성", "부모님"].map((v) => (
                   <Chip key={v} label={v} selected={form.recipientGender === v} onClick={() => set("recipientGender", v)} />
                 ))}
               </div>
             </Section>
 
-            <Section title="받는 분 나이대" required>
+            <Section title="받는 분 나이대">
               <div className="flex flex-wrap gap-2">
                 {["10대", "20대", "30대", "40대", "50대 이상"].map((v) => (
                   <Chip key={v} label={v} selected={form.recipientAge === v} onClick={() => set("recipientAge", v)} />
@@ -447,7 +512,7 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
               </div>
             </Section>
 
-            <Section title="받는 분과의 관계" required>
+            <Section title="받는 분과의 관계">
               <div className="flex flex-wrap gap-2">
                 {["연인", "가족", "친구", "직장동료/상사", "기타"].map((v) => (
                   <Chip key={v} label={v} selected={form.relationship === v} onClick={() => set("relationship", v)} />
@@ -531,11 +596,20 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
               </>
             )}
 
+            {step1FieldErrors.length > 0 && (
+              <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3">
+                <p className="text-xs font-medium text-red-600 mb-1">아래 항목을 선택해주세요.</p>
+                <ul className="list-disc list-inside space-y-0.5">
+                  {step1FieldErrors.map((f) => (
+                    <li key={f} className="text-xs text-red-500">{f}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <button
               type="button"
-              disabled={!step1Valid}
-              onClick={() => setStep(preselectedProduct ? 3 : 2)}
-              className="w-full bg-gold-500 text-white py-3.5 rounded-xl font-medium hover:bg-gold-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              onClick={handleStep1Next}
+              className="w-full bg-gold-500 text-white py-3.5 rounded-xl font-medium hover:bg-gold-600 transition-colors"
             >
               {preselectedProduct ? "예약 정보 입력하기" : "추천 상품 보기"}
             </button>
@@ -563,10 +637,10 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
                     key={product.id}
                     type="button"
                     onClick={() => setSelectedProduct(product)}
-                    className={`relative flex flex-col rounded-xl border transition-all text-left overflow-hidden ${
+                    className={`relative flex flex-col rounded-xl text-left overflow-hidden transition-all ${
                       selectedProduct?.id === product.id
-                        ? "border-gold-500 bg-gold-50"
-                        : "border-gray-200 bg-white hover:border-gray-300"
+                        ? "border-2 border-gold-500 bg-white"
+                        : "border border-gray-200 bg-white hover:border-gray-300"
                     }`}
                   >
                     {selectedProduct?.id === product.id && (
@@ -704,15 +778,17 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
                     <span className="font-semibold text-gray-900">
                       {(
                         selectedProduct.price +
-                        (form.messageCard === "있음" ? 2000 : 0) +
-                        (form.shoppingBag === "있음" ? 2000 : 0)
+                        (form.messageCard === "추가" ? 2000 : 0) +
+                        (form.shoppingBag === "추가" ? 2000 : 0) +
+                        (form.deliveryType === "배송" && deliveryFee !== null ? deliveryFee : 0)
                       ).toLocaleString()}원
                     </span>
-                    {(form.messageCard === "있음" || form.shoppingBag === "있음") && (
+                    {(form.messageCard === "추가" || form.shoppingBag === "추가" || (form.deliveryType === "배송" && deliveryFee !== null)) && (
                       <span className="text-xs text-gray-400 ml-2">
                         상품 {selectedProduct.price.toLocaleString()}원
-                        {form.messageCard === "있음" && " + 메시지카드 2,000원"}
-                        {form.shoppingBag === "있음" && " + 쇼핑백 2,000원"}
+                        {form.messageCard === "추가" && " + 메시지카드 2,000원"}
+                        {form.shoppingBag === "추가" && " + 쇼핑백 2,000원"}
+                        {form.deliveryType === "배송" && deliveryFee !== null && ` + 배송비 ${deliveryFee.toLocaleString()}원`}
                       </span>
                     )}
                   </div>
@@ -725,30 +801,24 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
               <div className="grid grid-cols-2 gap-6">
                 <Section title="메세지 카드" badge="+2,000원" required>
                   <div className="flex gap-2">
-                    {["있음", "없음"].map((v) => (
+                    {["추가", "없음"].map((v) => (
                       <Chip key={v} label={v} selected={form.messageCard === v} onClick={() => { set("messageCard", v); if (v === "없음") set("messageCardContent", ""); }} />
                     ))}
                   </div>
-                  {form.messageCard === "있음" && (
-                    <div className="relative">
-                      <textarea
-                        value={form.messageCardContent}
-                        onChange={(e) => set("messageCardContent", e.target.value.slice(0, 30))}
-                        placeholder="메시지 카드에 적을 내용을 입력해주세요."
-                        maxLength={30}
-                        rows={3}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none focus:border-gray-500 bg-white"
-                      />
-                      <span className="absolute bottom-2 right-3 text-xs text-gray-400">
-                        {form.messageCardContent.length}/30
-                      </span>
-                    </div>
+                  {form.messageCard === "추가" && (
+                    <textarea
+                      value={form.messageCardContent}
+                      onChange={(e) => set("messageCardContent", e.target.value)}
+                      placeholder="메시지 카드에 적을 내용을 입력해주세요. (30자 이내 작성 권장)"
+                      rows={3}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none focus:border-gray-500 bg-white"
+                    />
                   )}
                 </Section>
 
                 <Section title="쇼핑백" badge="+2,000원" required>
                   <div className="flex gap-2">
-                    {["있음", "없음"].map((v) => (
+                    {["추가", "없음"].map((v) => (
                       <Chip key={v} label={v} selected={form.shoppingBag === v} onClick={() => set("shoppingBag", v)} />
                     ))}
                   </div>
@@ -759,7 +829,7 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
               </div>
               <Section title="수령 방법" required>
                 <div className="flex gap-2">
-                  {["픽업", "배송"].map((v) => (
+                  {(deliveryEnabled ? ["픽업", "배송"] : ["픽업"]).map((v) => (
                     <Chip key={v} label={v} selected={form.deliveryType === v} onClick={() => set("deliveryType", v)} />
                   ))}
                 </div>
@@ -777,7 +847,7 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
                         type="tel"
                         placeholder="받는 분 전화번호"
                         value={recipientPhone}
-                        onChange={(e) => setRecipientPhone(e.target.value)}
+                        onChange={(e) => setRecipientPhone(formatPhone(e.target.value))}
                         className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-gray-500 bg-white"
                       />
                     </div>
@@ -807,6 +877,27 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
                         className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-gray-500 bg-white"
                       />
                     </div>
+                    {/* 거리 표시 */}
+                    {address && (
+                      <div className="text-xs px-1">
+                        {!storeAddress ? (
+                          <span className="text-gray-400">매장 주소가 등록되지 않아 거리를 계산할 수 없습니다.</span>
+                        ) : distanceLoading ? (
+                          <span className="text-gray-400">거리 계산 중...</span>
+                        ) : deliveryDistance !== null ? (
+                          <span className="text-gray-500">
+                            📍 매장까지 직선거리 <span className="font-semibold text-gray-800">약 {deliveryDistance}km</span>
+                            {deliveryFee !== null
+                              ? <span className="ml-1 text-gold-600 font-semibold"> · 배송비 {deliveryFee.toLocaleString()}원</span>
+                              : <span className="ml-1 text-amber-500"> · 매장에 문의 바랍니다</span>
+                            }
+                            <span className="text-gray-400 ml-1">(직선거리 기준)</span>
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">거리를 계산할 수 없습니다.</span>
+                        )}
+                      </div>
+                    )}
                     {showPostcode && (
                       <div className="border border-gray-200 rounded-xl overflow-hidden">
                         <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-200">
@@ -820,9 +911,26 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
                           </button>
                         </div>
                         <DaumPostcodeEmbed
-                          onComplete={(data) => {
-                            setAddress(data.roadAddress || data.jibunAddress);
+                          onComplete={async (data) => {
+                            const customerAddr = data.roadAddress || data.jibunAddress;
+                            setAddress(customerAddr);
                             setShowPostcode(false);
+                            if (storeAddress) {
+                              setDistanceLoading(true);
+                              setDeliveryDistance(null);
+                              setDeliveryFee(null);
+                              const [storePt, customerPt] = await Promise.all([
+                                geocodeKakao(storeAddress),
+                                geocodeKakao(customerAddr),
+                              ]);
+                              if (storePt && customerPt) {
+                                const km = haversineKm(storePt.lat, storePt.lng, customerPt.lat, customerPt.lng);
+                                const rounded = Math.round(km * 10) / 10;
+                                setDeliveryDistance(rounded);
+                                setDeliveryFee(getDeliveryFeeByDistance(rounded, deliveryFees));
+                              }
+                              setDistanceLoading(false);
+                            }
                           }}
                           style={{ height: 400 }}
                         />
@@ -850,7 +958,16 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
                   minDate={new Date()}
                   filterDate={(date) => {
                     const day = businessHours[String(date.getDay())];
-                    return !day?.closed;
+                    if (day?.closed) return false;
+                    if (form.deliveryType === "배송") {
+                      const today = new Date();
+                      const isToday =
+                        date.getFullYear() === today.getFullYear() &&
+                        date.getMonth() === today.getMonth() &&
+                        date.getDate() === today.getDate();
+                      if (isToday) return false;
+                    }
+                    return true;
                   }}
                   filterTime={(time) => {
                     const base = selectedDate ?? time;
@@ -905,19 +1022,16 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
               <div>
                 <input
                   type="tel"
-                  placeholder="연락처 (숫자만)"
+                  placeholder="010-1234-5678"
                   value={phone}
-                  onChange={(e) => {
-                    const digits = e.target.value.replace(/\D/g, "");
-                    if (digits.length <= 11) setPhone(digits);
-                  }}
+                  onChange={(e) => setPhone(formatPhone(e.target.value))}
                   className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none bg-white transition-colors ${
-                    phone && (phone.length < 10 || phone.length > 11)
+                    phone && (parsePhone(phone).length < 10 || parsePhone(phone).length > 11)
                       ? "border-red-300 focus:border-red-400"
                       : "border-gray-300 focus:border-gray-500"
                   }`}
                 />
-                {phone && (phone.length < 10 || phone.length > 11) && (
+                {phone && (parsePhone(phone).length < 10 || parsePhone(phone).length > 11) && (
                   <p className="mt-1 text-xs text-red-500">연락처는 10~11자리로 입력해주세요.</p>
                 )}
               </div>
@@ -950,10 +1064,20 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
                 className="mt-0.5 accent-gold-500"
               />
               <span>
-                카카오톡 알림 받기(선택) - 예약 신청, 예약 취소 알림 발송
+                카카오톡 알림 받기(선택) - 예약 확정, 예약 취소 알림 발송
               </span>
             </label>
 
+            {step3FieldErrors.length > 0 && (
+              <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3">
+                <p className="text-xs font-medium text-red-600 mb-1">아래 항목을 입력해주세요.</p>
+                <ul className="list-disc list-inside space-y-0.5">
+                  {step3FieldErrors.map((f) => (
+                    <li key={f} className="text-xs text-red-500">{f}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <div className="flex gap-3 pt-2">
               <button
                 type="button"
@@ -964,16 +1088,9 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
               </button>
               <button
                 type="button"
-                disabled={
-                  !name || phone.length < 10 || phone.length > 11 ||
-                  !form.messageCard || !form.shoppingBag ||
-                  !form.deliveryType || !form.desiredDate ||
-                  (form.deliveryType === "배송" && (!recipientName || !recipientPhone || !address)) ||
-                  !privacyAgreed ||
-                  submitting
-                }
+                disabled={submitting}
                 onClick={handleSubmit}
-                className="flex-1 bg-gold-500 text-white py-3.5 rounded-xl font-medium hover:bg-gold-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 bg-gold-500 text-white py-3.5 rounded-xl font-medium hover:bg-gold-600 disabled:opacity-40 transition-colors"
               >
                 {submitting ? "예약 중..." : "예약하기"}
               </button>

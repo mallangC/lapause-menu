@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Product, ProductInput, ProductStatus } from "@/types";
 import { createClient } from "@/lib/supabase/client";
@@ -11,16 +11,18 @@ import CompanyInfoTab from "./CompanyInfoTab";
 import MyInfoTab from "./MyInfoTab";
 import SettingsTab from "./SettingsTab";
 import ReservationSettingsTab from "./ReservationSettingsTab";
+import BusinessSettingsTab from "./BusinessSettingsTab";
 import ReservationsTab from "./ReservationsTab";
 import StatsTab from "./StatsTab";
 import ProfileSetupModal from "./ProfileSetupModal";
 
-type Tab = "reservations" | "products" | "stats" | "company" | "reservation" | "settings" | "myinfo";
+type Tab = "reservations" | "products" | "stats" | "company" | "business" | "reservation" | "settings" | "myinfo";
 
 interface Props {
   slug: string;
   userId: string;
   userEmail: string;
+  isOAuth: boolean;
   profileName: string;
   profilePhone: string;
   companyId: string;
@@ -43,11 +45,13 @@ interface Props {
   consultEnabled: boolean;
 }
 
-export default function DashboardClient({ slug, userId, userEmail, profileName, profilePhone, companyId, companyName, logoImage, themeBg, themeAccent, initialProducts, homeFeaturedImage, homeAllImage, homeSeasonImage, homeConsultImage, locationUrl, kakaoChannelUrl, instagramUrl, youtubeUrl, companyPhone, hiddenProductTypes, hiddenSeasons, consultEnabled }: Props) {
+export default function DashboardClient({ slug, userId, userEmail, isOAuth, profileName, profilePhone, companyId, companyName, logoImage, themeBg, themeAccent, initialProducts, homeFeaturedImage, homeAllImage, homeSeasonImage, homeConsultImage, locationUrl, kakaoChannelUrl, instagramUrl, youtubeUrl, companyPhone, hiddenProductTypes, hiddenSeasons, consultEnabled }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("reservations");
+  const tabScrollRef = useRef<HTMLDivElement>(null);
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [showProfileSetup, setShowProfileSetup] = useState(!profileName || !profilePhone);
   const [showForm, setShowForm] = useState(false);
+  const [showLimitModal, setShowLimitModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [themeVars, setThemeVars] = useState(generateThemeVars(themeBg, themeAccent));
@@ -122,9 +126,10 @@ export default function DashboardClient({ slug, userId, userEmail, profileName, 
     { key: "reservations", label: "예약 관리" },
     { key: "products", label: "상품 관리" },
     { key: "stats", label: "통계", statsOnly: true },
-    { key: "company", label: "회사 정보" },
-    { key: "reservation", label: "예약 설정" },
-    { key: "settings", label: "설정" },
+    { key: "company", label: "매장 정보" },
+    { key: "business", label: "영업 설정" },
+    { key: "reservation", label: "맞춤 주문" },
+    { key: "settings", label: "디자인" },
     { key: "myinfo", label: "내 정보" },
   ];
 
@@ -150,15 +155,42 @@ export default function DashboardClient({ slug, userId, userEmail, profileName, 
       </header>
 
       {/* 모바일 탭 내비게이션 */}
-      <div className="md:hidden border-b border-gray-100 bg-white">
-        <div className="flex justify-center">
+      <div className="md:hidden border-b border-gray-100 bg-white relative flex items-center">
+        {/* 왼쪽 화살표 */}
+        <button
+          onClick={() => tabScrollRef.current?.scrollBy({ left: -120, behavior: "smooth" })}
+          className="shrink-0 px-2 py-3 text-gray-300 hover:text-gray-500 transition-colors"
+        >
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+          </svg>
+        </button>
+
+        {/* 탭 스크롤 영역 */}
+        <div
+          ref={tabScrollRef}
+          className="flex overflow-x-auto flex-1"
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+        >
           {tabs.map((tab) => (
             <div
               key={tab.key}
-              className={`overflow-hidden transition-all duration-300 ${tab.statsOnly && !currentConsultEnabled ? "max-w-0 opacity-0" : "max-w-[120px] opacity-100"}`}
+              className={`overflow-hidden transition-all duration-300 shrink-0 ${tab.statsOnly && !currentConsultEnabled ? "max-w-0 opacity-0 pointer-events-none" : "max-w-[120px] opacity-100"}`}
             >
               <button
-                onClick={() => { setActiveTab(tab.key); setShowForm(false); setEditingProduct(null); setError(null); }}
+                onClick={() => {
+                  setActiveTab(tab.key);
+                  setShowForm(false);
+                  setEditingProduct(null);
+                  setError(null);
+                  const container = tabScrollRef.current;
+                  const btn = container?.querySelector(`[data-tab="${tab.key}"]`) as HTMLElement;
+                  if (container && btn) {
+                    const offset = btn.offsetLeft - container.offsetWidth / 2 + btn.offsetWidth / 2;
+                    container.scrollTo({ left: offset, behavior: "smooth" });
+                  }
+                }}
+                data-tab={tab.key}
                 className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                   activeTab === tab.key ? "border-gold-500 text-gold-500" : "border-transparent text-gray-400 hover:text-gray-700"
                 }`}
@@ -168,6 +200,16 @@ export default function DashboardClient({ slug, userId, userEmail, profileName, 
             </div>
           ))}
         </div>
+
+        {/* 오른쪽 화살표 */}
+        <button
+          onClick={() => tabScrollRef.current?.scrollBy({ left: 120, behavior: "smooth" })}
+          className="shrink-0 px-2 py-3 text-gray-300 hover:text-gray-500 transition-colors"
+        >
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+          </svg>
+        </button>
       </div>
 
       <div className="flex flex-1 max-w-6xl w-full mx-auto px-4 py-6 gap-6">
@@ -201,6 +243,32 @@ export default function DashboardClient({ slug, userId, userEmail, profileName, 
             </li>
           </ul>
         </nav>
+
+        {/* 상품 100개 한도 초과 모달 */}
+        {showLimitModal && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
+            onClick={() => setShowLimitModal(false)}
+          >
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-7 text-center" onClick={(e) => e.stopPropagation()}>
+              <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl">⚠️</span>
+              </div>
+              <h3 className="font-semibold text-gray-900 text-[16px] mb-2">상품 등록 한도 초과</h3>
+              <p className="text-[14px] text-gray-500 leading-relaxed mb-6">
+                상품은 최대 <span className="font-semibold text-gray-800">100개</span>까지 등록할 수 있으며, 현재 한도에 도달했습니다.<br />
+                더 추가하려면 사용하지 않는 상품을 삭제해 주세요.
+              </p>
+              <button
+                onClick={() => setShowLimitModal(false)}
+                className="w-full py-2.5 rounded-xl bg-gray-900 text-white text-[14px] font-medium hover:bg-gray-700 transition-colors"
+              >
+                확인
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* 상품 추가/수정 모달 */}
         {(showForm || editingProduct) && (
@@ -242,8 +310,11 @@ export default function DashboardClient({ slug, userId, userEmail, profileName, 
                 <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
               )}
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-medium text-gray-900">상품 목록 ({products.length}개)</h2>
-                <button onClick={() => setShowForm(true)} className="bg-gold-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gold-600 transition-colors">
+                <h2 className="text-xl font-medium text-gray-900">상품 목록</h2>
+                <button
+                  onClick={() => products.length >= 100 ? setShowLimitModal(true) : setShowForm(true)}
+                  className="bg-gold-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gold-600 transition-colors"
+                >
                   + 상품 추가
                 </button>
               </div>
@@ -288,6 +359,12 @@ export default function DashboardClient({ slug, userId, userEmail, profileName, 
             </div>
           )}
 
+          {activeTab === "business" && (
+            <div className="bg-white border border-gray-200 rounded-xl p-6">
+              <BusinessSettingsTab companyId={companyId} />
+            </div>
+          )}
+
           {activeTab === "reservation" && (
             <div className="bg-white border border-gray-200 rounded-xl p-6">
               <ReservationSettingsTab
@@ -324,6 +401,7 @@ export default function DashboardClient({ slug, userId, userEmail, profileName, 
               <MyInfoTab
                 slug={slug}
                 email={userEmail}
+                isOAuth={isOAuth}
                 profileName={profileName}
                 profilePhone={profilePhone}
               />

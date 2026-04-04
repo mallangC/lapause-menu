@@ -70,7 +70,7 @@ export default function FilterPanel({ filter, setFilter, hiddenProductTypes = []
               className={`text-center text-sm px-3 py-1.5 rounded-lg border transition-colors ${
                 filter.productTypes.includes(type)
                   ? "border-gold-400 bg-gold-400 text-white font-medium"
-                  : "border-gold-500/50 text-foreground hover:bg-gold-500/50"
+                  : "border-gray-200 text-gray-600 hover:border-gold-500 hover:text-gold-500"
               }`}
             >
               {type}
@@ -81,19 +81,23 @@ export default function FilterPanel({ filter, setFilter, hiddenProductTypes = []
 
       <div className="mb-4">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-gold-500 mb-2">꽃 색상</h3>
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-3 gap-1">
           {FLOWER_COLORS.map((color) => (
             <button
               key={color}
               onClick={() => toggleFlowerColor(color)}
-              className={`w-8 h-8 rounded-full border-2 transition-all ${
+              className={`flex items-center gap-2 px-2 py-1.5 rounded-lg border transition-colors ${
                 filter.flowerColors.includes(color)
-                  ? "border-gold-500 scale-110"
-                  : "border-gray-300 hover:border-gray-400"
+                  ? "border-gold-400 bg-gold-400 text-white font-medium"
+                  : "border-gray-200 text-gray-600 hover:border-gold-500 hover:text-gold-500"
               }`}
-              style={{ backgroundColor: FLOWER_COLOR_MAP[color] ?? "#a8a29e" }}
-              title={color}
-            />
+            >
+              <span
+                className="w-4 h-4 rounded-full shrink-0 border border-black/10"
+                style={{ backgroundColor: FLOWER_COLOR_MAP[color] ?? "#a8a29e" }}
+              />
+              <span className="text-xs">{color}</span>
+            </button>
           ))}
         </div>
       </div>
@@ -108,7 +112,7 @@ export default function FilterPanel({ filter, setFilter, hiddenProductTypes = []
               className={`text-center text-sm px-2.5 py-1.5 rounded-lg border transition-colors whitespace-nowrap ${
                 filter.wrappingColors.includes(wc)
                   ? "border-gold-400 bg-gold-400 text-white font-medium"
-                  : "border-gold-500/50 text-foreground hover:bg-gold-500/50"
+                  : "border-gray-200 text-gray-600 hover:border-gold-500 hover:text-gold-500"
               }`}
             >
               {wc}
@@ -127,7 +131,7 @@ export default function FilterPanel({ filter, setFilter, hiddenProductTypes = []
               className={`text-center text-sm px-3 py-1.5 rounded-lg border transition-colors ${
                 filter.moods.includes(mood)
                   ? "border-gold-400 bg-gold-400 text-white font-medium"
-                  : "border-gold-500/50 text-foreground hover:bg-gold-500/50"
+                  : "border-gray-200 text-gray-600 hover:border-gold-500 hover:text-gold-500"
               }`}
             >
               {mood}

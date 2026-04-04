@@ -52,6 +52,7 @@ export default function MainLayout({
   const [showHome, setShowHome] = useState(true);
   const [filter, setFilter] = useState<FilterState>(EMPTY_FILTER);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+  const userClosedFilter = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -62,6 +63,7 @@ export default function MainLayout({
       timerRef.current = setTimeout(() => {
         setShowHome(true);
         setFilter(EMPTY_FILTER);
+        userClosedFilter.current = false;
       }, INACTIVITY_TIMEOUT_MS);
     };
 
@@ -89,18 +91,19 @@ export default function MainLayout({
       alt={companyName}
       width={200}
       height={48}
-      className={`object-contain transition-all w-auto ${showHome ? "h-12" : "h-8"}`}
+      className={`object-contain transition-all w-auto ${showHome ? "h-10 md:h-12" : "h-8"}`}
     />
   ) : (
-    <span className={`font-light tracking-widest text-gold-500 transition-all ${showHome ? "text-3xl" : "text-xl"}`}>
+    <span className={`font-light tracking-widest text-gold-500 transition-all ${showHome ? "text-2xl md:text-3xl" : "text-xl"}`}>
       {companyName}
     </span>
   );
 
   return (
     <div className="min-h-screen bg-beige-100" style={themeVars}>
+      <div className="sticky top-0 z-40">
       <header className="border-b border-gray-100 bg-white">
-        <div className={`max-w-6xl mx-auto px-4 flex items-center justify-center transition-all ${showHome ? "py-6" : "py-4"}`}>
+        <div className={`max-w-6xl mx-auto px-4 flex items-center justify-center transition-all ${showHome ? "py-3" : "py-4"}`}>
           {slug ? <Link href={`/${slug}/admin`}>{logo}</Link> : logo}
         </div>
       </header>
@@ -109,20 +112,27 @@ export default function MainLayout({
         <MainNav
           filter={filter}
           setFilter={setFilter}
-          setMobileFilterOpen={setMobileFilterOpen}
+          setMobileFilterOpen={(v) => {
+            if (v && userClosedFilter.current) return;
+            setMobileFilterOpen(v);
+          }}
           hiddenProductTypes={hiddenProductTypes}
           hiddenSeasons={hiddenSeasons}
           consultEnabled={consultEnabled}
           slug={slug}
         />
       )}
+      </div>
 
       {!showHome && (isAll || isSeason) && (
         <MobileFilter
           filter={filter}
           setFilter={setFilter}
           isOpen={mobileFilterOpen}
-          onToggle={() => setMobileFilterOpen((v) => !v)}
+          onToggle={() => {
+            if (mobileFilterOpen) userClosedFilter.current = true;
+            setMobileFilterOpen((v) => !v);
+          }}
           hiddenProductTypes={hiddenProductTypes}
           hiddenSeasons={hiddenSeasons}
         />
@@ -141,7 +151,7 @@ export default function MainLayout({
           slug={slug}
           consultEnabled={consultEnabled}
           onSelectFeatured={() => { setFilter({ ...EMPTY_FILTER, featured: true }); setShowHome(false); }}
-          onSelectAll={() => { setFilter(EMPTY_FILTER); setShowHome(false); setMobileFilterOpen(true); }}
+          onSelectAll={() => { setFilter(EMPTY_FILTER); setShowHome(false); if (!userClosedFilter.current) setMobileFilterOpen(true); }}
           onSelectSeason={() => { setFilter({ ...EMPTY_FILTER, isSeason: true }); setShowHome(false); }}
         />
       ) : (

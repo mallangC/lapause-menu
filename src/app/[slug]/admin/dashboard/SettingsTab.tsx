@@ -51,6 +51,7 @@ export default function SettingsTab({ companyId, initialBg, initialAccent, initi
       setError(err.message);
     } else {
       setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
       onThemeChange(bg, accent);
     }
     setLoading(false);
@@ -84,7 +85,7 @@ export default function SettingsTab({ companyId, initialBg, initialAccent, initi
 
   return (
     <div className="space-y-8">
-      <h2 className="text-xl font-medium text-gray-900">설정</h2>
+      <h2 className="text-xl font-medium text-gray-900">디자인</h2>
 
       {/* 홈 화면 이미지 */}
       <div>
@@ -248,11 +249,8 @@ export default function SettingsTab({ companyId, initialBg, initialAccent, initi
         {error && (
           <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
         )}
-        {success && (
-          <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">저장됐습니다.</div>
-        )}
 
-        <div className="flex gap-2 mt-4">
+        <div className="mt-6 flex items-center gap-3">
           <button
             onClick={handleSave}
             disabled={loading}
@@ -266,6 +264,12 @@ export default function SettingsTab({ companyId, initialBg, initialAccent, initi
           >
             기본값으로
           </button>
+          {success && (
+            <span className="text-sm text-green-600 flex items-center gap-1">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+              저장됐습니다.
+            </span>
+          )}
         </div>
       </div>
 

@@ -2,7 +2,9 @@
 
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
+import DaumPostcodeEmbed from "react-daum-postcode";
 import { createClient } from "@/lib/supabase/client";
+import { formatPhone, parsePhone } from "@/lib/format";
 
 interface Props {
   companyId: string;
@@ -24,8 +26,11 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
   const [kakaoChannelUrl, setKakaoChannelUrl] = useState(initialKakaoChannelUrl ?? "");
   const [instagramUrl, setInstagramUrl] = useState(initialInstagramUrl ?? "");
   const [youtubeUrl, setYoutubeUrl] = useState(initialYoutubeUrl ?? "");
-  const [phone, setPhone] = useState(initialPhone ?? "");
+  const [phone, setPhone] = useState(formatPhone(initialPhone ?? ""));
   const [address, setAddress] = useState("");
+  const [addressDetail, setAddressDetail] = useState("");
+  const [showAddressDetail, setShowAddressDetail] = useState(false);
+  const [showPostcode, setShowPostcode] = useState(false);
   const [bankName, setBankName] = useState("");
   const [bankAccount, setBankAccount] = useState("");
   const [bankHolder, setBankHolder] = useState("");
@@ -46,6 +51,7 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
       .single()
       .then(({ data }) => {
         if (data?.notification_email) setNotificationEmail(data.notification_email);
+        if (data?.phone) setPhone(formatPhone(data.phone));
         if (data?.address) setAddress(data.address);
         if (data?.bank_name) setBankName(data.bank_name);
         if (data?.bank_account) setBankAccount(data.bank_account);
@@ -93,11 +99,11 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
         instagram_url: instagramUrl || null,
         youtube_url: youtubeUrl || null,
         notification_email: notificationEmail || null,
-        phone: phone || null,
+        phone: parsePhone(phone) || null,
         bank_name: bankName || null,
         bank_account: bankAccount || null,
         bank_holder: bankHolder || null,
-        address: address || null,
+        address: address ? (addressDetail ? `${address} ${addressDetail}` : address) : null,
       })
       .eq("id", companyId);
 
@@ -105,6 +111,7 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
       setError(updateError.message);
     } else {
       setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
       onSave(name, logoUrl, locationUrl || null, kakaoChannelUrl || null, instagramUrl || null, youtubeUrl || null);
     }
     setLoading(false);
@@ -112,14 +119,11 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
 
   return (
     <div className="max-w-md">
-      <h2 className="text-xl font-medium text-gray-900 mb-6">회사 정보</h2>
+      <h2 className="text-xl font-medium text-gray-900 mb-6">매장 정보</h2>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
           <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
-        )}
-        {success && (
-          <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">저장되었습니다.</div>
         )}
 
         {/* 로고 */}
@@ -241,8 +245,8 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
               <input
                 type="tel"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
-                placeholder="01012345678"
+                onChange={(e) => setPhone(formatPhone(e.target.value))}
+                placeholder="010-1234-5678"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
               />
               <p className="text-xs text-gray-400 mt-1.5">
@@ -251,13 +255,51 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">매장 주소</label>
-              <input
-                type="text"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder="예: 서울시 강남구 테헤란로 123"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
-              />
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={address}
+                    readOnly
+                    onClick={() => setShowPostcode(true)}
+                    placeholder="주소 검색을 눌러주세요"
+                    className="flex-1 min-w-0 border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500 cursor-pointer"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPostcode(true)}
+                    className="shrink-0 px-3 py-2.5 rounded-lg border border-gray-300 text-sm text-gray-600 hover:border-gray-500 bg-white transition-colors whitespace-nowrap"
+                  >
+                    찾기
+                  </button>
+                </div>
+                {showAddressDetail && (
+                  <input
+                    type="text"
+                    value={addressDetail}
+                    onChange={(e) => setAddressDetail(e.target.value)}
+                    placeholder="상세주소 (동/호수 등)"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
+                  />
+                )}
+                {showPostcode && (
+                  <div className="border border-gray-200 rounded-xl overflow-hidden">
+                    <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-200">
+                      <span className="text-xs text-gray-500">주소 검색</span>
+                      <button type="button" onClick={() => setShowPostcode(false)} className="text-gray-400 hover:text-gray-600 text-sm">✕</button>
+                    </div>
+                    <DaumPostcodeEmbed
+                      onComplete={(data) => {
+                        setAddress(data.roadAddress || data.jibunAddress);
+                        setAddressDetail("");
+                        setShowPostcode(false);
+                        setShowAddressDetail(true);
+                      }}
+                      style={{ height: 400 }}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">은행</label>
@@ -310,13 +352,21 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
           </p>
         </div> */}
 
-        <button
-          type="submit"
-          disabled={loading || uploading}
-          className="bg-gold-500 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-gold-600 disabled:opacity-50 transition-colors"
-        >
-          {loading ? "저장 중..." : "저장"}
-        </button>
+        <div className="sticky bottom-0 bg-white border-t border-gray-100 -mx-0 pt-4 pb-1 flex items-center gap-3">
+          <button
+            type="submit"
+            disabled={loading || uploading}
+            className="bg-gold-500 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-gold-600 disabled:opacity-50 transition-colors"
+          >
+            {loading ? "저장 중..." : "저장"}
+          </button>
+          {success && (
+            <span className="text-sm text-green-600 flex items-center gap-1">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+              저장되었습니다.
+            </span>
+          )}
+        </div>
       </form>
     </div>
   );

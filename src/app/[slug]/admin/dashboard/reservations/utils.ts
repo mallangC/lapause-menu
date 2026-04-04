@@ -9,6 +9,35 @@ export function formatDateTime(dateStr: string) {
   });
 }
 
+const DAY_KO = ["일", "월", "화", "수", "목", "금", "토"];
+
+export function formatDesiredDate(dateStr: string, timeStr?: string | null) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const date = new Date(y, m - 1, d);
+  const day = DAY_KO[date.getDay()];
+  const base = `${m}/${d}(${day})`;
+  if (!timeStr) return base;
+  const [h, min] = timeStr.split(":").map(Number);
+  const ampm = h < 12 ? "오전" : "오후";
+  const hour = h % 12 === 0 ? 12 : h % 12;
+  return `${base} ${ampm} ${hour}:${String(min).padStart(2, "0")}`;
+}
+
+export function formatDateHeader(dateStr: string) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const date = new Date(y, m - 1, d);
+  const day = DAY_KO[date.getDay()];
+  return `${m}/${d}(${day})`;
+}
+
+export function formatTimeOnly(timeStr?: string | null) {
+  if (!timeStr) return "";
+  const [h, min] = timeStr.split(":").map(Number);
+  const ampm = h < 12 ? "오전" : "오후";
+  const hour = h % 12 === 0 ? 12 : h % 12;
+  return `${ampm} ${hour}:${String(min).padStart(2, "0")}`;
+}
+
 export function formatPhone(phone: string) {
   const digits = phone.replace(/\D/g, "");
   if (digits.startsWith("02")) {

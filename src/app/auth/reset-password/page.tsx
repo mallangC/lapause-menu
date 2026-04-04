@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 
 export default function ResetPasswordPage() {
@@ -41,7 +42,7 @@ export default function ResetPasswordPage() {
     <div className="min-h-screen bg-beige-100 flex items-center justify-center px-4">
       <div className="w-full max-w-sm bg-white border border-beige-200 rounded-2xl p-8 shadow-sm">
         <div className="text-center mb-8">
-          <p className="text-2xl font-light tracking-widest text-gold-500 mb-1">Flo.Aide</p>
+          <Image src="/logo-light.png" alt="Flo.Aide" width={100} height={36} className="object-contain mx-auto mb-1" />
           <p className="text-sm text-gray-400">새 비밀번호 설정</p>
         </div>
 

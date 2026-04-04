@@ -1,12 +1,13 @@
 import Link from "next/link";
 import FloAideFooter from "@/components/FloAideFooter";
+import Image from "next/image";
 
 export default function TermsPage() {
   return (
     <div className="min-h-screen bg-beige-100">
       <header className="border-b border-beige-200 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-5 py-4 flex items-center justify-between">
-          <span className="text-base font-normal tracking-widest text-gold-500">Flo.Aide</span>
+          <Image src="/logo-light.png" alt="Flo.Aide" width={80} height={28} className="object-contain" />
           <Link href="/" className="text-xs text-gray-400 hover:text-gray-700 transition-colors">
             ← 홈
           </Link>
@@ -99,7 +100,7 @@ export default function TermsPage() {
             <div className="bg-beige-50 rounded-xl p-4 text-xs text-gray-500 space-y-1">
               <p><span className="font-medium text-gray-700">서비스명:</span> Flo.Aide</p>
               <p><span className="font-medium text-gray-700">담당자:</span> 운영자</p>
-              <p><span className="font-medium text-gray-700">이메일:</span> ckj9001@gmail.com</p>
+              <p><span className="font-medium text-gray-700">이메일:</span> floaide.team@gmail.com</p>
             </div>
           </section>
 

@@ -2,67 +2,25 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { formatMoney, parseMoney } from "@/lib/format";
 
 interface Props {
   companyId: string;
   onConsultToggle?: (enabled: boolean) => void;
 }
 
-interface DayHours {
-  closed: boolean;
-  open: string;
-  close: string;
-}
-
-type BusinessHours = Record<string, DayHours>;
-
-const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
-
-const HOURS = Array.from({ length: 18 }, (_, i) => String(i + 6).padStart(2, "0")); // 06~23
-const MINUTES = ["00", "30"];
-
-function TimeSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const [h, m] = value.split(":");
-  return (
-    <div className="flex items-center gap-1 border border-gray-200 rounded-lg overflow-hidden bg-white">
-      <select
-        value={h}
-        onChange={(e) => onChange(`${e.target.value}:${m}`)}
-        className="px-2 py-1.5 text-sm text-gray-700 focus:outline-none bg-transparent cursor-pointer"
-      >
-        {HOURS.map((hh) => (
-          <option key={hh} value={hh}>{hh}</option>
-        ))}
-      </select>
-      <span className="text-gray-300 text-sm select-none">:</span>
-      <select
-        value={m}
-        onChange={(e) => onChange(`${h}:${e.target.value}`)}
-        className="px-2 py-1.5 text-sm text-gray-700 focus:outline-none bg-transparent cursor-pointer"
-      >
-        {MINUTES.map((mm) => (
-          <option key={mm} value={mm}>{mm}</option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
-const DEFAULT_HOURS: BusinessHours = Object.fromEntries(
-  Array.from({ length: 7 }, (_, i) => [String(i), { closed: i === 0, open: "09:00", close: "18:00" }])
-);
-
 export default function ReservationSettingsTab({ companyId, onConsultToggle }: Props) {
   const [consultEnabled, setConsultEnabled] = useState(false);
-  const [businessHours, setBusinessHours] = useState<BusinessHours>(DEFAULT_HOURS);
-  const [closedDates, setClosedDates] = useState<string[]>([]);
-  const [newDate, setNewDate] = useState("");
   const [messageCardEnabled, setMessageCardEnabled] = useState(false);
   const [messageCardPrice, setMessageCardPrice] = useState("");
   const [shoppingBagEnabled, setShoppingBagEnabled] = useState(false);
   const [shoppingBagPrice, setShoppingBagPrice] = useState("");
-  const [minLeadTimes, setMinLeadTimes] = useState<Record<string, number>>({});
   const [consultNotice, setConsultNotice] = useState("");
+  const [deliveryEnabled, setDeliveryEnabled] = useState(false);
+  const [showDeliveryFeeWarning, setShowDeliveryFeeWarning] = useState(false);
+  const [deliveryFees, setDeliveryFees] = useState<Record<string, string>>({
+    "0-1": "", "1-3": "", "3-5": "", "5-10": "", "10-15": "", "15-20": "",
+  });
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,42 +32,33 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle }: P
   useEffect(() => {
     supabase
       .from("companies")
-      .select("consult_enabled, business_hours, closed_dates, message_card_enabled, message_card_price, shopping_bag_enabled, shopping_bag_price, bank_name, bank_account, bank_holder, phone, address, min_lead_times, consult_notice")
+      .select("consult_enabled, message_card_enabled, message_card_price, shopping_bag_enabled, shopping_bag_price, bank_name, bank_account, bank_holder, phone, address, consult_notice, delivery_fees, delivery_enabled")
       .eq("id", companyId)
       .single()
       .then(({ data }) => {
         if (!data) return;
         if (data.consult_enabled) setConsultEnabled(data.consult_enabled);
-        if (data.business_hours && Object.keys(data.business_hours).length > 0)
-          setBusinessHours(data.business_hours as BusinessHours);
-        if (data.closed_dates) setClosedDates(data.closed_dates);
         setMessageCardEnabled(data.message_card_enabled ?? false);
-        setMessageCardPrice(data.message_card_price ? String(data.message_card_price) : "");
+        setMessageCardPrice(data.message_card_price ? formatMoney(String(data.message_card_price)) : "");
         setShoppingBagEnabled(data.shopping_bag_enabled ?? false);
-        setShoppingBagPrice(data.shopping_bag_price ? String(data.shopping_bag_price) : "");
+        setShoppingBagPrice(data.shopping_bag_price ? formatMoney(String(data.shopping_bag_price)) : "");
         setHasBankInfo(!!(data.phone && data.address && data.bank_name && data.bank_account && data.bank_holder));
-        if (data.min_lead_times && typeof data.min_lead_times === "object") setMinLeadTimes(data.min_lead_times as Record<string, number>);
         if (data.consult_notice) setConsultNotice(data.consult_notice);
+        setDeliveryEnabled(data.delivery_enabled ?? false);
+        if (data.delivery_fees && typeof data.delivery_fees === "object") {
+          const fees = data.delivery_fees as Record<string, number>;
+          setDeliveryFees({
+            "0-1":   fees["0-1"]   != null ? formatMoney(String(fees["0-1"]))   : "",
+            "1-3":   fees["1-3"]   != null ? formatMoney(String(fees["1-3"]))   : "",
+            "3-5":   fees["3-5"]   != null ? formatMoney(String(fees["3-5"]))   : "",
+            "5-10":  fees["5-10"]  != null ? formatMoney(String(fees["5-10"]))  : "",
+            "10-15": fees["10-15"] != null ? formatMoney(String(fees["10-15"])) : "",
+            "15-20": fees["15-20"] != null ? formatMoney(String(fees["15-20"])) : "",
+          });
+        }
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId]);
-
-  const updateDay = (day: number, patch: Partial<DayHours>) => {
-    setBusinessHours((prev) => ({
-      ...prev,
-      [String(day)]: { ...prev[String(day)], ...patch },
-    }));
-  };
-
-  const addClosedDate = () => {
-    if (!newDate || closedDates.includes(newDate)) return;
-    setClosedDates((prev) => [...prev, newDate].sort());
-    setNewDate("");
-  };
-
-  const removeClosedDate = (date: string) => {
-    setClosedDates((prev) => prev.filter((d) => d !== date));
-  };
 
   const handleSave = async () => {
     setLoading(true);
@@ -119,38 +68,32 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle }: P
       .from("companies")
       .update({
         consult_enabled: consultEnabled,
-        business_hours: businessHours,
-        closed_dates: closedDates,
         message_card_enabled: messageCardEnabled,
-        message_card_price: messageCardEnabled ? (Number(messageCardPrice) || 0) : 0,
+        message_card_price: messageCardEnabled ? parseMoney(messageCardPrice) : 0,
         shopping_bag_enabled: shoppingBagEnabled,
-        shopping_bag_price: shoppingBagEnabled ? (Number(shoppingBagPrice) || 0) : 0,
-        min_lead_times: minLeadTimes,
+        shopping_bag_price: shoppingBagEnabled ? parseMoney(shoppingBagPrice) : 0,
         consult_notice: consultNotice || null,
+        delivery_enabled: deliveryEnabled,
+        delivery_fees: Object.fromEntries(
+          Object.entries(deliveryFees).map(([k, v]) => [k, v === "" ? null : parseMoney(v)])
+        ),
       })
       .eq("id", companyId);
     if (err) setError(err.message);
     else {
       setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
       onConsultToggle?.(consultEnabled);
     }
     setLoading(false);
   };
 
-  const formatDate = (dateStr: string) => {
-    const d = new Date(dateStr + "T00:00:00");
-    return d.toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "short" });
-  };
-
   return (
     <div className="max-w-lg space-y-4">
-      <h2 className="text-xl font-medium text-gray-900">예약 설정</h2>
+      <h2 className="text-xl font-medium text-gray-900">맞춤 주문</h2>
 
       {error && (
         <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
-      )}
-      {success && (
-        <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">저장되었습니다.</div>
       )}
 
       {/* 맞춤 주문 기능 활성화 */}
@@ -198,7 +141,7 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle }: P
             <div className="space-y-2 text-xs text-gray-500 leading-relaxed">
               <p>
                 맞춤 주문 기능을 활성화하려면<br />
-                <span className="font-medium text-gray-700">회사 정보 탭 &gt; 예약 알림 정보</span>에서<br />
+                <span className="font-medium text-gray-700">매장 정보 탭 &gt; 예약 알림 정보</span>에서<br />
                 매장 전화번호, 매장 주소, 은행, 계좌번호, 예금주을 모두 입력해주세요.
               </p>
             </div>
@@ -223,11 +166,12 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle }: P
           {messageCardEnabled && (
             <div className="flex items-center gap-1">
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 value={messageCardPrice}
-                onChange={(e) => setMessageCardPrice(e.target.value)}
+                onChange={(e) => setMessageCardPrice(formatMoney(e.target.value))}
                 placeholder="0"
-                className="w-20 border border-gray-200 rounded-lg px-2 py-1 text-sm text-right focus:outline-none focus:border-gray-400 bg-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="w-20 border border-gray-200 rounded-lg px-2 py-1 text-sm text-right focus:outline-none focus:border-gray-400 bg-white"
               />
               <span className="text-xs text-gray-400">원</span>
             </div>
@@ -252,11 +196,12 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle }: P
           {shoppingBagEnabled && (
             <div className="flex items-center gap-1">
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 value={shoppingBagPrice}
-                onChange={(e) => setShoppingBagPrice(e.target.value)}
+                onChange={(e) => setShoppingBagPrice(formatMoney(e.target.value))}
                 placeholder="0"
-                className="w-20 border border-gray-200 rounded-lg px-2 py-1 text-sm text-right focus:outline-none focus:border-gray-400 bg-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="w-20 border border-gray-200 rounded-lg px-2 py-1 text-sm text-right focus:outline-none focus:border-gray-400 bg-white"
               />
               <span className="text-xs text-gray-400">원</span>
             </div>
@@ -271,26 +216,82 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle }: P
         </div>
       </div>
 
-      {/* 당일 예약 시간 설정 */}
+      {/* 배송 기능 */}
+      <div className="flex items-center justify-between p-4 border border-gray-200 rounded-xl bg-white">
+        <div>
+          <p className="text-sm font-medium text-gray-800">배송 기능</p>
+          <p className="text-xs text-gray-400 mt-0.5">비활성화 시 맞춤 주문에서 배송 선택이 숨겨집니다.</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            if (!deliveryEnabled) {
+              if (!deliveryFees["0-1"]) { setShowDeliveryFeeWarning(true); return; }
+            }
+            setDeliveryEnabled((prev) => !prev);
+          }}
+          className={`shrink-0 w-12 h-6 rounded-full transition-colors relative ${deliveryEnabled ? "bg-gold-500" : "bg-gray-200"}`}
+        >
+          <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${deliveryEnabled ? "left-6" : "left-0.5"}`} />
+        </button>
+      </div>
+
+      {/* 배송비 미설정 경고 */}
+      {showDeliveryFeeWarning && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={() => setShowDeliveryFeeWarning(false)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5 text-amber-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">1km 이내 배송비를 먼저 설정해주세요</p>
+                <p className="text-xs text-gray-400 mt-0.5">배송 기능을 활성화하려면 1km 이내 배송비가 필수입니다. 나머지 구간은 선택 사항입니다.</p>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 leading-relaxed">
+              아래 <span className="font-medium text-gray-700">배송비 설정</span>에서 <span className="font-medium text-gray-700">1km 이내</span> 배송비를 입력하고 저장해주세요. 나머지 구간은 비워두면 해당 거리에서 고객에게 &ldquo;매장 문의&rdquo;로 안내됩니다.
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowDeliveryFeeWarning(false)}
+              className="w-full bg-gold-500 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-gold-600 transition-colors"
+            >
+              확인
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 배송비 설정 */}
       <div className="space-y-3">
         <div>
-          <h3 className="text-sm font-medium text-gray-700">당일 예약 시간 설정</h3>
-          <p className="text-xs text-gray-400 mt-0.5">현재 시각 기준 몇 시간 이후부터 예약 가능한지 설정합니다. (기본값: 2시간)</p>
+          <h3 className="text-sm font-medium text-gray-700">배송비 설정</h3>
+          <p className="text-xs text-gray-400 mt-0.5">거리별 배송비를 설정합니다. 비워두면 해당 구간은 표시되지 않습니다.</p>
         </div>
         <div className="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
-          {["꽃다발", "바구니", "센터피스", "화병꽂이", "기타"].map((type) => (
-            <div key={type} className="flex items-center justify-between px-4 py-3 bg-white">
-              <span className="text-sm text-gray-700">{type}</span>
+          {[
+            { key: "0-1",   label: "1km 이내"   },
+            { key: "1-3",   label: "1 ~ 3km"   },
+            { key: "3-5",   label: "3 ~ 5km"   },
+            { key: "5-10",  label: "5 ~ 10km"  },
+            { key: "10-15", label: "10 ~ 15km" },
+            { key: "15-20", label: "15 ~ 20km" },
+          ].map(({ key, label }) => (
+            <div key={key} className="flex items-center justify-between px-4 py-3 bg-white">
+              <span className="text-sm text-gray-700">{label}</span>
               <div className="flex items-center gap-1.5">
                 <input
-                  type="number"
-                  min={0}
-                  max={72}
-                  value={minLeadTimes[type] ?? 2}
-                  onChange={(e) => setMinLeadTimes((prev) => ({ ...prev, [type]: Number(e.target.value) }))}
-                  className="w-16 border border-gray-200 rounded-lg px-2 py-1 text-sm text-center focus:outline-none focus:border-gray-400 bg-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  type="text"
+                  inputMode="numeric"
+                  value={deliveryFees[key]}
+                  onChange={(e) => setDeliveryFees((prev) => ({ ...prev, [key]: formatMoney(e.target.value) }))}
+                  placeholder="미설정"
+                  className="w-24 border border-gray-200 rounded-lg px-2 py-1 text-sm text-right focus:outline-none focus:border-gray-400 bg-white"
                 />
-                <span className="text-xs text-gray-400">시간</span>
+                <span className="text-xs text-gray-400">원</span>
               </div>
             </div>
           ))}
@@ -312,102 +313,22 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle }: P
         />
       </div>
 
-      {/* 요일별 영업 시간 */}
-      <div className="space-y-3">
-        <h3 className="text-sm font-medium text-gray-700">요일별 영업 시간</h3>
-        <div className="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
-          {[1, 2, 3, 4, 5, 6, 0].map((i) => {
-            const label = WEEKDAYS[i];
-            const day = businessHours[String(i)] ?? { closed: false, open: "09:00", close: "18:00" };
-            return (
-              <div key={i} className={`flex items-center gap-3 px-4 py-3 ${day.closed ? "bg-gray-50" : "bg-white"}`}>
-                {/* 요일 */}
-                <span className={`w-6 text-sm font-medium shrink-0 ${day.closed ? "text-gray-300" : "text-gray-700"}`}>
-                  {label}
-                </span>
-
-                {/* 휴무 토글 */}
-                <button
-                  type="button"
-                  onClick={() => updateDay(i, { closed: !day.closed })}
-                  className={`shrink-0 w-12 h-6 rounded-full transition-colors relative ${
-                    day.closed ? "bg-gray-200" : "bg-gold-500"
-                  }`}
-                >
-                  <span
-                    className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${
-                      day.closed ? "left-0.5" : "left-6"
-                    }`}
-                  />
-                </button>
-
-                <span className={`text-xs shrink-0 w-6 ${day.closed ? "text-gray-300" : "text-gray-400"}`}>
-                  {day.closed ? "휴무" : "영업"}
-                </span>
-
-                {/* 시간 입력 */}
-                {day.closed ? (
-                  <span className="text-sm text-gray-300 ml-auto">—</span>
-                ) : (
-                  <div className="flex items-center gap-2 ml-auto">
-                    <TimeSelect value={day.open} onChange={(v) => updateDay(i, { open: v })} />
-                    <span className="text-gray-300 text-sm">~</span>
-                    <TimeSelect value={day.close} onChange={(v) => updateDay(i, { close: v })} />
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 특정 휴무일 */}
-      <div className="space-y-3">
-        <h3 className="text-sm font-medium text-gray-700">특정 휴무일</h3>
-        <p className="text-xs text-gray-400">공휴일, 임시 휴무일 등을 직접 지정합니다.</p>
-        <div className="flex gap-2">
-          <input
-            type="date"
-            value={newDate}
-            min={new Date().toISOString().split("T")[0]}
-            onChange={(e) => setNewDate(e.target.value)}
-            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-500 bg-white"
-          />
-          <button
-            type="button"
-            onClick={addClosedDate}
-            disabled={!newDate}
-            className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-700 disabled:opacity-40 transition-colors"
-          >
-            추가
-          </button>
-        </div>
-        {closedDates.length > 0 && (
-          <ul className="space-y-1.5">
-            {closedDates.map((date) => (
-              <li key={date} className="flex items-center justify-between px-3 py-2.5 bg-gray-50 rounded-lg border border-gray-100">
-                <span className="text-sm text-gray-700">{formatDate(date)}</span>
-                <button
-                  type="button"
-                  onClick={() => removeClosedDate(date)}
-                  className="text-gray-300 hover:text-red-400 transition-colors text-sm ml-4"
-                >
-                  ✕
-                </button>
-              </li>
-            ))}
-          </ul>
+      <div className="sticky bottom-0 bg-white border-t border-gray-100 -mx-0 pt-4 pb-1 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={loading}
+          className="bg-gold-500 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-gold-600 disabled:opacity-50 transition-colors"
+        >
+          {loading ? "저장 중..." : "저장"}
+        </button>
+        {success && (
+          <span className="text-sm text-green-600 flex items-center gap-1">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+            저장되었습니다.
+          </span>
         )}
       </div>
-
-      <button
-        type="button"
-        onClick={handleSave}
-        disabled={loading}
-        className="bg-gold-500 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-gold-600 disabled:opacity-50 transition-colors"
-      >
-        {loading ? "저장 중..." : "저장"}
-      </button>
     </div>
   );
 }

@@ -43,6 +43,7 @@ export default async function DashboardPage({ params }: Props) {
       slug={slug}
       userId={user.id}
       userEmail={user.email ?? ""}
+      isOAuth={user.app_metadata?.provider !== "email"}
       profileName={profile?.name ?? ""}
       profilePhone={profile?.phone_number ?? ""}
       companyId={company.id}

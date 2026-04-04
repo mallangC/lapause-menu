@@ -106,6 +106,7 @@ export default function ProductForm({ initialData, onSubmit }: ProductFormProps)
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
 
@@ -186,6 +187,15 @@ export default function ProductForm({ initialData, onSubmit }: ProductFormProps)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const missing: string[] = [];
+    if (!data.name) missing.push("상품명");
+    if (!data.image_url) missing.push("이미지");
+    if (data.flower_colors.length === 0) missing.push("꽃 색상");
+    if (missing.length > 0) {
+      setFieldErrors(missing);
+      return;
+    }
+    setFieldErrors([]);
     setLoading(true);
     try {
       await onSubmit(data);
@@ -203,7 +213,6 @@ export default function ProductForm({ initialData, onSubmit }: ProductFormProps)
           </label>
           <input
             type="text"
-            required
             value={data.name}
             onChange={(e) => setData({ ...data, name: e.target.value })}
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:border-gray-500"
@@ -211,13 +220,12 @@ export default function ProductForm({ initialData, onSubmit }: ProductFormProps)
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            상품 가격 <span className="text-red-500">*</span>
+            상품 가격
           </label>
           <div className="flex items-center gap-2">
             <input
               type="text"
               inputMode="numeric"
-              required
               value={data.price === 0 ? "" : data.price.toLocaleString()}
               onChange={(e) => {
                 const raw = e.target.value.replace(/,/g, "");
@@ -234,7 +242,7 @@ export default function ProductForm({ initialData, onSubmit }: ProductFormProps)
       {/* 이미지 업로드 */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          이미지
+          이미지 <span className="text-red-500">*</span>
         </label>
 
         {data.image_url ? (
@@ -283,14 +291,25 @@ export default function ProductForm({ initialData, onSubmit }: ProductFormProps)
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
           상품 유형 <span className="text-red-500">*</span>
         </label>
-        <FormSelect
-          value={data.product_type}
-          options={PRODUCT_TYPES.map((t) => ({ value: t, label: t }))}
-          onChange={(v) => setData({ ...data, product_type: v as ProductInput["product_type"] })}
-        />
+        <div className="grid grid-cols-3 gap-2">
+          {PRODUCT_TYPES.map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setData({ ...data, product_type: t })}
+              className={`py-1.5 rounded-lg border text-sm transition-colors ${
+                data.product_type === t
+                  ? "border-gold-400 bg-gold-400 text-white font-medium"
+                  : "border-gray-200 text-gray-600 hover:border-gold-500 hover:text-gold-500"
+              }`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div>
@@ -321,9 +340,9 @@ export default function ProductForm({ initialData, onSubmit }: ProductFormProps)
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          꽃 색상
+          꽃 색상 <span className="text-red-500">*</span>
         </label>
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-3 gap-2">
           {FLOWER_COLORS.map((color) => {
             const selected = data.flower_colors.includes(color);
             return (
@@ -331,7 +350,7 @@ export default function ProductForm({ initialData, onSubmit }: ProductFormProps)
                 key={color}
                 type="button"
                 onClick={() => toggleFlowerColor(color)}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border-2 text-sm transition-all ${
+                className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg border-2 text-sm transition-all ${
                   selected
                     ? "border-gold-500 bg-gold-500 text-white font-medium"
                     : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
@@ -349,14 +368,25 @@ export default function ProductForm({ initialData, onSubmit }: ProductFormProps)
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
           포장지 색상 <span className="text-red-500">*</span>
         </label>
-        <FormSelect
-          value={data.wrapping_color}
-          options={WRAPPING_COLORS.map((wc) => ({ value: wc, label: wc }))}
-          onChange={(v) => setData({ ...data, wrapping_color: v as ProductInput["wrapping_color"] })}
-        />
+        <div className="grid grid-cols-3 gap-2">
+          {WRAPPING_COLORS.map((wc) => (
+            <button
+              key={wc}
+              type="button"
+              onClick={() => setData({ ...data, wrapping_color: wc })}
+              className={`py-1.5 rounded-lg border text-sm transition-colors ${
+                data.wrapping_color === wc
+                  ? "border-gold-400 bg-gold-400 text-white font-medium"
+                  : "border-gray-200 text-gray-600 hover:border-gold-500 hover:text-gold-500"
+              }`}
+            >
+              {wc}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div>
@@ -380,12 +410,26 @@ export default function ProductForm({ initialData, onSubmit }: ProductFormProps)
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">시즌</label>
-        <FormSelect
-          value={data.seasons[0] ?? ""}
-          options={[{ value: "", label: "없음" }, ...SEASONS.map((s) => ({ value: s, label: s }))]}
-          onChange={(v) => setData({ ...data, seasons: v ? [v] : [] })}
-        />
+        <label className="block text-sm font-medium text-gray-700 mb-2">시즌</label>
+        <div className="grid grid-cols-3 gap-2">
+          {SEASONS.map((s) => {
+            const selected = data.seasons[0] === s;
+            return (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setData({ ...data, seasons: selected ? [] : [s] })}
+                className={`py-1.5 rounded-lg border text-sm transition-colors ${
+                  selected
+                    ? "border-gold-400 bg-gold-400 text-white font-medium"
+                    : "border-gray-200 text-gray-600 hover:border-gold-500 hover:text-gold-500"
+                }`}
+              >
+                {s}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="pb-2">
@@ -401,7 +445,17 @@ export default function ProductForm({ initialData, onSubmit }: ProductFormProps)
         />
       </div>
 
-      <div className="pt-6 border-t border-gray-300">
+      <div className="pt-6 border-t border-gray-300 space-y-3">
+        {fieldErrors.length > 0 && (
+          <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3">
+            <p className="text-xs font-medium text-red-600 mb-1">아래 항목을 입력해주세요.</p>
+            <ul className="list-disc list-inside space-y-0.5">
+              {fieldErrors.map((f) => (
+                <li key={f} className="text-xs text-red-500">{f}</li>
+              ))}
+            </ul>
+          </div>
+        )}
         <button
           type="submit"
           disabled={loading || uploading}

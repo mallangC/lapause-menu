@@ -108,8 +108,7 @@ export default function SetupForm() {
 
     await supabase
       .from("profiles")
-      .update({ name: ownerName, phone_number: ownerPhone })
-      .eq("user_id", user.id);
+      .upsert({ user_id: user.id, email: user.email, name: ownerName, phone_number: ownerPhone, role: "admin" }, { onConflict: "user_id" });
 
     router.push(`/${slug}/admin/dashboard`);
   };

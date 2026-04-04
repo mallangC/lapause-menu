@@ -33,6 +33,7 @@ export interface Reservation {
   address: string | null;
   address_detail: string | null;
   customer_profile_id: string | null;
+  reference_images: string[] | null;
 }
 
 export type SortKey = "desired_date";

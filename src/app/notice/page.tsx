@@ -1,5 +1,6 @@
 import Link from "next/link";
 import FloAideFooter from "@/components/FloAideFooter";
+import Image from "next/image";
 
 export default function NoticePage() {
   return (
@@ -8,7 +9,7 @@ export default function NoticePage() {
       {/* 헤더 */}
       <header className="border-b border-beige-200 bg-white/80 backdrop-blur-sm sticky top-0 z-20">
         <div className="max-w-3xl mx-auto px-5 py-4 flex items-center justify-between">
-          <span className="text-base font-normal tracking-widest text-gold-500">Flo.Aide</span>
+          <Image src="/logo-light.png" alt="Flo.Aide" width={80} height={28} className="object-contain" />
           <Link href="/login" className="text-xs text-gray-400 hover:text-gray-700 transition-colors">
             ← 로그인
           </Link>
@@ -155,16 +156,16 @@ export default function NoticePage() {
             <div className="bg-white rounded-2xl border border-beige-200 overflow-hidden">
               <div className="flex items-center gap-3 px-6 py-4 border-b border-beige-100">
                 <span className="w-6 h-6 rounded-full bg-gold-500 text-white flex items-center justify-center text-xs font-semibold shrink-0">4</span>
-                <h3 className="font-medium text-gray-900 text-sm">회사 정보</h3>
+                <h3 className="font-medium text-gray-900 text-sm">매장 정보</h3>
               </div>
               <div className="px-6 py-4 space-y-3">
                 {[
                   ["로고 · 상호명", "헤더에 표시될 로고를 업로드합니다. 로고가 없으면 상호명이 텍스트로 표시됩니다."],
                   ["채널 URL", "매장 위치 URL, 카카오 채널, 인스타그램, 유튜브 URL을 등록하면 홈 화면에 버튼이 자동으로 나타납니다."],
-                  ["예약 알림 정보", "맞춤 주문 기능 활성화 및 카카오 알림톡 발송에 필요한 정보입니다. 매장 전화번호, 매장 주소, 은행, 계좌번호, 예금주 5개 항목을 모두 입력해야 맞춤 주문을 활성화할 수 있습니다. 맞춤 주문이 활성화된 상태에서는 수정이 불가합니다."],
-                  ["매장 전화번호", "고객에게 발송되는 카카오 알림톡의 매장 전화번호로 표시됩니다. 필수 입력 항목입니다."],
-                  ["매장 주소", "고객에게 발송되는 카카오 예약 확정 알림에 매장 주소로 표시됩니다."],
+                  ["매장 주소", "주소 찾기 버튼을 눌러 도로명 주소를 검색합니다. 배송 거리 계산 및 카카오 알림톡에 활용됩니다."],
+                  ["매장 전화번호", "고객에게 발송되는 카카오 알림톡의 발신 번호로 표시됩니다."],
                   ["계좌 정보", "고객이 맞춤 주문 후 계좌이체로 결제할 수 있도록 은행, 계좌번호, 예금주를 입력합니다."],
+                  ["예약 알림 정보", "매장 전화번호, 매장 주소, 은행, 계좌번호, 예금주 5개 항목을 모두 입력해야 맞춤 주문을 활성화할 수 있습니다. 맞춤 주문이 활성화된 상태에서는 수정이 불가합니다."],
                 ].map(([label, desc]) => (
                   <div key={label} className="flex gap-3">
                     <span className="shrink-0 text-xs font-medium text-gold-600 w-24 pt-0.5">{label}</span>
@@ -177,17 +178,13 @@ export default function NoticePage() {
             <div className="bg-white rounded-2xl border border-beige-200 overflow-hidden">
               <div className="flex items-center gap-3 px-6 py-4 border-b border-beige-100">
                 <span className="w-6 h-6 rounded-full bg-gold-500 text-white flex items-center justify-center text-xs font-semibold shrink-0">5</span>
-                <h3 className="font-medium text-gray-900 text-sm">예약 설정</h3>
+                <h3 className="font-medium text-gray-900 text-sm">영업 설정</h3>
               </div>
               <div className="px-6 py-4 space-y-3">
                 {[
-                  ["맞춤 주문 활성화", "켜면 손님 메뉴 화면에 '맞춤 주문하기' 버튼이 홈 화면과 메인화면 헤더에 노출되고 통계 탭이 활성화됩니다. 회사 정보 탭의 예약 알림 정보 5개 항목을 모두 입력해야 활성화할 수 있습니다."],
-                  ["메시지 카드", "활성화하면 맞춤 주문 폼에 메시지 카드 옵션이 표시됩니다. 추가 금액을 설정하면 최종 가격에 반영됩니다."],
-                  ["쇼핑백", "활성화하면 맞춤 주문 폼에 쇼핑백 옵션이 표시됩니다. 추가 금액을 설정할 수 있습니다."],
                   ["당일 예약 시간", "상품 형태(꽃다발, 바구니 등)별로 당일 예약 가능한 최소 시간을 설정합니다. 예: 3으로 설정하면 현재 시각 기준 3시간 이후부터 예약 가능합니다. 기본값은 2시간입니다."],
-                  ["예약 확인 문구", "고객이 예약을 완료하기 직전 확인 화면 상단에 표시할 안내 문구를 입력합니다."],
-                  ["영업시간 설정", "요일별 영업시간을 설정하면 예약 폼에서 영업 시간대만 선택 가능합니다."],
-                  ["휴무일 설정", "특정 날짜를 휴무일로 지정하면 해당 날짜는 예약할 수 없습니다."],
+                  ["요일별 영업시간", "요일별 영업시간을 설정하면 예약 폼에서 영업 시간대만 선택 가능합니다."],
+                  ["특정 휴무일", "공휴일, 임시 휴무일 등 특정 날짜를 지정하면 해당 날짜는 예약할 수 없습니다."],
                 ].map(([label, desc]) => (
                   <div key={label} className="flex gap-3">
                     <span className="shrink-0 text-xs font-medium text-gold-600 w-24 pt-0.5">{label}</span>
@@ -200,7 +197,29 @@ export default function NoticePage() {
             <div className="bg-white rounded-2xl border border-beige-200 overflow-hidden">
               <div className="flex items-center gap-3 px-6 py-4 border-b border-beige-100">
                 <span className="w-6 h-6 rounded-full bg-gold-500 text-white flex items-center justify-center text-xs font-semibold shrink-0">6</span>
-                <h3 className="font-medium text-gray-900 text-sm">설정</h3>
+                <h3 className="font-medium text-gray-900 text-sm">맞춤 주문</h3>
+              </div>
+              <div className="px-6 py-4 space-y-3">
+                {[
+                  ["맞춤 주문 활성화", "켜면 손님 메뉴 화면에 '맞춤 주문하기' 버튼이 노출되고 통계 탭이 활성화됩니다. 매장 정보 탭의 예약 알림 정보 5개 항목을 모두 입력해야 활성화할 수 있습니다."],
+                  ["메시지 카드", "활성화하면 맞춤 주문 폼에 메시지 카드 옵션이 표시됩니다. 추가 금액을 설정하면 최종 가격에 반영됩니다."],
+                  ["쇼핑백", "활성화하면 맞춤 주문 폼에 쇼핑백 옵션이 표시됩니다. 추가 금액을 설정할 수 있습니다."],
+                  ["배송 기능", "활성화하면 맞춤 주문 폼에 배송 선택이 노출됩니다. 1km 이내 배송비를 먼저 설정해야 활성화할 수 있습니다. 배송은 당일 예약이 불가합니다."],
+                  ["배송비 설정", "거리별 배송비를 6구간(1km 이내 / 1~3km / 3~5km / 5~10km / 10~15km / 15~20km)으로 설정합니다. 1km 이내는 필수이며, 나머지 구간은 비워두면 해당 거리의 고객에게 '매장 문의' 안내가 표시됩니다. 20km 초과도 동일하게 매장 문의로 안내됩니다."],
+                  ["예약 확인 문구", "고객이 예약을 완료하기 직전 확인 화면 상단에 표시할 안내 문구를 입력합니다."],
+                ].map(([label, desc]) => (
+                  <div key={label} className="flex gap-3">
+                    <span className="shrink-0 text-xs font-medium text-gold-600 w-24 pt-0.5">{label}</span>
+                    <p className="text-xs text-gray-500 leading-relaxed">{desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-beige-200 overflow-hidden">
+              <div className="flex items-center gap-3 px-6 py-4 border-b border-beige-100">
+                <span className="w-6 h-6 rounded-full bg-gold-500 text-white flex items-center justify-center text-xs font-semibold shrink-0">7</span>
+                <h3 className="font-medium text-gray-900 text-sm">디자인</h3>
               </div>
               <div className="px-6 py-4 space-y-3">
                 {[
@@ -230,11 +249,11 @@ export default function NoticePage() {
             <div className="absolute left-3 top-4 bottom-4 w-px bg-beige-200" />
             <ol className="space-y-6">
               {[
-                ["관리자 로그인", "메뉴 URL 뒤에 /admin 을 붙여 접속한 뒤 이메일과 비밀번호로 로그인합니다."],
-                ["회사 정보 입력", "회사 정보 탭에서 상호명, 로고를 등록하고 채널 URL과 알림 이메일을 입력합니다."],
-                ["상품 등록", "상품 관리 탭에서 판매 중인 상품을 추가합니다."],
-                ["설정 구성", "설정 탭에서 홈 화면 이미지, 메뉴 필터, 사이트 색상을 취향에 맞게 조정합니다."],
-                ["맞춤 주문 기능 활성화 (선택)", "예약 설정 탭에서 맞춤 주문 기능을 켜고 영업시간을 설정합니다."],
+                ["로그인", "이메일과 비밀번호로 로그인합니다."],
+                ["매장 정보 입력", "로그인 시 나오는 팝업에서 상호명, 로고를 등록하고 채널 URL을 입력합니다."],
+                ["상품 등록", "상품 관리 탭에서 판매 할 상품을 추가합니다."],
+                ["디자인 구성", "디자인 탭에서 홈 화면 이미지, 메뉴 필터, 사이트 색상을 취향에 맞게 조정합니다."],
+                ["맞춤 주문 활성화 (선택)", "매장 정보 탭에서 전화번호·주소·계좌 정보를 입력한 뒤, 맞춤 주문 탭에서 기능을 켭니다. 배송을 제공하려면 영업 설정에서 배송비도 설정합니다."],
                 ["링크 공유", "메뉴 URL을 SNS, 카카오톡, 네이버 스마트플레이스 등에 공유합니다."],
               ].map(([title, desc], i) => (
                 <li key={title} className="flex gap-5 relative">
@@ -261,36 +280,17 @@ export default function NoticePage() {
           <div className="space-y-3">
             <div className="bg-white rounded-2xl border border-beige-200 overflow-hidden">
               <div className="flex items-center gap-3 px-6 py-3 border-b border-beige-100">
-                <span className="text-xs font-semibold text-gold-500 tracking-widest">2025.03</span>
+                <span className="text-xs font-semibold text-gold-500 tracking-widest">2026.04</span>
               </div>
               <ul className="px-6 py-4 space-y-3">
                 {[
-                  { date: "03.26", text: "내 정보 탭 추가 — 이메일·이름·전화번호 확인 및 비밀번호 변경", isNew: true },
-                  { date: "03.26", text: "회사 정보 — 매장 전화번호 입력 추가", isNew: true },
-                  { date: "03.26", text: "비밀번호 재설정 — 이메일 링크를 통한 비밀번호 변경 기능 추가", isNew: true },
-                  { date: "03.24", text: "예약 관리 — 미확인 상태 추가, 달력에서 미확인 예약 날짜 빨간 점 표시", isNew: false },
-                  { date: "03.24", text: "통계 — 신규/재방문 고객 비율 추가", isNew: false },
-                  { date: "03.24", text: "홈 화면 이미지 — 맞춤 주문하기 버튼 배경 이미지 설정 추가", isNew: false },
-                  { date: "03.24", text: "예약자 이름 클릭 시 고객 프로필 모달 — 최근 주문 3건·메모 작성·수정", isNew: false },
-                  { date: "03.24", text: "고객 프로필 기능 추가 — 전화번호 기준 자동 생성, 신규(NEW) 뱃지 표시", isNew: false },
-                  { date: "03.24", text: "최초 가입 시 담당자 이름·연락처 입력 단계 추가", isNew: false },
-                  { date: "03.23", text: "서비스 이름 Flo.Aide 확정", isNew: false },
-                  { date: "03.23", text: "통계 탭 추가 — 월별 매출, 채널별·수령방법·상품유형 차트", isNew: false },
-                  { date: "03.23", text: "탭 구조 개편 — 홈화면·메뉴설정을 설정 탭으로 통합", isNew: false },
-                  { date: "03.22", text: "고객 예약 시 관리자 이메일 알림 발송", isNew: false },
-                  { date: "03.22", text: "상품 추가·예약 폼 UX 개선 — 가격 콤마 표시, 2열 레이아웃", isNew: false },
-                  { date: "03.21", text: "상품 분위기 필드 추가 — 4가지 스타일 선택", isNew: false },
-                  { date: "03.21", text: "메뉴 상단 '맞춤 주문하기' 버튼 추가 (맞춤 주문 기능 활성화 시)", isNew: false },
-                  { date: "03.20", text: "예약 관리 달력 뷰 추가 — 일별 예약 건수 표시 및 날짜 필터", isNew: false },
-                  { date: "03.20", text: "예약 직접 추가 — 네이버 예약 텍스트 자동 파싱 지원", isNew: false },
-                  { date: "03.19", text: "예약 채널 관리 추가 — 네이버, 카카오, 워크인 구분", isNew: false },
-                  { date: "03.18", text: "예약 관리 탭 추가 — 상태·배송비·메모·결제 관리", isNew: false },
-                  { date: "03.12", text: "메뉴 설정 탭 추가 — 상품 유형·시즌 필터 항목 숨김", isNew: false },
-                  { date: "03.07", text: "인스타그램, 유튜브 채널 버튼 추가", isNew: false },
-                  { date: "03.07", text: "관리자 상품 목록 필터 추가 — 유형·뱃지·상태별 필터링", isNew: false },
-                  { date: "03.06", text: "상품 상태 기능 추가 — 활성·비활성·품절 전환", isNew: false },
-                  { date: "03.05", text: "홈 화면 채널 연결 버튼 추가 (네이버·카카오·인스타·유튜브)", isNew: false },
-                  { date: "03.04", text: "서비스 최초 출시 — 상품 관리 CRUD, 필터, 시즌, 테마 색상", isNew: false },
+                  { date: "04.04", text: "관리자 탭 구조 개편 — 기존 회사 정보·예약 설정·설정을 매장 정보·영업 설정·맞춤 주문·디자인 4개 탭으로 분리", isNew: true },
+                  { date: "04.04", text: "배송 기능 추가 — 배송 활성화 토글, 거리별(6구간) 배송비 설정, 고객 주문 시 직선거리 자동 계산 및 배송비 자동 반영", isNew: true },
+                  { date: "04.04", text: "배송 제한 — 당일 배송 예약 불가, 20km 초과 또는 미설정 구간은 매장 문의 안내", isNew: true },
+                  { date: "04.04", text: "매장 주소 찾기 — 주소 직접 입력 대신 다음 우편번호 검색으로 변경", isNew: true },
+                  { date: "04.04", text: "금액·전화번호 자동 포맷 — 금액 입력 시 콤마(,) 자동 삽입, 전화번호 입력 시 대시(-) 자동 삽입. DB 저장 시 숫자만 저장", isNew: true },
+                  { date: "04.04", text: "상품 등록 한도 — 매장별 최대 100개 제한, 초과 시 경고 모달 표시", isNew: true },
+                  { date: "04.04", text: "저장 버튼 UX 개선 — 매장 정보·영업 설정·맞춤 주문 탭 저장 버튼 하단 고정, 저장 성공 시 인라인 메시지 표시 후 3초 후 자동 사라짐", isNew: true },
                 ].map(({ date, text, isNew }) => (
                   <li key={text} className="flex items-start gap-2 text-xs leading-relaxed">
                     <span className="text-gray-300 shrink-0 w-10 pt-0.5">{date}</span>
@@ -302,6 +302,50 @@ export default function NoticePage() {
                 ))}
               </ul>
             </div>
+
+            <details className="bg-white rounded-2xl border border-beige-200 overflow-hidden group">
+              <summary className="flex items-center justify-between px-6 py-3 cursor-pointer list-none">
+                <span className="text-xs font-semibold text-gold-500 tracking-widest">2025.03</span>
+                <svg className="w-4 h-4 text-gray-300 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m19 9-7 7-7-7" />
+                </svg>
+              </summary>
+              <ul className="px-6 py-4 space-y-3 border-t border-beige-100">
+                {[
+                  { date: "03.26", text: "내 정보 탭 추가 — 이메일·이름·전화번호 확인 및 비밀번호 변경" },
+                  { date: "03.26", text: "회사 정보 — 매장 전화번호 입력 추가" },
+                  { date: "03.26", text: "비밀번호 재설정 — 이메일 링크를 통한 비밀번호 변경 기능 추가" },
+                  { date: "03.24", text: "예약 관리 — 미확인 상태 추가, 달력에서 미확인 예약 날짜 빨간 점 표시" },
+                  { date: "03.24", text: "통계 — 신규/재방문 고객 비율 추가" },
+                  { date: "03.24", text: "홈 화면 이미지 — 맞춤 주문하기 버튼 배경 이미지 설정 추가" },
+                  { date: "03.24", text: "예약자 이름 클릭 시 고객 프로필 모달 — 최근 주문 3건·메모 작성·수정" },
+                  { date: "03.24", text: "고객 프로필 기능 추가 — 전화번호 기준 자동 생성, 신규(NEW) 뱃지 표시" },
+                  { date: "03.24", text: "최초 가입 시 담당자 이름·연락처 입력 단계 추가" },
+                  { date: "03.23", text: "서비스 이름 Flo.Aide 확정" },
+                  { date: "03.23", text: "통계 탭 추가 — 월별 매출, 채널별·수령방법·상품유형 차트" },
+                  { date: "03.23", text: "탭 구조 개편 — 홈화면·메뉴설정을 설정 탭으로 통합" },
+                  { date: "03.22", text: "고객 예약 시 관리자 이메일 알림 발송" },
+                  { date: "03.22", text: "상품 추가·예약 폼 UX 개선 — 가격 콤마 표시, 2열 레이아웃" },
+                  { date: "03.21", text: "상품 분위기 필드 추가 — 4가지 스타일 선택" },
+                  { date: "03.21", text: "메뉴 상단 '맞춤 주문하기' 버튼 추가 (맞춤 주문 기능 활성화 시)" },
+                  { date: "03.20", text: "예약 관리 달력 뷰 추가 — 일별 예약 건수 표시 및 날짜 필터" },
+                  { date: "03.20", text: "예약 직접 추가 — 네이버 예약 텍스트 자동 파싱 지원" },
+                  { date: "03.19", text: "예약 채널 관리 추가 — 네이버, 카카오, 워크인 구분" },
+                  { date: "03.18", text: "예약 관리 탭 추가 — 상태·배송비·메모·결제 관리" },
+                  { date: "03.12", text: "메뉴 설정 탭 추가 — 상품 유형·시즌 필터 항목 숨김" },
+                  { date: "03.07", text: "인스타그램, 유튜브 채널 버튼 추가" },
+                  { date: "03.07", text: "관리자 상품 목록 필터 추가 — 유형·뱃지·상태별 필터링" },
+                  { date: "03.06", text: "상품 상태 기능 추가 — 활성·비활성·품절 전환" },
+                  { date: "03.05", text: "홈 화면 채널 연결 버튼 추가 (네이버·카카오·인스타·유튜브)" },
+                  { date: "03.04", text: "서비스 최초 출시 — 상품 관리 CRUD, 필터, 시즌, 테마 색상" },
+                ].map(({ date, text }) => (
+                  <li key={text} className="flex items-start gap-2 text-xs leading-relaxed">
+                    <span className="text-gray-300 shrink-0 w-10 pt-0.5">{date}</span>
+                    <span className="text-gray-500">{text}</span>
+                  </li>
+                ))}
+              </ul>
+            </details>
           </div>
         </section>
 

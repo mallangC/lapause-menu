@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 
 interface Props {
   reservationId: string;
@@ -49,7 +50,7 @@ export default function PayConfirmClient({
         {/* 헤더 */}
         <div className="text-center">
           <p className="text-xs text-gray-400 mb-1">{companyName}</p>
-          <p className="text-2xl font-light tracking-widest text-gold-500">Flo.Aide</p>
+          <Image src="/logo-light.png" alt="Flo.Aide" width={100} height={36} className="object-contain mx-auto" />
         </div>
 
         {done ? (

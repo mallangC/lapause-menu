@@ -89,6 +89,7 @@ export async function POST(request: NextRequest) {
         company_id: companyId,
         customer_profile_id: customerProfileId,
         status: "미확인",
+        channel: "Flo.Aide",
         orderer_name: orderer.name,
         orderer_phone: orderer.phone,
         product_id: product.id,

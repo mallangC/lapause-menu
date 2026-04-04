@@ -39,7 +39,7 @@ export default function MainNav({ filter, setFilter, setMobileFilterOpen, hidden
 
         <button
           onClick={() => setFilter({ ...EMPTY_FILTER, featured: true })}
-          className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
+          className={`px-3 md:px-5 py-3 text-xs md:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
             filter.featured
               ? "border-gold-500 text-gold-500"
               : "border-transparent text-foreground/60 hover:text-foreground"
@@ -51,7 +51,7 @@ export default function MainNav({ filter, setFilter, setMobileFilterOpen, hidden
         <div className="relative" onMouseEnter={() => handleEnter("ALL")} onMouseLeave={handleLeave}>
           <button
             onClick={() => { setFilter(EMPTY_FILTER); setMobileFilterOpen(true); }}
-            className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
+            className={`px-3 md:px-5 py-3 text-xs md:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
               isAll
                 ? "border-gold-500 text-gold-500"
                 : "border-transparent text-foreground/60 hover:text-foreground"
@@ -61,7 +61,7 @@ export default function MainNav({ filter, setFilter, setMobileFilterOpen, hidden
           </button>
           {openDropdown === "ALL" && (
             <div className="hidden md:block absolute top-full left-1/2 -translate-x-1/2 z-50">
-              <div className="bg-white border border-gray-200 rounded-xl shadow-lg p-4 w-72">
+              <div className="bg-white border border-gray-200 rounded-xl shadow-lg p-4 w-80">
                 <FilterPanel filter={filter} setFilter={setFilter} hiddenProductTypes={hiddenProductTypes} />
               </div>
             </div>
@@ -71,7 +71,7 @@ export default function MainNav({ filter, setFilter, setMobileFilterOpen, hidden
         <div className="relative" onMouseEnter={() => handleEnter("시즌")} onMouseLeave={handleLeave}>
           <button
             onClick={() => { if (isSeason) return; setFilter({ ...EMPTY_FILTER, isSeason: true }); }}
-            className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
+            className={`px-3 md:px-5 py-3 text-xs md:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
               isSeason
                 ? "border-gold-500 text-gold-500"
                 : "border-transparent text-foreground/60 hover:text-foreground"
@@ -96,7 +96,7 @@ export default function MainNav({ filter, setFilter, setMobileFilterOpen, hidden
                       className={`text-center text-sm px-3 py-1.5 rounded-lg border transition-colors ${
                         filter.seasons.includes(season)
                           ? "border-gold-400 bg-gold-400 text-white font-medium"
-                          : "border-gold-500/50 text-foreground hover:bg-gold-500/50"
+                          : "border-gray-200 text-gray-600 hover:border-gold-500 hover:text-gold-500"
                       }`}
                     >
                       {season}
@@ -111,7 +111,7 @@ export default function MainNav({ filter, setFilter, setMobileFilterOpen, hidden
         {consultEnabled && slug && (
           <Link
             href={`/${slug}/consult`}
-            className="ml-3 my-auto px-4 py-1.5 rounded-lg bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors whitespace-nowrap"
+            className="ml-2 my-auto px-3 md:px-4 py-1.5 rounded-lg bg-gold-500 text-white text-xs md:text-sm font-medium hover:bg-gold-600 transition-colors whitespace-nowrap"
           >
             맞춤 주문하기
           </Link>

@@ -21,7 +21,8 @@ export default function MobileFilter({ filter, setFilter, isOpen, onToggle, hidd
 
   return (
     <div className="md:hidden border-b border-gray-100 bg-white">
-      <button onClick={onToggle} className="w-full flex items-center justify-end px-4 py-3">
+      <button onClick={onToggle} className="w-full flex items-center justify-between px-4 py-3">
+        <span className="text-xs font-medium text-gold-500">필터</span>
         <span className="text-gold-500 text-sm">{isOpen ? "▲" : "▼"}</span>
       </button>
       {isOpen && (
@@ -42,7 +43,7 @@ export default function MobileFilter({ filter, setFilter, isOpen, onToggle, hidd
                   className={`text-center text-sm py-2 rounded-lg border transition-colors ${
                     filter.seasons.includes(season)
                       ? "border-gold-400 bg-gold-400 text-white font-medium"
-                      : "border-gold-500/50 text-foreground hover:bg-gold-500/50"
+                      : "border-gray-200 text-gray-600 hover:border-gold-500 hover:text-gold-500"
                   }`}
                 >
                   {season}

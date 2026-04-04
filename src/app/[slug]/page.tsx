@@ -3,9 +3,19 @@ import { createClient } from "@/lib/supabase/server";
 import MainLayout from "@/components/main/MainLayout";
 import { Product } from "@/types";
 import { generateThemeVars, DEFAULT_THEME_BG, DEFAULT_THEME_ACCENT } from "@/lib/theme";
+import type { Metadata } from "next";
 
 interface Props {
   params: Promise<{ slug: string }>;
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  return {
+    alternates: {
+      canonical: `https://www.flo-aide.com/${slug}`,
+    },
+  };
 }
 
 export default async function CompanyMenuPage({ params }: Props) {

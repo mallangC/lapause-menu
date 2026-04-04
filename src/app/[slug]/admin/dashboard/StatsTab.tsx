@@ -52,7 +52,7 @@ export default function StatsTab({ companyId }: Props) {
         .from("reservations")
         .select("status, final_price, product_price, desired_date, channel, product_type, delivery_type, customer_profile_id")
         .eq("company_id", companyId)
-        .in("status", ["제작완료", "픽업배송완료"]);
+        .in("status", ["제작완료", "픽업/배송완료"]);
       setReservations((data as Reservation[]) ?? []);
       setLoading(false);
     })();
@@ -112,7 +112,7 @@ export default function StatsTab({ companyId }: Props) {
       .sort((a, b) => b.value - a.value);
   }, [reservations]);
 
-  // 신규 / 재방문 비율
+  // 신규 / 재방문 비율 (예약 건수 기준)
   const visitData = useMemo(() => {
     const countMap: Record<string, number> = {};
     reservations.forEach((r) => {
@@ -120,8 +120,11 @@ export default function StatsTab({ companyId }: Props) {
         countMap[r.customer_profile_id] = (countMap[r.customer_profile_id] ?? 0) + 1;
       }
     });
-    const newCount = Object.values(countMap).filter((c) => c === 1).length;
-    const returnCount = Object.values(countMap).filter((c) => c > 1).length;
+    // 신규: 고객별 첫 방문 1건씩 = 고유 고객 수
+    const newCount = Object.keys(countMap).length;
+    // 재방문: 전체 예약 건수 - 고유 고객 수 (첫 방문 제외한 재방문 건수)
+    const totalWithProfile = Object.values(countMap).reduce((s, c) => s + c, 0);
+    const returnCount = totalWithProfile - newCount;
     const unknown = reservations.filter((r) => !r.customer_profile_id).length;
     return { newCount, returnCount, unknown, total: newCount + returnCount };
   }, [reservations]);
@@ -200,24 +203,27 @@ export default function StatsTab({ companyId }: Props) {
             {channelData.length === 0 ? (
               <p className="text-sm text-gray-400 text-center py-8">데이터 없음</p>
             ) : (
-              <ResponsiveContainer width="100%" height={200}>
+              <ResponsiveContainer width="100%" height={220}>
                 <PieChart>
                   <Pie
                     data={channelData}
                     cx="50%"
-                    cy="50%"
+                    cy="45%"
                     innerRadius={50}
                     outerRadius={80}
                     paddingAngle={3}
                     dataKey="value"
-                    label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
-                    labelLine={false}
                   >
                     {channelData.map((entry, i) => (
                       <Cell key={i} fill={CHANNEL_COLORS[entry.name] ?? COLORS[i % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(v) => [`${Number(v)}건`]} contentStyle={{ borderRadius: "10px", border: "1px solid #ede8e0", fontSize: 13 }} />
+                  <Tooltip formatter={(v) => { const total = channelData.reduce((s, d) => s + d.value, 0); const pct = total > 0 ? ((Number(v) / total) * 100).toFixed(0) : 0; return [`${Number(v)}건 (${pct}%)`]; }} contentStyle={{ borderRadius: "10px", border: "1px solid #ede8e0", fontSize: 13 }} />
+                  <Legend
+                    iconType="circle"
+                    iconSize={8}
+                    formatter={(value) => <span style={{ fontSize: 12, color: "#555" }}>{value}</span>}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             )}
@@ -230,24 +236,27 @@ export default function StatsTab({ companyId }: Props) {
             {deliveryData.length === 0 ? (
               <p className="text-sm text-gray-400 text-center py-8">데이터 없음</p>
             ) : (
-              <ResponsiveContainer width="100%" height={200}>
+              <ResponsiveContainer width="100%" height={220}>
                 <PieChart>
                   <Pie
                     data={deliveryData}
                     cx="50%"
-                    cy="50%"
+                    cy="45%"
                     innerRadius={50}
                     outerRadius={80}
                     paddingAngle={3}
                     dataKey="value"
-                    label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
-                    labelLine={false}
                   >
                     {deliveryData.map((_, i) => (
                       <Cell key={i} fill={COLORS[i % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(v) => [`${Number(v)}건`]} contentStyle={{ borderRadius: "10px", border: "1px solid #ede8e0", fontSize: 13 }} />
+                  <Tooltip formatter={(v) => { const total = deliveryData.reduce((s, d) => s + d.value, 0); const pct = total > 0 ? ((Number(v) / total) * 100).toFixed(0) : 0; return [`${Number(v)}건 (${pct}%)`]; }} contentStyle={{ borderRadius: "10px", border: "1px solid #ede8e0", fontSize: 13 }} />
+                  <Legend
+                    iconType="circle"
+                    iconSize={8}
+                    formatter={(value) => <span style={{ fontSize: 12, color: "#555" }}>{value}</span>}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             )}

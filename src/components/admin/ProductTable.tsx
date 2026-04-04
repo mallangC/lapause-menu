@@ -115,7 +115,7 @@ export default function ProductTable({ products, onEdit, onDelete, onStatusChang
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-xs md:text-sm">
             <colgroup>
               <col className="w-12 md:w-20" />
               <col />
@@ -147,7 +147,7 @@ export default function ProductTable({ products, onEdit, onDelete, onStatusChang
               {paginated.map((product) => (
                 <tr
                   key={product.id}
-                  className="border-b border-gray-100 hover:bg-gray-50 transition-colors text-center"
+                  className="border-b border-gray-100 hover:bg-gray-50 transition-colors text-center text-xs md:text-sm"
                 >
                   <td className="py-3">
                     <div className="w-10 h-10 md:w-16 md:h-16 rounded-lg overflow-hidden bg-gray-100 mx-auto">
@@ -158,7 +158,7 @@ export default function ProductTable({ products, onEdit, onDelete, onStatusChang
                       )}
                     </div>
                   </td>
-                  <td className="py-3 px-2 font-medium break-keep">{product.name}</td>
+                  <td className="py-2 md:py-3 px-1 md:px-2 font-medium break-keep">{product.name}</td>
                   <td className="py-3 px-2 hidden md:table-cell">
                     <div className="flex gap-1 flex-wrap justify-center">
                       {product.is_popular && (
@@ -174,30 +174,30 @@ export default function ProductTable({ products, onEdit, onDelete, onStatusChang
                     </div>
                   </td>
                   <td className="py-3 px-2 text-gray-700 hidden md:table-cell whitespace-nowrap">{product.product_type}</td>
-                  <td className="py-3 px-2 whitespace-nowrap">{product.price.toLocaleString()}원</td>
-                  <td className="py-3 px-2">
+                  <td className="py-2 md:py-3 px-1 md:px-2 whitespace-nowrap">{product.price.toLocaleString()}원</td>
+                  <td className="py-2 md:py-3 px-1 md:px-2">
                     <button
                       onClick={() => {
                         const cur = product.status ?? "active";
                         const next = STATUS_CYCLE[(STATUS_CYCLE.indexOf(cur) + 1) % STATUS_CYCLE.length];
                         onStatusChange(product.id, next);
                       }}
-                      className={`text-xs px-2 py-1 rounded-full font-medium transition-opacity hover:opacity-70 whitespace-nowrap ${STATUS_STYLES[product.status ?? "active"]}`}
+                      className={`text-xs px-1.5 md:px-2 py-0.5 md:py-1 rounded-full font-medium transition-opacity hover:opacity-70 whitespace-nowrap ${STATUS_STYLES[product.status ?? "active"]}`}
                     >
                       {STATUS_LABELS[product.status ?? "active"]}
                     </button>
                   </td>
-                  <td className="py-3 px-2">
-                    <div className="flex gap-1.5 justify-center">
+                  <td className="py-2 md:py-3 px-1 md:px-2">
+                    <div className="flex gap-1 justify-center">
                       <button
                         onClick={() => onEdit(product)}
-                        className="text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 transition-colors whitespace-nowrap"
+                        className="text-xs px-1.5 md:px-2.5 py-1 md:py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 transition-colors whitespace-nowrap"
                       >
                         수정
                       </button>
                       <button
                         onClick={() => onDelete(product.id)}
-                        className="text-xs px-2.5 py-1.5 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition-colors whitespace-nowrap"
+                        className="text-xs px-1.5 md:px-2.5 py-1 md:py-1.5 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition-colors whitespace-nowrap"
                       >
                         삭제
                       </button>

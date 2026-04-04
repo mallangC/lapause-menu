@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
@@ -39,16 +40,16 @@ export default function OperatorDashboardClient({ companies, reservations, produ
   const now = new Date();
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
   const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
-  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const thisMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
   // 제작완료 + 픽업배송완료만 매출 계산에 사용
   const paidReservations = useMemo(() =>
-    reservations.filter(r => r.status === "제작완료" || r.status === "픽업배송완료"),
+    reservations.filter(r => r.status === "제작완료" || r.status === "픽업/배송완료"),
   [reservations]);
 
   const stats = useMemo(() => {
     const totalCompanies = companies.length;
-    const newThisMonth = companies.filter(c => new Date(c.created_at) >= thisMonthStart).length;
+    const newThisMonth = companies.filter(c => c.created_at.slice(0, 7) === thisMonthKey).length;
     const consultEnabledCount = companies.filter(c => c.consult_enabled).length;
     const consultUsageRate = totalCompanies > 0 ? Math.round((consultEnabledCount / totalCompanies) * 100) : 0;
 
@@ -73,12 +74,13 @@ export default function OperatorDashboardClient({ companies, reservations, produ
 
     const totalGMV = paidReservations.reduce((sum, r) => sum + (r.final_price || 0), 0);
     const thisMonthGMV = paidReservations
-      .filter(r => new Date(r.created_at) >= thisMonthStart)
+      .filter(r => r.desired_date?.slice(0, 7) === thisMonthKey)
       .reduce((sum, r) => sum + (r.final_price || 0), 0);
 
-    const thisMonthReservations = reservations.filter(r => new Date(r.created_at) >= thisMonthStart).length;
+    const thisMonthReservations = reservations.filter(r => r.desired_date?.slice(0, 7) === thisMonthKey).length;
 
     return { totalCompanies, newThisMonth, activeCompanies, atRiskCount, totalGMV, thisMonthGMV, consultUsageRate, thisMonthReservations };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companies, reservations, paidReservations]);
 
@@ -91,7 +93,7 @@ export default function OperatorDashboardClient({ companies, reservations, produ
       months.push({ label: `${d.getMonth() + 1}월`, key, gmv: 0 });
     }
     for (const r of paidReservations) {
-      const key = r.created_at.slice(0, 7);
+      const key = r.desired_date?.slice(0, 7);
       const m = months.find(m => m.key === key);
       if (m) m.gmv += r.final_price || 0;
     }
@@ -118,7 +120,7 @@ export default function OperatorDashboardClient({ companies, reservations, produ
     }
     for (const r of paidReservations) {
       revenueMap[r.company_id] = (revenueMap[r.company_id] ?? 0) + (r.final_price || 0);
-      if (new Date(r.created_at) >= thisMonthStart) {
+      if (r.desired_date?.slice(0, 7) === thisMonthKey) {
         thisMonthRevenueMap[r.company_id] = (thisMonthRevenueMap[r.company_id] ?? 0) + (r.final_price || 0);
       }
     }
@@ -163,7 +165,7 @@ export default function OperatorDashboardClient({ companies, reservations, produ
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div>
-            <span className="text-base font-medium text-gray-900">Flo.Aide</span>
+            <Image src="/logo-light.png" alt="Flo.Aide" width={80} height={28} className="object-contain" />
             <span className="ml-2 text-xs text-gray-400">운영자 대시보드</span>
           </div>
           <button onClick={handleLogout} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">

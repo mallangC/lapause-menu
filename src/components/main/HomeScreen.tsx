@@ -43,7 +43,7 @@ export default function HomeScreen({
 
   return (
     <div className="max-w-4xl mx-auto px-4 pt-14 pb-14 flex flex-col items-center gap-16">
-      <div className={`grid grid-cols-1 gap-4 w-full max-w-70 mx-auto md:max-w-none md:gap-6 ${consultEnabled ? "md:grid-cols-4" : "md:grid-cols-3"}`}>
+      <div className={`grid grid-cols-2 gap-4 w-full md:gap-6 ${consultEnabled ? "md:grid-cols-4" : "md:grid-cols-3"}`}>
         {cards.map(({ label, image, onClick }) => (
           <button
             key={label}
@@ -59,7 +59,7 @@ export default function HomeScreen({
               }`}
             />
             <span
-              className={`relative text-3xl font-bold transition-colors ${
+              className={`relative text-xl md:text-3xl font-bold transition-colors ${
                 image ? "text-white" : "text-foreground group-hover:text-gold-500"
               }`}
             >
@@ -81,7 +81,7 @@ export default function HomeScreen({
               }`}
             />
             <span
-              className={`relative text-3xl font-bold transition-colors text-center leading-tight px-4 ${
+              className={`relative text-xl md:text-3xl font-bold transition-colors text-center leading-tight px-4 ${
                 homeConsultImage ? "text-white" : "text-foreground group-hover:text-gold-500"
               }`}
             >

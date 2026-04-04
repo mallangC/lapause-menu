@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "Pretendard Variable";
+  src: url("/fonts/PretendardVariable.woff2") format("woff2-variations");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 @theme {
   --color-beige-50:  #fdfcf9;
   --color-beige-100: #faf7f2;
@@ -10,14 +18,18 @@
   --color-gold-500:  #b8934a;
   --color-gold-600:  #9a7a3a;
   --color-foreground: #111111;
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: "Pretendard Variable", Pretendard, sans-serif;
+}
+
+/* iOS Safari 입력 시 자동 확대 방지 */
+input, textarea, select {
+  font-size: max(16px, 1em);
 }
 
 body {
   background-color: var(--color-beige-100);
   color: var(--color-foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "Pretendard Variable", Pretendard, "Apple SD Gothic Neo", sans-serif;
 }
 
 /* react-datepicker 커스텀 */
@@ -38,6 +50,13 @@ body {
   font-size: 14px !important;
   font-weight: 600 !important;
   color: #2c2416 !important;
+}
+.react-datepicker__day-name,
+.react-datepicker__day {
+  width: 2rem !important;
+  line-height: 2rem !important;
+  margin: 0.1rem !important;
+  text-align: center !important;
 }
 .react-datepicker__day-name {
   color: #9a7a3a !important;
@@ -62,7 +81,8 @@ body {
   font-weight: 700 !important;
   color: #b8934a !important;
 }
-.react-datepicker__day--today.react-datepicker__day--selected {
+.react-datepicker__day--today.react-datepicker__day--selected,
+.react-datepicker__day--today.react-datepicker__day--keyboard-selected {
   color: #fff !important;
 }
 .react-datepicker__day--disabled {
@@ -88,4 +108,25 @@ body {
 }
 .react-datepicker__time-list-item--disabled {
   display: none !important;
+}
+
+/* 관리자 모달 datepicker 전용 - 캘린더 높이를 타임 섹션에 맞춤 */
+.admin-modal-datepicker .react-datepicker__header:not(.react-datepicker__header--time) {
+  padding: 0 !important;
+}
+.admin-modal-datepicker .react-datepicker__header--time {
+  padding: 6px 0 !important;
+}
+.admin-modal-datepicker .react-datepicker__month {
+  margin: 0 !important;
+  padding: 0.2rem 0.4rem !important;
+}
+.admin-modal-datepicker .react-datepicker__day-names {
+  margin-bottom: 0 !important;
+}
+.admin-modal-datepicker .react-datepicker__day-name,
+.admin-modal-datepicker .react-datepicker__day {
+  width: 1.8rem !important;
+  line-height: 1.8rem !important;
+  margin: 0.1rem !important;
 }

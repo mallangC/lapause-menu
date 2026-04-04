@@ -35,7 +35,7 @@ export default function ProductCard({ product, consultEnabled, slug }: ProductCa
   return (
     <>
       <div
-        className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
+        className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-200 hover:shadow-md transition-shadow cursor-pointer flex flex-col h-full"
         onClick={() => setModalOpen(true)}
       >
         <div className="relative aspect-square bg-beige-200">
@@ -80,19 +80,19 @@ export default function ProductCard({ product, consultEnabled, slug }: ProductCa
           </div>
         </div>
 
-        <div className="p-3 flex justify-between gap-2">
+        <div className="p-3 flex justify-between gap-2 flex-1">
           {/* 왼쪽: 유형, 이름, 가격 */}
-          <div className="flex flex-col justify-between min-w-0">
+          <div className="flex flex-col justify-between min-w-0 flex-1">
             <div>
               <p className="text-xs text-gold-500 font-medium mb-0.5">
                 {product.product_type}
               </p>
-              <h3 className="font-medium text-sm text-foreground leading-tight">
+              <h3 className="font-medium text-xs md:text-sm text-foreground leading-tight">
                 {product.name}
               </h3>
             </div>
             <p className="text-sm font-semibold text-foreground mt-2">
-              {product.price.toLocaleString()}원
+              {product.price ? `${product.price.toLocaleString()}원` : "가격 문의"}
             </p>
           </div>
 
@@ -159,7 +159,7 @@ export default function ProductCard({ product, consultEnabled, slug }: ProductCa
               <div>
                 <p className="text-xs text-gold-500 font-medium">{product.product_type}</p>
                 <h3 className="font-semibold text-gray-900 text-base mt-0.5">{product.name}</h3>
-                <p className="text-lg font-bold text-gray-900 mt-2">{product.price.toLocaleString()}원</p>
+                <p className="text-lg font-bold text-gray-900 mt-2">{product.price ? `${product.price.toLocaleString()}원` : "가격 문의"}</p>
               </div>
 
               {(product.flower_colors.length > 0 || product.wrapping_color) && (

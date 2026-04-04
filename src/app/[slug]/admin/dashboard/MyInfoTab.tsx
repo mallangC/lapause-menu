@@ -7,11 +7,12 @@ import { createClient } from "@/lib/supabase/client";
 interface Props {
   slug: string;
   email: string;
+  isOAuth: boolean;
   profileName: string;
   profilePhone: string;
 }
 
-export default function MyInfoTab({ slug, email, profileName, profilePhone }: Props) {
+export default function MyInfoTab({ slug, email, isOAuth, profileName, profilePhone }: Props) {
   const [showPwForm, setShowPwForm] = useState(false);
   const [pwNew, setPwNew] = useState("");
   const [pwConfirm, setPwConfirm] = useState("");
@@ -82,8 +83,8 @@ export default function MyInfoTab({ slug, email, profileName, profilePhone }: Pr
         </div>
       </div>
 
-      {/* 비밀번호 변경 */}
-      <div className="mt-8 pt-8 border-t border-gray-100">
+      {/* 비밀번호 변경 — OAuth 로그인은 숨김 */}
+      {!isOAuth && <div className="mt-8 pt-8 border-t border-gray-100">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-medium text-gray-900">비밀번호 변경</h3>
           {!showPwForm && (
@@ -155,7 +156,7 @@ export default function MyInfoTab({ slug, email, profileName, profilePhone }: Pr
             </div>
           </form>
         )}
-      </div>
+      </div>}
     </div>
   );
 }

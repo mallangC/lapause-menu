@@ -15,7 +15,7 @@ export default async function ConsultPage({ params, searchParams }: Props) {
 
   const { data: company } = await supabase
     .from("companies")
-    .select("id, name, business_hours, closed_dates, notification_email, min_lead_times, consult_notice")
+    .select("id, name, business_hours, closed_dates, notification_email, min_lead_times, consult_notice, address, delivery_enabled, delivery_fees")
     .eq("slug", slug)
     .single();
 
@@ -41,6 +41,9 @@ export default async function ConsultPage({ params, searchParams }: Props) {
       closedDates={(company.closed_dates as string[]) ?? []}
       minLeadTimes={(company.min_lead_times as Record<string, number>) ?? {}}
       consultNotice={company.consult_notice ?? null}
+      storeAddress={company.address ?? null}
+      deliveryEnabled={company.delivery_enabled ?? false}
+      deliveryFees={(company.delivery_fees as Record<string, number>) ?? {}}
       preselectedProduct={preselectedProduct}
     />
   );
