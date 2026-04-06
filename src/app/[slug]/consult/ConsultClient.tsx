@@ -10,7 +10,7 @@ import { ko } from "date-fns/locale/ko";
 import "react-datepicker/dist/react-datepicker.css";
 import { Product } from "@/types";
 import FlowerNoticeModal from "@/components/FlowerNoticeModal";
-import * as PortOne from "@portone/browser-sdk/v2";
+// import * as PortOne from "@portone/browser-sdk/v2"; // 결제 비활성화 중
 
 registerLocale("ko", ko);
 
