@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import * as PortOne from "@portone/browser-sdk/v2";
 
 interface Props {
   companyId: string;
@@ -21,6 +20,7 @@ export default function BillingKeyFlow({ companyId, customerName, onSuccess, onE
     setError(null);
 
     try {
+      const PortOne = await import("@portone/browser-sdk/v2");
       const response = await PortOne.requestIssueBillingKey({
         storeId: process.env.NEXT_PUBLIC_PORTONE_STORE_ID!,
         channelKey: process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY!,
