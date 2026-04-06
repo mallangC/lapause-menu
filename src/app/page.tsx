@@ -177,7 +177,6 @@ export default function Landing1() {
             {[
               { label: "기능", href: "#기능" },
               { label: "사용 방법", href: "#사용 방법" },
-              { label: "요금제", href: "#pricing" },
               { label: "FAQ", href: "#FAQ" },
             ].map((item) => (
               <a key={item.label} href={item.href} className={`text-[13px] transition-colors hover:opacity-70 ${scrolled ? "text-neutral-600" : "text-white/80"}`}>
@@ -528,8 +527,8 @@ export default function Landing1() {
         </div>
       </section>
 
-      {/* ── PRICING ── */}
-      <section id="pricing" className="py-24 bg-white" style={{ scrollMarginTop: 64 }}>
+      {/* ── PRICING (임시 숨김) ── */}
+      {false && <section id="pricing" className="py-24 bg-white" style={{ scrollMarginTop: 64 }}>
         <div className="max-w-4xl mx-auto px-6">
           <FadeIn className="text-center mb-14">
             <p className="text-[11px] tracking-[0.2em] uppercase text-neutral-400 mb-3">Pricing</p>
@@ -637,7 +636,7 @@ export default function Landing1() {
 
           </FadeIn>
         </div>
-      </section>
+      </section>}
 
       {/* ── FAQ ── */}
       <section id="FAQ" className="py-24" style={{ background: "#fdf6ee", scrollMarginTop: 64 }}>
@@ -670,13 +669,10 @@ export default function Landing1() {
           <p className="text-[15px] mb-10" style={{ color: "rgba(255,255,255,0.4)" }}>
             신용카드는 필요하지 않습니다
           </p>
-          <a
-            href="/signup"
-            className="inline-block px-10 py-4 rounded-full text-[14px] font-semibold transition-all hover:opacity-90"
-            style={{ background: "white", color: "#18130e" }}
-          >
+          {/* 회원가입 CTA — 임시 숨김 */}
+          {/* <a href="/signup" className="inline-block px-10 py-4 rounded-full text-[14px] font-semibold transition-all hover:opacity-90" style={{ background: "white", color: "#18130e" }}>
             무료로 시작하기
-          </a>
+          </a> */}
         </FadeIn>
       </section>
 

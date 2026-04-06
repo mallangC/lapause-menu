@@ -34,6 +34,7 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
   const [bankName, setBankName] = useState("");
   const [bankAccount, setBankAccount] = useState("");
   const [bankHolder, setBankHolder] = useState("");
+  const [businessNumber, setBusinessNumber] = useState("");
   const [notificationEmail, setNotificationEmail] = useState("");
   const [consultEnabled, setConsultEnabled] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -46,7 +47,7 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
   useEffect(() => {
     supabase
       .from("companies")
-      .select("notification_email, phone, bank_name, bank_account, bank_holder, address, consult_enabled")
+      .select("notification_email, phone, bank_name, bank_account, bank_holder, address, consult_enabled, business_number")
       .eq("id", companyId)
       .single()
       .then(({ data }) => {
@@ -56,6 +57,7 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
         if (data?.bank_name) setBankName(data.bank_name);
         if (data?.bank_account) setBankAccount(data.bank_account);
         if (data?.bank_holder) setBankHolder(data.bank_holder);
+        if (data?.business_number) setBusinessNumber(data.business_number);
         setConsultEnabled(data?.consult_enabled ?? false);
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -103,6 +105,7 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
         bank_name: bankName || null,
         bank_account: bankAccount || null,
         bank_holder: bankHolder || null,
+        business_number: businessNumber || null,
         address: address ? (addressDetail ? `${address} ${addressDetail}` : address) : null,
       })
       .eq("id", companyId);
@@ -155,10 +158,10 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
           <input ref={fileInputRef} type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
         </div>
 
-        {/* 회사 이름 */}
+        {/* 매장 이름 */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            회사 이름 <span className="text-red-500">*</span>
+            매장 이름 <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
@@ -335,6 +338,26 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
           <p className="text-xs text-gray-400 mt-3">
             계좌번호를 잘못 적어서 생기는 불이익은 책임지지 않습니다.
           </p>
+        </div>
+
+        {/* 사업자 정보 */}
+        <div className="pt-2">
+          <h3 className="text-sm font-semibold text-gray-700 mb-1">사업자 정보</h3>
+          <p className="text-xs text-gray-400 mb-3">파트너 정산 자동화 연동에 사용됩니다.</p>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">사업자등록번호</label>
+            <input
+              type="text"
+              value={businessNumber}
+              onChange={(e) => {
+                const raw = e.target.value.replace(/\D/g, "").slice(0, 10);
+                const formatted = raw.length <= 3 ? raw : raw.length <= 5 ? `${raw.slice(0, 3)}-${raw.slice(3)}` : `${raw.slice(0, 3)}-${raw.slice(3, 5)}-${raw.slice(5)}`;
+                setBusinessNumber(formatted);
+              }}
+              placeholder="000-00-00000"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
+            />
+          </div>
         </div>
 
         {/* 예약 알림 이메일 */}

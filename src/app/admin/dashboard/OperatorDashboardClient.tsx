@@ -12,6 +12,7 @@ interface Company {
   slug: string;
   created_at: string;
   consult_enabled: boolean;
+  plan: "none" | "starter" | "pro" | null;
 }
 
 interface Reservation {
@@ -21,6 +22,7 @@ interface Reservation {
   desired_date: string;
   status: string;
   final_price: number;
+  payment_id: string | null;
 }
 
 interface Product {
@@ -42,10 +44,15 @@ export default function OperatorDashboardClient({ companies, reservations, produ
   const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
   const thisMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
-  // 제작완료 + 픽업배송완료만 매출 계산에 사용
-  const paidReservations = useMemo(() =>
-    reservations.filter(r => r.status === "제작완료" || r.status === "픽업/배송완료"),
+  // 미확인·취소 제외한 매출 기준 예약 (취소는 query에서 이미 제외됨)
+  const revenueReservations = useMemo(() =>
+    reservations.filter(r => r.status !== "미확인"),
   [reservations]);
+
+  // 포트원 카드 결제만 (payment_id 있는 것, 미확인 제외)
+  const cardReservations = useMemo(() =>
+    revenueReservations.filter(r => !!r.payment_id),
+  [revenueReservations]);
 
   const stats = useMemo(() => {
     const totalCompanies = companies.length;
@@ -72,17 +79,35 @@ export default function OperatorDashboardClient({ companies, reservations, produ
       return new Date(last) < sixtyDaysAgo;
     }).length;
 
-    const totalGMV = paidReservations.reduce((sum, r) => sum + (r.final_price || 0), 0);
-    const thisMonthGMV = paidReservations
+    // 전체 거래액 (미확인·취소 제외)
+    const totalAllGMV = revenueReservations.reduce((sum, r) => sum + (r.final_price || 0), 0);
+    const thisMonthAllGMV = revenueReservations
       .filter(r => r.desired_date?.slice(0, 7) === thisMonthKey)
       .reduce((sum, r) => sum + (r.final_price || 0), 0);
 
+    // 사이트 카드 결제
+    const totalCardGMV = cardReservations.reduce((sum, r) => sum + (r.final_price || 0), 0);
+    const thisMonthCardGMV = cardReservations
+      .filter(r => r.desired_date?.slice(0, 7) === thisMonthKey)
+      .reduce((sum, r) => sum + (r.final_price || 0), 0);
+
+    // 직접 추가 (payment_id 없는 것)
+    const totalManualGMV = totalAllGMV - totalCardGMV;
+    const thisMonthManualGMV = thisMonthAllGMV - thisMonthCardGMV;
+
+    // 사이트 결제 비율
+    const cardRate = totalAllGMV > 0 ? Math.round((totalCardGMV / totalAllGMV) * 100) : 0;
+
     const thisMonthReservations = reservations.filter(r => r.desired_date?.slice(0, 7) === thisMonthKey).length;
 
-    return { totalCompanies, newThisMonth, activeCompanies, atRiskCount, totalGMV, thisMonthGMV, consultUsageRate, thisMonthReservations };
+    // Pro 플랜 사용 비율
+    const proCount = companies.filter(c => c.plan === "pro").length;
+    const proRate = totalCompanies > 0 ? Math.round((proCount / totalCompanies) * 100) : 0;
+
+    return { totalCompanies, newThisMonth, activeCompanies, atRiskCount, consultUsageRate, thisMonthReservations, totalCardGMV, thisMonthCardGMV, totalManualGMV, thisMonthManualGMV, totalAllGMV, thisMonthAllGMV, cardRate, proCount, proRate };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [companies, reservations, paidReservations]);
+  }, [companies, reservations, revenueReservations, cardReservations]);
 
   // 최근 6개월 월별 GMV
   const monthlyGMV = useMemo(() => {
@@ -92,14 +117,14 @@ export default function OperatorDashboardClient({ companies, reservations, produ
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       months.push({ label: `${d.getMonth() + 1}월`, key, gmv: 0 });
     }
-    for (const r of paidReservations) {
+    for (const r of cardReservations) {
       const key = r.desired_date?.slice(0, 7);
       const m = months.find(m => m.key === key);
       if (m) m.gmv += r.final_price || 0;
     }
     return months;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paidReservations]);
+  }, [cardReservations]);
 
   // 매장별 현황
   const companyRows = useMemo(() => {
@@ -118,7 +143,7 @@ export default function OperatorDashboardClient({ companies, reservations, produ
       }
       countMap[r.company_id] = (countMap[r.company_id] ?? 0) + 1;
     }
-    for (const r of paidReservations) {
+    for (const r of revenueReservations) {
       revenueMap[r.company_id] = (revenueMap[r.company_id] ?? 0) + (r.final_price || 0);
       if (r.desired_date?.slice(0, 7) === thisMonthKey) {
         thisMonthRevenueMap[r.company_id] = (thisMonthRevenueMap[r.company_id] ?? 0) + (r.final_price || 0);
@@ -136,27 +161,29 @@ export default function OperatorDashboardClient({ companies, reservations, produ
       isInactive: !lastMap[c.id],
     }));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [companies, reservations, paidReservations, products]);
+  }, [companies, reservations, revenueReservations, cardReservations, products]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    router.push("/admin");
+    router.push("/");
   };
 
-  const formatDate = (dateStr: string) =>
-    new Date(dateStr).toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" });
+  const formatDate = (dateStr: string) => {
+    const d = new Date(dateStr);
+    return `${String(d.getFullYear()).slice(2)}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
+  };
 
-  const formatMoney = (n: number) =>
-    n >= 10000 ? `${(n / 10000).toFixed(1)}만` : `${n.toLocaleString()}`;
+  const formatMoney = (n: number) => {
+    const man = n / 10000;
+    return `${man % 1 === 0 ? man.toFixed(0) : man.toFixed(1)}만`;
+  };
 
-  const statCards = [
+  const companyStatCards = [
     { label: "전체 매장", value: `${stats.totalCompanies}`, sub: "누적 가입" },
     { label: "이번 달 신규", value: `${stats.newThisMonth}`, sub: "가입" },
     { label: "활성 매장", value: `${stats.activeCompanies}`, sub: "최근 30일" },
     { label: "이탈 위험", value: `${stats.atRiskCount}`, sub: "60일 이상 예약 없음", danger: stats.atRiskCount > 0 },
-    { label: "누적 총 거래액", value: `${formatMoney(stats.totalGMV)}원`, sub: "취소 제외" },
-    { label: "이번 달 거래액", value: `${formatMoney(stats.thisMonthGMV)}원`, sub: new Date().toLocaleDateString("ko-KR", { month: "long" }) },
-    { label: "맞춤 주문 사용률", value: `${stats.consultUsageRate}%`, sub: `${companies.filter(c => c.consult_enabled).length}/${stats.totalCompanies} 매장` },
+    { label: "Pro 사용률", value: `${stats.proRate}%`, sub: `${stats.proCount}/${stats.totalCompanies} 매장` },
     { label: "이번 달 예약 수", value: `${stats.thisMonthReservations}`, sub: new Date().toLocaleDateString("ko-KR", { month: "long" }) },
   ];
 
@@ -177,14 +204,55 @@ export default function OperatorDashboardClient({ companies, reservations, produ
       <main className="max-w-6xl mx-auto px-6 py-8 space-y-8">
 
         {/* 요약 통계 */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {statCards.map(({ label, value, sub, danger }) => (
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          {companyStatCards.map(({ label, value, sub, danger }) => (
             <div key={label} className={`bg-white border rounded-2xl p-5 ${danger ? "border-red-200" : "border-gray-200"}`}>
               <p className="text-xs text-gray-400 mb-1">{label}</p>
               <p className={`text-2xl font-semibold ${danger ? "text-red-500" : "text-gray-900"}`}>{value}</p>
               <p className="text-xs text-gray-400 mt-1">{sub}</p>
             </div>
           ))}
+        </div>
+
+        {/* 거래액 통계 */}
+        <div className="bg-white border border-gray-200 rounded-2xl p-6">
+          <h2 className="text-sm font-medium text-gray-900 mb-4">거래액 현황</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            <div>
+              <p className="text-xs text-gray-400 mb-1">전체 누적</p>
+              <p className="text-xl font-semibold text-gray-900">{formatMoney(stats.totalAllGMV)}원</p>
+              <p className="text-xs text-gray-400 mt-1">취소 제외</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 mb-1">사이트 결제</p>
+              <p className="text-xl font-semibold text-blue-600">{formatMoney(stats.totalCardGMV)}원</p>
+              <p className="text-xs text-gray-400 mt-1">카드 결제 누적</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 mb-1">직접 추가</p>
+              <p className="text-xl font-semibold text-gray-600">{formatMoney(stats.totalManualGMV)}원</p>
+              <p className="text-xs text-gray-400 mt-1">현장·계좌이체 등</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 mb-1">사이트 결제 비율</p>
+              <p className="text-xl font-semibold text-gold-600">{stats.cardRate}%</p>
+              <p className="text-xs text-gray-400 mt-1">전체 대비</p>
+            </div>
+          </div>
+          <div className="border-t border-gray-100 pt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <p className="text-xs text-gray-400 mb-1">이번 달 전체</p>
+              <p className="text-lg font-semibold text-gray-900">{formatMoney(stats.thisMonthAllGMV)}원</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 mb-1">이번 달 사이트</p>
+              <p className="text-lg font-semibold text-blue-600">{formatMoney(stats.thisMonthCardGMV)}원</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 mb-1">이번 달 직접 추가</p>
+              <p className="text-lg font-semibold text-gray-600">{formatMoney(stats.thisMonthManualGMV)}원</p>
+            </div>
+          </div>
         </div>
 
         {/* 월별 거래액 추이 */}
@@ -218,22 +286,23 @@ export default function OperatorDashboardClient({ companies, reservations, produ
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 text-xs text-gray-400">
-                  <th className="text-left px-6 py-3 font-medium">매장명</th>
-                  <th className="text-left px-6 py-3 font-medium">URL</th>
-                  <th className="text-left px-6 py-3 font-medium">가입일</th>
-                  <th className="text-right px-6 py-3 font-medium">상품 수</th>
-                  <th className="text-right px-6 py-3 font-medium">총 예약</th>
-                  <th className="text-right px-6 py-3 font-medium">누적 매출</th>
-                  <th className="text-right px-6 py-3 font-medium">이번 달 매출</th>
-                  <th className="text-left px-6 py-3 font-medium">맞춤 주문</th>
-                  <th className="text-left px-6 py-3 font-medium">마지막 예약</th>
-                  <th className="text-left px-6 py-3 font-medium">상태</th>
+                  <th className="text-left px-6 py-3 font-medium whitespace-nowrap">매장명</th>
+                  <th className="text-left px-6 py-3 font-medium whitespace-nowrap">URL</th>
+                  <th className="text-left px-6 py-3 font-medium whitespace-nowrap">가입일</th>
+                  <th className="text-right px-6 py-3 font-medium whitespace-nowrap">상품 수</th>
+                  <th className="text-right px-6 py-3 font-medium whitespace-nowrap">총 예약</th>
+                  <th className="text-right px-6 py-3 font-medium whitespace-nowrap">누적 매출</th>
+                  <th className="text-right px-6 py-3 font-medium whitespace-nowrap">이번 달 매출</th>
+                  <th className="text-left px-6 py-3 font-medium whitespace-nowrap">플랜</th>
+                  <th className="text-left px-6 py-3 font-medium whitespace-nowrap">맞춤 주문</th>
+                  <th className="text-left px-6 py-3 font-medium whitespace-nowrap">마지막 예약</th>
+                  <th className="text-left px-6 py-3 font-medium whitespace-nowrap">상태</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {companyRows.map(c => (
                   <tr key={c.id} className={`transition-colors ${c.isAtRisk ? "bg-red-50/40 hover:bg-red-50" : c.isInactive ? "bg-gray-50/60 hover:bg-gray-50" : "hover:bg-gray-50"}`}>
-                    <td className="px-6 py-3.5 font-medium text-gray-900">{c.name}</td>
+                    <td className="px-6 py-3.5 font-medium text-gray-900 whitespace-nowrap">{c.name}</td>
                     <td className="px-6 py-3.5 text-xs">
                       <a href={`/${c.slug}`} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-600 hover:underline transition-colors">
                         /{c.slug}
@@ -242,8 +311,13 @@ export default function OperatorDashboardClient({ companies, reservations, produ
                     <td className="px-6 py-3.5 text-gray-500">{formatDate(c.created_at)}</td>
                     <td className="px-6 py-3.5 text-right text-gray-900 font-medium">{c.productCount}</td>
                     <td className="px-6 py-3.5 text-right text-gray-900 font-medium">{c.reservationCount}</td>
-                    <td className="px-6 py-3.5 text-right text-gray-900 font-medium">{c.totalRevenue > 0 ? `${c.totalRevenue.toLocaleString()}원` : <span className="text-gray-300">—</span>}</td>
-                    <td className="px-6 py-3.5 text-right text-gray-700">{c.thisMonthRevenue > 0 ? `${c.thisMonthRevenue.toLocaleString()}원` : <span className="text-gray-300">—</span>}</td>
+                    <td className="px-6 py-3.5 text-right text-gray-900 font-medium whitespace-nowrap">{c.totalRevenue > 0 ? `${formatMoney(c.totalRevenue)}원` : <span className="text-gray-300">—</span>}</td>
+                    <td className="px-6 py-3.5 text-right text-gray-700 whitespace-nowrap">{c.thisMonthRevenue > 0 ? `${formatMoney(c.thisMonthRevenue)}원` : <span className="text-gray-300">—</span>}</td>
+                    <td className="px-6 py-3.5">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${c.plan === "pro" ? "bg-gold-100 text-gold-600" : "bg-gray-100 text-gray-400"}`}>
+                        {c.plan === "pro" ? "Pro" : c.plan === "starter" ? "Starter" : "—"}
+                      </span>
+                    </td>
                     <td className="px-6 py-3.5">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${c.consult_enabled ? "bg-blue-50 text-blue-600" : "bg-gray-100 text-gray-400"}`}>
                         {c.consult_enabled ? "ON" : "OFF"}
@@ -259,14 +333,14 @@ export default function OperatorDashboardClient({ companies, reservations, produ
                         c.isActive ? "bg-green-50 text-green-700" :
                         "bg-gray-100 text-gray-400"
                       }`}>
-                        {c.isAtRisk ? "이탈위험" : c.isInactive ? "미활성" : c.isActive ? "활성" : "휴면"}
+                        <span className="whitespace-nowrap">{c.isAtRisk ? "이탈위험" : c.isInactive ? "미활성" : c.isActive ? "활성" : "휴면"}</span>
                       </span>
                     </td>
                   </tr>
                 ))}
                 {companyRows.length === 0 && (
                   <tr>
-                    <td colSpan={10} className="px-6 py-10 text-center text-gray-300 text-sm">가입된 매장이 없습니다.</td>
+                    <td colSpan={11} className="px-6 py-10 text-center text-gray-300 text-sm">가입된 매장이 없습니다.</td>
                   </tr>
                 )}
               </tbody>

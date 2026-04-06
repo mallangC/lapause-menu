@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { formatPhone, parsePhone } from "@/lib/format";
 import Image from "next/image";
 import Link from "next/link";
@@ -10,6 +10,7 @@ import { ko } from "date-fns/locale/ko";
 import "react-datepicker/dist/react-datepicker.css";
 import { Product } from "@/types";
 import FlowerNoticeModal from "@/components/FlowerNoticeModal";
+import * as PortOne from "@portone/browser-sdk/v2";
 
 registerLocale("ko", ko);
 
@@ -140,6 +141,77 @@ function Section({ title, required, badge, children }: { title: string; required
   );
 }
 
+function TimePicker({ value, onChange, minTime, maxTime, disabled }: {
+  value: string;
+  onChange: (v: string) => void;
+  minTime: string;
+  maxTime: string;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const slots = useMemo(() => {
+    const [minH, minM] = minTime.split(":").map(Number);
+    const [maxH, maxM] = maxTime.split(":").map(Number);
+    const minTotal = minH * 60 + minM;
+    const maxTotal = maxH * 60 + maxM;
+    const result: string[] = [];
+    // 첫 슬롯: minTotal을 30분 단위로 올림
+    const startTotal = Math.ceil(minTotal / 30) * 30;
+    for (let t = startTotal; t <= maxTotal; t += 30) {
+      const h = String(Math.floor(t / 60)).padStart(2, "0");
+      const m = String(t % 60).padStart(2, "0");
+      result.push(`${h}:${m}`);
+    }
+    return result;
+  }, [minTime, maxTime]);
+
+  return (
+    <div ref={ref} className="relative w-full">
+      <button
+        type="button"
+        onClick={() => !disabled && setOpen((v) => !v)}
+        disabled={disabled}
+        className={`w-full border rounded-lg px-3 py-2.5 text-sm text-left flex items-center justify-between transition-colors bg-white ${disabled ? "border-gray-200 bg-gray-50 cursor-not-allowed" : open ? "border-gold-400" : "border-gray-300 hover:border-gray-400"} ${value ? "text-gray-900" : "text-gray-400"}`}
+      >
+        <span>{value || "시간을 선택해주세요"}</span>
+        <svg className={`w-4 h-4 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {open && (
+        <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-20 py-2 max-h-52 overflow-y-auto">
+          {slots.length === 0 ? (
+            <p className="text-xs text-gray-400 text-center py-3">선택 가능한 시간이 없습니다</p>
+          ) : (
+            <div className="grid grid-cols-3 gap-1 px-2">
+              {slots.map((slot) => (
+                <button
+                  key={slot}
+                  type="button"
+                  onClick={() => { onChange(slot); setOpen(false); }}
+                  className={`py-2 rounded-lg text-sm font-medium transition-colors ${value === slot ? "bg-gold-500 text-white" : "text-gray-700 hover:bg-beige-100"}`}
+                >
+                  {slot}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const TYPE_MAP: Record<string, string> = {
   꽃다발: "다발",
   바구니: "바구니",
@@ -236,6 +308,7 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
   const [bankInfo, setBankInfo] = useState<{ bankName: string | null; bankAccount: string | null; bankHolder: string | null } | null>(null);
   const [paidConfirmed, setPaidConfirmed] = useState(false);
   const [payLoading, setPayLoading] = useState(false);
+  const [finalPriceSnapshot, setFinalPriceSnapshot] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [step1FieldErrors, setStep1FieldErrors] = useState<string[]>([]);
   const [step3FieldErrors, setStep3FieldErrors] = useState<string[]>([]);
@@ -275,7 +348,8 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
     if (!name) missing.push("예약자 이름");
     if (parsePhone(phone).length < 10 || parsePhone(phone).length > 11) missing.push("연락처 (10~11자리)");
     if (!form.deliveryType) missing.push("수령 방법");
-    if (!form.desiredDate) missing.push("수령 희망 일시");
+    if (!form.desiredDate) missing.push("수령 희망 날짜");
+    if (form.desiredDate && !form.desiredTime) missing.push("수령 희망 시간");
     if (form.deliveryType === "배송" && (!recipientName || !recipientPhone || !address)) missing.push("배송 정보");
     if (form.deliveryType === "배송" && deliveryDistance !== null && deliveryFee === null) missing.push("배송 가능 여부를 매장에 문의해주세요");
     if (!privacyAgreed) missing.push("개인정보처리방침 동의");
@@ -287,7 +361,33 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
     if (!selectedProduct) return;
     setSubmitting(true);
     setError(null);
+
+    const finalPrice = selectedProduct.price +
+      (form.messageCard === "추가" ? 2000 : 0) +
+      (form.shoppingBag === "추가" ? 2000 : 0) +
+      (form.deliveryType === "배송" && deliveryFee !== null ? deliveryFee : 0);
+
     try {
+      /* ── 포트원 카드 결제 (임시 비활성화) ──────────────────────────
+      const paymentId = `order${Date.now()}`;
+      const payResponse = await PortOne.requestPayment({
+        storeId: process.env.NEXT_PUBLIC_PORTONE_STORE_ID!,
+        channelKey: process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY!,
+        paymentId,
+        orderName: `${companyName} 맞춤 주문`,
+        totalAmount: finalPrice,
+        currency: "KRW",
+        payMethod: "CARD",
+        customer: { fullName: name, phoneNumber: parsePhone(phone) },
+      });
+      if (!payResponse || "code" in payResponse) {
+        setError(("message" in (payResponse ?? {}) ? (payResponse as { message: string }).message : null) ?? "결제가 취소되었습니다.");
+        setSubmitting(false);
+        return;
+      }
+      ─────────────────────────────────────────────────────────────── */
+
+      // 계좌이체 모드 — paymentId 없이 예약 저장
       const res = await fetch("/api/reservation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -311,23 +411,32 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
             address,
             addressDetail,
           } : null,
-          finalPrice: selectedProduct.price +
-            (form.messageCard === "추가" ? 2000 : 0) +
-            (form.shoppingBag === "추가" ? 2000 : 0) +
-            (form.deliveryType === "배송" && deliveryFee !== null ? deliveryFee : 0),
+          finalPrice,
         }),
       });
-      if (!res.ok) throw new Error("예약 전송 실패");
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "예약 저장 실패");
       setReservationId(data.reservationId ?? null);
-      setBankInfo({ bankName: data.bankName, bankAccount: data.bankAccount, bankHolder: data.bankHolder });
-
+      setBankInfo({
+        bankName: data.bankName ?? null,
+        bankAccount: data.bankAccount ?? null,
+        bankHolder: data.bankHolder ?? null,
+      });
+      setFinalPriceSnapshot(finalPrice);
       setSubmitted(true);
-    } catch {
-      setError("예약 중 오류가 발생했습니다. 다시 시도해주세요.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "예약 중 오류가 발생했습니다. 다시 시도해주세요.");
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handlePaidConfirm = async () => {
+    if (!reservationId) return;
+    setPayLoading(true);
+    await fetch(`/api/reservation/${reservationId}/paid`, { method: "PATCH" });
+    setPayLoading(false);
+    setPaidConfirmed(true);
   };
 
   if (showNotice) {
@@ -340,80 +449,72 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
   }
 
   if (submitted) {
-    const handlePayConfirm = async () => {
-      if (!reservationId) return;
-      setPayLoading(true);
-      const res = await fetch("/api/pay/confirm", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reservationId }),
-      });
-      if (res.ok) setPaidConfirmed(true);
-      setPayLoading(false);
-    };
+    if (paidConfirmed) {
+      return (
+        <div className="min-h-screen bg-beige-100 flex items-center justify-center px-4">
+          <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-beige-200 p-8 space-y-4 text-center">
+            <div className="w-14 h-14 rounded-full bg-green-50 flex items-center justify-center mx-auto">
+              <svg className="w-7 h-7 text-green-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+              </svg>
+            </div>
+            <h2 className="text-lg font-medium text-gray-900">입금 확인 감사합니다</h2>
+            <p className="text-sm text-gray-400">매장에서 확인 후 준비를 시작하겠습니다.</p>
+            <Link href={`/${slug}`} className="block text-center text-gold-500 text-sm hover:text-gold-600 transition-colors">
+              홈으로 돌아가기 →
+            </Link>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div className="min-h-screen bg-beige-100 flex items-center justify-center px-4">
-        <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-beige-200 p-8 space-y-3">
+        <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-beige-200 p-8 space-y-5">
           <div className="text-center">
-            <div className="text-4xl mb-3">🌸</div>
-            <h2 className="text-lg font-medium text-gray-900">예약이 접수되었습니다</h2>
-            <p className="text-sm text-gray-400 mt-1">아래 계좌로 입금 후 버튼을 눌러주세요.</p>
+            <div className="w-14 h-14 rounded-full bg-beige-100 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-7 h-7 text-gold-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25Z" />
+              </svg>
+            </div>
+            <h2 className="text-lg font-medium text-gray-900">주문이 접수되었습니다</h2>
+            <p className="text-sm text-gray-400 mt-1">아래 계좌로 입금해주세요.</p>
           </div>
 
-          {bankInfo?.bankAccount && (
-            <div className="bg-beige-50 rounded-xl p-4 space-y-2">
-              <p className="text-xs text-gray-400 mb-1">입금 계좌</p>
-              {bankInfo.bankName && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-400">은행</span>
-                  <span className="text-gray-900">{bankInfo.bankName}</span>
-                </div>
-              )}
+          {bankInfo?.bankAccount ? (
+            <div className="bg-beige-50 border border-beige-200 rounded-xl p-4 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-400">은행</span>
+                <span className="font-medium text-gray-800">{bankInfo.bankName}</span>
+              </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-400">계좌번호</span>
-                <span className="text-gray-900 font-medium tracking-wide">{bankInfo.bankAccount}</span>
+                <span className="font-medium text-gray-800">{bankInfo.bankAccount}</span>
               </div>
-              {bankInfo.bankHolder && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-400">예금주</span>
-                  <span className="text-gray-900">{bankInfo.bankHolder}</span>
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-            <span className="text-amber-500 text-base shrink-0">⚠</span>
-            <p className="text-xs text-amber-700 leading-relaxed font-medium">2시간 내 미입금 시 예약이 취소될 수 있습니다.</p>
-          </div>
-
-          {paidConfirmed ? (
-            <div className="text-center space-y-2 py-2">
-              <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center mx-auto">
-                <svg className="w-6 h-6 text-green-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                </svg>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-400">예금주</span>
+                <span className="font-medium text-gray-800">{bankInfo.bankHolder}</span>
               </div>
-              <p className="text-sm font-medium text-gray-900">입금 확인 요청이 완료되었습니다.</p>
-              <p className="text-xs text-gray-400">매장에서 확인 후 연락드리겠습니다.</p>
+              <div className="border-t border-beige-200 pt-2 flex justify-between text-sm">
+                <span className="text-gray-400">입금 금액</span>
+                <span className="font-semibold text-gray-900">{finalPriceSnapshot.toLocaleString()}원</span>
+              </div>
             </div>
           ) : (
-            <button
-              type="button"
-              onClick={handlePayConfirm}
-              disabled={payLoading || !reservationId}
-              className="w-full bg-gold-500 text-white py-3 rounded-xl font-medium text-sm hover:bg-gold-600 disabled:opacity-50 transition-colors"
-            >
-              {payLoading ? "처리 중..." : "계좌이체 완료"}
-            </button>
+            <p className="text-sm text-gray-400 text-center">매장에서 계좌 정보를 안내드릴 예정입니다.</p>
           )}
 
-          <Link
-            href={`/${slug}`}
-            className="block text-center text-gold-500 text-sm hover:text-gold-600 transition-colors"
+          <button
+            type="button"
+            onClick={handlePaidConfirm}
+            disabled={payLoading}
+            className="w-full py-3 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
+            style={{ background: "#2c2416" }}
           >
-            홈으로 돌아가기 →
+            {payLoading ? "처리 중..." : "입금 완료 시 눌러주세요"}
+          </button>
+          <Link href={`/${slug}`} className="block text-center text-gray-400 text-sm hover:text-gray-600 transition-colors">
+            나중에 입금하기 →
           </Link>
         </div>
       </div>
@@ -940,21 +1041,21 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
                 )}
               </Section>
 
-              <Section title="수령 희망 일시" required>
+              <div className="grid grid-cols-2 gap-3 items-start">
+              <Section title="수령 희망 날짜" required>
                 <DatePicker
                   locale="ko"
                   selected={selectedDate}
                   onChange={(date: Date | null) => {
                     setSelectedDate(date);
+                    set("desiredTime", "");
                     if (date) {
                       set("desiredDate", date.toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" }).replace(/\. /g, "-").replace(".", "").trim());
-                      set("desiredTime", date.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false }));
+                    } else {
+                      set("desiredDate", "");
                     }
                   }}
-                  showTimeSelect
-                  timeFormat="HH:mm"
-                  timeIntervals={30}
-                  dateFormat="yyyy년 MM월 dd일 (eee) HH:mm"
+                  dateFormat="yyyy년 MM월 dd일 (eee)"
                   minDate={new Date()}
                   filterDate={(date) => {
                     const day = businessHours[String(date.getDay())];
@@ -969,31 +1070,46 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
                     }
                     return true;
                   }}
-                  filterTime={(time) => {
-                    const base = selectedDate ?? time;
-                    const day = businessHours[String(base.getDay())];
-                    if (!day || day.closed) return false;
-                    const [oh, om] = day.open.split(":").map(Number);
-                    const [ch, cm] = day.close.split(":").map(Number);
-                    const mins = time.getHours() * 60 + time.getMinutes();
-                    const inBusiness = mins >= oh * 60 + om && mins <= ch * 60 + cm;
-                    const now = new Date();
-                    const isToday =
-                      base.getFullYear() === now.getFullYear() &&
-                      base.getMonth() === now.getMonth() &&
-                      base.getDate() === now.getDate();
-                    const leadMins = (minLeadTimes[form.productType] ?? 2) * 60;
-                    if (isToday && time.getHours() * 60 + time.getMinutes() <= now.getHours() * 60 + now.getMinutes() + leadMins) return false;
-                    return inBusiness;
-                  }}
                   excludeDates={closedDates.map((d) => new Date(d + "T00:00:00"))}
-                  placeholderText="날짜와 시간을 선택해주세요"
+                  placeholderText="날짜를 선택해주세요"
                   className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-gold-400 bg-white cursor-pointer"
                   wrapperClassName="w-full"
                   calendarClassName="!font-sans !text-sm !border-gray-200 !rounded-xl !shadow-lg"
                   popperPlacement="bottom-start"
                 />
               </Section>
+
+              {(() => {
+                const day = selectedDate ? businessHours[String(selectedDate.getDay())] : null;
+                const now = new Date();
+                const isToday = selectedDate
+                  ? selectedDate.getFullYear() === now.getFullYear() &&
+                    selectedDate.getMonth() === now.getMonth() &&
+                    selectedDate.getDate() === now.getDate()
+                  : false;
+                const leadMins = (minLeadTimes[form.productType] ?? 2) * 60;
+                const minTimeDate = isToday ? new Date(now.getTime() + leadMins * 60000) : null;
+                const minTime = minTimeDate
+                  ? `${String(minTimeDate.getHours()).padStart(2, "0")}:${String(Math.ceil(minTimeDate.getMinutes() / 30) * 30 === 60 ? 0 : Math.ceil(minTimeDate.getMinutes() / 30) * 30).padStart(2, "0")}`
+                  : day?.open ?? "00:00";
+                return (
+                  <Section
+                    title="수령 희망 시간"
+                    required
+                    badge={day ? `영업시간 · ${day.open}~${day.close}${isToday ? ` (${minLeadTimes[form.productType] ?? 2}h 후~)` : ""}` : undefined}
+                  >
+                    <TimePicker
+                      value={form.desiredTime}
+                      onChange={(v) => set("desiredTime", v)}
+                      minTime={minTime}
+                      maxTime={day?.close ?? "23:59"}
+                      disabled={!selectedDate}
+                    />
+                    {!selectedDate && <p className="text-xs text-gray-300">날짜를 먼저 선택해주세요</p>}
+                  </Section>
+                );
+              })()}
+              </div>
 
               <Section title="요청 사항">
                 <textarea
@@ -1092,7 +1208,7 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
                 onClick={handleSubmit}
                 className="flex-1 bg-gold-500 text-white py-3.5 rounded-xl font-medium hover:bg-gold-600 disabled:opacity-40 transition-colors"
               >
-                {submitting ? "예약 중..." : "예약하기"}
+                {submitting ? "결제 중..." : "결제 및 예약하기"}
               </button>
             </div>
           </div>

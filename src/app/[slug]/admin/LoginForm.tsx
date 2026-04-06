@@ -15,8 +15,21 @@ export default function LoginForm({ slug }: Props) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const router = useRouter();
   const supabase = createClient();
+
+  const handleGoogleLogin = async () => {
+    setGoogleLoading(true);
+    setError(null);
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+    setGoogleLoading(false);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,57 +51,48 @@ export default function LoginForm({ slug }: Props) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="space-y-4">
       {error && (
         <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
           {error}
         </div>
       )}
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          이메일
-        </label>
+      {/* 구글 로그인 — 임시 숨김 */}
+      {/* <button type="button" onClick={handleGoogleLogin} ...>Google로 계속하기</button> */}
+
+      {/* 이메일 로그인 */}
+      <form onSubmit={handleSubmit} className="space-y-3">
         <input
           type="email"
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
-          placeholder="admin@example.com"
+          placeholder="이메일"
         />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          비밀번호
-        </label>
         <input
           type="password"
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
-          placeholder="••••••••"
+          placeholder="비밀번호"
         />
-      </div>
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full bg-gold-500 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-gold-600 disabled:opacity-50 transition-colors"
+        >
+          {loading ? "로그인 중..." : "로그인"}
+        </button>
+      </form>
 
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full bg-gold-500 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-gold-600 disabled:opacity-50 transition-colors mt-2"
-      >
-        {loading ? "로그인 중..." : "로그인"}
-      </button>
-
-      <div className="flex items-center justify-center gap-3 pt-2">
+      <div className="flex items-center justify-center gap-3 pt-1">
         <Link href="/forgot-password" className="text-xs text-gray-400 hover:text-gray-600 transition-colors underline underline-offset-2">
           비밀번호 찾기
         </Link>
-        <span className="text-gray-200 text-xs">·</span>
-        <Link href="/signup" className="text-xs text-gray-400 hover:text-gray-600 transition-colors underline underline-offset-2">
-          회원가입
-        </Link>
+        {/* 회원가입 링크 — 임시 숨김 */}
       </div>
 
       <div className="flex items-center justify-center gap-3">
@@ -98,6 +102,6 @@ export default function LoginForm({ slug }: Props) {
       </div>
 
       <FloAideFooter />
-    </form>
+    </div>
   );
 }

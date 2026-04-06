@@ -21,11 +21,14 @@ export async function GET(request: NextRequest) {
       if (user) {
         const { data: company } = await supabase
           .from("companies")
-          .select("slug")
+          .select("slug, plan")
           .eq("owner_id", user.id)
           .maybeSingle();
 
         if (company?.slug) {
+          if (!company.plan || company.plan === "none") {
+            return NextResponse.redirect(`${origin}/plan`);
+          }
           return NextResponse.redirect(`${origin}/${company.slug}/admin/dashboard`);
         }
       }

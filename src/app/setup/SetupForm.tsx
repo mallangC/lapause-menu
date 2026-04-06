@@ -110,7 +110,7 @@ export default function SetupForm() {
       .from("profiles")
       .upsert({ user_id: user.id, email: user.email, name: ownerName, phone_number: ownerPhone, role: "admin" }, { onConflict: "user_id" });
 
-    router.push(`/${slug}/admin/dashboard`);
+    router.push(`/plan`);
   };
 
   return (
@@ -125,7 +125,7 @@ export default function SetupForm() {
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-sm font-medium text-gray-800 mb-1">
-            담당자 이름 <span className="text-red-500">*</span>
+            이름 <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
@@ -181,10 +181,10 @@ export default function SetupForm() {
         <input ref={fileInputRef} type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
       </div>
 
-      {/* 회사 이름 */}
+      {/* 매장 이름 */}
       <div>
         <label className="block text-sm font-medium text-gray-800 mb-1">
-          회사 이름 <span className="text-red-500">*</span>
+          매장 이름 <span className="text-red-500">*</span>
         </label>
         <input
           type="text"

@@ -5,23 +5,23 @@ import OperatorDashboardClient from "./OperatorDashboardClient";
 export default async function OperatorDashboardPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/admin");
+  if (!user) redirect("/login");
 
   const { data: profile } = await supabase
     .from("profiles")
     .select("role")
     .eq("user_id", user.id)
     .single();
-  if (profile?.role !== "operator") redirect("/admin");
+  if (profile?.role !== "operator") redirect("/login");
 
   const [{ data: companies }, { data: reservations }, { data: products }] = await Promise.all([
     supabase
       .from("companies")
-      .select("id, name, slug, created_at, consult_enabled")
+      .select("id, name, slug, created_at, consult_enabled, plan")
       .order("created_at", { ascending: false }),
     supabase
       .from("reservations")
-      .select("id, company_id, created_at, desired_date, status, final_price")
+      .select("id, company_id, created_at, desired_date, status, final_price, payment_id")
       .neq("status", "취소"),
     supabase
       .from("products")

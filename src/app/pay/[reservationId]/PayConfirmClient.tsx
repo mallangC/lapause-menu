@@ -62,7 +62,7 @@ export default function PayConfirmClient({
               </svg>
             </div>
             <p className="text-base font-medium text-gray-900">입금 확인 요청이 완료되었습니다.</p>
-            <p className="text-sm text-gray-400">매장에서 확인 후 연락드리겠습니다.</p>
+            <p className="text-sm text-gray-400">예약 확정, 취소 시 카톡 알림이 발송됩니다.</p>
           </div>
         ) : (
           /* 미결제 상태 */

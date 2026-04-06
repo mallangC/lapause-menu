@@ -11,6 +11,32 @@ export async function PATCH(
 
   const supabase = await createClient();
 
+  // 취소 시 결제 방식에 따라 환불 처리
+  if (status === "취소") {
+    const { data: reservation } = await supabase
+      .from("reservations")
+      .select("payment_id, paid")
+      .eq("id", id)
+      .single();
+
+    if (reservation?.payment_id) {
+      // 포트원 카드 결제 → 자동 환불
+      try {
+        await fetch(`https://api.portone.io/payments/${reservation.payment_id}/cancel`, {
+          method: "POST",
+          headers: {
+            Authorization: `PortOne ${process.env.PORTONE_API_SECRET}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ reason: cancelReason ?? "관리자 취소" }),
+        });
+      } catch (err) {
+        console.error("[status] 환불 실패:", err);
+      }
+    }
+    // payment_id 없는 경우 (계좌이체, 매장 결제, 직접 추가 등) → 환불 처리 없이 상태만 변경
+  }
+
   // 상태 업데이트
   const update: Record<string, unknown> = { status };
   if (status === "취소" && cancelReason) update.cancel_reason = cancelReason;

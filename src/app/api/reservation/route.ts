@@ -6,6 +6,7 @@ interface ReservationBody {
   slug: string;
   companyName: string;
   notificationEmail?: string | null;
+  paymentId?: string;
   form: {
     purpose: string;
     purposeCustom: string;
@@ -49,10 +50,24 @@ interface ReservationBody {
 export async function POST(request: NextRequest) {
   try {
     const body: ReservationBody = await request.json();
-    const { slug, orderer } = body;
+    const { slug, orderer, paymentId } = body;
 
     if (!orderer.name || !orderer.phone || !body.product?.id) {
       return NextResponse.json({ error: "필수 정보가 누락되었습니다." }, { status: 400 });
+    }
+
+    // 포트원 결제 검증
+    if (paymentId) {
+      const portoneRes = await fetch(`https://api.portone.io/payments/${paymentId}`, {
+        headers: { Authorization: `PortOne ${process.env.PORTONE_API_SECRET}` },
+      });
+      const portoneData = await portoneRes.json();
+      if (portoneData.status !== "PAID") {
+        return NextResponse.json({ error: "결제가 완료되지 않았습니다." }, { status: 400 });
+      }
+      if (portoneData.amount?.total !== (body.finalPrice ?? body.product.price)) {
+        return NextResponse.json({ error: "결제 금액이 일치하지 않습니다." }, { status: 400 });
+      }
     }
 
     const supabase = await createClient();
@@ -98,7 +113,8 @@ export async function POST(request: NextRequest) {
         product_type: product.product_type,
         product_image_url: product.image_url,
         quantity: 1,
-        paid: false,
+        paid: !!paymentId,
+        payment_id: paymentId ?? null,
         final_price: finalPrice ?? product.price,
         purpose: form.purpose === "기타" ? form.purposeCustom : form.purpose,
         recipient_gender: form.recipientGender,

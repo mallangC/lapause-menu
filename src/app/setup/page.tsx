@@ -22,9 +22,9 @@ export default async function SetupPage() {
       <div className="w-full max-w-md bg-beige-50 border border-beige-200 rounded-2xl p-8 shadow-sm">
         <div className="text-center mb-8">
           <h1 className="text-xl font-light tracking-widest text-black mb-1">
-            회사 정보 설정
+            매장 정보 설정
           </h1>
-          <p className="text-sm text-gray-500">처음 사용 시 회사 정보를 입력해 주세요</p>
+          <p className="text-sm text-gray-500">처음 사용 시 매장 정보를 입력해 주세요</p>
         </div>
         <SetupForm />
       </div>

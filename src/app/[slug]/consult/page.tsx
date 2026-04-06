@@ -15,11 +15,11 @@ export default async function ConsultPage({ params, searchParams }: Props) {
 
   const { data: company } = await supabase
     .from("companies")
-    .select("id, name, business_hours, closed_dates, notification_email, min_lead_times, consult_notice, address, delivery_enabled, delivery_fees")
+    .select("id, name, business_hours, closed_dates, notification_email, min_lead_times, consult_notice, address, delivery_enabled, delivery_fees, consult_enabled")
     .eq("slug", slug)
     .single();
 
-  if (!company) notFound();
+  if (!company || !company.consult_enabled) notFound();
 
   const { data: products } = await supabase
     .from("products")

@@ -14,9 +14,10 @@ import ReservationSettingsTab from "./ReservationSettingsTab";
 import BusinessSettingsTab from "./BusinessSettingsTab";
 import ReservationsTab from "./ReservationsTab";
 import StatsTab from "./StatsTab";
+import PlanTab from "./PlanTab";
 import ProfileSetupModal from "./ProfileSetupModal";
 
-type Tab = "reservations" | "products" | "stats" | "company" | "business" | "reservation" | "settings" | "myinfo";
+type Tab = "reservations" | "products" | "stats" | "company" | "business" | "reservation" | "settings" | "plan" | "myinfo";
 
 interface Props {
   slug: string;
@@ -43,9 +44,12 @@ interface Props {
   hiddenProductTypes: string[];
   hiddenSeasons: string[];
   consultEnabled: boolean;
+  plan: "starter" | "pro";
+  trialEndsAt: string | null;
+  planExpiresAt: string | null;
 }
 
-export default function DashboardClient({ slug, userId, userEmail, isOAuth, profileName, profilePhone, companyId, companyName, logoImage, themeBg, themeAccent, initialProducts, homeFeaturedImage, homeAllImage, homeSeasonImage, homeConsultImage, locationUrl, kakaoChannelUrl, instagramUrl, youtubeUrl, companyPhone, hiddenProductTypes, hiddenSeasons, consultEnabled }: Props) {
+export default function DashboardClient({ slug, userId, userEmail, isOAuth, profileName, profilePhone, companyId, companyName, logoImage, themeBg, themeAccent, initialProducts, homeFeaturedImage, homeAllImage, homeSeasonImage, homeConsultImage, locationUrl, kakaoChannelUrl, instagramUrl, youtubeUrl, companyPhone, hiddenProductTypes, hiddenSeasons, consultEnabled, plan, trialEndsAt, planExpiresAt }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("reservations");
   const tabScrollRef = useRef<HTMLDivElement>(null);
   const [products, setProducts] = useState<Product[]>(initialProducts);
@@ -130,6 +134,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
     { key: "business", label: "영업 설정" },
     { key: "reservation", label: "맞춤 주문" },
     { key: "settings", label: "디자인" },
+    // { key: "plan", label: "요금제" }, // 임시 숨김
     { key: "myinfo", label: "내 정보" },
   ];
 
@@ -392,6 +397,18 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
                   setCurrentHiddenProductTypes(types);
                   setCurrentHiddenSeasons(seasons);
                 }}
+              />
+            </div>
+          )}
+
+          {activeTab === "plan" && (
+            <div className="bg-white border border-gray-200 rounded-xl p-6">
+              <PlanTab
+                companyId={companyId}
+                customerName={profileName}
+                plan={plan}
+                trialEndsAt={trialEndsAt}
+                planExpiresAt={planExpiresAt}
               />
             </div>
           )}

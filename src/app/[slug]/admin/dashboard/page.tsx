@@ -18,13 +18,16 @@ export default async function DashboardPage({ params }: Props) {
   // 로그인한 사용자의 회사 확인 (slug와 owner_id 일치 검증)
   const { data: company } = await supabase
     .from("companies")
-    .select("id, name, logo_image, theme_bg, theme_accent, home_featured_image, home_all_image, home_season_image, home_consult_image, location_url, kakao_channel_url, instagram_url, youtube_url, hidden_product_types, hidden_seasons, consult_enabled, phone")
+    .select("id, name, logo_image, theme_bg, theme_accent, home_featured_image, home_all_image, home_season_image, home_consult_image, location_url, kakao_channel_url, instagram_url, youtube_url, hidden_product_types, hidden_seasons, consult_enabled, phone, plan, trial_ends_at, plan_expires_at")
     .eq("slug", slug)
     .eq("owner_id", user.id)
     .single();
 
   // 해당 slug의 회사가 없거나 다른 계정 소유 → 루트로
   if (!company) redirect("/");
+
+  // 플랜 미설정이면 플랜 선택 페이지로
+  if (!company.plan || company.plan === "none") redirect("/plan");
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -64,6 +67,9 @@ export default async function DashboardPage({ params }: Props) {
       hiddenProductTypes={company.hidden_product_types ?? []}
       hiddenSeasons={company.hidden_seasons ?? []}
       consultEnabled={company.consult_enabled ?? false}
+      plan={(company.plan ?? "starter") as "starter" | "pro"}
+      trialEndsAt={company.trial_ends_at ?? null}
+      planExpiresAt={company.plan_expires_at ?? null}
     />
   );
 }
