@@ -163,7 +163,7 @@ export default function Landing1() {
           backdropFilter: scrolled ? "blur(8px)" : "none",
         }}
       >
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between relative">
           <a href="/" className="flex items-center">
             <Image
               src={scrolled ? "/logo-light.png" : "/logo-dark.png"}
@@ -173,9 +173,10 @@ export default function Landing1() {
               className="object-contain"
             />
           </a>
-          <nav className="hidden md:flex items-center gap-8">
+          <nav className="hidden md:flex items-center gap-8 absolute left-1/2 -translate-x-1/2">
             {[
               { label: "기능", href: "#기능" },
+              { label: "효과", href: "#효과" },
               { label: "사용 방법", href: "#사용 방법" },
               { label: "FAQ", href: "#FAQ" },
             ].map((item) => (
@@ -292,78 +293,6 @@ export default function Landing1() {
         {/* scroll hint */}
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2">
           <div className="w-px h-10 animate-pulse" style={{ background: "rgba(255,255,255,0.25)" }} />
-        </div>
-      </section>
-
-      {/* ── BEFORE / AFTER ── */}
-      <section className="py-24" style={{ background: "#fdf6ee" }}>
-        <div className="max-w-5xl mx-auto px-6">
-          <FadeIn className="text-center mb-14">
-            <p className="text-[11px] tracking-[0.2em] uppercase text-neutral-400 mb-3">Before / After</p>
-            <h2 className="text-[clamp(1.8rem,4vw,2.8rem)] font-semibold not-italic leading-tight" style={{ color: "#2c2416" }}>
-              하루가 이렇게 바뀝니다
-            </h2>
-          </FadeIn>
-
-          {/* 숫자 강조 */}
-          <FadeIn>
-            <div className="grid grid-cols-3 gap-4 mb-14">
-              {[
-                { num: "↓ 80%", label: "반복 문의 감소", sub: "상품·가격 질문이 링크로 해결" },
-                { num: "0건", label: "놓치는 예약", sub: "모든 접수가 대시보드에 기록" },
-                { num: "24/7", label: "쉬는 날도 예약 접수", sub: "관리자가 자리를 비워도 OK" },
-              ].map(({ num, label, sub }) => (
-                <div key={label} className="bg-white rounded-2xl p-6 text-center border border-neutral-100">
-                  <div className="text-[clamp(1.6rem,3.5vw,2.4rem)] font-semibold not-italic mb-1.5" style={{ color: "#2c2416" }}>{num}</div>
-                  <div className="text-[14px] font-medium text-neutral-800 mb-1">{label}</div>
-                  <div className="text-[12px] text-neutral-400">{sub}</div>
-                </div>
-              ))}
-            </div>
-          </FadeIn>
-
-          {/* Before / After 비교 */}
-          <FadeIn delay={100}>
-            <div className="grid md:grid-cols-2 gap-4">
-              {/* Before */}
-              <div className="rounded-2xl border border-neutral-200 bg-white p-7">
-                <p className="text-[11px] font-semibold tracking-widest uppercase text-neutral-400 mb-5">지금 방식</p>
-                <ul className="space-y-4">
-                  {[
-                    "카카오톡으로 상품 사진 일일이 전송",
-                    "\"얼마예요?\" 질문에 매번 답장",
-                    "예약 날짜·시간 수동으로 조율",
-                    "메모장·엑셀로 예약 관리",
-                    "쉬는 날엔 예약 접수 불가",
-                  ].map((item) => (
-                    <li key={item} className="flex items-start gap-3 text-[14px] text-neutral-500">
-                      <span className="mt-0.5 shrink-0 text-neutral-300">✕</span>
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* After */}
-              <div className="rounded-2xl border p-7" style={{ background: "#18130e", borderColor: "#2c2416" }}>
-                <p className="text-[11px] font-semibold tracking-widest uppercase mb-5" style={{ color: "rgba(201,169,110,0.7)" }}>Flo.Aide 사용 후</p>
-                <ul className="space-y-4">
-                  {[
-                    "링크 하나로 상품·가격 한번에 공유",
-                    "고객이 직접 보고 예약까지 완료",
-                    "고객이 원하는 날짜 직접 선택",
-                    "대시보드에서 예약 한눈에 관리",
-                    "24시간 자동으로 예약 접수",
-                  ].map((item) => (
-                    <li key={item} className="flex items-start gap-3 text-[14px]" style={{ color: "rgba(255,255,255,0.8)" }}>
-                      <span className="mt-0.5 shrink-0" style={{ color: "#c9a96e" }}>✓</span>
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </FadeIn>
         </div>
       </section>
 
@@ -492,6 +421,78 @@ export default function Landing1() {
               </div>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* ── BEFORE / AFTER ── */}
+      <section id="효과" className="py-24" style={{ background: "#fdf6ee" }}>
+        <div className="max-w-5xl mx-auto px-6">
+          <FadeIn className="text-center mb-14">
+            <p className="text-[11px] tracking-[0.2em] uppercase text-neutral-400 mb-3">Before / After</p>
+            <h2 className="text-[clamp(1.8rem,4vw,2.8rem)] font-semibold not-italic leading-tight" style={{ color: "#2c2416" }}>
+              하루가 이렇게 바뀝니다
+            </h2>
+          </FadeIn>
+
+          {/* 숫자 강조 */}
+          <FadeIn>
+            <div className="grid grid-cols-3 gap-4 mb-14">
+              {[
+                { num: "↓ 80%", label: "반복 문의 감소", sub: "상품·가격 질문이 링크로 해결" },
+                { num: "0건", label: "놓치는 예약", sub: "모든 예약이 대시보드에 기록" },
+                { num: "24/7", label: "쉬는 날도 예약 접수", sub: "관리자가 자리를 비워도 OK" },
+              ].map(({ num, label, sub }) => (
+                <div key={label} className="bg-white rounded-2xl p-6 text-center border border-neutral-100">
+                  <div className="text-[clamp(1.6rem,3.5vw,2.4rem)] font-semibold not-italic mb-1.5" style={{ color: "#2c2416" }}>{num}</div>
+                  <div className="text-[14px] font-medium text-neutral-800 mb-1">{label}</div>
+                  <div className="text-[12px] text-neutral-400">{sub}</div>
+                </div>
+              ))}
+            </div>
+          </FadeIn>
+
+          {/* Before / After 비교 */}
+          <FadeIn delay={100}>
+            <div className="grid md:grid-cols-2 gap-4">
+              {/* Before */}
+              <div className="rounded-2xl border border-neutral-200 bg-white p-7">
+                <p className="text-[11px] font-semibold tracking-widest uppercase text-neutral-400 mb-5">지금 방식</p>
+                <ul className="space-y-4">
+                  {[
+                    "카카오톡으로 상품 사진 일일이 전송",
+                    "\"얼마예요?\" 질문에 매번 답장",
+                    "예약 날짜·시간 수동으로 조율",
+                    "메모장·엑셀로 예약 관리",
+                    "쉬는 날엔 예약 접수 불가",
+                  ].map((item) => (
+                    <li key={item} className="flex items-start gap-3 text-[14px] text-neutral-500">
+                      <span className="mt-0.5 shrink-0 text-neutral-300">✕</span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* After */}
+              <div className="rounded-2xl border p-7" style={{ background: "#18130e", borderColor: "#2c2416" }}>
+                <p className="text-[11px] font-semibold tracking-widest uppercase mb-5" style={{ color: "rgba(201,169,110,0.7)" }}>Flo.Aide 사용 후</p>
+                <ul className="space-y-4">
+                  {[
+                    "링크 하나로 상품·가격 한번에 공유",
+                    "고객이 직접 보고 예약까지 완료",
+                    "고객이 원하는 날짜 직접 선택",
+                    "대시보드에서 예약 한눈에 관리",
+                    "24시간 자동으로 예약 접수",
+                  ].map((item) => (
+                    <li key={item} className="flex items-start gap-3 text-[14px]" style={{ color: "rgba(255,255,255,0.8)" }}>
+                      <span className="mt-0.5 shrink-0" style={{ color: "#c9a96e" }}>✓</span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </FadeIn>
         </div>
       </section>
 
