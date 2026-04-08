@@ -10,7 +10,6 @@ import { ko } from "date-fns/locale/ko";
 import "react-datepicker/dist/react-datepicker.css";
 import { Product } from "@/types";
 import FlowerNoticeModal from "@/components/FlowerNoticeModal";
-// import * as PortOne from "@portone/browser-sdk/v2"; // 결제 비활성화 중
 
 registerLocale("ko", ko);
 
@@ -368,8 +367,8 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
       (form.deliveryType === "배송" && deliveryFee !== null ? deliveryFee : 0);
 
     try {
-      /* ── 포트원 카드 결제 (임시 비활성화) ──────────────────────────
       const paymentId = `order${Date.now()}`;
+      const PortOne = await import("@portone/browser-sdk/v2");
       const payResponse = await PortOne.requestPayment({
         storeId: process.env.NEXT_PUBLIC_PORTONE_STORE_ID!,
         channelKey: process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY!,
@@ -385,9 +384,7 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
         setSubmitting(false);
         return;
       }
-      ─────────────────────────────────────────────────────────────── */
 
-      // 계좌이체 모드 — paymentId 없이 예약 저장
       const res = await fetch("/api/reservation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -412,18 +409,20 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
             addressDetail,
           } : null,
           finalPrice,
+          paymentId,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "예약 저장 실패");
-      setReservationId(data.reservationId ?? null);
-      setBankInfo({
-        bankName: data.bankName ?? null,
-        bankAccount: data.bankAccount ?? null,
-        bankHolder: data.bankHolder ?? null,
-      });
+      const rid = data.reservationId ?? null;
+      setReservationId(rid);
       setFinalPriceSnapshot(finalPrice);
+      // 카드 결제 완료 → 바로 paid 처리 후 완료 화면으로
+      if (rid) {
+        await fetch(`/api/reservation/${rid}/paid`, { method: "PATCH" });
+      }
       setSubmitted(true);
+      setPaidConfirmed(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "예약 중 오류가 발생했습니다. 다시 시도해주세요.");
     } finally {
@@ -449,72 +448,18 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
   }
 
   if (submitted) {
-    if (paidConfirmed) {
-      return (
-        <div className="min-h-screen bg-beige-100 flex items-center justify-center px-4">
-          <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-beige-200 p-8 space-y-4 text-center">
-            <div className="w-14 h-14 rounded-full bg-green-50 flex items-center justify-center mx-auto">
-              <svg className="w-7 h-7 text-green-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-              </svg>
-            </div>
-            <h2 className="text-lg font-medium text-gray-900">입금 확인 감사합니다</h2>
-            <p className="text-sm text-gray-400">매장에서 확인 후 준비를 시작하겠습니다.</p>
-            <Link href={`/${slug}`} className="block text-center text-gold-500 text-sm hover:text-gold-600 transition-colors">
-              홈으로 돌아가기 →
-            </Link>
-          </div>
-        </div>
-      );
-    }
-
     return (
       <div className="min-h-screen bg-beige-100 flex items-center justify-center px-4">
-        <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-beige-200 p-8 space-y-5">
-          <div className="text-center">
-            <div className="w-14 h-14 rounded-full bg-beige-100 flex items-center justify-center mx-auto mb-4">
-              <svg className="w-7 h-7 text-gold-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25Z" />
-              </svg>
-            </div>
-            <h2 className="text-lg font-medium text-gray-900">주문이 접수되었습니다</h2>
-            <p className="text-sm text-gray-400 mt-1">아래 계좌로 입금해주세요.</p>
+        <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-beige-200 p-8 space-y-4 text-center">
+          <div className="w-14 h-14 rounded-full bg-green-50 flex items-center justify-center mx-auto">
+            <svg className="w-7 h-7 text-green-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+            </svg>
           </div>
-
-          {bankInfo?.bankAccount ? (
-            <div className="bg-beige-50 border border-beige-200 rounded-xl p-4 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-400">은행</span>
-                <span className="font-medium text-gray-800">{bankInfo.bankName}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-400">계좌번호</span>
-                <span className="font-medium text-gray-800">{bankInfo.bankAccount}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-400">예금주</span>
-                <span className="font-medium text-gray-800">{bankInfo.bankHolder}</span>
-              </div>
-              <div className="border-t border-beige-200 pt-2 flex justify-between text-sm">
-                <span className="text-gray-400">입금 금액</span>
-                <span className="font-semibold text-gray-900">{finalPriceSnapshot.toLocaleString()}원</span>
-              </div>
-            </div>
-          ) : (
-            <p className="text-sm text-gray-400 text-center">매장에서 계좌 정보를 안내드릴 예정입니다.</p>
-          )}
-
-          <button
-            type="button"
-            onClick={handlePaidConfirm}
-            disabled={payLoading}
-            className="w-full py-3 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
-            style={{ background: "#2c2416" }}
-          >
-            {payLoading ? "처리 중..." : "입금 완료 시 눌러주세요"}
-          </button>
-          <Link href={`/${slug}`} className="block text-center text-gray-400 text-sm hover:text-gray-600 transition-colors">
-            나중에 입금하기 →
+          <h2 className="text-lg font-medium text-gray-900">결제가 완료되었습니다</h2>
+          <p className="text-sm text-gray-400">매장에서 확인 후 준비를 시작하겠습니다.</p>
+          <Link href={`/${slug}`} className="block text-center text-gold-500 text-sm hover:text-gold-600 transition-colors">
+            홈으로 돌아가기 →
           </Link>
         </div>
       </div>
