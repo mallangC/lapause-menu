@@ -354,7 +354,7 @@ export default function AddReservationModal({ companyId, onClose, onSaved, messa
         relationship,
         mood,
         message_card: messageCard,
-        message_card_content: messageCard === "추가" ? messageCardContent || null : null,
+        message_card_content: (messageCard === "추가" || messageCard === "서비스") ? messageCardContent || null : null,
         shopping_bag: shoppingBag,
         delivery_type: deliveryType,
         delivery_fee: deliveryType === "배송" && deliveryFee ? Number(deliveryFee) : null,
@@ -911,7 +911,7 @@ export default function AddReservationModal({ companyId, onClose, onSaved, messa
             </div>
           )}
 
-          {messageCardEnabled && messageCard === "추가" && (
+          {messageCardEnabled && (messageCard === "추가" || messageCard === "서비스") && (
             <div>
               <label className={labelCls}>메시지 내용</label>
               <textarea className={`${inputCls} resize-none`} rows={3} value={messageCardContent} onChange={(e) => setMessageCardContent(e.target.value)} placeholder="메시지 내용 (30자 이내 작성 권장)" />
