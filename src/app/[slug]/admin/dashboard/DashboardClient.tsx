@@ -15,7 +15,6 @@ import BusinessSettingsTab from "./BusinessSettingsTab";
 import ReservationsTab from "./ReservationsTab";
 import StatsTab from "./StatsTab";
 import PlanTab from "./PlanTab";
-import ProfileSetupModal from "./ProfileSetupModal";
 
 type Tab = "reservations" | "products" | "stats" | "company" | "business" | "reservation" | "settings" | "plan" | "myinfo";
 
@@ -44,16 +43,32 @@ interface Props {
   hiddenProductTypes: string[];
   hiddenSeasons: string[];
   consultEnabled: boolean;
-  plan: "starter" | "pro";
+  plan: "starter" | "pro" | "free";
+  subscriptionPlan: "starter" | "pro" | null;
+  cancelAtPeriodEnd: boolean;
   trialEndsAt: string | null;
   planExpiresAt: string | null;
 }
 
-export default function DashboardClient({ slug, userId, userEmail, isOAuth, profileName, profilePhone, companyId, companyName, logoImage, themeBg, themeAccent, initialProducts, homeFeaturedImage, homeAllImage, homeSeasonImage, homeConsultImage, locationUrl, kakaoChannelUrl, instagramUrl, youtubeUrl, companyPhone, hiddenProductTypes, hiddenSeasons, consultEnabled, plan, trialEndsAt, planExpiresAt }: Props) {
+function ProGate() {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+      <div className="w-12 h-12 rounded-full bg-gold-50 flex items-center justify-center mb-4">
+        <svg className="w-6 h-6 text-gold-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+        </svg>
+      </div>
+      <p className="text-sm font-semibold text-gray-800 mb-1">Pro 플랜에서 이용할 수 있습니다</p>
+      <p className="text-xs text-gray-400">요금제 탭에서 Pro로 업그레이드하세요.</p>
+    </div>
+  );
+}
+
+export default function DashboardClient({ slug, userId, userEmail, isOAuth, profileName, profilePhone, companyId, companyName, logoImage, themeBg, themeAccent, initialProducts, homeFeaturedImage, homeAllImage, homeSeasonImage, homeConsultImage, locationUrl, kakaoChannelUrl, instagramUrl, youtubeUrl, companyPhone, hiddenProductTypes, hiddenSeasons, consultEnabled, plan, subscriptionPlan, cancelAtPeriodEnd, trialEndsAt, planExpiresAt }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("reservations");
   const tabScrollRef = useRef<HTMLDivElement>(null);
   const [products, setProducts] = useState<Product[]>(initialProducts);
-  const [showProfileSetup, setShowProfileSetup] = useState(!profileName || !profilePhone);
+  const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -126,28 +141,25 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
     if (!enabled && activeTab === "stats") setActiveTab("reservations");
   };
 
-  const tabs: { key: Tab; label: string; statsOnly?: boolean }[] = [
+  const mainTabs: { key: Tab; label: string; statsOnly?: boolean }[] = [
     { key: "reservations", label: "예약 관리" },
     { key: "products", label: "상품 관리" },
     { key: "stats", label: "통계", statsOnly: true },
+    { key: "plan", label: "요금제" },
+  ];
+
+  const settingsTabs: { key: Tab; label: string }[] = [
     { key: "company", label: "매장 정보" },
     { key: "business", label: "영업 설정" },
     { key: "reservation", label: "맞춤 주문" },
     { key: "settings", label: "디자인" },
-    // { key: "plan", label: "요금제" }, // 임시 숨김
     { key: "myinfo", label: "내 정보" },
   ];
 
+  const isSettingsTab = settingsTabs.some((t) => t.key === activeTab);
+
   return (
     <div className="min-h-screen bg-beige-100 flex flex-col" style={themeVars as React.CSSProperties}>
-      {showProfileSetup && (
-        <ProfileSetupModal
-          userId={userId}
-          initialName={profileName}
-          initialPhone={profilePhone}
-          onComplete={() => setShowProfileSetup(false)}
-        />
-      )}
       <header className="border-b border-gray-200 bg-white shrink-0">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link href={`/${slug}`} className="text-lg font-medium text-gray-900 hover:text-gray-600 transition-colors">
@@ -160,42 +172,16 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
       </header>
 
       {/* 모바일 탭 내비게이션 */}
-      <div className="md:hidden border-b border-gray-100 bg-white relative flex items-center">
-        {/* 왼쪽 화살표 */}
-        <button
-          onClick={() => tabScrollRef.current?.scrollBy({ left: -120, behavior: "smooth" })}
-          className="shrink-0 px-2 py-3 text-gray-300 hover:text-gray-500 transition-colors"
-        >
-          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-          </svg>
-        </button>
-
-        {/* 탭 스크롤 영역 */}
-        <div
-          ref={tabScrollRef}
-          className="flex overflow-x-auto flex-1"
-          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-        >
-          {tabs.map((tab) => (
+      <div className="md:hidden bg-white border-b border-gray-100">
+        {/* 메인 탭 행 */}
+        <div className="flex">
+          {mainTabs.map((tab) => (
             <div
               key={tab.key}
               className={`overflow-hidden transition-all duration-300 shrink-0 ${tab.statsOnly && !currentConsultEnabled ? "max-w-0 opacity-0 pointer-events-none" : "max-w-[120px] opacity-100"}`}
             >
               <button
-                onClick={() => {
-                  setActiveTab(tab.key);
-                  setShowForm(false);
-                  setEditingProduct(null);
-                  setError(null);
-                  const container = tabScrollRef.current;
-                  const btn = container?.querySelector(`[data-tab="${tab.key}"]`) as HTMLElement;
-                  if (container && btn) {
-                    const offset = btn.offsetLeft - container.offsetWidth / 2 + btn.offsetWidth / 2;
-                    container.scrollTo({ left: offset, behavior: "smooth" });
-                  }
-                }}
-                data-tab={tab.key}
+                onClick={() => { setActiveTab(tab.key); setShowForm(false); setEditingProduct(null); setError(null); setShowSettingsDropdown(false); }}
                 className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                   activeTab === tab.key ? "border-gold-500 text-gold-500" : "border-transparent text-gray-400 hover:text-gray-700"
                 }`}
@@ -204,24 +190,42 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
               </button>
             </div>
           ))}
+          {/* 설정 탭 */}
+          <button
+            onClick={() => setShowSettingsDropdown((v) => !v)}
+            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap flex items-center gap-1 ${
+              isSettingsTab ? "border-gold-500 text-gold-500" : "border-transparent text-gray-400 hover:text-gray-700"
+            }`}
+          >
+            설정
+            <svg className={`w-3.5 h-3.5 transition-transform ${showSettingsDropdown ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+            </svg>
+          </button>
         </div>
-
-        {/* 오른쪽 화살표 */}
-        <button
-          onClick={() => tabScrollRef.current?.scrollBy({ left: 120, behavior: "smooth" })}
-          className="shrink-0 px-2 py-3 text-gray-300 hover:text-gray-500 transition-colors"
-        >
-          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-          </svg>
-        </button>
+        {/* 설정 하위 탭 행 */}
+        <div className={`overflow-hidden transition-all duration-300 ${showSettingsDropdown || isSettingsTab ? "max-h-12" : "max-h-0"}`}>
+          <div className="flex border-t border-gray-50 bg-gray-50">
+            {settingsTabs.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => { setActiveTab(tab.key); setShowForm(false); setEditingProduct(null); setError(null); }}
+                className={`px-4 py-2.5 text-xs font-medium transition-colors whitespace-nowrap border-b-2 ${
+                  activeTab === tab.key ? "border-gold-500 text-gold-500" : "border-transparent text-gray-400 hover:text-gray-600"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="flex flex-1 max-w-6xl w-full mx-auto px-4 py-6 gap-6">
         {/* 데스크탑 사이드 탭 */}
         <nav className="hidden md:block w-44 shrink-0">
           <ul className="space-y-1">
-            {tabs.map((tab) => (
+            {mainTabs.map((tab) => (
               <li
                 key={tab.key}
                 className={`overflow-hidden transition-all duration-300 ${tab.statsOnly && !currentConsultEnabled ? "max-h-0 opacity-0" : "max-h-12 opacity-100"}`}
@@ -236,6 +240,36 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
                 </button>
               </li>
             ))}
+            {/* 설정 드롭다운 */}
+            <li>
+              <button
+                onClick={() => setShowSettingsDropdown((v) => !v)}
+                className={`w-full text-left px-4 py-2.5 rounded-lg text-sm transition-colors flex items-center justify-between ${
+                  isSettingsTab ? "bg-gold-500 text-white font-medium" : "text-gray-700 hover:bg-gold-500/50"
+                }`}
+              >
+                설정
+                <svg className={`w-3.5 h-3.5 transition-transform ${showSettingsDropdown || isSettingsTab ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                </svg>
+              </button>
+              <div className={`overflow-hidden transition-all duration-300 ${showSettingsDropdown || isSettingsTab ? "max-h-60" : "max-h-0"}`}>
+                <ul className="mt-1 space-y-0.5 pl-2">
+                  {settingsTabs.map((tab) => (
+                    <li key={tab.key}>
+                      <button
+                        onClick={() => { setActiveTab(tab.key); setShowForm(false); setEditingProduct(null); setError(null); }}
+                        className={`w-full text-left px-4 py-2 rounded-lg text-sm transition-colors ${
+                          activeTab === tab.key ? "bg-gold-100 text-gold-700 font-medium" : "text-gray-500 hover:bg-gold-500/30 hover:text-gray-700"
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </li>
             <li>
               <Link
                 href="/notice"
@@ -366,16 +400,18 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
 
           {activeTab === "business" && (
             <div className="bg-white border border-gray-200 rounded-xl p-6">
-              <BusinessSettingsTab companyId={companyId} />
+              {plan === "starter" ? <ProGate /> : <BusinessSettingsTab companyId={companyId} />}
             </div>
           )}
 
           {activeTab === "reservation" && (
             <div className="bg-white border border-gray-200 rounded-xl p-6">
-              <ReservationSettingsTab
-                companyId={companyId}
-                onConsultToggle={handleConsultToggle}
-              />
+              {plan === "starter" ? <ProGate /> : (
+                <ReservationSettingsTab
+                  companyId={companyId}
+                  onConsultToggle={handleConsultToggle}
+                />
+              )}
             </div>
           )}
 
@@ -407,6 +443,8 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
                 companyId={companyId}
                 customerName={profileName}
                 plan={plan}
+                subscriptionPlan={subscriptionPlan}
+                cancelAtPeriodEnd={cancelAtPeriodEnd}
                 trialEndsAt={trialEndsAt}
                 planExpiresAt={planExpiresAt}
               />

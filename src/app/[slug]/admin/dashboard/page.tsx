@@ -18,7 +18,7 @@ export default async function DashboardPage({ params }: Props) {
   // 로그인한 사용자의 회사 확인 (slug와 owner_id 일치 검증)
   const { data: company } = await supabase
     .from("companies")
-    .select("id, name, logo_image, theme_bg, theme_accent, home_featured_image, home_all_image, home_season_image, home_consult_image, location_url, kakao_channel_url, instagram_url, youtube_url, hidden_product_types, hidden_seasons, consult_enabled, phone, plan, trial_ends_at, plan_expires_at")
+    .select("id, name, logo_image, theme_bg, theme_accent, home_featured_image, home_all_image, home_season_image, home_consult_image, location_url, kakao_channel_url, instagram_url, youtube_url, hidden_product_types, hidden_seasons, consult_enabled, phone, plan, subscription_plan, cancel_at_period_end, trial_ends_at, plan_expires_at, billing_key")
     .eq("slug", slug)
     .eq("owner_id", user.id)
     .single();
@@ -29,11 +29,30 @@ export default async function DashboardPage({ params }: Props) {
   // 플랜 미설정이면 플랜 선택 페이지로
   if (!company.plan || company.plan === "none") redirect("/plan");
 
+  // 스타터 체험 만료 감지: pro이고 trial 만료됐고 billing_key 없으면 → starter로 전환 + 맞춤 주문 비활성화
+  if (
+    company.plan === "pro" &&
+    company.trial_ends_at &&
+    new Date(company.trial_ends_at) < new Date() &&
+    !company.billing_key
+  ) {
+    await supabase
+      .from("companies")
+      .update({ plan: "starter", trial_ends_at: null, consult_enabled: false })
+      .eq("id", company.id);
+    company.plan = "starter";
+    company.trial_ends_at = null;
+    company.consult_enabled = false;
+  }
+
   const { data: profile } = await supabase
     .from("profiles")
     .select("name, phone_number")
     .eq("user_id", user.id)
     .single();
+
+  // 프로필 미완성이면 setup으로
+  if (!profile?.name || !profile?.phone_number) redirect("/setup");
 
   const { data: products } = await supabase
     .from("products")
@@ -67,7 +86,9 @@ export default async function DashboardPage({ params }: Props) {
       hiddenProductTypes={company.hidden_product_types ?? []}
       hiddenSeasons={company.hidden_seasons ?? []}
       consultEnabled={company.consult_enabled ?? false}
-      plan={(company.plan ?? "starter") as "starter" | "pro"}
+      plan={(company.plan ?? "starter") as "starter" | "pro" | "free"}
+      subscriptionPlan={(company.subscription_plan ?? null) as "starter" | "pro" | null}
+      cancelAtPeriodEnd={company.cancel_at_period_end ?? false}
       trialEndsAt={company.trial_ends_at ?? null}
       planExpiresAt={company.plan_expires_at ?? null}
     />

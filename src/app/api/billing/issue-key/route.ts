@@ -6,8 +6,8 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { billingKey, pgProvider, companyId } = await req.json();
-  if (!billingKey || !pgProvider || !companyId) {
+  const { billingKey, pgProvider, companyId, subscriptionPlan } = await req.json();
+  if (!billingKey || !companyId || !subscriptionPlan) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 });
   }
 
@@ -29,7 +29,8 @@ export async function POST(req: NextRequest) {
     .update({
       plan: "pro",
       billing_key: billingKey,
-      pg_provider: pgProvider,
+      pg_provider: pgProvider ?? null,
+      subscription_plan: subscriptionPlan,
       trial_ends_at: trialEndsAt.toISOString(),
     })
     .eq("id", companyId);

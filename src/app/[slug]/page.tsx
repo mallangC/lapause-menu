@@ -24,11 +24,12 @@ export default async function CompanyMenuPage({ params }: Props) {
 
   const { data: company } = await supabase
     .from("companies")
-    .select("id, name, logo_image, theme_bg, theme_accent, home_featured_image, home_all_image, home_season_image, home_consult_image, location_url, kakao_channel_url, instagram_url, youtube_url, hidden_product_types, hidden_seasons, consult_enabled")
+    .select("id, name, logo_image, theme_bg, theme_accent, home_featured_image, home_all_image, home_season_image, home_consult_image, location_url, kakao_channel_url, instagram_url, youtube_url, hidden_product_types, hidden_seasons, consult_enabled, plan")
     .eq("slug", slug)
     .single();
 
   if (!company) notFound();
+  if (company.plan === "none") notFound();
 
   const { data: products } = await supabase
     .from("products")

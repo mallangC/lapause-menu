@@ -8,7 +8,9 @@ import BillingKeyFlow from "@/components/BillingKeyFlow";
 interface Props {
   companyId: string;
   customerName: string;
-  plan: "starter" | "pro";
+  plan: "starter" | "pro" | "free";
+  subscriptionPlan: "starter" | "pro" | null;
+  cancelAtPeriodEnd: boolean;
   trialEndsAt: string | null;
   planExpiresAt: string | null;
 }
@@ -19,9 +21,10 @@ const CHECK_ICON = (
   </svg>
 );
 
-export default function PlanTab({ companyId, customerName, plan, trialEndsAt, planExpiresAt }: Props) {
+export default function PlanTab({ companyId, customerName, plan, subscriptionPlan, cancelAtPeriodEnd, trialEndsAt, planExpiresAt }: Props) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
@@ -39,28 +42,73 @@ export default function PlanTab({ companyId, customerName, plan, trialEndsAt, pl
     setLoading(true);
     await supabase
       .from("companies")
-      .update({ plan: "starter", trial_ends_at: null, plan_expires_at: null, billing_key: null })
+      .update({ plan: "starter", trial_ends_at: null, plan_expires_at: null, billing_key: null, consult_enabled: false })
       .eq("id", companyId);
     setLoading(false);
     setSuccess(true);
     setTimeout(() => router.refresh(), 1000);
   };
 
+  const handleCancel = async () => {
+    setLoading(true);
+    await supabase
+      .from("companies")
+      .update({ cancel_at_period_end: true })
+      .eq("id", companyId);
+    setLoading(false);
+    setShowCancelModal(false);
+    router.refresh();
+  };
+
+  const handleUndoCancel = async () => {
+    setLoading(true);
+    await supabase
+      .from("companies")
+      .update({ cancel_at_period_end: false })
+      .eq("id", companyId);
+    setLoading(false);
+    router.refresh();
+  };
+
+  if (plan === "free") {
+    return (
+      <div>
+        <h2 className="text-base font-semibold text-gray-900 mb-2">요금제</h2>
+        <div className="p-5 rounded-2xl border border-gold-300 bg-gold-50">
+          <p className="text-sm font-semibold text-gold-600 mb-1">무료 계정</p>
+          <p className="text-xs text-gray-500">모든 기능을 무료로 이용할 수 있는 특별 계정입니다.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <h2 className="text-base font-semibold text-gray-900 mb-2">요금제</h2>
 
       {/* 상태 배너 */}
-      {isInTrial && (
+      {isInTrial && !cancelAtPeriodEnd && (
         <div className="mb-5 p-3 rounded-xl bg-gold-500/10 border border-gold-400/30">
-          <p className="text-sm font-semibold text-gold-600">무료 체험 중 · D-{trialDaysLeft}</p>
-          <p className="text-xs text-gray-500 mt-0.5">{formatDate(trialEndsAt!)} 이후 월 9,900원이 자동 결제됩니다.</p>
+          <p className="text-sm font-semibold text-gold-600">Pro 플랜 무료 체험 중 · D-{trialDaysLeft}</p>
+          <p className="text-xs text-gray-500 mt-0.5">{formatDate(trialEndsAt!)} 이후 월 {subscriptionPlan === "starter" ? "4,900" : "9,900"}원이 자동 결제됩니다.</p>
         </div>
       )}
-      {planExpiresAt && !isInTrial && plan === "pro" && (
+      {isInTrial && cancelAtPeriodEnd && (
+        <div className="mb-5 p-3 rounded-xl bg-red-50 border border-red-200">
+          <p className="text-sm font-semibold text-red-500">해지 예정</p>
+          <p className="text-xs text-gray-500 mt-0.5">{formatDate(trialEndsAt!)} 무료 체험 종료 후 플랜이 해지됩니다.</p>
+        </div>
+      )}
+      {planExpiresAt && !isInTrial && plan === "pro" && !cancelAtPeriodEnd && (
         <div className="mb-5 p-3 rounded-xl bg-beige-50 border border-beige-200">
           <p className="text-xs text-gray-500">다음 결제일</p>
           <p className="text-sm font-medium text-gray-800 mt-0.5">{formatDate(planExpiresAt)}</p>
+        </div>
+      )}
+      {planExpiresAt && !isInTrial && plan === "pro" && cancelAtPeriodEnd && (
+        <div className="mb-5 p-3 rounded-xl bg-red-50 border border-red-200">
+          <p className="text-sm font-semibold text-red-500">해지 예정</p>
+          <p className="text-xs text-gray-500 mt-0.5">{formatDate(planExpiresAt)} 이후 플랜이 해지됩니다.</p>
         </div>
       )}
       {success && (
@@ -81,15 +129,16 @@ export default function PlanTab({ companyId, customerName, plan, trialEndsAt, pl
             )}
           </div>
           <div className="mb-1">
-            <span className="text-[2rem] font-semibold text-gray-900 leading-none">₩0</span>
+            <span className="text-[2rem] font-semibold text-gray-900 leading-none">₩4,900</span>
             <span className="text-sm text-gray-400 ml-1">/ 월</span>
           </div>
-          <p className="text-xs text-gray-400 mb-4">월 구독료 없이 계속 사용</p>
+          <p className="text-xs text-gray-400 mb-4">전자 메뉴판으로 간편하게 시작</p>
           <ul className="space-y-2.5 mb-6 flex-1">
             {[
               { text: "전자 메뉴판 운영", gold: false },
-              { text: "맞춤 주문 & 예약 관리", gold: false },
-              { text: "결제 수수료 5% (카드 수수료 포함)", gold: true },
+              { text: "나만의 가게 링크", gold: false },
+              { text: "모바일 최적화 상품 페이지", gold: false },
+              { text: "로고·테마 커스터마이징", gold: false },
             ].map((item, i) => (
               <li key={i} className="flex items-start gap-2 text-sm">
                 <span style={{ color: item.gold ? "#b8934a" : "#9ca3af" }}>{CHECK_ICON}</span>
@@ -129,7 +178,9 @@ export default function PlanTab({ companyId, customerName, plan, trialEndsAt, pl
           <ul className="space-y-2.5 mb-6 flex-1">
             {[
               { text: "Starter 플랜 모든 기능 포함", gold: false },
-              { text: "우선 고객 지원", gold: false },
+              { text: "맞춤 주문 & 예약 관리", gold: false },
+              { text: "매출·예약 통계", gold: false },
+              { text: "카카오 예약 알림 자동 발송", gold: false },
               { text: "결제 수수료 0% (카드 수수료 별도)", gold: true },
             ].map((item, i) => (
               <li key={i} className="flex items-start gap-2 text-sm">
@@ -142,6 +193,7 @@ export default function PlanTab({ companyId, customerName, plan, trialEndsAt, pl
             <BillingKeyFlow
               companyId={companyId}
               customerName={customerName}
+              subscriptionPlan="pro"
               onSuccess={() => { setSuccess(true); setTimeout(() => router.refresh(), 1000); }}
               buttonLabel="정기 구독 결제"
             />
@@ -153,6 +205,74 @@ export default function PlanTab({ companyId, customerName, plan, trialEndsAt, pl
         </div>
 
       </div>
+
+      {/* 구독 해지 / 해지 취소 */}
+      {subscriptionPlan !== null && (
+        <div className="mt-6 pt-5 border-t border-beige-200">
+          {cancelAtPeriodEnd ? (
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-red-400">구독 해지가 예약되었습니다.</span>
+              <button
+                onClick={handleUndoCancel}
+                disabled={loading}
+                className="text-xs text-gold-600 hover:text-gold-700 underline underline-offset-2 transition-colors disabled:opacity-50"
+              >
+                해지 취소
+              </button>
+            </div>
+          ) : (
+            <>
+              <button
+                onClick={() => setShowCancelModal(true)}
+                disabled={loading}
+                className="text-xs text-gray-400 hover:text-red-500 underline underline-offset-2 transition-colors disabled:opacity-50"
+              >
+                구독 해지
+              </button>
+              <p className="text-[11px] text-gray-300 mt-1">해지 시 현재 기간 종료 후 자동 결제가 중단됩니다.</p>
+            </>
+          )}
+        </div>
+      )}
+      {/* 구독 해지 확인 모달 */}
+      {showCancelModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowCancelModal(false)} />
+          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">구독을 해지하시겠습니까?</p>
+                <p className="text-xs text-gray-400 mt-0.5">현재 기간이 종료되면 자동 결제가 중단됩니다.</p>
+              </div>
+            </div>
+            <ul className="text-xs text-gray-500 space-y-1.5 bg-beige-50 rounded-xl p-4">
+              <li>· 해지 후에도 현재 체험/구독 기간까지는 정상 이용 가능합니다.</li>
+              <li>· 기간 종료 후 메뉴판이 비공개 처리됩니다.</li>
+              <li>· 잔여 기간에 대한 환불은 제공되지 않습니다.</li>
+            </ul>
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => setShowCancelModal(false)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                돌아가기
+              </button>
+              <button
+                onClick={handleCancel}
+                disabled={loading}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-red-500 text-white hover:bg-red-600 disabled:opacity-50 transition-colors"
+              >
+                {loading ? "처리 중..." : "해지 확인"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
