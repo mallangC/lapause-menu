@@ -331,7 +331,7 @@ export default function ReservationsTab({ companyId }: Props) {
                           </span>
                         </td>
                         <td className="py-3 pr-3 text-center">
-                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${r.message_card === "추가" ? "border border-green-500 text-green-600" : "text-gray-300"}`}>
+                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${r.message_card === "추가" ? "border border-green-500 text-green-600" : r.message_card === "서비스" ? "border border-purple-400 text-purple-500" : "text-gray-300"}`}>
                             {r.message_card}
                           </span>
                         </td>

@@ -247,7 +247,7 @@ export default function ReservationDetail({
             {r.message_card !== "없음" && (
               <SectionCard>
                 <Row label="메시지 카드">
-                  {r.message_card === "추가" && r.message_card_content
+                  {(r.message_card === "추가" || r.message_card === "서비스") && r.message_card_content
                     ? <span className="flex items-start gap-1"><span className="whitespace-pre-wrap">{r.message_card_content}</span><CopyButton text={r.message_card_content} /></span>
                     : r.message_card}
                 </Row>
