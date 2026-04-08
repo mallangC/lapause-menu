@@ -6,9 +6,6 @@ export const metadata: Metadata = {
   description: "Flo.Aide(플로에이드) - 꽃집을 위한 전자 메뉴 및 상담 예약 서비스. 앱 설치 없이 링크 하나로 상품을 소개하고 예약을 받으세요.",
   keywords: ["Flo.Aide", "플로에이드", "Flo Aide", "꽃집 예약", "꽃집 메뉴", "꽃집 관리", "플라워샵 예약"],
   metadataBase: new URL("https://www.flo-aide.com"),
-  alternates: {
-    canonical: "https://www.flo-aide.com",
-  },
   openGraph: {
     title: "Flo.Aide | 플로에이드",
     description: "꽃집을 위한 전자 메뉴 및 상담 예약 서비스",
