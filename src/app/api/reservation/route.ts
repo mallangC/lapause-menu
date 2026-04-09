@@ -90,11 +90,20 @@ export async function POST(request: NextRequest) {
     }
 
     // 계좌 정보 + 매장 전화번호 조회
-    const { data: companyInfo } = await supabase
+    const { data: companyRaw } = await supabase
       .from("companies")
-      .select("name, phone, address, bank_name, bank_account, bank_holder")
+      .select("name, phone, settings:company_settings(address, bank_name, bank_account, bank_holder)")
       .eq("id", companyId)
       .single();
+    const companySettings = companyRaw?.settings as { address?: string; bank_name?: string; bank_account?: string; bank_holder?: string } | null;
+    const companyInfo = companyRaw ? {
+      name: companyRaw.name,
+      phone: companyRaw.phone,
+      address: companySettings?.address ?? null,
+      bank_name: companySettings?.bank_name ?? null,
+      bank_account: companySettings?.bank_account ?? null,
+      bank_holder: companySettings?.bank_holder ?? null,
+    } : null;
 
     // DB에 예약 저장
     let savedReservationId: string | null = null;

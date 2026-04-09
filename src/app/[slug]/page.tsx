@@ -22,45 +22,58 @@ export default async function CompanyMenuPage({ params }: Props) {
   const { slug } = await params;
   const supabase = await createClient();
 
-  const { data: company } = await supabase
+  const { data: raw } = await supabase
     .from("companies")
-    .select("id, name, logo_image, theme_bg, theme_accent, home_featured_image, home_all_image, home_season_image, home_consult_image, location_url, kakao_channel_url, instagram_url, youtube_url, hidden_product_types, hidden_seasons, consult_enabled, plan")
+    .select(`
+      id,
+      settings:company_settings(
+        logo_image, theme_bg, theme_accent,
+        home_featured_image, home_all_image, home_season_image, home_consult_image,
+        location_url, kakao_channel_url, instagram_url, youtube_url,
+        hidden_product_types, hidden_seasons, consult_enabled
+      ),
+      subscription:company_subscriptions(plan)
+    `)
     .eq("slug", slug)
     .single();
 
-  if (!company) notFound();
-  if (company.plan === "none") notFound();
+  if (!raw) notFound();
+
+  const s = raw.settings as unknown as Record<string, unknown> | null ?? {};
+  const sub = raw.subscription as unknown as Record<string, unknown> | null ?? {};
+
+  if (sub.plan === "none") notFound();
 
   const { data: products } = await supabase
     .from("products")
     .select("*")
-    .eq("company_id", company.id)
+    .eq("company_id", raw.id)
     .eq("status", "active")
     .order("price", { ascending: true });
 
   const themeVars = generateThemeVars(
-    company.theme_bg ?? DEFAULT_THEME_BG,
-    company.theme_accent ?? DEFAULT_THEME_ACCENT
+    (s.theme_bg as string | null) ?? DEFAULT_THEME_BG,
+    (s.theme_accent as string | null) ?? DEFAULT_THEME_ACCENT
   );
 
   return (
     <MainLayout
       slug={slug}
       companyName={slug}
-      logoImage={company.logo_image}
+      logoImage={(s.logo_image as string | null) ?? null}
       themeVars={themeVars}
       products={(products as Product[]) ?? []}
-      homeFeaturedImage={company.home_featured_image ?? null}
-      homeAllImage={company.home_all_image ?? null}
-      homeSeasonImage={company.home_season_image ?? null}
-      homeConsultImage={company.home_consult_image ?? null}
-      locationUrl={company.location_url ?? null}
-      kakaoChannelUrl={company.kakao_channel_url ?? null}
-      instagramUrl={company.instagram_url ?? null}
-      youtubeUrl={company.youtube_url ?? null}
-      hiddenProductTypes={company.hidden_product_types ?? []}
-      hiddenSeasons={company.hidden_seasons ?? []}
-      consultEnabled={company.consult_enabled ?? false}
+      homeFeaturedImage={(s.home_featured_image as string | null) ?? null}
+      homeAllImage={(s.home_all_image as string | null) ?? null}
+      homeSeasonImage={(s.home_season_image as string | null) ?? null}
+      homeConsultImage={(s.home_consult_image as string | null) ?? null}
+      locationUrl={(s.location_url as string | null) ?? null}
+      kakaoChannelUrl={(s.kakao_channel_url as string | null) ?? null}
+      instagramUrl={(s.instagram_url as string | null) ?? null}
+      youtubeUrl={(s.youtube_url as string | null) ?? null}
+      hiddenProductTypes={(s.hidden_product_types as string[]) ?? []}
+      hiddenSeasons={(s.hidden_seasons as string[]) ?? []}
+      consultEnabled={(s.consult_enabled as boolean) ?? false}
     />
   );
 }

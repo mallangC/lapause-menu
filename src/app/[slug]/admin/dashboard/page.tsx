@@ -15,31 +15,46 @@ export default async function DashboardPage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/${slug}/admin`);
 
-  // 로그인한 사용자의 회사 확인 (slug와 owner_id 일치 검증)
-  const { data: company } = await supabase
+  const { data: raw } = await supabase
     .from("companies")
-    .select("id, name, logo_image, theme_bg, theme_accent, home_featured_image, home_all_image, home_season_image, home_consult_image, location_url, kakao_channel_url, instagram_url, youtube_url, hidden_product_types, hidden_seasons, consult_enabled, phone, plan, subscription_plan, cancel_at_period_end, trial_ends_at, plan_expires_at, billing_key")
+    .select(`
+      id, name, phone,
+      settings:company_settings(*),
+      subscription:company_subscriptions(*)
+    `)
     .eq("slug", slug)
     .eq("owner_id", user.id)
     .single();
 
-  // 해당 slug의 회사가 없거나 다른 계정 소유 → 루트로
-  if (!company) redirect("/");
+  if (!raw) redirect("/");
+
+  // 편의를 위해 flatten
+  const company = {
+    ...raw,
+    ...(raw.settings as unknown as Record<string, unknown> ?? {}),
+    ...(raw.subscription as unknown as Record<string, unknown> ?? {}),
+  } as typeof raw & Record<string, unknown>;
+
+  const plan = (company.plan ?? "none") as string;
 
   // 플랜 미설정이면 플랜 선택 페이지로
-  if (!company.plan || company.plan === "none") redirect("/plan");
+  if (!plan || plan === "none") redirect("/plan");
 
-  // 스타터 체험 만료 감지: pro이고 trial 만료됐고 billing_key 없으면 → starter로 전환 + 맞춤 주문 비활성화
+  // 체험 만료 감지: pro이고 trial 만료됐고 billing_key 없으면 → starter로 전환
   if (
-    company.plan === "pro" &&
+    plan === "pro" &&
     company.trial_ends_at &&
-    new Date(company.trial_ends_at) < new Date() &&
+    new Date(company.trial_ends_at as string) < new Date() &&
     !company.billing_key
   ) {
     await supabase
-      .from("companies")
-      .update({ plan: "starter", trial_ends_at: null, consult_enabled: false })
-      .eq("id", company.id);
+      .from("company_subscriptions")
+      .update({ plan: "starter", trial_ends_at: null })
+      .eq("company_id", raw.id);
+    await supabase
+      .from("company_settings")
+      .update({ consult_enabled: false })
+      .eq("company_id", raw.id);
     company.plan = "starter";
     company.trial_ends_at = null;
     company.consult_enabled = false;
@@ -51,13 +66,12 @@ export default async function DashboardPage({ params }: Props) {
     .eq("user_id", user.id)
     .single();
 
-  // 프로필 미완성이면 setup으로
   if (!profile?.name || !profile?.phone_number) redirect("/setup");
 
   const { data: products } = await supabase
     .from("products")
     .select("*")
-    .eq("company_id", company.id)
+    .eq("company_id", raw.id)
     .order("price", { ascending: true });
 
   return (
@@ -68,29 +82,29 @@ export default async function DashboardPage({ params }: Props) {
       isOAuth={user.app_metadata?.provider !== "email"}
       profileName={profile?.name ?? ""}
       profilePhone={profile?.phone_number ?? ""}
-      companyId={company.id}
-      companyName={company.name}
-      logoImage={company.logo_image}
-      themeBg={company.theme_bg ?? DEFAULT_THEME_BG}
-      themeAccent={company.theme_accent ?? DEFAULT_THEME_ACCENT}
+      companyId={raw.id}
+      companyName={raw.name}
+      logoImage={(company.logo_image as string | null) ?? null}
+      themeBg={(company.theme_bg as string | null) ?? DEFAULT_THEME_BG}
+      themeAccent={(company.theme_accent as string | null) ?? DEFAULT_THEME_ACCENT}
       initialProducts={(products as Product[]) ?? []}
-      homeFeaturedImage={company.home_featured_image ?? null}
-      homeAllImage={company.home_all_image ?? null}
-      homeSeasonImage={company.home_season_image ?? null}
-      homeConsultImage={company.home_consult_image ?? null}
-      locationUrl={company.location_url ?? null}
-      kakaoChannelUrl={company.kakao_channel_url ?? null}
-      instagramUrl={company.instagram_url ?? null}
-      youtubeUrl={company.youtube_url ?? null}
-      companyPhone={company.phone ?? null}
-      hiddenProductTypes={company.hidden_product_types ?? []}
-      hiddenSeasons={company.hidden_seasons ?? []}
-      consultEnabled={company.consult_enabled ?? false}
-      plan={(company.plan ?? "starter") as "starter" | "pro" | "free"}
-      subscriptionPlan={(company.subscription_plan ?? null) as "starter" | "pro" | null}
-      cancelAtPeriodEnd={company.cancel_at_period_end ?? false}
-      trialEndsAt={company.trial_ends_at ?? null}
-      planExpiresAt={company.plan_expires_at ?? null}
+      homeFeaturedImage={(company.home_featured_image as string | null) ?? null}
+      homeAllImage={(company.home_all_image as string | null) ?? null}
+      homeSeasonImage={(company.home_season_image as string | null) ?? null}
+      homeConsultImage={(company.home_consult_image as string | null) ?? null}
+      locationUrl={(company.location_url as string | null) ?? null}
+      kakaoChannelUrl={(company.kakao_channel_url as string | null) ?? null}
+      instagramUrl={(company.instagram_url as string | null) ?? null}
+      youtubeUrl={(company.youtube_url as string | null) ?? null}
+      companyPhone={(raw.phone as string | null) ?? null}
+      hiddenProductTypes={(company.hidden_product_types as string[]) ?? []}
+      hiddenSeasons={(company.hidden_seasons as string[]) ?? []}
+      consultEnabled={(company.consult_enabled as boolean) ?? false}
+      plan={plan as "starter" | "pro" | "free"}
+      subscriptionPlan={(company.subscription_plan as "starter" | "pro" | null) ?? null}
+      cancelAtPeriodEnd={(company.cancel_at_period_end as boolean) ?? false}
+      trialEndsAt={(company.trial_ends_at as string | null) ?? null}
+      planExpiresAt={(company.plan_expires_at as string | null) ?? null}
     />
   );
 }

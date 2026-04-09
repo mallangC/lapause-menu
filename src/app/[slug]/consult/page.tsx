@@ -13,18 +13,26 @@ export default async function ConsultPage({ params, searchParams }: Props) {
   const { productId } = await searchParams;
   const supabase = await createClient();
 
-  const { data: company } = await supabase
+  const { data: raw } = await supabase
     .from("companies")
-    .select("id, name, business_hours, closed_dates, notification_email, min_lead_times, consult_notice, address, delivery_enabled, delivery_fees, consult_enabled")
+    .select(`
+      id, name,
+      settings:company_settings(
+        business_hours, closed_dates, notification_email, min_lead_times,
+        consult_notice, address, delivery_enabled, delivery_fees, consult_enabled
+      )
+    `)
     .eq("slug", slug)
     .single();
 
-  if (!company || !company.consult_enabled) notFound();
+  const s = raw?.settings as unknown as Record<string, unknown> | null ?? {};
+
+  if (!raw || !s.consult_enabled) notFound();
 
   const { data: products } = await supabase
     .from("products")
     .select("*")
-    .eq("company_id", company.id)
+    .eq("company_id", raw.id)
     .eq("status", "active")
     .order("price", { ascending: true });
 
@@ -34,16 +42,16 @@ export default async function ConsultPage({ params, searchParams }: Props) {
   return (
     <ConsultClient
       slug={slug}
-      companyName={company.name}
-      notificationEmail={company.notification_email ?? null}
+      companyName={raw.name}
+      notificationEmail={(s.notification_email as string | null) ?? null}
       products={allProducts}
-      businessHours={(company.business_hours as Record<string, { closed: boolean; open: string; close: string }>) ?? {}}
-      closedDates={(company.closed_dates as string[]) ?? []}
-      minLeadTimes={(company.min_lead_times as Record<string, number>) ?? {}}
-      consultNotice={company.consult_notice ?? null}
-      storeAddress={company.address ?? null}
-      deliveryEnabled={company.delivery_enabled ?? false}
-      deliveryFees={(company.delivery_fees as Record<string, number>) ?? {}}
+      businessHours={(s.business_hours as Record<string, { closed: boolean; open: string; close: string }>) ?? {}}
+      closedDates={(s.closed_dates as string[]) ?? []}
+      minLeadTimes={(s.min_lead_times as Record<string, number>) ?? {}}
+      consultNotice={(s.consult_notice as string | null) ?? null}
+      storeAddress={(s.address as string | null) ?? null}
+      deliveryEnabled={(s.delivery_enabled as boolean) ?? false}
+      deliveryFees={(s.delivery_fees as Record<string, number>) ?? {}}
       preselectedProduct={preselectedProduct}
     />
   );

@@ -17,7 +17,7 @@ export default async function OperatorDashboardPage() {
   const [{ data: companies }, { data: reservations }, { data: products }] = await Promise.all([
     supabase
       .from("companies")
-      .select("id, name, slug, created_at, consult_enabled, plan")
+      .select("id, name, slug, created_at, settings:company_settings(consult_enabled), subscription:company_subscriptions(plan)")
       .order("created_at", { ascending: false }),
     supabase
       .from("reservations")
@@ -28,9 +28,15 @@ export default async function OperatorDashboardPage() {
       .select("company_id"),
   ]);
 
+  const mappedCompanies = (companies ?? []).map((c) => ({
+    ...c,
+    settings: Array.isArray(c.settings) ? (c.settings[0] ?? null) : c.settings,
+    subscription: Array.isArray(c.subscription) ? (c.subscription[0] ?? null) : c.subscription,
+  }));
+
   return (
     <OperatorDashboardClient
-      companies={companies ?? []}
+      companies={mappedCompanies}
       reservations={reservations ?? []}
       products={products ?? []}
     />

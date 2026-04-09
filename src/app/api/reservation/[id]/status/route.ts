@@ -59,11 +59,16 @@ export async function PATCH(
 
     if (!reservation) return NextResponse.json({ ok: true });
 
-    const { data: company } = await supabase
+    const { data: companyRaw } = await supabase
       .from("companies")
-      .select("name, phone, address")
+      .select("name, phone, settings:company_settings(address)")
       .eq("id", reservation.company_id)
       .single();
+    const company = companyRaw ? {
+      name: companyRaw.name,
+      phone: companyRaw.phone,
+      address: (companyRaw.settings as { address?: string } | null)?.address ?? "",
+    } : null;
 
     const companyPhone = company?.phone ?? "";
     const desiredDateTime = `${reservation.desired_date}${reservation.desired_time ? ` ${reservation.desired_time}` : ""}`;

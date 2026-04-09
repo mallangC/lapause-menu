@@ -22,21 +22,22 @@ export default async function PayPage({ params }: Props) {
 
   if (!reservation) notFound();
 
-  const { data: company } = await supabase
+  const { data: companyRaw } = await supabase
     .from("companies")
-    .select("name, bank_name, bank_account, bank_holder")
+    .select("name, settings:company_settings(bank_name, bank_account, bank_holder)")
     .eq("id", reservation.company_id)
     .single();
+  const companySettings = companyRaw?.settings as { bank_name?: string; bank_account?: string; bank_holder?: string } | null;
 
   return (
     <PayConfirmClient
       reservationId={reservation.id}
-      companyName={company?.name ?? ""}
+      companyName={companyRaw?.name ?? ""}
       productName={reservation.product_name}
       finalPrice={reservation.final_price}
-      bankName={company?.bank_name ?? null}
-      bankAccount={company?.bank_account ?? null}
-      bankHolder={company?.bank_holder ?? null}
+      bankName={companySettings?.bank_name ?? null}
+      bankAccount={companySettings?.bank_account ?? null}
+      bankHolder={companySettings?.bank_holder ?? null}
       alreadyPaid={reservation.paid}
     />
   );
