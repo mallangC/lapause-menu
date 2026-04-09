@@ -66,7 +66,7 @@ export default function RootLoginForm() {
     // 로그인한 사용자의 회사 slug 조회
     const { data: company } = await supabase
       .from("companies")
-      .select("slug, plan")
+      .select("slug, subscription:company_subscriptions(plan)")
       .eq("owner_id", authData.user.id)
       .single();
 
@@ -75,7 +75,8 @@ export default function RootLoginForm() {
       return;
     }
 
-    if (!company.plan || company.plan === "none") {
+    const plan = (Array.isArray(company.subscription) ? company.subscription[0]?.plan : (company.subscription as { plan?: string } | null)?.plan) ?? "none";
+    if (!plan || plan === "none") {
       router.push("/plan");
       return;
     }

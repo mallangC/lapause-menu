@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import BillingKeyFlow from "@/components/BillingKeyFlow";
+import { PLAN_PRICES, PLAN_DESCRIPTIONS, PLAN_FEATURES } from "@/lib/constants";
 
 interface Props {
   companyId: string;
@@ -40,10 +41,14 @@ export default function PlanTab({ companyId, customerName, plan, subscriptionPla
   const handleDowngrade = async () => {
     if (!confirm("Starter 플랜으로 변경하면 통계 등 Pro 기능을 사용할 수 없습니다. 변경하시겠습니까?")) return;
     setLoading(true);
-    await supabase
-      .from("companies")
-      .update({ plan: "starter", trial_ends_at: null, plan_expires_at: null, billing_key: null, consult_enabled: false })
-      .eq("id", companyId);
+    await Promise.all([
+      supabase.from("company_subscriptions")
+        .update({ plan: "starter", trial_ends_at: null, plan_expires_at: null, billing_key: null })
+        .eq("company_id", companyId),
+      supabase.from("company_settings")
+        .update({ consult_enabled: false })
+        .eq("company_id", companyId),
+    ]);
     setLoading(false);
     setSuccess(true);
     setTimeout(() => router.refresh(), 1000);
@@ -52,9 +57,9 @@ export default function PlanTab({ companyId, customerName, plan, subscriptionPla
   const handleCancel = async () => {
     setLoading(true);
     await supabase
-      .from("companies")
+      .from("company_subscriptions")
       .update({ cancel_at_period_end: true })
-      .eq("id", companyId);
+      .eq("company_id", companyId);
     setLoading(false);
     setShowCancelModal(false);
     router.refresh();
@@ -63,9 +68,9 @@ export default function PlanTab({ companyId, customerName, plan, subscriptionPla
   const handleUndoCancel = async () => {
     setLoading(true);
     await supabase
-      .from("companies")
+      .from("company_subscriptions")
       .update({ cancel_at_period_end: false })
-      .eq("id", companyId);
+      .eq("company_id", companyId);
     setLoading(false);
     router.refresh();
   };
@@ -90,7 +95,7 @@ export default function PlanTab({ companyId, customerName, plan, subscriptionPla
       {isInTrial && !cancelAtPeriodEnd && (
         <div className="mb-5 p-3 rounded-xl bg-gold-500/10 border border-gold-400/30">
           <p className="text-sm font-semibold text-gold-600">Pro 플랜 무료 체험 중 · D-{trialDaysLeft}</p>
-          <p className="text-xs text-gray-500 mt-0.5">{formatDate(trialEndsAt!)} 이후 월 {subscriptionPlan === "starter" ? "4,900" : "9,900"}원이 자동 결제됩니다.</p>
+          <p className="text-xs text-gray-500 mt-0.5">{formatDate(trialEndsAt!)} 이후 월 {subscriptionPlan === "starter" ? PLAN_PRICES.starter.toLocaleString() : PLAN_PRICES.pro.toLocaleString()}원이 자동 결제됩니다.</p>
         </div>
       )}
       {isInTrial && cancelAtPeriodEnd && (
@@ -129,20 +134,15 @@ export default function PlanTab({ companyId, customerName, plan, subscriptionPla
             )}
           </div>
           <div className="mb-1">
-            <span className="text-[2rem] font-semibold text-gray-900 leading-none">₩4,900</span>
+            <span className="text-[2rem] font-semibold text-gray-900 leading-none">₩{PLAN_PRICES.starter.toLocaleString()}</span>
             <span className="text-sm text-gray-400 ml-1">/ 월</span>
           </div>
-          <p className="text-xs text-gray-400 mb-4">전자 메뉴판으로 간편하게 시작</p>
+          <p className="text-xs text-gray-400 mb-4">{PLAN_DESCRIPTIONS.starter}</p>
           <ul className="space-y-2.5 mb-6 flex-1">
-            {[
-              { text: "전자 메뉴판 운영", gold: false },
-              { text: "나만의 가게 링크", gold: false },
-              { text: "모바일 최적화 상품 페이지", gold: false },
-              { text: "로고·테마 커스터마이징", gold: false },
-            ].map((item, i) => (
+            {PLAN_FEATURES.starter.map((item, i) => (
               <li key={i} className="flex items-start gap-2 text-sm">
-                <span style={{ color: item.gold ? "#b8934a" : "#9ca3af" }}>{CHECK_ICON}</span>
-                <span style={{ color: item.gold ? "#9a7a3a" : "#374151" }}>{item.text}</span>
+                <span style={{ color: "#9ca3af" }}>{CHECK_ICON}</span>
+                <span style={{ color: "#374151" }}>{item.text}</span>
               </li>
             ))}
           </ul>
@@ -170,22 +170,16 @@ export default function PlanTab({ companyId, customerName, plan, subscriptionPla
             )}
           </div>
           <div className="mb-1">
-            <span className="text-[2rem] font-semibold text-gray-900 leading-none">₩9,900</span>
+            <span className="text-[2rem] font-semibold text-gray-900 leading-none">₩{PLAN_PRICES.pro.toLocaleString()}</span>
             <span className="text-sm text-gray-400 ml-1">/ 월</span>
           </div>
-          <p className="text-xs text-gray-400 mb-1">수수료 없이 매출을 온전히</p>
+          <p className="text-xs text-gray-400 mb-1">{PLAN_DESCRIPTIONS.pro}</p>
           <p className="text-xs font-semibold text-gold-500 mb-4">첫 30일 무료 체험</p>
           <ul className="space-y-2.5 mb-6 flex-1">
-            {[
-              { text: "Starter 플랜 모든 기능 포함", gold: false },
-              { text: "맞춤 주문 & 예약 관리", gold: false },
-              { text: "매출·예약 통계", gold: false },
-              { text: "카카오 예약 알림 자동 발송", gold: false },
-              { text: "결제 수수료 0% (카드 수수료 별도)", gold: true },
-            ].map((item, i) => (
+            {PLAN_FEATURES.pro.map((item, i) => (
               <li key={i} className="flex items-start gap-2 text-sm">
-                <span style={{ color: item.gold ? "#b8934a" : "#9ca3af" }}>{CHECK_ICON}</span>
-                <span style={{ color: item.gold ? "#9a7a3a" : "#374151" }}>{item.text}</span>
+                <span style={{ color: item.highlight ? "#b8934a" : "#9ca3af" }}>{CHECK_ICON}</span>
+                <span style={{ color: item.highlight ? "#9a7a3a" : "#374151" }}>{item.text}</span>
               </li>
             ))}
           </ul>

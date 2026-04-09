@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
+import { PLAN_PRICES, PLAN_DESCRIPTIONS, PLAN_FEATURES } from "@/lib/constants";
 
 // ────────────────────────────────────────────────
 // Scroll animation
@@ -87,7 +88,7 @@ const capabilities = [
 ];
 
 const steps = [
-  { num: "01", title: "무료로 시작", desc: "회원가입 후 가게 정보를 입력하세요." },
+  { num: "01", title: "한달 무료로 시작", desc: "회원가입 후 가게 정보를 입력하세요." },
   { num: "02", title: "상품 등록", desc: "사진과 가격을 입력하면 메뉴판 완성." },
   { num: "03", title: "맞춤 주문 설정", desc: "고객이 꽃·색상·예산을 직접 선택할 수 있게 설정하세요." },
   { num: "04", title: "바로 운영", desc: "링크를 공유하는 순간 예약을 받을 수 있습니다." },
@@ -99,12 +100,11 @@ const faqs = [
   { q: "상품은 몇 개까지 등록할 수 있나요?", a: "상품은 최대 100개까지 등록 할 수 있습니다." },
   { q: "고객이 예약하면 제가 직접 확정해야 하나요, 아니면 자동으로 되나요?", a: "기본적으로 관리자가 직접 확정하는 방식입니다. 예약 요청이 들어오면 알림을 받고, 관리 페이지에서 판매 가능한 예약건인지 확인 후 확정 또는 취소 처리를 할 수 있습니다." },
   { q: "메뉴에 가격을 표시하지 않을 수 있나요?", a: "네. 상품을 추가할 때 가격을 입력하지 않으면 가격이 표시되지 않습니다." },
-  { q: "예약 알림은 어디로 오나요?", a: "관리자에게 카카오톡 또는 문자로 알림이 발송됩니다. 고객에게도 예약 확정·취소 시 카카오톡으로 안내가 전달됩니다." },
   { q: "카카오 알림은 어떻게 작동하나요?", a: "고객이 예약을 완료하면 관리자에게, 관리자가 예약을 확정하거나 취소하면 고객 카카오톡으로 알림이 발송됩니다." },
-  { q: "비용은 얼마인가요?", a: "첫 1개월은 구독료 없이 모든 혜택을 무료로 이용할 수 있습니다. 이후 스타터 플랜은 월 구독료 없이 결제 수수료 5%(카드 수수료 포함)가 부과되며, 프로 플랜은 월 9,900원으로 결제 수수료 없이(카드 수수료 미포함) 이용하실 수 있습니다." },
+  { q: "비용은 얼마인가요?", a: `첫 1개월은 무료 체험입니다. 이후 스타터 플랜 월 ${PLAN_PRICES.starter.toLocaleString()}원(전자 메뉴판·가게 링크), 프로 플랜 월 ${PLAN_PRICES.pro.toLocaleString()}원(맞춤 주문·예약·통계·카카오 알림·결제 수수료 0%)으로 이용하실 수 있습니다.` },
 ];
 
-export default function Landing1() {
+export default function Landing() {
   const [scrolled, setScrolled] = useState(false);
   const [activeCap, setActiveCap] = useState(0);
   const capCarouselRef = useRef<HTMLDivElement>(null);
@@ -301,7 +301,7 @@ export default function Landing1() {
         <div className="max-w-5xl mx-auto px-6">
           <FadeIn className="grid grid-cols-3 gap-8 text-center">
             {[
-              { num: "0원", label: "시작 비용", sub: "무료로 시작, 필요할 때 업그레이드" },
+              { num: "0원", label: "시작 비용", sub: "한달 무료로 시작, 필요할 때 업그레이드" },
               { num: "설치 없이", label: "바로 사용 가능", sub: "앱 다운로드 없이 링크 하나로" },
               { num: "24/7", label: "언제나 운영 가능", sub: "쉬는 날에도 메뉴판은 열려 있어요" },
             ].map(({ num, label, sub }) => (
@@ -528,8 +528,8 @@ export default function Landing1() {
         </div>
       </section>
 
-      {/* ── PRICING (임시 숨김) ── */}
-      {false && <section id="pricing" className="py-24 bg-white" style={{ scrollMarginTop: 64 }}>
+      {/* ── PRICING ── */}
+      <section id="pricing" className="py-24 bg-white" style={{ scrollMarginTop: 64 }}>
         <div className="max-w-4xl mx-auto px-6">
           <FadeIn className="text-center mb-14">
             <p className="text-[11px] tracking-[0.2em] uppercase text-neutral-400 mb-3">Pricing</p>
@@ -555,23 +555,19 @@ export default function Landing1() {
                 <div className="mb-6">
                   <p className="text-[12px] font-semibold tracking-[0.2em] uppercase text-neutral-500 mb-3">Starter</p>
                   <div className="flex items-end gap-1.5 mb-2">
-                    <span className="text-[2.6rem] font-semibold leading-none" style={{ color: "#2c2416" }}>₩0</span>
+                    <span className="text-[2.6rem] font-semibold leading-none" style={{ color: "#2c2416" }}>₩{PLAN_PRICES.starter.toLocaleString()}</span>
                     <span className="text-[15px] font-medium text-neutral-500 mb-1.5">/ 월</span>
                   </div>
-                  <p className="text-[14px] text-neutral-500">월 구독료 없이 계속 사용</p>
+                  <p className="text-[14px] text-neutral-500">{PLAN_DESCRIPTIONS.starter}</p>
                 </div>
 
                 <ul className="space-y-3.5 mb-8 flex-1">
-                  {[
-                    { text: "전자 메뉴판 운영", highlight: false },
-                    { text: "맞춤 주문 & 예약 관리", highlight: false },
-                    { text: "결제 수수료 5% (카드 수수료 포함)", highlight: true },
-                  ].map((item, i) => (
+                  {PLAN_FEATURES.starter.map((item, i) => (
                     <li key={i} className="flex items-start gap-2.5 text-[14px] font-medium">
-                      <svg className="w-4 h-4 mt-0.5 shrink-0" style={{ color: item.highlight ? "#b8934a" : "#9ca3af" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <svg className="w-4 h-4 mt-0.5 shrink-0" style={{ color: "#9ca3af" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                       </svg>
-                      <span style={{ color: item.highlight ? "#9a7a3a" : "#374151" }}>{item.text}</span>
+                      <span style={{ color: "#374151" }}>{item.text}</span>
                     </li>
                   ))}
                 </ul>
@@ -580,7 +576,7 @@ export default function Landing1() {
                   href="/login"
                   className="block text-center py-3 rounded-xl border border-neutral-300 text-[14px] font-semibold text-neutral-800 hover:border-neutral-600 hover:bg-neutral-50 transition-colors"
                 >
-                  무료로 시작하기
+                  시작하기
                 </a>
               </div>
 
@@ -597,18 +593,14 @@ export default function Landing1() {
                 <div className="mb-6">
                   <p className="text-[12px] font-semibold tracking-[0.2em] uppercase mb-3" style={{ color: "#9a7a3a" }}>Pro</p>
                   <div className="flex items-end gap-1.5 mb-2">
-                    <span className="text-[2.6rem] font-semibold leading-none" style={{ color: "#2c2416" }}>₩9,900</span>
+                    <span className="text-[2.6rem] font-semibold leading-none" style={{ color: "#2c2416" }}>₩{PLAN_PRICES.pro.toLocaleString()}</span>
                     <span className="text-[15px] font-medium text-neutral-500 mb-1.5">/ 월</span>
                   </div>
-                  <p className="text-[14px] text-neutral-500">수수료 없이 매출을 온전히</p>
+                  <p className="text-[14px] text-neutral-500">{PLAN_DESCRIPTIONS.pro}</p>
                 </div>
 
                 <ul className="space-y-3.5 mb-8 flex-1">
-                  {[
-                    { text: "Starter 플랜 모든 기능 포함", highlight: false },
-                    { text: "우선 고객 지원", highlight: false },
-                    { text: "결제 수수료 0% (카드 수수료 별도)", highlight: true },
-                  ].map((item, i) => (
+                  {PLAN_FEATURES.pro.map((item, i) => (
                     <li key={i} className="flex items-start gap-2.5 text-[14px] font-medium">
                       <svg
                         className="w-4 h-4 mt-0.5 shrink-0"
@@ -637,7 +629,7 @@ export default function Landing1() {
 
           </FadeIn>
         </div>
-      </section>}
+      </section>
 
       {/* ── FAQ ── */}
       <section id="FAQ" className="py-24" style={{ background: "#fdf6ee", scrollMarginTop: 64 }}>
@@ -668,7 +660,7 @@ export default function Landing1() {
             오늘 무료로<br />꽃집 메뉴판을 만들어보세요
           </h2>
           <p className="text-[15px] mb-10" style={{ color: "rgba(255,255,255,0.4)" }}>
-            신용카드는 필요하지 않습니다
+            한달 무료 기간에 모든 혜택을 경험해 보세요
           </p>
           {/* 회원가입 CTA — 임시 숨김 */}
           {/* <a href="/signup" className="inline-block px-10 py-4 rounded-full text-[14px] font-semibold transition-all hover:opacity-90" style={{ background: "white", color: "#18130e" }}>
