@@ -11,8 +11,8 @@ interface Company {
   name: string;
   slug: string;
   created_at: string;
-  consult_enabled: boolean;
-  plan: "none" | "starter" | "pro" | null;
+  settings: { consult_enabled: boolean } | null;
+  subscription: { plan: "none" | "starter" | "pro" | "free" | null } | null;
 }
 
 interface Reservation {
@@ -57,7 +57,7 @@ export default function OperatorDashboardClient({ companies, reservations, produ
   const stats = useMemo(() => {
     const totalCompanies = companies.length;
     const newThisMonth = companies.filter(c => c.created_at.slice(0, 7) === thisMonthKey).length;
-    const consultEnabledCount = companies.filter(c => c.consult_enabled).length;
+    const consultEnabledCount = companies.filter(c => c.settings?.consult_enabled).length;
     const consultUsageRate = totalCompanies > 0 ? Math.round((consultEnabledCount / totalCompanies) * 100) : 0;
 
     const activeCompanyIds = new Set(
@@ -101,7 +101,7 @@ export default function OperatorDashboardClient({ companies, reservations, produ
     const thisMonthReservations = reservations.filter(r => r.desired_date?.slice(0, 7) === thisMonthKey).length;
 
     // Pro 플랜 사용 비율
-    const proCount = companies.filter(c => c.plan === "pro").length;
+    const proCount = companies.filter(c => c.subscription?.plan === "pro").length;
     const proRate = totalCompanies > 0 ? Math.round((proCount / totalCompanies) * 100) : 0;
 
     return { totalCompanies, newThisMonth, activeCompanies, atRiskCount, consultUsageRate, thisMonthReservations, totalCardGMV, thisMonthCardGMV, totalManualGMV, thisMonthManualGMV, totalAllGMV, thisMonthAllGMV, cardRate, proCount, proRate };
@@ -314,13 +314,13 @@ export default function OperatorDashboardClient({ companies, reservations, produ
                     <td className="px-6 py-3.5 text-right text-gray-900 font-medium whitespace-nowrap">{c.totalRevenue > 0 ? `${formatMoney(c.totalRevenue)}원` : <span className="text-gray-300">—</span>}</td>
                     <td className="px-6 py-3.5 text-right text-gray-700 whitespace-nowrap">{c.thisMonthRevenue > 0 ? `${formatMoney(c.thisMonthRevenue)}원` : <span className="text-gray-300">—</span>}</td>
                     <td className="px-6 py-3.5">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${c.plan === "pro" ? "bg-gold-100 text-gold-600" : "bg-gray-100 text-gray-400"}`}>
-                        {c.plan === "pro" ? "Pro" : c.plan === "starter" ? "Starter" : "—"}
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${c.subscription?.plan === "pro" ? "bg-gold-100 text-gold-600" : c.subscription?.plan === "free" ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-400"}`}>
+                        {c.subscription?.plan === "pro" ? "Pro" : c.subscription?.plan === "starter" ? "Starter" : c.subscription?.plan === "free" ? "Free" : "—"}
                       </span>
                     </td>
                     <td className="px-6 py-3.5">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${c.consult_enabled ? "bg-blue-50 text-blue-600" : "bg-gray-100 text-gray-400"}`}>
-                        {c.consult_enabled ? "ON" : "OFF"}
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${c.settings?.consult_enabled ? "bg-blue-50 text-blue-600" : "bg-gray-100 text-gray-400"}`}>
+                        {c.settings?.consult_enabled ? "ON" : "OFF"}
                       </span>
                     </td>
                     <td className="px-6 py-3.5 text-gray-500">

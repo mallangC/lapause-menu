@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   trialEndsAt.setDate(trialEndsAt.getDate() + 30);
 
   const { error } = await supabase
-    .from("companies")
+    .from("company_subscriptions")
     .update({
       plan: "pro",
       billing_key: billingKey,
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
       subscription_plan: subscriptionPlan,
       trial_ends_at: trialEndsAt.toISOString(),
     })
-    .eq("id", companyId);
+    .eq("company_id", companyId);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

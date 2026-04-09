@@ -63,9 +63,9 @@ export default function BusinessSettingsTab({ companyId }: Props) {
 
   useEffect(() => {
     supabase
-      .from("companies")
+      .from("company_settings")
       .select("business_hours, closed_dates, min_lead_times")
-      .eq("id", companyId)
+      .eq("company_id", companyId)
       .single()
       .then(({ data }) => {
         if (!data) return;
@@ -100,13 +100,13 @@ export default function BusinessSettingsTab({ companyId }: Props) {
     setError(null);
     setSuccess(false);
     const { error: err } = await supabase
-      .from("companies")
+      .from("company_settings")
       .update({
         business_hours: businessHours,
         closed_dates: closedDates,
         min_lead_times: minLeadTimes,
       })
-      .eq("id", companyId);
+      .eq("company_id", companyId);
     if (err) setError(err.message);
     else {
       setSuccess(true);

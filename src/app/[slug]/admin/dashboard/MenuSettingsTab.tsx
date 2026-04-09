@@ -35,9 +35,9 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
   const handleSave = async () => {
     setSaving(true);
     await supabase
-      .from("companies")
+      .from("company_settings")
       .update({ hidden_product_types: hiddenProductTypes, hidden_seasons: hiddenSeasons })
-      .eq("id", companyId);
+      .eq("company_id", companyId);
     setSaving(false);
     setSaved(true);
     onSave(hiddenProductTypes, hiddenSeasons);

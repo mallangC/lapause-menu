@@ -31,9 +31,9 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle }: P
 
   useEffect(() => {
     supabase
-      .from("companies")
+      .from("company_settings")
       .select("consult_enabled, message_card_enabled, message_card_price, shopping_bag_enabled, shopping_bag_price, bank_name, bank_account, bank_holder, phone, address, consult_notice, delivery_fees, delivery_enabled")
-      .eq("id", companyId)
+      .eq("company_id", companyId)
       .single()
       .then(({ data }) => {
         if (!data) return;
@@ -65,7 +65,7 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle }: P
     setError(null);
     setSuccess(false);
     const { error: err } = await supabase
-      .from("companies")
+      .from("company_settings")
       .update({
         consult_enabled: consultEnabled,
         message_card_enabled: messageCardEnabled,
@@ -78,7 +78,7 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle }: P
           Object.entries(deliveryFees).map(([k, v]) => [k, v === "" ? null : parseMoney(v)])
         ),
       })
-      .eq("id", companyId);
+      .eq("company_id", companyId);
     if (err) setError(err.message);
     else {
       setSuccess(true);

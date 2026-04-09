@@ -43,9 +43,9 @@ export default function SettingsTab({ companyId, initialBg, initialAccent, initi
     setSuccess(false);
 
     const { error: err } = await supabase
-      .from("companies")
+      .from("company_settings")
       .update({ theme_bg: bg, theme_accent: accent })
-      .eq("id", companyId);
+      .eq("company_id", companyId);
 
     if (err) {
       setError(err.message);
@@ -75,9 +75,9 @@ export default function SettingsTab({ companyId, initialBg, initialAccent, initi
   const handleMenuSave = async () => {
     setMenuSaving(true);
     await supabase
-      .from("companies")
+      .from("company_settings")
       .update({ hidden_product_types: hiddenProductTypes, hidden_seasons: hiddenSeasons })
-      .eq("id", companyId);
+      .eq("company_id", companyId);
     setMenuSaving(false);
     setMenuSaved(true);
     onMenuSave(hiddenProductTypes, hiddenSeasons);

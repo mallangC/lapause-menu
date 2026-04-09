@@ -7,13 +7,21 @@ import { createClient } from "@/lib/supabase/client";
 
 type SlugStatus = "idle" | "checking" | "available" | "taken";
 
-export default function SetupForm() {
-  const [ownerName, setOwnerName] = useState("");
-  const [ownerPhone, setOwnerPhone] = useState("");
-  const [name, setName] = useState("");
-  const [slug, setSlug] = useState("");
-  const [slugStatus, setSlugStatus] = useState<SlugStatus>("idle");
-  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+interface Props {
+  initialOwnerName?: string;
+  initialOwnerPhone?: string;
+  initialCompanyName?: string;
+  initialSlug?: string;
+  initialLogoUrl?: string | null;
+}
+
+export default function SetupForm({ initialOwnerName = "", initialOwnerPhone = "", initialCompanyName = "", initialSlug = "", initialLogoUrl = null }: Props) {
+  const [ownerName, setOwnerName] = useState(initialOwnerName);
+  const [ownerPhone, setOwnerPhone] = useState(initialOwnerPhone);
+  const [name, setName] = useState(initialCompanyName);
+  const [slug, setSlug] = useState(initialSlug);
+  const [slugStatus, setSlugStatus] = useState<SlugStatus>(initialSlug ? "available" : "idle");
+  const [logoUrl, setLogoUrl] = useState<string | null>(initialLogoUrl);
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,6 +31,8 @@ export default function SetupForm() {
 
   useEffect(() => {
     if (!slug) { setSlugStatus("idle"); return; }
+    // 기존 slug와 동일하면 체크 불필요
+    if (slug === initialSlug) { setSlugStatus("available"); return; }
     setSlugStatus("checking");
     const timer = setTimeout(async () => {
       const { data } = await supabase.from("companies").select("id").eq("slug", slug).single();
@@ -30,6 +40,12 @@ export default function SetupForm() {
     }, 500);
     return () => clearTimeout(timer);
   }, [slug]);
+
+  const formatPhone = (digits: string) => {
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 7) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+    return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+  };
 
   const handleNameChange = (value: string) => {
     setName(value);
@@ -92,25 +108,62 @@ export default function SetupForm() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { router.push("/"); return; }
 
-    const { error: insertError } = await supabase
+    // 기존 회사가 있는지 확인 (프로필 재입력 케이스)
+    const { data: existingCompany } = await supabase
       .from("companies")
-      .insert({ name, slug, logo_image: logoUrl, owner_id: user.id });
+      .select("slug, plan")
+      .eq("owner_id", user.id)
+      .single();
 
-    if (insertError) {
-      setError(
-        insertError.code === "23505"
-          ? "이미 사용 중인 URL입니다. 다른 슬러그를 입력해 주세요."
-          : insertError.message
+    if (!existingCompany) {
+      // 신규: 회사 생성 (트리거가 company_settings, company_subscriptions 자동 생성)
+      const defaultBusinessHours = Object.fromEntries(
+        Array.from({ length: 7 }, (_, i) => [String(i), { closed: i === 0, open: "09:00", close: "18:00" }])
       );
+      const { data: newCompany, error: insertError } = await supabase
+        .from("companies")
+        .insert({ name, slug, owner_id: user.id })
+        .select("id")
+        .single();
+
+      if (insertError) {
+        setError(
+          insertError.code === "23505"
+            ? "이미 사용 중인 URL입니다. 다른 슬러그를 입력해 주세요."
+            : insertError.message
+        );
+        setLoading(false);
+        return;
+      }
+
+      // settings, subscription 초기값 설정
+      await Promise.all([
+        supabase.from("company_settings")
+          .update({ logo_image: logoUrl, business_hours: defaultBusinessHours })
+          .eq("company_id", newCompany!.id),
+        supabase.from("company_subscriptions")
+          .update({ plan: "free" })
+          .eq("company_id", newCompany!.id),
+      ]);
+    }
+
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .upsert({ user_id: user.id, email: user.email, name: ownerName, phone_number: ownerPhone, role: "admin" }, { onConflict: "user_id" });
+
+    if (profileError) {
+      setError("프로필 저장에 실패했습니다: " + profileError.message);
       setLoading(false);
       return;
     }
 
-    await supabase
-      .from("profiles")
-      .upsert({ user_id: user.id, email: user.email, name: ownerName, phone_number: ownerPhone, role: "admin" }, { onConflict: "user_id" });
+    // 기존 회사면 대시보드로
+    if (existingCompany) {
+      router.push(`/${existingCompany.slug}/admin/dashboard`);
+      return;
+    }
 
-    router.push(`/plan`);
+    router.push(`/${slug}/admin/dashboard`);
   };
 
   return (
@@ -143,12 +196,12 @@ export default function SetupForm() {
           <input
             type="tel"
             required
-            value={ownerPhone}
+            value={formatPhone(ownerPhone)}
             onChange={(e) => {
               const d = e.target.value.replace(/\D/g, "");
               if (d.length <= 11) setOwnerPhone(d);
             }}
-            placeholder="01012345678"
+            placeholder="010-0000-0000"
             className="w-full border border-beige-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gold-400"
           />
         </div>

@@ -104,7 +104,7 @@ export default function RefundPage() {
           <h2 className="font-semibold text-gray-900 text-base">문의</h2>
           <p>환불 관련 문의는 아래로 접수해 주세요.</p>
           <ul className="space-y-1">
-            <li>카카오 채널: <span className="text-gray-800">http://pf.kakao.com/_yHXlX/chat</span></li>
+            <li>카카오 채널: <a href="http://pf.kakao.com/_yHXlX" target="_blank" rel="noopener noreferrer" className="text-gray-800 underline underline-offset-2 hover:text-gold-600 transition-colors">카카오 채널 바로가기</a></li>
             <li>이메일: <span className="text-gray-800">floaide.team@gmail.com</span></li>
             <li>운영 시간: 평일 10:00 ~ 18:00 (공휴일 제외)</li>
           </ul>

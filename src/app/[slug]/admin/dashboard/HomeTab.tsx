@@ -41,9 +41,9 @@ function ImageCard({ companyId, imageKey, label, current, onChange }: ImageCardP
 
     const { data: urlData } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path);
     const { error: updateError } = await supabase
-      .from("companies")
+      .from("company_settings")
       .update({ [imageKey]: urlData.publicUrl })
-      .eq("id", companyId);
+      .eq("company_id", companyId);
 
     if (!updateError) onChange(imageKey, urlData.publicUrl);
     setUploading(false);
@@ -51,9 +51,9 @@ function ImageCard({ companyId, imageKey, label, current, onChange }: ImageCardP
 
   const handleRemove = async () => {
     const { error } = await supabase
-      .from("companies")
+      .from("company_settings")
       .update({ [imageKey]: null })
-      .eq("id", companyId);
+      .eq("company_id", companyId);
     if (!error) onChange(imageKey, null);
   };
 

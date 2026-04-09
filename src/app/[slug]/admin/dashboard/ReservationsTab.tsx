@@ -54,9 +54,9 @@ export default function ReservationsTab({ companyId }: Props) {
 
   useEffect(() => {
     supabase
-      .from("companies")
+      .from("company_settings")
       .select("message_card_enabled, message_card_price, shopping_bag_enabled, shopping_bag_price")
-      .eq("id", companyId)
+      .eq("company_id", companyId)
       .single()
       .then(({ data }) => {
         if (!data) return;

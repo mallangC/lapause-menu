@@ -46,19 +46,26 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
 
   useEffect(() => {
     supabase
-      .from("companies")
-      .select("notification_email, phone, bank_name, bank_account, bank_holder, address, consult_enabled, business_number")
-      .eq("id", companyId)
+      .from("company_settings")
+      .select("notification_email, bank_name, bank_account, bank_holder, address, consult_enabled, business_number")
+      .eq("company_id", companyId)
       .single()
       .then(({ data }) => {
         if (data?.notification_email) setNotificationEmail(data.notification_email);
-        if (data?.phone) setPhone(formatPhone(data.phone));
         if (data?.address) setAddress(data.address);
         if (data?.bank_name) setBankName(data.bank_name);
         if (data?.bank_account) setBankAccount(data.bank_account);
         if (data?.bank_holder) setBankHolder(data.bank_holder);
         if (data?.business_number) setBusinessNumber(data.business_number);
         setConsultEnabled(data?.consult_enabled ?? false);
+      });
+    supabase
+      .from("companies")
+      .select("phone")
+      .eq("id", companyId)
+      .single()
+      .then(({ data }) => {
+        if (data?.phone) setPhone(formatPhone(data.phone));
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId]);
@@ -91,27 +98,32 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
     setSuccess(false);
     setLoading(true);
 
-    const { error: updateError } = await supabase
-      .from("companies")
-      .update({
-        name,
-        logo_image: logoUrl,
-        location_url: locationUrl || null,
-        kakao_channel_url: kakaoChannelUrl || null,
-        instagram_url: instagramUrl || null,
-        youtube_url: youtubeUrl || null,
-        notification_email: notificationEmail || null,
-        phone: parsePhone(phone) || null,
-        bank_name: bankName || null,
-        bank_account: bankAccount || null,
-        bank_holder: bankHolder || null,
-        business_number: businessNumber || null,
-        address: address ? (addressDetail ? `${address} ${addressDetail}` : address) : null,
-      })
-      .eq("id", companyId);
+    const [{ error: updateError }, { error: settingsError }] = await Promise.all([
+      supabase
+        .from("companies")
+        .update({ name, phone: parsePhone(phone) || null })
+        .eq("id", companyId),
+      supabase
+        .from("company_settings")
+        .update({
+          logo_image: logoUrl,
+          location_url: locationUrl || null,
+          kakao_channel_url: kakaoChannelUrl || null,
+          instagram_url: instagramUrl || null,
+          youtube_url: youtubeUrl || null,
+          notification_email: notificationEmail || null,
+          bank_name: bankName || null,
+          bank_account: bankAccount || null,
+          bank_holder: bankHolder || null,
+          business_number: businessNumber || null,
+          address: address ? (addressDetail ? `${address} ${addressDetail}` : address) : null,
+        })
+        .eq("company_id", companyId),
+    ]);
+    const combinedError = updateError || settingsError;
 
-    if (updateError) {
-      setError(updateError.message);
+    if (combinedError) {
+      setError(combinedError.message);
     } else {
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);

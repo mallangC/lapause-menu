@@ -339,7 +339,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
         <main className="flex-1 min-w-0">
           {activeTab === "reservations" && (
             <div className="bg-white border border-gray-200 rounded-xl p-6">
-              <ReservationsTab companyId={companyId} />
+              {plan === "starter" ? <ProGate /> : <ReservationsTab companyId={companyId} />}
             </div>
           )}
 
