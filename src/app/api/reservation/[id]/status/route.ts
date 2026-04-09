@@ -11,6 +11,22 @@ export async function PATCH(
 
   const supabase = await createClient();
 
+  // 인증 확인
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // 소유권 확인
+  const { data: resCheck } = await supabase
+    .from("reservations").select("company_id").eq("id", id).single();
+  if (!resCheck) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const { data: profile } = await supabase.from("profiles").select("role").eq("user_id", user.id).single();
+  if (profile?.role !== "operator") {
+    const { data: company } = await supabase
+      .from("companies").select("id").eq("id", resCheck.company_id).eq("owner_id", user.id).single();
+    if (!company) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   // 취소 시 결제 방식에 따라 환불 처리
   if (status === "취소") {
     const { data: reservation } = await supabase
@@ -20,9 +36,9 @@ export async function PATCH(
       .single();
 
     if (reservation?.payment_id) {
-      // 포트원 카드 결제 → 자동 환불
+      // 포트원 카드 결제 → 환불 시도, 실패 시 상태 변경 차단
       try {
-        await fetch(`https://api.portone.io/payments/${reservation.payment_id}/cancel`, {
+        const refundRes = await fetch(`https://api.portone.io/payments/${reservation.payment_id}/cancel`, {
           method: "POST",
           headers: {
             Authorization: `PortOne ${process.env.PORTONE_API_SECRET}`,
@@ -30,8 +46,20 @@ export async function PATCH(
           },
           body: JSON.stringify({ reason: cancelReason ?? "관리자 취소" }),
         });
+        if (!refundRes.ok) {
+          const refundData = await refundRes.json().catch(() => ({}));
+          console.error("[status] 환불 실패:", refundData);
+          return NextResponse.json(
+            { error: "환불 처리에 실패했습니다. 포트원 관리자 콘솔을 확인해주세요." },
+            { status: 500 }
+          );
+        }
       } catch (err) {
-        console.error("[status] 환불 실패:", err);
+        console.error("[status] 환불 요청 오류:", err);
+        return NextResponse.json(
+          { error: "환불 요청 중 오류가 발생했습니다. 다시 시도해주세요." },
+          { status: 500 }
+        );
       }
     }
     // payment_id 없는 경우 (계좌이체, 매장 결제, 직접 추가 등) → 환불 처리 없이 상태만 변경

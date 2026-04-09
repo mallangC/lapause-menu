@@ -8,12 +8,26 @@ export async function DELETE(
   const { id } = await params;
   const supabase = await createClient();
 
-  // payment_id 조회 (환불 필요 여부 확인)
+  // 인증 확인
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // payment_id + company_id 조회
   const { data: reservation } = await supabase
     .from("reservations")
-    .select("payment_id, final_price, status")
+    .select("payment_id, final_price, status, company_id")
     .eq("id", id)
     .single();
+
+  if (!reservation) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  // 소유권 확인 (operator 또는 해당 회사 오너만 허용)
+  const { data: profile } = await supabase.from("profiles").select("role").eq("user_id", user.id).single();
+  if (profile?.role !== "operator") {
+    const { data: company } = await supabase
+      .from("companies").select("id").eq("id", reservation.company_id).eq("owner_id", user.id).single();
+    if (!company) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   // 포트원 환불 (결제된 예약인 경우)
   if (reservation?.payment_id) {

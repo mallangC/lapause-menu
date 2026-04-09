@@ -56,21 +56,36 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "필수 정보가 누락되었습니다." }, { status: 400 });
     }
 
+    const supabase = await createClient();
+
     // 포트원 결제 검증
     if (paymentId) {
+      // DB에서 실제 상품 가격 조회 (클라이언트 제공값 신뢰 불가)
+      const { data: dbProduct } = await supabase
+        .from("products")
+        .select("price")
+        .eq("id", body.product.id)
+        .single();
+
+      if (!dbProduct) {
+        return NextResponse.json({ error: "상품 정보를 찾을 수 없습니다." }, { status: 400 });
+      }
+
       const portoneRes = await fetch(`https://api.portone.io/payments/${paymentId}`, {
         headers: { Authorization: `PortOne ${process.env.PORTONE_API_SECRET}` },
       });
+      if (!portoneRes.ok) {
+        return NextResponse.json({ error: "결제 정보를 확인할 수 없습니다." }, { status: 400 });
+      }
       const portoneData = await portoneRes.json();
       if (portoneData.status !== "PAID") {
         return NextResponse.json({ error: "결제가 완료되지 않았습니다." }, { status: 400 });
       }
-      if (portoneData.amount?.total !== (body.finalPrice ?? body.product.price)) {
-        return NextResponse.json({ error: "결제 금액이 일치하지 않습니다." }, { status: 400 });
+      // 실제 결제 금액이 DB 상품 가격 미만이면 거부
+      if (portoneData.amount?.total < dbProduct.price) {
+        return NextResponse.json({ error: "결제 금액이 상품 가격보다 작습니다." }, { status: 400 });
       }
     }
-
-    const supabase = await createClient();
     const { data: companyId, error: companyError } = await supabase
       .rpc("get_company_id_by_slug", { p_slug: slug });
     if (companyError) console.error("[reservation] company 조회 실패:", companyError.message);

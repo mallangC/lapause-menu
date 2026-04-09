@@ -351,7 +351,6 @@ export default function ReservationsTab({ companyId }: Props) {
                               onUpdateStatus={updateStatus}
                               onOpenLightbox={setLightboxUrl}
                               onSaveDeliveryFee={saveDeliveryFee}
-
                               onTogglePaid={togglePaid}
                               onEdit={setEditingReservation}
                               onDelete={handleDeleteReservation}
