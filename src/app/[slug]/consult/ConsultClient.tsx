@@ -301,6 +301,7 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
   const [showNotice, setShowNotice] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [privacyAgreed, setPrivacyAgreed] = useState(false);
+  const [cancellationAgreed, setCancellationAgreed] = useState(false);
   const [kakaoConsent, setKakaoConsent] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [reservationId, setReservationId] = useState<string | null>(null);
@@ -352,6 +353,7 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
     if (form.deliveryType === "배송" && (!recipientName || !recipientPhone || !address)) missing.push("배송 정보");
     if (form.deliveryType === "배송" && deliveryDistance !== null && deliveryFee === null) missing.push("배송 가능 여부를 매장에 문의해주세요");
     if (!privacyAgreed) missing.push("개인정보처리방침 동의");
+    if (!cancellationAgreed) missing.push("맞춤 제작 취소 정책 동의");
     if (missing.length > 0) {
       setStep3FieldErrors(missing);
       return;
@@ -1002,6 +1004,7 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
                   }}
                   dateFormat="yyyy년 MM월 dd일 (eee)"
                   minDate={new Date()}
+                  maxDate={(() => { const d = new Date(); d.setDate(d.getDate() + 30); return d; })()}
                   filterDate={(date) => {
                     const day = businessHours[String(date.getDay())];
                     if (day?.closed) return false;
@@ -1114,6 +1117,19 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
               />
               <span>
                 <Link href="/privacy" target="_blank" className="underline text-gold-600">개인정보처리방침</Link>에 동의합니다. (필수)
+              </span>
+            </label>
+
+            <label className="flex items-start gap-2 text-xs text-gray-500 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={cancellationAgreed}
+                onChange={(e) => setCancellationAgreed(e.target.checked)}
+                className="mt-0.5 accent-gold-500"
+              />
+              <span>
+                본 주문은 맞춤 제작 상품으로, 제작 착수 후에는 취소 및 환불이 불가합니다.{" "}
+                <Link href="/refund" target="_blank" className="underline text-gold-600">환불 정책</Link>에 동의합니다. (필수)
               </span>
             </label>
 

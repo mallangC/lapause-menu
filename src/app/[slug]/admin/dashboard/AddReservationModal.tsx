@@ -192,7 +192,7 @@ function parseNaverText(text: string) {
 }
 
 export default function AddReservationModal({ companyId, onClose, onSaved, messageCardEnabled = false, messageCardPrice = 0, shoppingBagEnabled = false, shoppingBagPrice = 0, initialData, reservationId }: Props) {
-  const [channel, setChannel] = useState<string | null>(initialData?.channel ?? null);
+  const [channel, setChannel] = useState<string | null>(initialData?.channel ?? (reservationId ? null : "Flo.Aide"));
   const [pasteText, setPasteText] = useState("");
   const [showPaste, setShowPaste] = useState(false);
   const pasteTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -202,7 +202,7 @@ export default function AddReservationModal({ companyId, onClose, onSaved, messa
   const [refImageFiles, setRefImageFiles] = useState<File[]>([]);
   const [refImagePreviews, setRefImagePreviews] = useState<string[]>(initialData?.reference_images?.filter(Boolean) ?? []);
   const [refImageUrls, setRefImageUrls] = useState<string[]>(initialData?.reference_images?.filter(Boolean) ?? []);
-  const [productType, setProductType] = useState(initialData?.product_type ?? "");
+  const [productType, setProductType] = useState(initialData?.product_type ?? (reservationId ? "" : "다발"));
   const [productName, setProductName] = useState(initialData?.product_name ?? "");
   const [productPrice, setProductPrice] = useState(initialData?.product_price ? String(initialData.product_price) : "");
   const [ordererName, setOrdererName] = useState(initialData?.orderer_name ?? "");
@@ -218,6 +218,17 @@ export default function AddReservationModal({ companyId, onClose, onSaved, messa
     }
     return new Date(y, m - 1, d);
   });
+
+  // 직접 추가 모드에서 DatePicker가 열릴 때 현재 시간(30분 단위 올림)을 기본값으로 사용
+  const defaultOpenTime = useMemo(() => {
+    const now = new Date();
+    const rounded = new Date(now);
+    const mins = now.getMinutes();
+    const remainder = mins % 30;
+    if (remainder !== 0) rounded.setMinutes(mins + (30 - remainder));
+    rounded.setSeconds(0, 0);
+    return rounded;
+  }, []);
   const [messageCard, setMessageCard] = useState(initialData?.message_card ?? "없음");
   const [messageCardContent, setMessageCardContent] = useState(initialData?.message_card_content ?? "");
   const [shoppingBag, setShoppingBag] = useState(initialData?.shopping_bag ?? "없음");
@@ -757,6 +768,7 @@ export default function AddReservationModal({ companyId, onClose, onSaved, messa
                 timeIntervals={30}
                 dateFormat="yy년 M월 d일 (eee) HH:mm"
                 minDate={new Date()}
+                openToDate={!reservationId ? defaultOpenTime : undefined}
                 placeholderText="날짜와 시간을 선택해주세요"
                 className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-gold-400 bg-white cursor-pointer"
                 wrapperClassName="w-full"
@@ -975,6 +987,35 @@ export default function AddReservationModal({ companyId, onClose, onSaved, messa
                 {shoppingBagEnabled && shoppingBag === "추가" && shoppingBagPrice > 0 && ` + 쇼핑백 ${shoppingBagPrice.toLocaleString()}`}
                 {deliveryType === "배송" && Number(deliveryFee) > 0 && ` + 배송비 ${Number(deliveryFee).toLocaleString()}`}
               </p>
+            </div>
+          </div>
+
+          {/* 결제 상태 */}
+          <div>
+            <label className={labelCls}>결제 상태</label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setPaid(false)}
+                className={`flex-1 py-2 rounded-xl text-sm border-2 font-medium transition-all ${
+                  !paid
+                    ? "border-gray-500 bg-gray-500 text-white"
+                    : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
+                }`}
+              >
+                미결제
+              </button>
+              <button
+                type="button"
+                onClick={() => setPaid(true)}
+                className={`flex-1 py-2 rounded-xl text-sm border-2 font-medium transition-all ${
+                  paid
+                    ? "border-green-500 bg-green-500 text-white"
+                    : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
+                }`}
+              >
+                결제 완료
+              </button>
             </div>
           </div>
 

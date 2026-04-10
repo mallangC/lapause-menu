@@ -284,13 +284,15 @@ export default function NoticePage() {
               </div>
               <ul className="px-6 py-4 space-y-3">
                 {[
-                  { date: "04.04", text: "관리자 탭 구조 개편 — 기존 매장 정보·예약 설정·설정을 매장 정보·영업 설정·맞춤 주문·디자인 4개 탭으로 분리", isNew: true },
-                  { date: "04.04", text: "배송 기능 추가 — 배송 활성화 토글, 거리별(6구간) 배송비 설정, 고객 주문 시 직선거리 자동 계산 및 배송비 자동 반영", isNew: true },
-                  { date: "04.04", text: "배송 제한 — 당일 배송 예약 불가, 20km 초과 또는 미설정 구간은 매장 문의 안내", isNew: true },
-                  { date: "04.04", text: "매장 주소 찾기 — 주소 직접 입력 대신 다음 우편번호 검색으로 변경", isNew: true },
-                  { date: "04.04", text: "금액·전화번호 자동 포맷 — 금액 입력 시 콤마(,) 자동 삽입, 전화번호 입력 시 대시(-) 자동 삽입. DB 저장 시 숫자만 저장", isNew: true },
-                  { date: "04.04", text: "상품 등록 한도 — 매장별 최대 100개 제한, 초과 시 경고 모달 표시", isNew: true },
-                  { date: "04.04", text: "저장 버튼 UX 개선 — 매장 정보·영업 설정·맞춤 주문 탭 저장 버튼 하단 고정, 저장 성공 시 인라인 메시지 표시 후 3초 후 자동 사라짐", isNew: true },
+                  { date: "04.10", text: "맞춤 주문 — 예약 가능 날짜 오늘로부터 최대 30일 이내로 제한", isNew: true },
+                  { date: "04.10", text: "예약 직접 추가·수정 — 결제 상태(미결제/결제 완료) 항목 추가", isNew: true },
+                  { date: "04.04", text: "관리자 탭 구조 개편 — 기존 매장 정보·예약 설정·설정을 매장 정보·영업 설정·맞춤 주문·디자인 4개 탭으로 분리", isNew: false },
+                  { date: "04.04", text: "배송 기능 추가 — 배송 활성화 토글, 거리별(6구간) 배송비 설정, 고객 주문 시 직선거리 자동 계산 및 배송비 자동 반영", isNew: false },
+                  { date: "04.04", text: "배송 제한 — 당일 배송 예약 불가, 20km 초과 또는 미설정 구간은 매장 문의 안내", isNew: false },
+                  { date: "04.04", text: "매장 주소 찾기 — 주소 직접 입력 대신 다음 우편번호 검색으로 변경", isNew: false },
+                  { date: "04.04", text: "금액·전화번호 자동 포맷 — 금액 입력 시 콤마(,) 자동 삽입, 전화번호 입력 시 대시(-) 자동 삽입. DB 저장 시 숫자만 저장", isNew: false },
+                  { date: "04.04", text: "상품 등록 한도 — 매장별 최대 100개 제한, 초과 시 경고 모달 표시", isNew: false },
+                  { date: "04.04", text: "저장 버튼 UX 개선 — 매장 정보·영업 설정·맞춤 주문 탭 저장 버튼 하단 고정, 저장 성공 시 인라인 메시지 표시 후 3초 후 자동 사라짐", isNew: false },
                 ].map(({ date, text, isNew }) => (
                   <li key={text} className="flex items-start gap-2 text-xs leading-relaxed">
                     <span className="text-gray-300 shrink-0 w-10 pt-0.5">{date}</span>
