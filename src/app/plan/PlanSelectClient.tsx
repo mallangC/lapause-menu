@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import BillingKeyFlow from "@/components/BillingKeyFlow";
 import { PLAN_PRICES, PLAN_DESCRIPTIONS, PLAN_FEATURES } from "@/lib/constants";
 
@@ -18,9 +20,11 @@ const CHECK_ICON = (
 
 export default function PlanSelectClient({ companyId, slug, customerName }: Props) {
   const router = useRouter();
+  const [withdrawalAgreed, setWithdrawalAgreed] = useState(false);
   const handleSuccess = () => router.push(`/${slug}/admin/dashboard`);
 
   return (
+    <div className="space-y-5">
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
       {/* Starter */}
       <div className="bg-white border border-beige-200 rounded-2xl p-7 flex flex-col">
@@ -48,6 +52,7 @@ export default function PlanSelectClient({ companyId, slug, customerName }: Prop
           onSuccess={handleSuccess}
           buttonLabel="30일 무료 체험 시작"
           buttonClassName="w-full py-3 rounded-xl border border-gray-300 text-sm font-semibold text-gray-700 hover:border-gray-500 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+          disabled={!withdrawalAgreed}
         />
         <p className="text-[10px] text-gray-400 text-center mt-2">체험 후 월 ₩{PLAN_PRICES.starter.toLocaleString()} 자동 결제</p>
       </div>
@@ -80,9 +85,26 @@ export default function PlanSelectClient({ companyId, slug, customerName }: Prop
           subscriptionPlan="pro"
           onSuccess={handleSuccess}
           buttonLabel="30일 무료 체험 시작"
+          disabled={!withdrawalAgreed}
         />
         <p className="text-[10px] text-gray-400 text-center mt-2">체험 후 월 ₩{PLAN_PRICES.pro.toLocaleString()} 자동 결제</p>
       </div>
+    </div>
+
+    {/* 청약 철회 제한 동의 */}
+    <label className="flex items-start gap-3 cursor-pointer bg-white border border-beige-200 rounded-xl px-4 py-3">
+      <input
+        type="checkbox"
+        checked={withdrawalAgreed}
+        onChange={(e) => setWithdrawalAgreed(e.target.checked)}
+        className="mt-0.5 accent-gold-500 shrink-0"
+      />
+      <span className="text-xs text-gray-500 leading-relaxed">
+        구독 시작 즉시 서비스 이용이 개시되며,{" "}
+        <Link href="/refund" target="_blank" className="underline text-gold-600 hover:text-gold-700">환불 정책</Link>
+        에 따라 「전자상거래법」 제17조 제2항에 의해 결제 후 청약 철회가 제한될 수 있음을 확인하고 동의합니다. <span className="text-red-400">(필수)</span>
+      </span>
+    </label>
     </div>
   );
 }

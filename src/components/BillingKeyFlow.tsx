@@ -10,9 +10,10 @@ interface Props {
   onError?: (msg: string) => void;
   buttonLabel?: string;
   buttonClassName?: string;
+  disabled?: boolean;
 }
 
-export default function BillingKeyFlow({ companyId, customerName, subscriptionPlan, onSuccess, onError, buttonLabel = "결제 수단 등록", buttonClassName }: Props) {
+export default function BillingKeyFlow({ companyId, customerName, subscriptionPlan, onSuccess, onError, buttonLabel = "결제 수단 등록", buttonClassName, disabled = false }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,7 +64,7 @@ export default function BillingKeyFlow({ companyId, customerName, subscriptionPl
       {error && <p className="text-xs text-red-500 text-center">{error}</p>}
       <button
         onClick={handleClick}
-        disabled={loading}
+        disabled={loading || disabled}
         className={buttonClassName ?? "w-full py-3 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"}
         style={!buttonClassName ? { background: "#2c2416" } : undefined}
       >

@@ -48,6 +48,7 @@ interface Props {
   cancelAtPeriodEnd: boolean;
   trialEndsAt: string | null;
   planExpiresAt: string | null;
+  hasBillingKey: boolean;
 }
 
 function ProGate() {
@@ -64,7 +65,7 @@ function ProGate() {
   );
 }
 
-export default function DashboardClient({ slug, userId, userEmail, isOAuth, profileName, profilePhone, companyId, companyName, logoImage, themeBg, themeAccent, initialProducts, homeFeaturedImage, homeAllImage, homeSeasonImage, homeConsultImage, locationUrl, kakaoChannelUrl, instagramUrl, youtubeUrl, companyPhone, hiddenProductTypes, hiddenSeasons, consultEnabled, plan, subscriptionPlan, cancelAtPeriodEnd, trialEndsAt, planExpiresAt }: Props) {
+export default function DashboardClient({ slug, userId, userEmail, isOAuth, profileName, profilePhone, companyId, companyName, logoImage, themeBg, themeAccent, initialProducts, homeFeaturedImage, homeAllImage, homeSeasonImage, homeConsultImage, locationUrl, kakaoChannelUrl, instagramUrl, youtubeUrl, companyPhone, hiddenProductTypes, hiddenSeasons, consultEnabled, plan, subscriptionPlan, cancelAtPeriodEnd, trialEndsAt, planExpiresAt, hasBillingKey }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("reservations");
   const tabScrollRef = useRef<HTMLDivElement>(null);
   const [products, setProducts] = useState<Product[]>(initialProducts);
@@ -447,6 +448,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
                 cancelAtPeriodEnd={cancelAtPeriodEnd}
                 trialEndsAt={trialEndsAt}
                 planExpiresAt={planExpiresAt}
+                hasBillingKey={hasBillingKey}
               />
             </div>
           )}

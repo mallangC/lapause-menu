@@ -21,18 +21,31 @@ export async function POST(req: NextRequest) {
 
   if (!company) return NextResponse.json({ error: "Company not found" }, { status: 404 });
 
-  const trialEndsAt = new Date();
-  trialEndsAt.setDate(trialEndsAt.getDate() + 30);
+  // 체험은 한 번만: 기존에 trial_ends_at이 있으면 새로 부여하지 않음
+  const { data: existingSub } = await supabase
+    .from("company_subscriptions")
+    .select("trial_ends_at")
+    .eq("company_id", companyId)
+    .single();
+
+  const alreadyHadTrial = existingSub?.trial_ends_at != null;
+
+  const updateData: Record<string, unknown> = {
+    plan: "pro",
+    billing_key: billingKey,
+    pg_provider: pgProvider ?? null,
+    subscription_plan: subscriptionPlan,
+  };
+
+  if (!alreadyHadTrial) {
+    const trialEndsAt = new Date();
+    trialEndsAt.setDate(trialEndsAt.getDate() + 30);
+    updateData.trial_ends_at = trialEndsAt.toISOString();
+  }
 
   const { error } = await supabase
     .from("company_subscriptions")
-    .update({
-      plan: "pro",
-      billing_key: billingKey,
-      pg_provider: pgProvider ?? null,
-      subscription_plan: subscriptionPlan,
-      trial_ends_at: trialEndsAt.toISOString(),
-    })
+    .update(updateData)
     .eq("company_id", companyId);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

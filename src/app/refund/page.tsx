@@ -33,11 +33,11 @@ export default function RefundPage() {
           <div className="space-y-4 text-sm text-gray-600 leading-relaxed">
             <section className="bg-white rounded-2xl border border-beige-200 p-6 space-y-3">
               <h2 className="font-semibold text-gray-900 text-base">1. 주문 취소 및 환불</h2>
-              <p>Flo.Aide를 통해 진행되는 맞춤 주문 및 예약 결제의 취소·환불은 해당 매장의 정책을 따릅니다.</p>
+              <p>Flo.Aide를 통해 진행되는 맞춤 주문 및 예약 결제의 취소·환불은 「전자상거래 등에서의 소비자보호에 관한 법률」 및 해당 매장의 정책을 따릅니다.</p>
               <ul className="list-disc list-inside space-y-1.5">
                 <li>주문 접수 전: 전액 환불 가능</li>
                 <li>주문 접수 후 제작 시작 전: 매장 정책에 따라 환불 가능 여부 결정</li>
-                <li>제작 시작 후: 환불 불가</li>
+                <li>제작 시작 후: 소비자가 주문 시 맞춤 제작 취소 불가 조건에 동의한 경우, 동법 제17조 제2항에 따라 청약 철회가 제한됩니다.</li>
               </ul>
             </section>
 
@@ -69,8 +69,8 @@ export default function RefundPage() {
 
             <section className="bg-white rounded-2xl border border-beige-200 p-6 space-y-3">
               <h2 className="font-semibold text-gray-900 text-base">2. 구독 결제 환불 원칙</h2>
-              <p>구독 요금은 결제 즉시 서비스 이용이 개시되며, 결제 완료 후 해당 구독 기간(1개월)에 대한 환불은 원칙적으로 제공되지 않습니다.</p>
-              <p>디지털 콘텐츠·SaaS 서비스 특성상 「전자상거래 등에서의 소비자보호에 관한 법률」 제17조 제2항에 따라 청약 철회가 제한될 수 있습니다.</p>
+              <p>「전자상거래 등에서의 소비자보호에 관한 법률」 제17조 제1항에 따라 소비자는 결제일로부터 7일 이내에 청약을 철회할 수 있습니다.</p>
+              <p>단, 구독 신청 시 서비스 이용이 즉시 개시됨을 고지하고 소비자가 동의한 경우, 동법 제17조 제2항 제5호에 따라 결제 완료 후 청약 철회가 제한됩니다. 회원은 구독 신청 화면에서 이 조건에 명시적으로 동의한 것으로 간주됩니다.</p>
             </section>
 
             <section className="bg-white rounded-2xl border border-beige-200 p-6 space-y-3">

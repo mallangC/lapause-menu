@@ -14,6 +14,7 @@ interface Props {
   cancelAtPeriodEnd: boolean;
   trialEndsAt: string | null;
   planExpiresAt: string | null;
+  hasBillingKey: boolean;
 }
 
 const CHECK_ICON = (
@@ -22,9 +23,9 @@ const CHECK_ICON = (
   </svg>
 );
 
-export default function PlanTab({ companyId, customerName, plan, subscriptionPlan, cancelAtPeriodEnd, trialEndsAt, planExpiresAt }: Props) {
+export default function PlanTab({ companyId, customerName, plan, subscriptionPlan, cancelAtPeriodEnd, trialEndsAt, planExpiresAt, hasBillingKey }: Props) {
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [success, setSuccess] = useState<string | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const router = useRouter();
   const supabase = createClient();
@@ -33,25 +34,25 @@ export default function PlanTab({ companyId, customerName, plan, subscriptionPla
   const trialDaysLeft = trialEndsAt
     ? Math.max(0, Math.ceil((new Date(trialEndsAt).getTime() - now.getTime()) / 86400000))
     : null;
-  const isInTrial = plan === "pro" && trialDaysLeft !== null && trialDaysLeft > 0;
+  const isInTrial = trialEndsAt !== null && trialDaysLeft !== null && trialDaysLeft > 0;
 
   const formatDate = (dateStr: string) =>
     new Date(dateStr).toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric" });
 
-  const handleDowngrade = async () => {
-    if (!confirm("Starter 플랜으로 변경하면 통계 등 Pro 기능을 사용할 수 없습니다. 변경하시겠습니까?")) return;
+  // 플랜 변경 API 호출 (카드 재입력 없이)
+  const handleChangePlan = async (newPlan: "starter" | "pro") => {
     setLoading(true);
-    await Promise.all([
-      supabase.from("company_subscriptions")
-        .update({ plan: "starter", trial_ends_at: null, plan_expires_at: null, billing_key: null })
-        .eq("company_id", companyId),
-      supabase.from("company_settings")
-        .update({ consult_enabled: false })
-        .eq("company_id", companyId),
-    ]);
+    setSuccess(null);
+    const res = await fetch("/api/billing/change-plan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ companyId, newPlan }),
+    });
     setLoading(false);
-    setSuccess(true);
-    setTimeout(() => router.refresh(), 1000);
+    if (res.ok) {
+      setSuccess(newPlan === "pro" ? "Pro로 업그레이드되었습니다." : "다음 결제부터 Starter 가격이 적용됩니다.");
+      setTimeout(() => router.refresh(), 1000);
+    }
   };
 
   const handleCancel = async () => {
@@ -87,51 +88,75 @@ export default function PlanTab({ companyId, customerName, plan, subscriptionPla
     );
   }
 
+  // 만료일 기준 문자열 (체험 or 구독)
+  const expiryDate = isInTrial ? trialEndsAt : planExpiresAt;
+
   return (
     <div>
-      <h2 className="text-base font-semibold text-gray-900 mb-2">요금제</h2>
+      <h2 className="text-base font-semibold text-gray-900 mb-4">요금제</h2>
 
-      {/* 상태 배너 */}
+      {/* ── 상태 배너 ── */}
       {isInTrial && !cancelAtPeriodEnd && (
-        <div className="mb-5 p-3 rounded-xl bg-gold-500/10 border border-gold-400/30">
-          <p className="text-sm font-semibold text-gold-600">Pro 플랜 무료 체험 중 · D-{trialDaysLeft}</p>
-          <p className="text-xs text-gray-500 mt-0.5">{formatDate(trialEndsAt!)} 이후 월 {subscriptionPlan === "starter" ? PLAN_PRICES.starter.toLocaleString() : PLAN_PRICES.pro.toLocaleString()}원이 자동 결제됩니다.</p>
+        <div className="mb-5 p-4 rounded-xl bg-gold-500/10 border border-gold-400/30 space-y-1">
+          <p className="text-sm font-semibold text-gold-600">
+            Pro 무료 체험 중 · D-{trialDaysLeft}
+          </p>
+          <p className="text-xs text-gray-500">
+            {formatDate(trialEndsAt!)} 체험 종료 후{" "}
+            <span className="font-medium text-gray-700">
+              {subscriptionPlan === "pro"
+                ? `Pro (₩${PLAN_PRICES.pro.toLocaleString()})`
+                : `Starter (₩${PLAN_PRICES.starter.toLocaleString()})`}
+            </span>
+            /월이 자동 결제됩니다.
+          </p>
         </div>
       )}
       {isInTrial && cancelAtPeriodEnd && (
-        <div className="mb-5 p-3 rounded-xl bg-red-50 border border-red-200">
+        <div className="mb-5 p-4 rounded-xl bg-red-50 border border-red-200 space-y-1">
           <p className="text-sm font-semibold text-red-500">해지 예정</p>
-          <p className="text-xs text-gray-500 mt-0.5">{formatDate(trialEndsAt!)} 무료 체험 종료 후 플랜이 해지됩니다.</p>
+          <p className="text-xs text-gray-500">{formatDate(trialEndsAt!)} 무료 체험 종료 후 플랜이 해지됩니다.</p>
         </div>
       )}
-      {planExpiresAt && !isInTrial && plan === "pro" && !cancelAtPeriodEnd && (
-        <div className="mb-5 p-3 rounded-xl bg-beige-50 border border-beige-200">
-          <p className="text-xs text-gray-500">다음 결제일</p>
-          <p className="text-sm font-medium text-gray-800 mt-0.5">{formatDate(planExpiresAt)}</p>
+      {!isInTrial && planExpiresAt && !cancelAtPeriodEnd && (
+        <div className="mb-5 p-4 rounded-xl bg-beige-50 border border-beige-200 space-y-0.5">
+          <p className="text-xs text-gray-400">다음 결제일</p>
+          <p className="text-sm font-medium text-gray-800">{formatDate(planExpiresAt)}</p>
         </div>
       )}
-      {planExpiresAt && !isInTrial && plan === "pro" && cancelAtPeriodEnd && (
-        <div className="mb-5 p-3 rounded-xl bg-red-50 border border-red-200">
+      {!isInTrial && planExpiresAt && cancelAtPeriodEnd && (
+        <div className="mb-5 p-4 rounded-xl bg-red-50 border border-red-200 space-y-1">
           <p className="text-sm font-semibold text-red-500">해지 예정</p>
-          <p className="text-xs text-gray-500 mt-0.5">{formatDate(planExpiresAt)} 이후 플랜이 해지됩니다.</p>
-        </div>
-      )}
-      {success && (
-        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
-          플랜이 변경되었습니다.
+          <p className="text-xs text-gray-500">{formatDate(planExpiresAt)} 이후 플랜이 해지됩니다.</p>
         </div>
       )}
 
-      {/* 플랜 카드 */}
+      {success && (
+        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+          {success}
+        </div>
+      )}
+
+      {/* ── 플랜 카드 ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
         {/* Starter */}
-        <div className={`rounded-2xl border p-6 flex flex-col ${plan === "starter" ? "border-gray-400 bg-white ring-2 ring-gray-300" : "border-beige-200 bg-beige-50"}`}>
+        <div className={`rounded-2xl border p-6 flex flex-col transition-all ${
+          subscriptionPlan === "starter"
+            ? "border-gray-400 bg-white ring-2 ring-gray-300"
+            : "border-beige-200 bg-beige-50"
+        }`}>
           <div className="flex items-center justify-between mb-3">
             <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-gray-400">Starter</p>
-            {plan === "starter" && (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">현재 플랜</span>
-            )}
+            <div className="flex items-center gap-1.5">
+              {subscriptionPlan === "starter" && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">현재 구독</span>
+              )}
+              {/* 체험 중이고 구독은 starter인데 지금은 pro 혜택 받는 중 */}
+              {subscriptionPlan === "starter" && isInTrial && (
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-gold-100 text-gold-600">Pro 체험 중</span>
+              )}
+            </div>
           </div>
           <div className="mb-1">
             <span className="text-[2rem] font-semibold text-gray-900 leading-none">₩{PLAN_PRICES.starter.toLocaleString()}</span>
@@ -146,27 +171,41 @@ export default function PlanTab({ companyId, customerName, plan, subscriptionPla
               </li>
             ))}
           </ul>
-          {plan === "pro" ? (
-            <button
-              onClick={handleDowngrade}
-              disabled={loading}
-              className="w-full py-2.5 rounded-xl text-sm font-semibold border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors"
-            >
-              {loading ? "처리 중..." : "Starter로 변경"}
-            </button>
-          ) : (
+
+          {/* Starter 버튼 */}
+          {subscriptionPlan === "starter" ? (
             <div className="w-full py-2.5 rounded-xl text-sm font-semibold text-center border border-gray-200 text-gray-300 cursor-default">
-              현재 플랜
+              현재 구독 플랜
             </div>
+          ) : subscriptionPlan === "pro" ? (
+            <div className="space-y-1.5">
+              <button
+                onClick={() => handleChangePlan("starter")}
+                disabled={loading || cancelAtPeriodEnd}
+                className="w-full py-2.5 rounded-xl text-sm font-semibold border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+              >
+                {loading ? "처리 중..." : "Starter로 변경"}
+              </button>
+              <p className="text-[10px] text-gray-400 text-center">
+                {expiryDate ? `${formatDate(expiryDate)} 이후 ₩${PLAN_PRICES.starter.toLocaleString()}/월 적용` : "다음 결제부터 Starter 가격 적용"}
+              </p>
+            </div>
+          ) : (
+            // subscriptionPlan === null (구독 없음)
+            <div className="w-full py-2.5 rounded-xl text-sm text-center text-gray-300 cursor-default">-</div>
           )}
         </div>
 
         {/* Pro */}
-        <div className={`rounded-2xl border p-6 flex flex-col relative ${plan === "pro" ? "border-gold-400 bg-white ring-2 ring-gold-300" : "border-beige-200 bg-beige-50"}`}>
+        <div className={`rounded-2xl border p-6 flex flex-col relative transition-all ${
+          subscriptionPlan === "pro"
+            ? "border-gold-400 bg-white ring-2 ring-gold-300"
+            : "border-beige-200 bg-beige-50"
+        }`}>
           <div className="flex items-center justify-between mb-3">
             <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-gold-500">Pro</p>
-            {plan === "pro" && (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gold-100 text-gold-600">현재 플랜</span>
+            {subscriptionPlan === "pro" && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gold-100 text-gold-600">현재 구독</span>
             )}
           </div>
           <div className="mb-1">
@@ -183,24 +222,55 @@ export default function PlanTab({ companyId, customerName, plan, subscriptionPla
               </li>
             ))}
           </ul>
-          {plan === "starter" ? (
+
+          {/* Pro 버튼 */}
+          {subscriptionPlan === "pro" ? (
+            <div className="w-full py-2.5 rounded-xl text-sm font-semibold text-center border border-gold-200 text-gold-400 cursor-default">
+              현재 구독 플랜
+            </div>
+          ) : subscriptionPlan === "starter" ? (
+            hasBillingKey ? (
+              <div className="space-y-1.5">
+                <button
+                  onClick={() => handleChangePlan("pro")}
+                  disabled={loading}
+                  className="w-full py-2.5 rounded-xl text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition-colors"
+                  style={{ background: "#2c2416" }}
+                >
+                  {loading ? "처리 중..." : "Pro로 업그레이드"}
+                </button>
+                <p className="text-[10px] text-gray-400 text-center">
+                  {expiryDate ? `${formatDate(expiryDate)} 이후 ₩${PLAN_PRICES.pro.toLocaleString()}/월 적용` : "즉시 Pro 기능 이용 가능"}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <BillingKeyFlow
+                  companyId={companyId}
+                  customerName={customerName}
+                  subscriptionPlan="pro"
+                  onSuccess={() => { setSuccess("Pro로 업그레이드되었습니다."); setTimeout(() => router.refresh(), 1000); }}
+                  buttonLabel="Pro 구독 시작"
+                />
+                <p className="text-[10px] text-gray-400 text-center">
+                  {expiryDate ? `${formatDate(expiryDate)} 이후 ₩${PLAN_PRICES.pro.toLocaleString()}/월 적용` : ""}
+                </p>
+              </div>
+            )
+          ) : (
+            // subscriptionPlan === null
             <BillingKeyFlow
               companyId={companyId}
               customerName={customerName}
               subscriptionPlan="pro"
-              onSuccess={() => { setSuccess(true); setTimeout(() => router.refresh(), 1000); }}
-              buttonLabel="정기 구독 결제"
+              onSuccess={() => { setSuccess("Pro 구독이 시작되었습니다."); setTimeout(() => router.refresh(), 1000); }}
+              buttonLabel="Pro 구독 시작"
             />
-          ) : (
-            <div className="w-full py-2.5 rounded-xl text-sm font-semibold text-center border border-gold-200 text-gold-400 cursor-default">
-              현재 플랜
-            </div>
           )}
         </div>
-
       </div>
 
-      {/* 구독 해지 / 해지 취소 */}
+      {/* ── 구독 해지 / 해지 취소 ── */}
       {subscriptionPlan !== null && (
         <div className="mt-6 pt-5 border-t border-beige-200">
           {cancelAtPeriodEnd ? (
@@ -228,6 +298,7 @@ export default function PlanTab({ companyId, customerName, plan, subscriptionPla
           )}
         </div>
       )}
+
       {/* 구독 해지 확인 모달 */}
       {showCancelModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">

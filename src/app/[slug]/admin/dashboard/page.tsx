@@ -105,6 +105,7 @@ export default async function DashboardPage({ params }: Props) {
       cancelAtPeriodEnd={(company.cancel_at_period_end as boolean) ?? false}
       trialEndsAt={(company.trial_ends_at as string | null) ?? null}
       planExpiresAt={(company.plan_expires_at as string | null) ?? null}
+      hasBillingKey={!!(company.billing_key as string | null)}
     />
   );
 }
