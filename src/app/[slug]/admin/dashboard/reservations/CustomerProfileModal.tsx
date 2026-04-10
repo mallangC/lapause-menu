@@ -7,7 +7,7 @@ interface ReservationSummary {
   id: string;
   desired_date: string;
   desired_time: string | null;
-  product_name: string;
+  items: Array<{ type: string; name: string }> | null;
   final_price: number | null;
 }
 
@@ -33,7 +33,7 @@ export default function CustomerProfileModal({ profileId, ordererName, ordererPh
         supabase.from("customer_profiles").select("memo").eq("id", profileId).single(),
         supabase
           .from("reservations")
-          .select("id, desired_date, desired_time, product_name, final_price")
+          .select("id, desired_date, desired_time, items, final_price")
           .eq("customer_profile_id", profileId)
           .order("created_at", { ascending: false }),
       ]);
@@ -95,7 +95,11 @@ export default function CustomerProfileModal({ profileId, ordererName, ordererPh
                 {recentReservations.map((r) => (
                   <div key={r.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
                     <div>
-                      <p className="text-xs font-medium text-gray-800">{r.product_name || "—"}</p>
+                      <p className="text-xs font-medium text-gray-800">
+                        {r.items?.length
+                          ? r.items.map((i) => i.name || i.type).join(", ")
+                          : "—"}
+                      </p>
                       <p className="text-xs text-gray-400 mt-0.5">
                         {r.desired_date ? r.desired_date.slice(5).replace("-", ".") : "—"}
                         {r.desired_time ? ` ${r.desired_time}` : ""}

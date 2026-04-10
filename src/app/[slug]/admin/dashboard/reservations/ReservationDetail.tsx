@@ -159,7 +159,7 @@ export default function ReservationDetail({
             <div className="shrink-0">
               <img
                 src={r.product_image_url}
-                alt={r.product_name}
+                alt="상품 이미지"
                 onClick={() => onOpenLightbox(r.product_image_url!)}
                 className="w-36 h-36 object-cover rounded-xl border border-gray-100 cursor-zoom-in"
               />
@@ -179,10 +179,7 @@ export default function ReservationDetail({
                   {r.paid ? "결제완료" : "미결제"}
                 </button>
               </Row>
-              <Row label="최종 가격">{(r.final_price ?? r.product_price).toLocaleString()}원</Row>
-              {r.product_type && (
-                <Row label="상품 유형">{r.product_type}</Row>
-              )}
+              <Row label="최종 가격">{(r.final_price ?? 0).toLocaleString()}원</Row>
               <Row label="예약자 연락처">
                 <span className="flex items-center gap-1">
                   {formatPhone(r.orderer_phone)}
@@ -190,6 +187,46 @@ export default function ReservationDetail({
                 </span>
               </Row>
             </SectionCard>
+
+            {/* 상품 목록 */}
+            {r.items?.length > 0 && (
+              <SectionCard>
+                {r.items.map((item, i) => (
+                  <div key={i} className={i > 0 ? "pt-2 border-t border-gray-50" : ""}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <span className="text-xs font-medium text-gray-700">
+                          {item.name || item.type}
+                          {item.name && item.type && item.name !== item.type && (
+                            <span className="text-gray-400 font-normal ml-1">({item.type})</span>
+                          )}
+                        </span>
+                        {item.memo && <p className="text-xs text-gray-400 mt-0.5">{item.memo}</p>}
+                        <div className="flex gap-1.5 mt-1 flex-wrap">
+                          {item.shopping_bag !== "없음" && (
+                            <span className={`text-xs px-1.5 py-0.5 rounded-full border ${item.shopping_bag === "추가" ? "border-green-400 text-green-600" : "border-purple-300 text-purple-500"}`}>
+                              쇼핑백 {item.shopping_bag}
+                            </span>
+                          )}
+                          {item.message_card !== "없음" && (
+                            <span className={`text-xs px-1.5 py-0.5 rounded-full border ${item.message_card === "추가" ? "border-green-400 text-green-600" : "border-purple-300 text-purple-500"}`}>
+                              카드 {item.message_card}
+                            </span>
+                          )}
+                        </div>
+                        {(item.message_card === "추가" || item.message_card === "서비스") && item.message_card_content && (
+                          <p className="text-xs text-gray-500 mt-1 flex items-start gap-1">
+                            <span className="whitespace-pre-wrap">{item.message_card_content}</span>
+                            <CopyButton text={item.message_card_content} />
+                          </p>
+                        )}
+                      </div>
+                      <span className="text-sm font-medium text-gray-800 shrink-0">{item.price.toLocaleString()}원</span>
+                    </div>
+                  </div>
+                ))}
+              </SectionCard>
+            )}
 
             {/* 선물 용도 */}
             {(r.recipient_gender || r.recipient_age || r.relationship || r.purpose || r.mood) && (
@@ -239,17 +276,6 @@ export default function ReservationDetail({
                       </button>
                     </span>
                   )}
-                </Row>
-              </SectionCard>
-            )}
-
-            {/* 메시지 카드 */}
-            {r.message_card !== "없음" && (
-              <SectionCard>
-                <Row label="메시지 카드">
-                  {(r.message_card === "추가" || r.message_card === "서비스") && r.message_card_content
-                    ? <span className="flex items-start gap-1"><span className="whitespace-pre-wrap">{r.message_card_content}</span><CopyButton text={r.message_card_content} /></span>
-                    : r.message_card}
                 </Row>
               </SectionCard>
             )}

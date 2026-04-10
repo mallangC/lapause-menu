@@ -539,7 +539,7 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
                   placeholder="직접 입력"
                   value={form.purposeCustom}
                   onChange={(e) => set("purposeCustom", e.target.value)}
-                  className="mt-2 w-48 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-500 bg-white"
+                  className="mt-2 w-48 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-500 bg-white placeholder:text-gray-300"
                 />
               )}
             </Section>
@@ -572,7 +572,7 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
                   placeholder="직접 입력"
                   value={form.relationshipCustom}
                   onChange={(e) => set("relationshipCustom", e.target.value)}
-                  className="mt-2 w-48 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-500 bg-white"
+                  className="mt-2 w-48 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-500 bg-white placeholder:text-gray-300"
                 />
               )}
             </Section>
@@ -635,7 +635,7 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
                         placeholder="직접 입력"
                         value={form.budgetCustom}
                         onChange={(e) => set("budgetCustom", e.target.value)}
-                        className="w-40 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-500 bg-white"
+                        className="w-40 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-500 bg-white placeholder:text-gray-300"
                       />
                       <span className="text-sm text-gray-500">만원</span>
                     </div>
@@ -859,7 +859,7 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
                       onChange={(e) => set("messageCardContent", e.target.value)}
                       placeholder="메시지 카드에 적을 내용을 입력해주세요. (30자 이내 작성 권장)"
                       rows={3}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none focus:border-gray-500 bg-white"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none focus:border-gray-500 bg-white placeholder:text-gray-300"
                     />
                   )}
                 </Section>
@@ -889,14 +889,14 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
                         placeholder="받는 분 이름"
                         value={recipientName}
                         onChange={(e) => setRecipientName(e.target.value)}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-gray-500 bg-white"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-gray-500 bg-white placeholder:text-gray-300"
                       />
                       <input
                         type="tel"
                         placeholder="받는 분 전화번호"
                         value={recipientPhone}
                         onChange={(e) => setRecipientPhone(formatPhone(e.target.value))}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-gray-500 bg-white"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-gray-500 bg-white placeholder:text-gray-300"
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-2">
@@ -922,7 +922,7 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
                         placeholder="상세주소"
                         value={addressDetail}
                         onChange={(e) => setAddressDetail(e.target.value)}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-gray-500 bg-white"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-gray-500 bg-white placeholder:text-gray-300"
                       />
                     </div>
                     {/* 거리 표시 */}
@@ -1065,7 +1065,7 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
                   onChange={(e) => set("requests", e.target.value)}
                   placeholder="추가 요청사항을 입력해주세요. (선택)"
                   rows={3}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none focus:border-gray-500 bg-white"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none focus:border-gray-500 bg-white placeholder:text-gray-300"
                 />
               </Section>
             </div>
@@ -1081,7 +1081,7 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
                 placeholder="이름"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-gray-500 bg-white"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-gray-500 bg-white placeholder:text-gray-300"
               />
               <div>
                 <input

@@ -1,12 +1,20 @@
+export interface ReservationItem {
+  type: string;
+  name: string;
+  price: number;
+  message_card: string;
+  message_card_content: string | null;
+  shopping_bag: string;
+  memo: string | null;
+}
+
 export interface Reservation {
   id: string;
   created_at: string;
   status: "미확인" | "준비중" | "제작완료" | "픽업/배송완료" | "취소";
   orderer_name: string;
   orderer_phone: string;
-  product_name: string;
-  product_price: number;
-  product_type: string;
+  items: ReservationItem[];
   product_image_url: string | null;
   quantity: number;
   paid: boolean;
@@ -17,9 +25,6 @@ export interface Reservation {
   relationship: string;
   mood: string;
   budget: string;
-  message_card: string;
-  message_card_content: string | null;
-  shopping_bag: string;
   channel: string | null;
   delivery_type: string;
   delivery_fee: number | null;

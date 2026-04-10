@@ -88,7 +88,7 @@ export default function ReservationsTab({ companyId }: Props) {
   const saveDeliveryFee = async (r: Reservation, feeInput: string) => {
     const newFee = Number(feeInput) || 0;
     const oldFee = r.delivery_fee ?? 0;
-    const newFinalPrice = (r.final_price ?? r.product_price) - oldFee + newFee;
+    const newFinalPrice = (r.final_price ?? 0) - oldFee + newFee;
     await supabase.from("reservations").update({ delivery_fee: newFee, final_price: newFinalPrice }).eq("id", r.id);
     setAllReservations((prev) => prev.map((item) =>
       item.id === r.id ? { ...item, delivery_fee: newFee, final_price: newFinalPrice } : item
@@ -324,16 +324,28 @@ export default function ReservationsTab({ companyId }: Props) {
                             {r.delivery_type}
                           </span>
                         </td>
-                        <td className="py-3 pr-3 text-gray-600 max-w-40 truncate text-center">{r.product_name}</td>
-                        <td className="py-3 pr-3 text-center">
-                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${r.shopping_bag === "추가" ? "border border-green-500 text-green-600" : r.shopping_bag === "서비스" ? "border border-purple-400 text-purple-500" : "text-gray-300"}`}>
-                            {r.shopping_bag}
-                          </span>
+                        <td className="py-3 pr-3 text-gray-600 max-w-40 truncate text-center text-sm">
+                          {r.items?.length > 0
+                            ? r.items.length === 1
+                              ? (r.items[0].name || r.items[0].type || "—")
+                              : `${r.items[0].type || r.items[0].name} 외 ${r.items.length - 1}건`
+                            : "—"}
                         </td>
                         <td className="py-3 pr-3 text-center">
-                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${r.message_card === "추가" ? "border border-green-500 text-green-600" : r.message_card === "서비스" ? "border border-purple-400 text-purple-500" : "text-gray-300"}`}>
-                            {r.message_card}
-                          </span>
+                          {(() => {
+                            const val = r.items?.find((i) => i.shopping_bag !== "없음")?.shopping_bag;
+                            return val ? (
+                              <span className={`text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${val === "추가" ? "border border-green-500 text-green-600" : "border border-purple-400 text-purple-500"}`}>{val}</span>
+                            ) : <span className="text-xs text-gray-300">없음</span>;
+                          })()}
+                        </td>
+                        <td className="py-3 pr-3 text-center">
+                          {(() => {
+                            const val = r.items?.find((i) => i.message_card !== "없음")?.message_card;
+                            return val ? (
+                              <span className={`text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${val === "추가" ? "border border-green-500 text-green-600" : "border border-purple-400 text-purple-500"}`}>{val}</span>
+                            ) : <span className="text-xs text-gray-300">없음</span>;
+                          })()}
                         </td>
                         <td className="py-3 text-center">
                           <svg xmlns="http://www.w3.org/2000/svg" className={`w-4 h-4 text-gray-400 inline-block transition-transform ${expanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">

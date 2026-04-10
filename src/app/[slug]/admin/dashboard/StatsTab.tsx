@@ -14,11 +14,10 @@ interface Props {
 interface Reservation {
   status: string;
   final_price: number | null;
-  product_price: number;
   delivery_fee: number | null;
   desired_date: string;
   channel: string | null;
-  product_type: string | null;
+  items: Array<{ type: string; price: number }> | null;
   delivery_type: string;
   customer_profile_id: string | null;
 }
@@ -51,7 +50,7 @@ export default function StatsTab({ companyId }: Props) {
     (async () => {
       const { data } = await supabase
         .from("reservations")
-        .select("status, final_price, product_price, delivery_fee, desired_date, channel, product_type, delivery_type, customer_profile_id")
+        .select("status, final_price, delivery_fee, desired_date, channel, items, delivery_type, customer_profile_id")
         .eq("company_id", companyId)
         .in("status", ["제작완료", "픽업/배송완료"]);
       setReservations((data as Reservation[]) ?? []);
@@ -72,7 +71,7 @@ export default function StatsTab({ companyId }: Props) {
   );
 
   const totalRevenue = useMemo(
-    () => thisMonthData.reduce((s, r) => s + (r.final_price ?? r.product_price) - (r.delivery_fee ?? 0), 0),
+    () => thisMonthData.reduce((s, r) => s + (r.final_price ?? 0) - (r.delivery_fee ?? 0), 0),
     [thisMonthData]
   );
   const avgPrice = thisMonthData.length > 0 ? Math.round(totalRevenue / thisMonthData.length) : 0;
@@ -85,7 +84,7 @@ export default function StatsTab({ companyId }: Props) {
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       const label = `${d.getMonth() + 1}월`;
       const rows = reservations.filter((r) => r.desired_date?.startsWith(key));
-      const revenue = rows.reduce((s, r) => s + (r.final_price ?? r.product_price) - (r.delivery_fee ?? 0), 0);
+      const revenue = rows.reduce((s, r) => s + (r.final_price ?? 0) - (r.delivery_fee ?? 0), 0);
       result.push({ month: label, 매출: revenue, 건수: rows.length });
     }
     return result;
@@ -101,12 +100,14 @@ export default function StatsTab({ companyId }: Props) {
     return Object.entries(map).map(([name, value]) => ({ name, value }));
   }, [reservations]);
 
-  // 상품 유형별 건수
+  // 상품 유형별 건수 (items에서 집계)
   const typeData = useMemo(() => {
     const map: Record<string, number> = {};
     reservations.forEach((r) => {
-      const key = r.product_type ?? "미지정";
-      map[key] = (map[key] ?? 0) + 1;
+      (r.items ?? []).forEach((item) => {
+        const key = item.type || "미지정";
+        map[key] = (map[key] ?? 0) + 1;
+      });
     });
     return Object.entries(map)
       .map(([name, value]) => ({ name, value }))
