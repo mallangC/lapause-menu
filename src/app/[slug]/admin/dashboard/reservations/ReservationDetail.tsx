@@ -183,35 +183,26 @@ export default function ReservationDetail({
               <SectionCard>
                 {r.items.map((item, i) => (
                   <div key={i} className={i > 0 ? "pt-2 border-t border-gray-50" : ""}>
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <span className="text-xs font-medium text-gray-700">
-                          {item.name || item.type}
-                          {item.name && item.type && item.name !== item.type && (
-                            <span className="text-gray-400 font-normal ml-1">({item.type})</span>
-                          )}
-                        </span>
-                        {item.memo && <p className="text-xs text-gray-400 mt-0.5">{item.memo}</p>}
-                        <div className="flex gap-1.5 mt-1 flex-wrap">
-                          {item.shopping_bag !== "없음" && (
-                            <span className={`text-xs px-1.5 py-0.5 rounded-full border ${item.shopping_bag === "추가" ? "border-green-400 text-green-600" : "border-purple-300 text-purple-500"}`}>
-                              쇼핑백 {item.shopping_bag}
-                            </span>
-                          )}
-                          {item.message_card !== "없음" && (
-                            <span className={`text-xs px-1.5 py-0.5 rounded-full border ${item.message_card === "추가" ? "border-green-400 text-green-600" : "border-purple-300 text-purple-500"}`}>
-                              카드 {item.message_card}
-                            </span>
+                    <div className="flex gap-2 text-sm">
+                      <span className="w-20 shrink-0 text-gray-400">{i === 0 ? "상품" : ""}</span>
+                      <div className="flex-1 min-w-0 flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <span className="text-gray-800">
+                            {item.name || item.type}
+                            {item.name && item.type && item.name !== item.type && (
+                              <span className="text-gray-400 ml-1">({item.type})</span>
+                            )}
+                          </span>
+                          {item.memo && <p className="text-xs text-gray-400 mt-0.5">{item.memo}</p>}
+                          {(item.message_card === "추가" || item.message_card === "서비스") && item.message_card_content && (
+                            <p className="text-xs text-gray-500 mt-1 flex items-start gap-1">
+                              <span className="whitespace-pre-wrap">{item.message_card_content}</span>
+                              <CopyButton text={item.message_card_content} />
+                            </p>
                           )}
                         </div>
-                        {(item.message_card === "추가" || item.message_card === "서비스") && item.message_card_content && (
-                          <p className="text-xs text-gray-500 mt-1 flex items-start gap-1">
-                            <span className="whitespace-pre-wrap">{item.message_card_content}</span>
-                            <CopyButton text={item.message_card_content} />
-                          </p>
-                        )}
+                        <span className="font-medium text-gray-800 shrink-0">{item.price.toLocaleString()}원</span>
                       </div>
-                      <span className="text-sm font-medium text-gray-800 shrink-0">{item.price.toLocaleString()}원</span>
                     </div>
                   </div>
                 ))}

@@ -6,6 +6,7 @@ export interface ReservationItem {
   message_card_content: string | null;
   shopping_bag: string;
   memo: string | null;
+  status?: string;
 }
 
 export interface Reservation {

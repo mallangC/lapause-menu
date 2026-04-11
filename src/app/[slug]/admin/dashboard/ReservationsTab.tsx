@@ -26,6 +26,7 @@ export default function ReservationsTab({ companyId }: Props) {
   const [viewMonth, setViewMonth] = useState(() => new Date().getMonth() + 1);
   const [showPast, setShowPast] = useState(false);
   const [profileModal, setProfileModal] = useState<{ profileId: string; name: string; phone: string } | null>(null);
+  const [itemStatusPopover, setItemStatusPopover] = useState<{ reservationId: string; itemIdx: number; x: number; y: number } | null>(null);
   const [messageCardEnabled, setMessageCardEnabled] = useState(false);
   const [messageCardPrice, setMessageCardPrice] = useState(0);
   const [shoppingBagEnabled, setShoppingBagEnabled] = useState(false);
@@ -101,6 +102,15 @@ export default function ReservationsTab({ companyId }: Props) {
     setAllReservations((prev) => prev.map((r) => r.id === id ? { ...r, admin_memo: trimmed } : r));
   };
 
+  const updateItemStatus = async (reservationId: string, itemIdx: number, status: string) => {
+    const r = allReservations.find((r) => r.id === reservationId);
+    if (!r) return;
+    const newItems = r.items.map((item, i) => i === itemIdx ? { ...item, status } : item);
+    await supabase.from("reservations").update({ items: newItems }).eq("id", reservationId);
+    setAllReservations((prev) => prev.map((r) => r.id === reservationId ? { ...r, items: newItems } : r));
+    setItemStatusPopover(null);
+  };
+
   const handleDeleteReservation = async (id: string) => {
     if (!confirm("정말 삭제하시겠습니까?")) return;
     const res = await fetch(`/api/reservation/${id}`, { method: "DELETE" });
@@ -164,6 +174,34 @@ export default function ReservationsTab({ companyId }: Props) {
           </div>
         </div>
       )}
+
+      {/* 상품 상태 모달 */}
+      {itemStatusPopover && (() => {
+        const r = allReservations.find((r) => r.id === itemStatusPopover.reservationId);
+        const item = r?.items[itemStatusPopover.itemIdx];
+        if (!item) return null;
+        return (
+          <div className="fixed inset-0 z-50" onClick={() => setItemStatusPopover(null)}>
+            <div
+              className="absolute bg-white rounded-xl shadow-lg border border-gray-100 py-1 min-w-[120px]"
+              style={{ top: itemStatusPopover.y, left: itemStatusPopover.x }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {["준비중", "제작완료"].map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => updateItemStatus(itemStatusPopover.reservationId, itemStatusPopover.itemIdx, s)}
+                  className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors hover:bg-gray-50 ${item.status === s ? "font-semibold text-gray-900" : "text-gray-600"}`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${s === "제작완료" ? "bg-yellow-400" : "bg-gray-300"}`} />
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* 고객 프로필 모달 */}
       {profileModal && (
@@ -370,11 +408,13 @@ export default function ReservationsTab({ companyId }: Props) {
                       {/* 복수 상품 아이템 행 */}
                       {isMultiItem && r.items.map((item, itemIdx) => {
                         const isLastItem = itemIdx === r.items.length - 1;
+                        const itemDone = item.status === "제작완료";
+                        const itemBg = itemDone ? "bg-yellow-50" : item.status === "준비중" ? "bg-white" : rowBg;
                         return (
                           <tr
                             key={`${r.id}-item-${itemIdx}`}
-                            onClick={() => setExpandedId(expanded ? null : r.id)}
-                            className={`${rowBg} brightness-[0.98] cursor-pointer hover:brightness-95 transition-all ${cancelCls} ${
+                            onClick={(e) => { e.stopPropagation(); setItemStatusPopover({ reservationId: r.id, itemIdx, x: e.clientX, y: e.clientY }); }}
+                            className={`${itemBg} brightness-[0.98] cursor-pointer hover:brightness-95 transition-all ${cancelCls} ${
                               isLastItem ? (expanded ? "" : groupBorder) : "border-b border-gray-100"
                             }`}
                           >
@@ -384,7 +424,7 @@ export default function ReservationsTab({ companyId }: Props) {
                             <td className="py-2" />
                             <td className="py-2 pr-3 text-center">
                               <span className="text-xs text-gray-500 flex items-center justify-center gap-1.5">
-                                <span className="w-1 h-1 rounded-full bg-gray-300 shrink-0 inline-block" />
+                                <span className={`w-1 h-1 rounded-full shrink-0 inline-block ${itemDone ? "bg-yellow-400" : "bg-gray-300"}`} />
                                 {item.name || item.type || "—"}
                               </span>
                             </td>
