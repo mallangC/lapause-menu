@@ -357,8 +357,6 @@ export default function AddReservationModal({
       orderer_name: ordererName,
       orderer_phone: parsePhone(ordererPhone),
       items: itemsPayload,
-      product_id: null,
-      product_image_url: null,
       quantity: 1,
       paid,
       final_price: finalPrice,

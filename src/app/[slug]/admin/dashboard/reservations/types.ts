@@ -15,7 +15,6 @@ export interface Reservation {
   orderer_name: string;
   orderer_phone: string;
   items: ReservationItem[];
-  product_image_url: string | null;
   quantity: number;
   paid: boolean;
   final_price: number;
