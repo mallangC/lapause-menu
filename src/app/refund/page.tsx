@@ -18,7 +18,7 @@ export default function RefundPage() {
         <div>
           <p className="text-xs font-semibold tracking-[0.2em] text-gold-500 uppercase mb-3">Refund Policy</p>
           <h1 className="text-2xl font-light text-gray-900 mb-2">환불 정책</h1>
-          <p className="text-sm text-gray-400">최종 업데이트: 2026년 4월 8일</p>
+          <p className="text-sm text-gray-400">최종 업데이트: 2026년 4월 11일</p>
         </div>
 
         {/* 일반 소비자 (맞춤 주문·예약 결제) */}
@@ -35,18 +35,47 @@ export default function RefundPage() {
               <h2 className="font-semibold text-gray-900 text-base">1. 주문 취소 및 환불</h2>
               <p>Flo.Aide를 통해 진행되는 맞춤 주문 및 예약 결제의 취소·환불은 「전자상거래 등에서의 소비자보호에 관한 법률」 및 해당 매장의 정책을 따릅니다.</p>
               <ul className="list-disc list-inside space-y-1.5">
-                <li>주문 접수 전: 전액 환불 가능</li>
-                <li>주문 접수 후 제작 시작 전: 매장 정책에 따라 환불 가능 여부 결정</li>
+                <li>예약일 7일 전: 전액 환불</li>
+                <li>예약일 3~6일 전: 일부 공제 후 환불 (매장 정책에 따름)</li>
+                <li>예약일 1~2일 전: 50~90% 공제 후 환불 (매장 정책에 따름)</li>
+                <li>예약 당일 취소: 환불 불가</li>
                 <li>제작 시작 후: 소비자가 주문 시 맞춤 제작 취소 불가 조건에 동의한 경우, 동법 제17조 제2항에 따라 청약 철회가 제한됩니다.</li>
               </ul>
             </section>
 
             <section className="bg-white rounded-2xl border border-beige-200 p-6 space-y-3">
-              <h2 className="font-semibold text-gray-900 text-base">2. 환불 가능한 경우</h2>
+              <h2 className="font-semibold text-gray-900 text-base">2. 단순변심 반품 (청약철회)</h2>
+              <p>「전자상거래 등에서의 소비자보호에 관한 법률」 제17조 제1항에 따라 상품 수령 후 7일 이내라면 별도의 이유 없이 반품을 요청할 수 있습니다.</p>
               <ul className="list-disc list-inside space-y-1.5">
-                <li>매장 측 귀책사유(주문 오류, 배송 불가 등)로 주문이 이행되지 않은 경우</li>
-                <li>중복 결제 등 명백한 오류가 발생한 경우</li>
+                <li>상품 수령 후 7일 이내</li>
+                <li>사용·훼손되지 않은 상태</li>
+                <li>왕복 배송비는 소비자 부담</li>
               </ul>
+            </section>
+
+            <section className="bg-white rounded-2xl border border-beige-200 p-6 space-y-3">
+              <h2 className="font-semibold text-gray-900 text-base">3. 교환·반품 (하자 또는 오배송)</h2>
+              <p>아래 사유에 해당하는 경우 교환 또는 반품이 가능하며, 배송비는 판매자가 부담합니다.</p>
+              <ul className="list-disc list-inside space-y-1.5">
+                <li>불량·파손 제품</li>
+                <li>주문과 다른 상품 배송</li>
+                <li>광고·상품 설명과 다른 상품</li>
+              </ul>
+              <p className="text-gray-400 text-xs">접수 기한: 해당 사실을 안 날로부터 30일 이내 (또는 수령 후 3개월 이내)</p>
+            </section>
+
+            <section className="bg-white rounded-2xl border border-beige-200 p-6 space-y-3">
+              <h2 className="font-semibold text-gray-900 text-base">4. 반품·교환 불가 사유</h2>
+              <ul className="list-disc list-inside space-y-1.5">
+                <li>소비자가 사용하거나 훼손한 경우</li>
+                <li>포장 훼손 등으로 상품 가치가 떨어진 경우</li>
+                <li>시간이 지나 재판매가 어려운 경우 (생화 등 신선식품 특성상)</li>
+                <li>맞춤 제작 상품 (소비자 요청에 따라 별도 제작된 경우)</li>
+              </ul>
+            </section>
+
+            <section className="bg-white rounded-2xl border border-beige-200 p-6 space-y-3">
+              <h2 className="font-semibold text-gray-900 text-base">5. 환불 문의</h2>
               <p>환불 문의는 해당 매장에 직접 연락해주세요.</p>
             </section>
           </div>

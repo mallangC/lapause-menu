@@ -2,6 +2,12 @@ import Image from "next/image";
 import Link from "next/link";
 import FloAideFooter from "@/components/FloAideFooter";
 
+const POLICY_LINKS = [
+  { label: "이용 안내", href: "/guide" },
+  { label: "환불 정책", href: "/refund" },
+  { label: "이용약관", href: "/terms" },
+];
+
 interface HomeScreenProps {
   slug?: string;
   homeFeaturedImage?: string | null;
@@ -149,7 +155,17 @@ export default function HomeScreen({
         </div>
       )}
 
-      <FloAideFooter />
+      <div className="flex flex-col items-center gap-0.5">
+        <div className="flex items-center justify-center gap-4 text-[10px] text-gray-400">
+          {POLICY_LINKS.map(({ label, href }, i) => (
+            <span key={label} className="flex items-center gap-4">
+              {i > 0 && <span className="text-gray-200">·</span>}
+              <Link href={href} className="hover:text-gray-600 transition-colors">{label}</Link>
+            </span>
+          ))}
+        </div>
+        <FloAideFooter />
+      </div>
     </div>
   );
 }
