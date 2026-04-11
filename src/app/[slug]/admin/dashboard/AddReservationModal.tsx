@@ -657,6 +657,20 @@ export default function AddReservationModal({
                 dateFormat="yy년 M월 d일 (eee) HH:mm"
                 minDate={new Date()}
                 openToDate={!reservationId ? defaultOpenTime : undefined}
+                onCalendarOpen={() => {
+                  if (selectedDate || reservationId) return;
+                  setTimeout(() => {
+                    const list = document.querySelector(".react-datepicker__time-list");
+                    if (!list) return;
+                    const target = `${String(defaultOpenTime.getHours()).padStart(2, "0")}:${String(defaultOpenTime.getMinutes()).padStart(2, "0")}`;
+                    const items = list.querySelectorAll(".react-datepicker__time-list-item");
+                    items.forEach((item) => {
+                      if (item.textContent?.trim() === target) {
+                        (item as HTMLElement).scrollIntoView({ block: "center" });
+                      }
+                    });
+                  }, 50);
+                }}
                 placeholderText="날짜와 시간을 선택해주세요"
                 className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-gold-400 bg-white cursor-pointer"
                 wrapperClassName="w-full"
