@@ -290,12 +290,16 @@ export default function ReservationsTab({ companyId }: Props) {
                   const isNewDate = r.desired_date !== prevDate;
                   const isLastOfDate = r.desired_date !== nextDate;
                   const time = formatTimeOnly(r.desired_time);
+                  const isMultiItem = (r.items?.length ?? 0) > 1;
+                  const groupBorder = !expanded && isLastOfDate && nextDate ? "border-b border-gray-300" : "border-b border-gray-100";
+                  const cancelCls = r.status === "취소" ? "line-through text-gray-400" : "";
 
                   return (
                     <React.Fragment key={r.id}>
+                      {/* 예약 헤더 행 */}
                       <tr
                         onClick={() => setExpandedId(expanded ? null : r.id)}
-                        className={`${rowBg} ${expanded ? "" : isLastOfDate && nextDate ? "border-b border-gray-300" : "border-b border-gray-100"} cursor-pointer hover:brightness-95 transition-all ${r.status === "취소" ? "line-through text-gray-400" : ""}`}
+                        className={`${rowBg} ${isMultiItem ? "border-b border-gray-50" : expanded ? "" : groupBorder} cursor-pointer hover:brightness-95 transition-all ${cancelCls}`}
                       >
                         <td className="py-3 pl-2 md:pl-0 text-xs whitespace-nowrap text-center font-medium text-gray-700">
                           {isNewDate ? formatDateHeader(r.desired_date) : ""}
@@ -324,35 +328,84 @@ export default function ReservationsTab({ companyId }: Props) {
                             {r.delivery_type}
                           </span>
                         </td>
-                        <td className="py-3 pr-3 text-gray-600 max-w-40 truncate text-center text-sm">
-                          {r.items?.length > 0
-                            ? r.items.length === 1
-                              ? (r.items[0].name || r.items[0].type || "—")
-                              : `${r.items[0].type || r.items[0].name} 외 ${r.items.length - 1}건`
-                            : "—"}
-                        </td>
-                        <td className="py-3 pr-3 text-center">
-                          {(() => {
-                            const val = r.items?.find((i) => i.shopping_bag !== "없음")?.shopping_bag;
-                            return val ? (
-                              <span className={`text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${val === "추가" ? "border border-green-500 text-green-600" : "border border-purple-400 text-purple-500"}`}>{val}</span>
-                            ) : <span className="text-xs text-gray-300">없음</span>;
-                          })()}
-                        </td>
-                        <td className="py-3 pr-3 text-center">
-                          {(() => {
-                            const val = r.items?.find((i) => i.message_card !== "없음")?.message_card;
-                            return val ? (
-                              <span className={`text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${val === "추가" ? "border border-green-500 text-green-600" : "border border-purple-400 text-purple-500"}`}>{val}</span>
-                            ) : <span className="text-xs text-gray-300">없음</span>;
-                          })()}
-                        </td>
+                        {/* 단일 상품: 상품명·옵션 표시 / 복수 상품: 헤더는 비움 */}
+                        {isMultiItem ? (
+                          <>
+                            <td className="py-3 pr-3 text-center">
+                              <span className="text-xs text-gray-400">{r.items.length}개 상품</span>
+                            </td>
+                            <td className="py-3 pr-3 text-center" />
+                            <td className="py-3 pr-3 text-center" />
+                          </>
+                        ) : (
+                          <>
+                            <td className="py-3 pr-3 text-gray-600 max-w-40 truncate text-center text-sm">
+                              {r.items?.[0]?.name || r.items?.[0]?.type || "—"}
+                            </td>
+                            <td className="py-3 pr-3 text-center">
+                              {(() => {
+                                const val = r.items?.[0]?.shopping_bag;
+                                return val && val !== "없음" ? (
+                                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${val === "추가" ? "border border-green-500 text-green-600" : "border border-purple-400 text-purple-500"}`}>{val}</span>
+                                ) : <span className="text-xs text-gray-300">없음</span>;
+                              })()}
+                            </td>
+                            <td className="py-3 pr-3 text-center">
+                              {(() => {
+                                const val = r.items?.[0]?.message_card;
+                                return val && val !== "없음" ? (
+                                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${val === "추가" ? "border border-green-500 text-green-600" : "border border-purple-400 text-purple-500"}`}>{val}</span>
+                                ) : <span className="text-xs text-gray-300">없음</span>;
+                              })()}
+                            </td>
+                          </>
+                        )}
                         <td className="py-3 text-center">
                           <svg xmlns="http://www.w3.org/2000/svg" className={`w-4 h-4 text-gray-400 inline-block transition-transform ${expanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
                           </svg>
                         </td>
                       </tr>
+
+                      {/* 복수 상품 아이템 행 */}
+                      {isMultiItem && r.items.map((item, itemIdx) => {
+                        const isLastItem = itemIdx === r.items.length - 1;
+                        return (
+                          <tr
+                            key={`${r.id}-item-${itemIdx}`}
+                            onClick={() => setExpandedId(expanded ? null : r.id)}
+                            className={`${rowBg} brightness-[0.98] cursor-pointer hover:brightness-95 transition-all ${cancelCls} ${
+                              isLastItem ? (expanded ? "" : groupBorder) : "border-b border-gray-100"
+                            }`}
+                          >
+                            <td className="py-2" />
+                            <td className="py-2" />
+                            <td className="py-2" />
+                            <td className="py-2" />
+                            <td className="py-2 pr-3 text-center">
+                              <span className="text-xs text-gray-500 flex items-center justify-center gap-1.5">
+                                <span className="w-1 h-1 rounded-full bg-gray-300 shrink-0 inline-block" />
+                                {item.name || item.type || "—"}
+                              </span>
+                            </td>
+                            <td className="py-2 pr-3 text-center">
+                              {item.shopping_bag !== "없음" ? (
+                                <span className={`text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${item.shopping_bag === "추가" ? "border border-green-500 text-green-600" : "border border-purple-400 text-purple-500"}`}>
+                                  {item.shopping_bag}
+                                </span>
+                              ) : <span className="text-xs text-gray-300">없음</span>}
+                            </td>
+                            <td className="py-2 pr-3 text-center">
+                              {item.message_card !== "없음" ? (
+                                <span className={`text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${item.message_card === "추가" ? "border border-green-500 text-green-600" : "border border-purple-400 text-purple-500"}`}>
+                                  {item.message_card}
+                                </span>
+                              ) : <span className="text-xs text-gray-300">없음</span>}
+                            </td>
+                            <td className="py-2" />
+                          </tr>
+                        );
+                      })}
 
                       {expanded && (
                         <tr className="bg-gray-50/80">
