@@ -655,7 +655,6 @@ export default function AddReservationModal({
                 timeFormat="HH:mm"
                 timeIntervals={30}
                 dateFormat="yy년 M월 d일 (eee) HH:mm"
-                minDate={new Date()}
                 openToDate={!reservationId ? defaultOpenTime : undefined}
                 onCalendarOpen={() => {
                   if (selectedDate || reservationId) return;
