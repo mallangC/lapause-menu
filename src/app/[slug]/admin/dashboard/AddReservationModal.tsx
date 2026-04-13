@@ -298,7 +298,6 @@ export default function AddReservationModal({
     if (!ordererPhone) missing.push("전화번호");
     if (!selectedDate) missing.push("예약 일시");
     if (items.some((item) => !item.type)) missing.push("상품 유형");
-    if (items.some((item) => !item.price)) missing.push("상품 금액");
     if (missing.length > 0) {
       setFieldErrors(missing);
       return;
@@ -558,7 +557,7 @@ export default function AddReservationModal({
                       onChange={(e) => updateItem(idx, "name", e.target.value)} placeholder="예) 핑크 꽃다발" />
                   </div>
                   <div>
-                    <label className={labelCls}>금액 <span className="text-red-500">*</span></label>
+                    <label className={labelCls}>금액</label>
                     <div className="flex items-center gap-2">
                       <input className={inputCls} type="text" inputMode="numeric"
                         value={item.price === "" ? "" : formatMoney(item.price)}
