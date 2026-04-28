@@ -15,8 +15,9 @@ import BusinessSettingsTab from "./BusinessSettingsTab";
 import ReservationsTab from "./ReservationsTab";
 import StatsTab from "./StatsTab";
 import PlanTab from "./PlanTab";
+import DashboardOverviewTab from "./DashboardOverviewTab";
 
-type Tab = "reservations" | "products" | "stats" | "company" | "business" | "reservation" | "settings" | "plan" | "myinfo";
+type Tab = "dashboard" | "reservations" | "products" | "stats" | "company" | "business" | "reservation" | "settings" | "plan" | "myinfo";
 
 interface Props {
   slug: string;
@@ -66,7 +67,7 @@ function ProGate() {
 }
 
 export default function DashboardClient({ slug, userId, userEmail, isOAuth, profileName, profilePhone, companyId, companyName, logoImage, themeBg, themeAccent, initialProducts, homeFeaturedImage, homeAllImage, homeSeasonImage, homeConsultImage, locationUrl, kakaoChannelUrl, instagramUrl, youtubeUrl, companyPhone, hiddenProductTypes, hiddenSeasons, consultEnabled, plan, subscriptionPlan, cancelAtPeriodEnd, trialEndsAt, planExpiresAt, hasBillingKey }: Props) {
-  const [activeTab, setActiveTab] = useState<Tab>("reservations");
+  const [activeTab, setActiveTab] = useState<Tab>("dashboard");
   const tabScrollRef = useRef<HTMLDivElement>(null);
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
@@ -143,6 +144,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
   };
 
   const mainTabs: { key: Tab; label: string; statsOnly?: boolean }[] = [
+    { key: "dashboard", label: "대시보드" },
     { key: "reservations", label: "예약 관리" },
     { key: "products", label: "상품 관리" },
     { key: "stats", label: "통계", statsOnly: true },
@@ -338,6 +340,15 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
         )}
 
         <main className="flex-1 min-w-0">
+          {activeTab === "dashboard" && (
+            <DashboardOverviewTab
+              companyId={companyId}
+              slug={slug}
+              plan={plan}
+              onNavigate={(tab) => setActiveTab(tab as Tab)}
+            />
+          )}
+
           {activeTab === "reservations" && (
             <div className="bg-white border border-gray-200 rounded-xl p-6">
               {plan === "starter" ? <ProGate /> : <ReservationsTab companyId={companyId} />}
