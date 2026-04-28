@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import imageCompression from "browser-image-compression";
 import Image from "next/image";
 import DaumPostcodeEmbed from "react-daum-postcode";
 import { createClient } from "@/lib/supabase/client";
@@ -16,10 +17,11 @@ interface Props {
   initialInstagramUrl: string | null;
   initialYoutubeUrl: string | null;
   initialPhone: string | null;
+  plan: "starter" | "pro" | "free";
   onSave: (name: string, logo: string | null, locationUrl: string | null, kakaoChannelUrl: string | null, instagramUrl: string | null, youtubeUrl: string | null) => void;
 }
 
-export default function CompanyInfoTab({ companyId, initialName, initialLogo, slug, initialNaverTalkUrl, initialKakaoChannelUrl, initialInstagramUrl, initialYoutubeUrl, initialPhone, onSave }: Props) {
+export default function CompanyInfoTab({ companyId, initialName, initialLogo, slug, initialNaverTalkUrl, initialKakaoChannelUrl, initialInstagramUrl, initialYoutubeUrl, initialPhone, plan, onSave }: Props) {
   const [name, setName] = useState(initialName);
   const [logoUrl, setLogoUrl] = useState<string | null>(initialLogo);
   const [locationUrl, setNaverTalkUrl] = useState(initialNaverTalkUrl ?? "");
@@ -35,6 +37,15 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
   const [bankAccount, setBankAccount] = useState("");
   const [bankHolder, setBankHolder] = useState("");
   const [businessNumber, setBusinessNumber] = useState("");
+  const [businessVerifiedAt, setBusinessVerifiedAt] = useState<string | null>(null);
+  const [businessStatus, setBusinessStatus] = useState<string | null>(null);
+  const [verifying, setVerifying] = useState(false);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
+  const [bankAccountImageUrl, setBankAccountImageUrl] = useState<string | null>(null);
+  const [bankImageUploading, setBankImageUploading] = useState(false);
+  const [consultApplyStatus, setConsultApplyStatus] = useState<"pending" | "approved" | "rejected" | null>(null);
+  const [consultRejectReason, setConsultRejectReason] = useState<string | null>(null);
+  const [applying, setApplying] = useState(false);
   const [notificationEmail, setNotificationEmail] = useState("");
   const [consultEnabled, setConsultEnabled] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -42,12 +53,13 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const bankImageInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
 
   useEffect(() => {
     supabase
       .from("company_settings")
-      .select("notification_email, bank_name, bank_account, bank_holder, address, consult_enabled, business_number")
+      .select("notification_email, bank_name, bank_account, bank_holder, address, consult_enabled, business_number, business_verified_at, business_status, bank_account_image_url, consult_apply_status, consult_reject_reason")
       .eq("company_id", companyId)
       .single()
       .then(({ data }) => {
@@ -57,6 +69,11 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
         if (data?.bank_account) setBankAccount(data.bank_account);
         if (data?.bank_holder) setBankHolder(data.bank_holder);
         if (data?.business_number) setBusinessNumber(data.business_number);
+        if (data?.business_verified_at) setBusinessVerifiedAt(data.business_verified_at);
+        if (data?.business_status) setBusinessStatus(data.business_status);
+        if (data?.bank_account_image_url) setBankAccountImageUrl(data.bank_account_image_url);
+        if (data?.consult_apply_status) setConsultApplyStatus(data.consult_apply_status);
+        if (data?.consult_reject_reason) setConsultRejectReason(data.consult_reject_reason);
         setConsultEnabled(data?.consult_enabled ?? false);
       });
     supabase
@@ -92,6 +109,82 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
     setUploading(false);
   };
 
+  const handleVerifyBusiness = async () => {
+    setVerifying(true);
+    setVerifyError(null);
+    const res = await fetch("/api/verify-business", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ business_number: businessNumber, company_id: companyId }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setBusinessVerifiedAt(new Date().toISOString());
+      setBusinessStatus(data.status);
+      if (!data.isActive) {
+        setVerifyError(`조회 결과: ${data.status}. 계속사업자만 등록 가능합니다.`);
+        setBusinessVerifiedAt(null);
+      }
+    } else {
+      setVerifyError(data.error ?? "인증에 실패했습니다.");
+    }
+    setVerifying(false);
+  };
+
+  const handleBankImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setBankImageUploading(true);
+
+    // PDF는 압축 불가, 이미지만 압축
+    let uploadFile: File = file;
+    if (file.type.startsWith("image/")) {
+      uploadFile = await imageCompression(file, {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1920,
+        useWebWorker: true,
+      });
+    }
+
+    const formData = new FormData();
+    formData.append("file", uploadFile, file.name);
+    formData.append("company_id", companyId);
+    const res = await fetch("/api/company/bank-doc", { method: "POST", body: formData });
+    if (res.ok) {
+      setBankAccountImageUrl("uploaded"); // 경로는 DB에 저장, 표시용으로만 사용
+    } else {
+      const data = await res.json();
+      setError("통장사본 업로드 실패: " + (data.error ?? "알 수 없는 오류"));
+    }
+    setBankImageUploading(false);
+  };
+
+  const handleViewBankDoc = async () => {
+    const res = await fetch(`/api/company/bank-doc?company_id=${companyId}`);
+    if (res.ok) {
+      const { url } = await res.json();
+      window.open(url, "_blank");
+    } else {
+      setError("통장사본 조회에 실패했습니다.");
+    }
+  };
+
+  const handleConsultApply = async () => {
+    setApplying(true);
+    const res = await fetch("/api/company/consult-apply", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ company_id: companyId }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setConsultApplyStatus("pending");
+    } else {
+      setError(data.error ?? "신청에 실패했습니다.");
+    }
+    setApplying(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -115,6 +208,7 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
           bank_name: bankName || null,
           bank_account: bankAccount || null,
           bank_holder: bankHolder || null,
+          bank_account_image_url: bankAccountImageUrl || null,
           business_number: businessNumber || null,
           address: address ? (addressDetail ? `${address} ${addressDetail}` : address) : null,
         })
@@ -352,25 +446,152 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
           </p>
         </div>
 
+        {/* 통장사본 + 사업자 정보 + 맞춤 주문 신청 (Pro 전용) */}
+        <div className="relative">
+          {plan === "starter" && (
+            <div className="absolute inset-0 z-10 rounded-xl bg-white/80 backdrop-blur-[2px] flex flex-col items-center justify-center gap-2 text-center px-4">
+              <svg className="w-5 h-5 text-gold-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+              </svg>
+              <p className="text-sm font-semibold text-gray-800">Pro 플랜에서 이용 가능합니다</p>
+              <p className="text-xs text-gray-400">요금제 탭에서 Pro로 업그레이드하세요.</p>
+            </div>
+          )}
+          <div className={plan === "starter" ? "pointer-events-none select-none" : ""}>
+
+        {/* 통장사본 */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">통장사본</label>
+          <p className="text-xs text-gray-400 mb-2">정산 처리를 위해 계좌 확인용으로 사용됩니다.</p>
+          {bankAccountImageUrl ? (
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleViewBankDoc}
+                className="text-xs text-blue-500 hover:underline"
+              >
+                통장사본 확인
+              </button>
+              <button
+                type="button"
+                onClick={() => setBankAccountImageUrl(null)}
+                className="text-xs text-gray-400 hover:text-red-400"
+              >
+                삭제
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => bankImageInputRef.current?.click()}
+              disabled={bankImageUploading}
+              className="px-4 py-2 border border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-gray-500 hover:text-gray-700 transition-colors disabled:opacity-50"
+            >
+              {bankImageUploading ? "업로드 중..." : "+ 통장사본 업로드"}
+            </button>
+          )}
+          <input
+            ref={bankImageInputRef}
+            type="file"
+            accept="image/*,application/pdf"
+            onChange={handleBankImageUpload}
+            className="hidden"
+          />
+        </div>
+
         {/* 사업자 정보 */}
         <div className="pt-2">
           <h3 className="text-sm font-semibold text-gray-700 mb-1">사업자 정보</h3>
-          <p className="text-xs text-gray-400 mb-3">파트너 정산 자동화 연동에 사용됩니다.</p>
+          <p className="text-xs text-gray-400 mb-3">파트너 정산 연동에 사용됩니다.</p>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">사업자등록번호</label>
-            <input
-              type="text"
-              value={businessNumber}
-              onChange={(e) => {
-                const raw = e.target.value.replace(/\D/g, "").slice(0, 10);
-                const formatted = raw.length <= 3 ? raw : raw.length <= 5 ? `${raw.slice(0, 3)}-${raw.slice(3)}` : `${raw.slice(0, 3)}-${raw.slice(3, 5)}-${raw.slice(5)}`;
-                setBusinessNumber(formatted);
-              }}
-              placeholder="000-00-00000"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
-            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={businessNumber}
+                onChange={(e) => {
+                  const raw = e.target.value.replace(/\D/g, "").slice(0, 10);
+                  const formatted = raw.length <= 3 ? raw : raw.length <= 5 ? `${raw.slice(0, 3)}-${raw.slice(3)}` : `${raw.slice(0, 3)}-${raw.slice(3, 5)}-${raw.slice(5)}`;
+                  setBusinessNumber(formatted);
+                  setBusinessVerifiedAt(null);
+                  setBusinessStatus(null);
+                  setVerifyError(null);
+                }}
+                placeholder="000-00-00000"
+                className="flex-1 border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
+              />
+              <button
+                type="button"
+                onClick={handleVerifyBusiness}
+                disabled={verifying || businessNumber.replace(/\D/g, "").length !== 10}
+                className="shrink-0 px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-600 hover:border-gray-500 bg-white transition-colors disabled:opacity-40 whitespace-nowrap"
+              >
+                {verifying ? "조회 중..." : "인증"}
+              </button>
+            </div>
+            {/* 인증 상태 */}
+            {businessVerifiedAt && businessStatus && (
+              <div className="mt-2 flex items-center gap-1.5 text-xs text-green-600">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+                인증 완료 · {businessStatus} · {new Date(businessVerifiedAt).toLocaleDateString("ko-KR")}
+              </div>
+            )}
+            {verifyError && (
+              <p className="mt-2 text-xs text-red-500">{verifyError}</p>
+            )}
           </div>
         </div>
+
+          {/* 맞춤 주문 신청 */}
+          <div className="pt-4 border-t border-gray-100">
+            <h3 className="text-sm font-semibold text-gray-700 mb-1">맞춤 주문 신청</h3>
+            {consultApplyStatus === "pending" && (
+              <div className="rounded-lg bg-yellow-50 border border-yellow-100 px-4 py-3 text-sm text-yellow-700">
+                검토 중입니다. 운영자 확인 후 안내드리겠습니다.
+              </div>
+            )}
+            {consultApplyStatus === "approved" && (
+              <div className="rounded-lg bg-green-50 border border-green-100 px-4 py-3 text-sm text-green-700">
+                승인되었습니다. 예약 설정 탭에서 맞춤 주문을 활성화할 수 있습니다.
+              </div>
+            )}
+            {consultApplyStatus === "rejected" && (
+              <div className="rounded-lg bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-600 space-y-1">
+                <div className="font-medium">반려되었습니다.</div>
+                {consultRejectReason && <div className="text-xs">{consultRejectReason}</div>}
+              </div>
+            )}
+            {(!consultApplyStatus || consultApplyStatus === "rejected") && (() => {
+              const canApply =
+                !!businessVerifiedAt &&
+                !!bankAccountImageUrl &&
+                !!bankName && !!bankAccount && !!bankHolder;
+              return (
+                <div className="space-y-2 mt-2">
+                  {!canApply && (
+                    <ul className="text-xs text-gray-400 space-y-0.5 list-disc list-inside">
+                      {!businessVerifiedAt && <li>사업자등록번호 인증 필요</li>}
+                      {!bankAccountImageUrl && <li>통장사본 업로드 필요</li>}
+                      {(!bankName || !bankAccount || !bankHolder) && <li>계좌 정보 입력 필요</li>}
+                    </ul>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleConsultApply}
+                    disabled={!canApply || applying}
+                    className="px-5 py-2.5 bg-gold-500 text-white text-sm rounded-lg hover:bg-gold-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {applying ? "신청 중..." : "맞춤 주문 신청하기"}
+                  </button>
+                </div>
+              );
+            })()}
+          </div>
+
+          </div>{/* end Pro-gated wrapper */}
+        </div>{/* end relative */}
 
         {/* 예약 알림 이메일 */}
         {/* <div>

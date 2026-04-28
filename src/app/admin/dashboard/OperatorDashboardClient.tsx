@@ -1,10 +1,12 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import SettlementsTab from "./SettlementsTab";
+import VerificationTab from "./VerificationTab";
 
 interface Company {
   id: string;
@@ -38,6 +40,7 @@ interface Props {
 export default function OperatorDashboardClient({ companies, reservations, products }: Props) {
   const router = useRouter();
   const supabase = createClient();
+  const [activeTab, setActiveTab] = useState<"overview" | "settlements" | "verification">("overview");
 
   const now = new Date();
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -202,6 +205,36 @@ export default function OperatorDashboardClient({ companies, reservations, produ
       </header>
 
       <main className="max-w-6xl mx-auto px-6 py-8 space-y-8">
+        {/* 탭 네비게이션 */}
+        <div className="flex border-b border-gray-200">
+          {([
+            { key: "overview", label: "현황" },
+            { key: "settlements", label: "정산 관리" },
+          { key: "verification", label: "검증 관리" },
+          ] as const).map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
+                activeTab === tab.key
+                  ? "border-gray-900 text-gray-900"
+                  : "border-transparent text-gray-400 hover:text-gray-600"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === "settlements" && (
+          <SettlementsTab companies={companies} />
+        )}
+
+        {activeTab === "verification" && (
+          <VerificationTab />
+        )}
+
+        {activeTab === "overview" && (<>
 
         {/* 요약 통계 */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -347,6 +380,8 @@ export default function OperatorDashboardClient({ companies, reservations, produ
             </table>
           </div>
         </div>
+
+        </>)}
 
       </main>
     </div>

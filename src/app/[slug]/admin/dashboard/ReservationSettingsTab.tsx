@@ -10,6 +10,7 @@ interface Props {
 }
 
 export default function ReservationSettingsTab({ companyId, onConsultToggle }: Props) {
+  const [consultApplyStatus, setConsultApplyStatus] = useState<"pending" | "approved" | "rejected" | null>(null);
   const [consultEnabled, setConsultEnabled] = useState(false);
   const [messageCardEnabled, setMessageCardEnabled] = useState(false);
   const [messageCardPrice, setMessageCardPrice] = useState("");
@@ -32,12 +33,13 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle }: P
   useEffect(() => {
     supabase
       .from("company_settings")
-      .select("consult_enabled, message_card_enabled, message_card_price, shopping_bag_enabled, shopping_bag_price, bank_name, bank_account, bank_holder, phone, address, consult_notice, delivery_fees, delivery_enabled")
+      .select("consult_enabled, consult_apply_status, message_card_enabled, message_card_price, shopping_bag_enabled, shopping_bag_price, bank_name, bank_account, bank_holder, phone, address, consult_notice, delivery_fees, delivery_enabled")
       .eq("company_id", companyId)
       .single()
       .then(({ data }) => {
         if (!data) return;
         if (data.consult_enabled) setConsultEnabled(data.consult_enabled);
+        if (data.consult_apply_status) setConsultApplyStatus(data.consult_apply_status);
         setMessageCardEnabled(data.message_card_enabled ?? false);
         setMessageCardPrice(data.message_card_price ? formatMoney(String(data.message_card_price)) : "");
         setShoppingBagEnabled(data.shopping_bag_enabled ?? false);
@@ -97,31 +99,39 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle }: P
       )}
 
       {/* 맞춤 주문 기능 활성화 */}
-      <div className="flex items-center justify-between p-4 border border-gray-200 rounded-xl bg-white">
-        <div>
-          <p className="text-sm font-medium text-gray-800">맞춤 주문 기능</p>
-          <p className="text-xs text-gray-400 mt-0.5">홈 화면에 &#34;맞춤 주문하기&#34; 버튼을 표시합니다.</p>
+      {consultApplyStatus !== "approved" ? (
+        <div className="p-4 border border-gray-200 rounded-xl bg-gray-50 text-sm text-gray-500">
+          {consultApplyStatus === "pending" && "운영자 검토 중입니다. 승인 후 활성화할 수 있습니다."}
+          {consultApplyStatus === "rejected" && "맞춤 주문 신청이 반려되었습니다. 매장 정보 탭에서 재신청해주세요."}
+          {!consultApplyStatus && "맞춤 주문을 사용하려면 매장 정보 탭에서 신청해주세요."}
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            if (!consultEnabled && !hasBankInfo) {
-              setShowBankWarning(true);
-              return;
-            }
-            setConsultEnabled((prev) => !prev);
-          }}
-          className={`shrink-0 w-12 h-6 rounded-full transition-colors relative ${
-            consultEnabled ? "bg-gold-500" : "bg-gray-200"
-          }`}
-        >
-          <span
-            className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${
-              consultEnabled ? "left-6" : "left-0.5"
+      ) : (
+        <div className="flex items-center justify-between p-4 border border-gray-200 rounded-xl bg-white">
+          <div>
+            <p className="text-sm font-medium text-gray-800">맞춤 주문 기능</p>
+            <p className="text-xs text-gray-400 mt-0.5">홈 화면에 &#34;맞춤 주문하기&#34; 버튼을 표시합니다.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              if (!consultEnabled && !hasBankInfo) {
+                setShowBankWarning(true);
+                return;
+              }
+              setConsultEnabled((prev) => !prev);
+            }}
+            className={`shrink-0 w-12 h-6 rounded-full transition-colors relative ${
+              consultEnabled ? "bg-gold-500" : "bg-gray-200"
             }`}
-          />
-        </button>
-      </div>
+          >
+            <span
+              className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${
+                consultEnabled ? "left-6" : "left-0.5"
+              }`}
+            />
+          </button>
+        </div>
+      )}
 
       {/* 계좌 정보 미입력 경고 팝업 */}
       {showBankWarning && (

@@ -387,6 +387,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
                 initialInstagramUrl={currentInstagramUrl}
                 initialYoutubeUrl={currentYoutubeUrl}
                 initialPhone={companyPhone}
+                plan={plan}
                 onSave={(name, logo, naver, kakao, instagram, youtube) => {
                   setCurrentCompanyName(name);
                   setCurrentLogoImage(logo);
