@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
 
   const { error } = await supabase
     .from("company_settings")
-    .update({ consult_apply_status: "pending", consult_reject_reason: null })
+    .update({ consult_apply_status: "pending", consult_reject_reason: null, consult_enabled: false })
     .eq("company_id", company_id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

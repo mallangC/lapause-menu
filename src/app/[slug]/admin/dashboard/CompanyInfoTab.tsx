@@ -47,6 +47,7 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
   const [consultRejectReason, setConsultRejectReason] = useState<string | null>(null);
   const [applying, setApplying] = useState(false);
   const [notificationEmail, setNotificationEmail] = useState("");
+  const initialConsultFields = useRef({ bankName: "", bankAccount: "", bankHolder: "", businessNumber: "" });
   const [consultEnabled, setConsultEnabled] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -75,6 +76,12 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
         if (data?.consult_apply_status) setConsultApplyStatus(data.consult_apply_status);
         if (data?.consult_reject_reason) setConsultRejectReason(data.consult_reject_reason);
         setConsultEnabled(data?.consult_enabled ?? false);
+        initialConsultFields.current = {
+          bankName: data?.bank_name || "",
+          bankAccount: data?.bank_account || "",
+          bankHolder: data?.bank_holder || "",
+          businessNumber: data?.business_number || "",
+        };
       });
     supabase
       .from("companies")
@@ -151,7 +158,15 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
     formData.append("company_id", companyId);
     const res = await fetch("/api/company/bank-doc", { method: "POST", body: formData });
     if (res.ok) {
-      setBankAccountImageUrl("uploaded"); // 경로는 DB에 저장, 표시용으로만 사용
+      setBankAccountImageUrl("uploaded");
+      if (consultApplyStatus !== null) {
+        setConsultApplyStatus(null);
+        setConsultEnabled(false);
+        await supabase
+          .from("company_settings")
+          .update({ consult_apply_status: null, consult_enabled: false })
+          .eq("company_id", companyId);
+      }
     } else {
       const data = await res.json();
       setError("통장사본 업로드 실패: " + (data.error ?? "알 수 없는 오류"));
@@ -179,6 +194,7 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
     const data = await res.json();
     if (res.ok) {
       setConsultApplyStatus("pending");
+      setConsultEnabled(false);
     } else {
       setError(data.error ?? "신청에 실패했습니다.");
     }
@@ -190,6 +206,13 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
     setError(null);
     setSuccess(false);
     setLoading(true);
+
+    const consultFieldsChanged =
+      bankName !== initialConsultFields.current.bankName ||
+      bankAccount !== initialConsultFields.current.bankAccount ||
+      bankHolder !== initialConsultFields.current.bankHolder ||
+      businessNumber !== initialConsultFields.current.businessNumber;
+    const shouldResetConsult = consultFieldsChanged && consultApplyStatus !== null;
 
     const [{ error: updateError }, { error: settingsError }] = await Promise.all([
       supabase
@@ -211,6 +234,7 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
           bank_account_image_url: bankAccountImageUrl || null,
           business_number: businessNumber || null,
           address: address ? (addressDetail ? `${address} ${addressDetail}` : address) : null,
+          ...(shouldResetConsult ? { consult_apply_status: null, consult_enabled: false } : {}),
         })
         .eq("company_id", companyId),
     ]);
@@ -219,6 +243,11 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
     if (combinedError) {
       setError(combinedError.message);
     } else {
+      if (shouldResetConsult) {
+        setConsultApplyStatus(null);
+        setConsultEnabled(false);
+        initialConsultFields.current = { bankName, bankAccount, bankHolder, businessNumber };
+      }
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
       onSave(name, logoUrl, locationUrl || null, kakaoChannelUrl || null, instagramUrl || null, youtubeUrl || null);
