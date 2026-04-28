@@ -2,11 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient as createServerAuthClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 
-const adminClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 async function verifyOperator() {
   const supabase = await createServerAuthClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -26,6 +21,11 @@ export async function PATCH(
   if (!(await verifyOperator())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const adminClient = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
 
   const { id } = await params;
   const body = await request.json();

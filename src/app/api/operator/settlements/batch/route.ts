@@ -2,11 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient as createServerAuthClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 
-const adminClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 async function verifyOperator() {
   const supabase = await createServerAuthClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -43,6 +38,11 @@ export async function POST(request: NextRequest) {
   if (!items?.length || !period_start || !period_end || !transferred_at) {
     return NextResponse.json({ error: "필수 값이 누락되었습니다." }, { status: 400 });
   }
+
+  const adminClient = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
 
   const year_month = period_start.slice(0, 7);
 

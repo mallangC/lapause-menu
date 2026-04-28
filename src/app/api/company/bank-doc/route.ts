@@ -4,10 +4,12 @@ import { createClient } from "@supabase/supabase-js";
 
 const BUCKET = "private-documents";
 
-const adminClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+function getAdminClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 async function verifyCompanyOwner(companyId: string) {
   const supabase = await createServerClient();
@@ -39,14 +41,14 @@ export async function POST(request: NextRequest) {
   const path = `bank-accounts/${companyId}_${Date.now()}.${ext}`;
   const buffer = Buffer.from(await file.arrayBuffer());
 
-  const { error } = await adminClient.storage
+  const { error } = await getAdminClient().storage
     .from(BUCKET)
     .upload(path, buffer, { contentType: file.type, upsert: true });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   // DB에 경로 저장
-  await adminClient
+  await getAdminClient()
     .from("company_settings")
     .update({ bank_account_image_url: path })
     .eq("company_id", companyId);
@@ -80,7 +82,7 @@ export async function GET(request: NextRequest) {
   }
 
   // 저장된 경로 조회
-  const { data: settings } = await adminClient
+  const { data: settings } = await getAdminClient()
     .from("company_settings")
     .select("bank_account_image_url")
     .eq("company_id", companyId)
@@ -89,7 +91,7 @@ export async function GET(request: NextRequest) {
   const path = settings?.bank_account_image_url;
   if (!path) return NextResponse.json({ error: "통장사본이 없습니다." }, { status: 404 });
 
-  const { data, error } = await adminClient.storage
+  const { data, error } = await getAdminClient().storage
     .from(BUCKET)
     .createSignedUrl(path, 3600);
 
