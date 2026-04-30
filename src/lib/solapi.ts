@@ -1,13 +1,5 @@
 import { SolapiMessageService } from "solapi";
 
-const client = new SolapiMessageService(
-  process.env.SOLAPI_API_KEY!,
-  process.env.SOLAPI_API_SECRET!
-);
-
-const PFID = process.env.SOLAPI_PFID!;
-const SENDER = process.env.SOLAPI_SENDER_PHONE!;
-
 // 검수 완료 후 템플릿 ID 입력
 const TEMPLATES = {
   /** 고객 → 예약 확정 시 발송 */
@@ -36,6 +28,12 @@ async function sendAlimtalk({
   variables: Record<string, string>;
   buttons?: AlimtalkButton[];
 }) {
+  const client = new SolapiMessageService(
+    process.env.SOLAPI_API_KEY!,
+    process.env.SOLAPI_API_SECRET!
+  );
+  const PFID = process.env.SOLAPI_PFID!;
+  const SENDER = process.env.SOLAPI_SENDER_PHONE!;
   return client.sendOne({
     to,
     from: SENDER,

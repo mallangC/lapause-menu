@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { sendReservationReceived, sendReservationCancelled } from "@/lib/solapi";
 
 export async function PATCH(
@@ -72,8 +73,8 @@ export async function PATCH(
   const { error } = await supabase.from("reservations").update(update).eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // 미확인에서 상태 변경 시에만 알림 발송
-  if (previousStatus !== "미확인") {
+  // 준비중 알림은 미확인에서 변경 시에만, 취소 알림은 어떤 상태에서든 발송
+  if (previousStatus !== "미확인" && status !== "취소") {
     return NextResponse.json({ ok: true });
   }
 
@@ -81,7 +82,7 @@ export async function PATCH(
   try {
     const { data: reservation } = await supabase
       .from("reservations")
-      .select("orderer_name, orderer_phone, product_type, final_price, delivery_type, desired_date, desired_time, customer_profile_id, company_id")
+      .select("orderer_name, orderer_phone, items, final_price, delivery_type, desired_date, desired_time, customer_profile_id, company_id")
       .eq("id", id)
       .single();
 
@@ -101,10 +102,14 @@ export async function PATCH(
     const companyPhone = company?.phone ?? "";
     const desiredDateTime = `${reservation.desired_date}${reservation.desired_time ? ` ${reservation.desired_time}` : ""}`;
 
-    // kakao_consent 확인
+    // kakao_consent 확인 (RLS 우회를 위해 adminClient 사용)
     let kakaoConsent = false;
     if (reservation.customer_profile_id) {
-      const { data: profile } = await supabase
+      const adminClient = createAdminClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
+      const { data: profile } = await adminClient
         .from("customer_profiles")
         .select("kakao_consent")
         .eq("id", reservation.customer_profile_id)
@@ -114,13 +119,16 @@ export async function PATCH(
 
     if (!kakaoConsent) return NextResponse.json({ ok: true });
 
+    const items = reservation.items as { type?: string }[] | null;
+    const productType = items?.[0]?.type ?? "";
+
     if (status === "준비중") {
       await sendReservationReceived({
         to: reservation.orderer_phone,
         ordererName: reservation.orderer_name,
         companyName: company?.name ?? "",
         finalPrice: reservation.final_price,
-        productType: reservation.product_type,
+        productType,
         deliveryType: reservation.delivery_type,
         desiredDateTime,
         companyPhone,
@@ -131,7 +139,7 @@ export async function PATCH(
         to: reservation.orderer_phone,
         ordererName: reservation.orderer_name,
         companyName: company?.name ?? "",
-        productType: reservation.product_type,
+        productType,
         finalPrice: reservation.final_price,
         cancelReason: cancelReason ?? "사유 없음",
         companyPhone,

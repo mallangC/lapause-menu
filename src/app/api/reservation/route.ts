@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { sendReservationConfirmedOwner } from "@/lib/solapi";
 
 interface ReservationBody {
@@ -164,7 +165,11 @@ export async function POST(request: NextRequest) {
       else {
         savedReservationId = insertData?.[0]?.id ?? null;
         if (customerProfileId) {
-          await supabase.from("customer_profiles").update({ kakao_consent: kakaoConsent ?? false }).eq("id", customerProfileId);
+          const adminClient = createAdminClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+          );
+          await adminClient.from("customer_profiles").update({ kakao_consent: kakaoConsent ?? false }).eq("id", customerProfileId);
         }
       }
     }
