@@ -33,7 +33,7 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle }: P
   useEffect(() => {
     supabase
       .from("company_settings")
-      .select("consult_enabled, consult_apply_status, message_card_enabled, message_card_price, shopping_bag_enabled, shopping_bag_price, bank_name, bank_account, bank_holder, phone, address, consult_notice, delivery_fees, delivery_enabled")
+      .select("consult_enabled, consult_apply_status, message_card_enabled, message_card_price, shopping_bag_enabled, shopping_bag_price, bank_name, bank_account, bank_holder, address, consult_notice, delivery_fees, delivery_enabled")
       .eq("company_id", companyId)
       .single()
       .then(({ data }) => {
@@ -44,7 +44,7 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle }: P
         setMessageCardPrice(data.message_card_price ? formatMoney(String(data.message_card_price)) : "");
         setShoppingBagEnabled(data.shopping_bag_enabled ?? false);
         setShoppingBagPrice(data.shopping_bag_price ? formatMoney(String(data.shopping_bag_price)) : "");
-        setHasBankInfo(!!(data.phone && data.address && data.bank_name && data.bank_account && data.bank_holder));
+        setHasBankInfo(!!(data.address && data.bank_name && data.bank_account && data.bank_holder));
         if (data.consult_notice) setConsultNotice(data.consult_notice);
         setDeliveryEnabled(data.delivery_enabled ?? false);
         if (data.delivery_fees && typeof data.delivery_fees === "object") {
@@ -152,7 +152,7 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle }: P
               <p>
                 맞춤 주문 기능을 활성화하려면<br />
                 <span className="font-medium text-gray-700">매장 정보 탭 &gt; 예약 알림 정보</span>에서<br />
-                매장 전화번호, 매장 주소, 은행, 계좌번호, 예금주을 모두 입력해주세요.
+                매장 주소, 은행, 계좌번호, 예금주를 모두 입력해주세요.
               </p>
             </div>
             <button
