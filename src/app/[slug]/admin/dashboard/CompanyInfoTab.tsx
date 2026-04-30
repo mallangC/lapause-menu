@@ -489,7 +489,7 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
           <div className={plan === "starter" ? "pointer-events-none select-none" : ""}>
 
         {/* 통장사본 */}
-        <div>
+        <div className={consultEnabled ? "opacity-50 pointer-events-none select-none" : ""}>
           <label className="block text-sm font-medium text-gray-700 mb-1">통장사본</label>
           <p className="text-xs text-gray-400 mb-2">정산 처리를 위해 계좌 확인용으로 사용됩니다.</p>
           {bankAccountImageUrl ? (
@@ -529,7 +529,7 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
         </div>
 
         {/* 사업자 정보 */}
-        <div className="pt-2">
+        <div className={`pt-2${consultEnabled ? " opacity-50 pointer-events-none select-none" : ""}`}>
           <h3 className="text-sm font-semibold text-gray-700 mb-1">사업자 정보</h3>
           <p className="text-xs text-gray-400 mb-3">파트너 정산 연동에 사용됩니다.</p>
           <div>
