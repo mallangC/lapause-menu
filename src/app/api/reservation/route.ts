@@ -176,10 +176,12 @@ export async function POST(request: NextRequest) {
 
     // 사장님에게 카카오 알림 발송
     try {
-      const { data: ownerPhone } = await supabase.rpc("get_owner_phone_by_slug", { p_slug: slug });
+      const { data: ownerPhone, error: phoneErr } = await supabase.rpc("get_owner_phone_by_slug", { p_slug: slug });
+      console.log("[reservation] ownerPhone:", ownerPhone, "phoneErr:", phoneErr);
       if (ownerPhone) {
         const { form, product, orderer, finalPrice } = body;
         const desiredDateTime = `${form.desiredDate}${form.desiredTime ? ` ${form.desiredTime}` : ""}`;
+        console.log("[reservation] 알림톡 발송 시작:", ownerPhone);
         await sendReservationConfirmedOwner({
           to: ownerPhone,
           companyName: body.companyName,
@@ -192,6 +194,8 @@ export async function POST(request: NextRequest) {
           requests: form.requests,
           slug,
         });
+      }
+        console.log("[reservation] 알림톡 발송 완료");
       }
     } catch (alimErr) {
       console.warn("[reservation] 사장님 알림톡 실패:", alimErr);
