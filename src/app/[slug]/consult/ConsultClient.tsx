@@ -75,6 +75,10 @@ interface Props {
   storeAddress?: string | null;
   deliveryEnabled?: boolean;
   deliveryFees?: Record<string, number>;
+  messageCardEnabled?: boolean;
+  messageCardPrice?: number;
+  shoppingBagEnabled?: boolean;
+  shoppingBagPrice?: number;
   preselectedProduct?: Product | null;
 }
 
@@ -286,7 +290,7 @@ function scoreProducts(products: Product[], form: ConsultForm): Product[] {
     .map(({ product }) => product);
 }
 
-export default function ConsultClient({ slug, companyName, notificationEmail, products, businessHours, closedDates, minLeadTimes = {}, consultNotice, storeAddress = null, deliveryEnabled = false, deliveryFees = {}, preselectedProduct = null }: Props) {
+export default function ConsultClient({ slug, companyName, notificationEmail, products, businessHours, closedDates, minLeadTimes = {}, consultNotice, storeAddress = null, deliveryEnabled = false, deliveryFees = {}, messageCardEnabled = false, messageCardPrice = 2000, shoppingBagEnabled = false, shoppingBagPrice = 2000, preselectedProduct = null }: Props) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [form, setForm] = useState<ConsultForm>(EMPTY_FORM);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(preselectedProduct);
@@ -364,8 +368,8 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
     setError(null);
 
     const finalPrice = selectedProduct.price +
-      (form.messageCard === "추가" ? 2000 : 0) +
-      (form.shoppingBag === "추가" ? 2000 : 0) +
+      (messageCardEnabled && form.messageCard === "추가" ? messageCardPrice : 0) +
+      (shoppingBagEnabled && form.shoppingBag === "추가" ? shoppingBagPrice : 0) +
       (form.deliveryType === "배송" && deliveryFee !== null ? deliveryFee : 0);
 
     try {
@@ -805,8 +809,8 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
                   label: "희망 예산",
                   value: form.budget === "기타" ? `${form.budgetCustom}만원` : form.budget,
                 },
-                { label: "메세지 카드", value: form.messageCard === "있음" && form.messageCardContent ? `있음 — ${form.messageCardContent}` : form.messageCard },
-                { label: "쇼핑백", value: form.shoppingBag },
+                ...(messageCardEnabled ? [{ label: "메세지 카드", value: form.messageCard === "있음" && form.messageCardContent ? `있음 — ${form.messageCardContent}` : form.messageCard }] : []),
+                ...(shoppingBagEnabled ? [{ label: "쇼핑백", value: form.shoppingBag }] : []),
                 { label: "수령 방법", value: form.deliveryType },
                 {
                   label: "수령 희망 일시",
@@ -826,16 +830,16 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
                     <span className="font-semibold text-gray-900">
                       {(
                         selectedProduct.price +
-                        (form.messageCard === "추가" ? 2000 : 0) +
-                        (form.shoppingBag === "추가" ? 2000 : 0) +
+                        (messageCardEnabled && form.messageCard === "추가" ? messageCardPrice : 0) +
+                        (shoppingBagEnabled && form.shoppingBag === "추가" ? shoppingBagPrice : 0) +
                         (form.deliveryType === "배송" && deliveryFee !== null ? deliveryFee : 0)
                       ).toLocaleString()}원
                     </span>
-                    {(form.messageCard === "추가" || form.shoppingBag === "추가" || (form.deliveryType === "배송" && deliveryFee !== null)) && (
+                    {((messageCardEnabled && form.messageCard === "추가") || (shoppingBagEnabled && form.shoppingBag === "추가") || (form.deliveryType === "배송" && deliveryFee !== null)) && (
                       <span className="text-xs text-gray-400 ml-2">
                         상품 {selectedProduct.price.toLocaleString()}원
-                        {form.messageCard === "추가" && " + 메시지카드 2,000원"}
-                        {form.shoppingBag === "추가" && " + 쇼핑백 2,000원"}
+                        {messageCardEnabled && form.messageCard === "추가" && ` + 메시지카드 ${messageCardPrice.toLocaleString()}원`}
+                        {shoppingBagEnabled && form.shoppingBag === "추가" && ` + 쇼핑백 ${shoppingBagPrice.toLocaleString()}원`}
                         {form.deliveryType === "배송" && deliveryFee !== null && ` + 배송비 ${deliveryFee.toLocaleString()}원`}
                       </span>
                     )}
@@ -846,35 +850,41 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
 
             {/* 메세지 카드 / 쇼핑백 / 수령 방법 / 일시 / 요청사항 */}
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-6">
-                <Section title="메세지 카드" badge="+2,000원" required>
-                  <div className="flex gap-2">
-                    {["추가", "없음"].map((v) => (
-                      <Chip key={v} label={v} selected={form.messageCard === v} onClick={() => { set("messageCard", v); if (v === "없음") set("messageCardContent", ""); }} />
-                    ))}
-                  </div>
-                  {form.messageCard === "추가" && (
-                    <textarea
-                      value={form.messageCardContent}
-                      onChange={(e) => set("messageCardContent", e.target.value)}
-                      placeholder="메시지 카드에 적을 내용을 입력해주세요. (30자 이내 작성 권장)"
-                      rows={3}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none focus:border-gray-500 bg-white placeholder:text-gray-300"
-                    />
+              {(messageCardEnabled || shoppingBagEnabled) && (
+                <div className="grid grid-cols-2 gap-6">
+                  {messageCardEnabled && (
+                    <Section title="메세지 카드" badge={`+${messageCardPrice.toLocaleString()}원`} required>
+                      <div className="flex gap-2">
+                        {["추가", "없음"].map((v) => (
+                          <Chip key={v} label={v} selected={form.messageCard === v} onClick={() => { set("messageCard", v); if (v === "없음") set("messageCardContent", ""); }} />
+                        ))}
+                      </div>
+                      {form.messageCard === "추가" && (
+                        <textarea
+                          value={form.messageCardContent}
+                          onChange={(e) => set("messageCardContent", e.target.value)}
+                          placeholder="메시지 카드에 적을 내용을 입력해주세요. (30자 이내 작성 권장)"
+                          rows={3}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none focus:border-gray-500 bg-white placeholder:text-gray-300"
+                        />
+                      )}
+                    </Section>
                   )}
-                </Section>
 
-                <Section title="쇼핑백" badge="+2,000원" required>
-                  <div className="flex gap-2">
-                    {["추가", "없음"].map((v) => (
-                      <Chip key={v} label={v} selected={form.shoppingBag === v} onClick={() => set("shoppingBag", v)} />
-                    ))}
-                  </div>
-                  {selectedProduct && selectedProduct.price >= 100000 && (
-                    <p className="text-xs text-gold-600">10만원 이상 상품엔 쇼핑백 1개가 서비스로 제공됩니다.</p>
+                  {shoppingBagEnabled && (
+                    <Section title="쇼핑백" badge={`+${shoppingBagPrice.toLocaleString()}원`} required>
+                      <div className="flex gap-2">
+                        {["추가", "없음"].map((v) => (
+                          <Chip key={v} label={v} selected={form.shoppingBag === v} onClick={() => set("shoppingBag", v)} />
+                        ))}
+                      </div>
+                      {selectedProduct && selectedProduct.price >= 100000 && (
+                        <p className="text-xs text-gold-600">10만원 이상 상품엔 쇼핑백 1개가 서비스로 제공됩니다.</p>
+                      )}
+                    </Section>
                   )}
-                </Section>
-              </div>
+                </div>
+              )}
               <Section title="수령 방법" required>
                 <div className="flex gap-2">
                   {(deliveryEnabled ? ["픽업", "배송"] : ["픽업"]).map((v) => (

@@ -19,7 +19,8 @@ export default async function ConsultPage({ params, searchParams }: Props) {
       id, name,
       settings:company_settings(
         business_hours, closed_dates, notification_email, min_lead_times,
-        consult_notice, address, delivery_enabled, delivery_fees, consult_enabled
+        consult_notice, address, delivery_enabled, delivery_fees, consult_enabled,
+        message_card_enabled, message_card_price, shopping_bag_enabled, shopping_bag_price
       )
     `)
     .eq("slug", slug)
@@ -52,6 +53,10 @@ export default async function ConsultPage({ params, searchParams }: Props) {
       storeAddress={(s.address as string | null) ?? null}
       deliveryEnabled={(s.delivery_enabled as boolean) ?? false}
       deliveryFees={(s.delivery_fees as Record<string, number>) ?? {}}
+      messageCardEnabled={(s.message_card_enabled as boolean) ?? false}
+      messageCardPrice={(s.message_card_price as number) ?? 2000}
+      shoppingBagEnabled={(s.shopping_bag_enabled as boolean) ?? false}
+      shoppingBagPrice={(s.shopping_bag_price as number) ?? 2000}
       preselectedProduct={preselectedProduct}
     />
   );

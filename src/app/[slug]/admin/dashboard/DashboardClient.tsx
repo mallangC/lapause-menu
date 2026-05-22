@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Product, ProductInput, ProductStatus } from "@/types";
 import { createClient } from "@/lib/supabase/client";
@@ -67,7 +68,9 @@ function ProGate() {
 }
 
 export default function DashboardClient({ slug, userId, userEmail, isOAuth, profileName, profilePhone, companyId, companyName, logoImage, themeBg, themeAccent, initialProducts, homeFeaturedImage, homeAllImage, homeSeasonImage, homeConsultImage, locationUrl, kakaoChannelUrl, instagramUrl, youtubeUrl, companyPhone, hiddenProductTypes, hiddenSeasons, consultEnabled, plan, subscriptionPlan, cancelAtPeriodEnd, trialEndsAt, planExpiresAt, hasBillingKey }: Props) {
-  const [activeTab, setActiveTab] = useState<Tab>("dashboard");
+  const searchParams = useSearchParams();
+  const initialTab = (searchParams.get("tab") as Tab | null) ?? "dashboard";
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
   const tabScrollRef = useRef<HTMLDivElement>(null);
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);

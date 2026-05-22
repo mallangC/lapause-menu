@@ -21,7 +21,7 @@ const CHECK_ICON = (
 export default function PlanSelectClient({ companyId, slug, customerName }: Props) {
   const router = useRouter();
   const [withdrawalAgreed, setWithdrawalAgreed] = useState(false);
-  const handleSuccess = () => router.push(`/${slug}/admin/dashboard`);
+  const handleSuccess = () => router.push(`/${slug}/admin/onboarding`);
 
   return (
     <div className="space-y-5">

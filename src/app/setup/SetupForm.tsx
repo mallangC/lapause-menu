@@ -49,15 +49,6 @@ export default function SetupForm({ initialOwnerName = "", initialOwnerPhone = "
 
   const handleNameChange = (value: string) => {
     setName(value);
-    // 이름 입력 시 slug 자동 생성 (영문/숫자/하이픈)
-    setSlug(
-      value
-        .toLowerCase()
-        .replace(/[^a-z0-9가-힣\s-]/g, "")
-        .replace(/[\s]+/g, "-")
-        .replace(/-+/g, "-")
-        .trim()
-    );
   };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -136,15 +127,10 @@ export default function SetupForm({ initialOwnerName = "", initialOwnerPhone = "
         return;
       }
 
-      // settings, subscription 초기값 설정
-      await Promise.all([
-        supabase.from("company_settings")
-          .update({ logo_image: logoUrl, business_hours: defaultBusinessHours })
-          .eq("company_id", newCompany!.id),
-        supabase.from("company_subscriptions")
-          .update({ plan: "free" })
-          .eq("company_id", newCompany!.id),
-      ]);
+      // settings 초기값 설정 (플랜은 /plan 페이지에서 선택)
+      await supabase.from("company_settings")
+        .update({ logo_image: logoUrl, business_hours: defaultBusinessHours })
+        .eq("company_id", newCompany!.id);
     }
 
     const { error: profileError } = await supabase
@@ -163,7 +149,7 @@ export default function SetupForm({ initialOwnerName = "", initialOwnerPhone = "
       return;
     }
 
-    router.push(`/${slug}/admin/dashboard`);
+    router.push(`/plan`);
   };
 
   return (
@@ -252,7 +238,7 @@ export default function SetupForm({ initialOwnerName = "", initialOwnerPhone = "
       {/* URL 슬러그 */}
       <div>
         <label className="block text-sm font-medium text-gray-800 mb-1">
-          가게 주소 <span className="text-red-500">*</span>
+          매장 주소 <span className="text-red-500">*</span>
         </label>
         <div className="flex items-center gap-1">
           <span className="text-sm text-gray-500 shrink-0">사이트주소/</span>
