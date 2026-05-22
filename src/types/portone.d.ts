@@ -26,6 +26,8 @@ declare module "@portone/browser-sdk/v2" {
     currency: string;
     payMethod: string;
     customer?: { fullName?: string; phoneNumber?: string };
+    windowType?: { pc?: "POPUP" | "REDIRECT"; mobile?: "POPUP" | "REDIRECT" };
+    redirectUrl?: string;
   }
 
   interface PaymentSuccess {

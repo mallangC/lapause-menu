@@ -55,6 +55,19 @@ const EMPTY_FORM: ConsultForm = {
   requests: "",
 };
 
+interface DraftData {
+  form: ConsultForm;
+  product: { id: string; name: string; price: number; product_type: string; image_url: string | null };
+  name: string;
+  phone: string;
+  recipientName: string;
+  recipientPhone: string;
+  address: string;
+  addressDetail: string;
+  kakaoConsent: boolean;
+  finalPrice: number;
+}
+
 interface DayHours {
   closed: boolean;
   open: string;
@@ -323,6 +336,72 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
   const set = (key: keyof ConsultForm, value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
+  // 모바일 리다이렉트 결제 복귀 처리
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const returnedPaymentId = params.get("paymentId");
+    if (!returnedPaymentId) return;
+
+    window.history.replaceState({}, "", `/${slug}/consult`);
+
+    if (params.get("code")) {
+      setError(params.get("message") ?? "결제가 취소되었습니다.");
+      return;
+    }
+
+    const saved = sessionStorage.getItem(`consult_draft_${slug}`);
+    if (!saved) {
+      setError("결제 정보를 찾을 수 없습니다. 다시 시도해주세요.");
+      return;
+    }
+
+    const draft: DraftData = JSON.parse(saved);
+    sessionStorage.removeItem(`consult_draft_${slug}`);
+
+    const run = async () => {
+      setSubmitting(true);
+      setError(null);
+      try {
+        const res = await fetch("/api/reservation", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            slug,
+            companyName,
+            notificationEmail,
+            form: draft.form,
+            product: draft.product,
+            orderer: { name: draft.name, phone: draft.phone },
+            kakaoConsent: draft.kakaoConsent,
+            delivery: draft.form.deliveryType === "배송" ? {
+              recipientName: draft.recipientName,
+              recipientPhone: draft.recipientPhone,
+              address: draft.address,
+              addressDetail: draft.addressDetail,
+            } : null,
+            finalPrice: draft.finalPrice,
+            paymentId: returnedPaymentId,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? "예약 저장 실패");
+        const rid = data.reservationId ?? null;
+        setReservationId(rid);
+        setFinalPriceSnapshot(draft.finalPrice);
+        if (rid) await fetch(`/api/reservation/${rid}/paid`, { method: "PATCH" });
+        setSubmitted(true);
+        setPaidConfirmed(true);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "예약 중 오류가 발생했습니다.");
+      } finally {
+        setSubmitting(false);
+      }
+    };
+
+    run();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const recommendations = useMemo(
     () => scoreProducts(products, form),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -374,6 +453,27 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
 
     try {
       const paymentId = `order${Date.now()}`;
+
+      // 모바일 리다이렉트 대비 폼 데이터 임시 저장
+      sessionStorage.setItem(`consult_draft_${slug}`, JSON.stringify({
+        form,
+        product: {
+          id: selectedProduct.id,
+          name: selectedProduct.name,
+          price: selectedProduct.price,
+          product_type: selectedProduct.product_type,
+          image_url: selectedProduct.image_url,
+        },
+        name,
+        phone: parsePhone(phone),
+        recipientName,
+        recipientPhone: parsePhone(recipientPhone),
+        address,
+        addressDetail,
+        kakaoConsent,
+        finalPrice,
+      } satisfies DraftData));
+
       const PortOne = await import("@portone/browser-sdk/v2");
       const payResponse = await PortOne.requestPayment({
         storeId: process.env.NEXT_PUBLIC_PORTONE_STORE_ID!,
@@ -384,12 +484,16 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
         currency: "KRW",
         payMethod: "CARD",
         customer: { fullName: name, phoneNumber: parsePhone(phone) },
+        windowType: { pc: "POPUP", mobile: "REDIRECT" },
+        redirectUrl: `${window.location.origin}/${slug}/consult`,
       });
       if (!payResponse || "code" in payResponse) {
+        sessionStorage.removeItem(`consult_draft_${slug}`);
         setError(("message" in (payResponse ?? {}) ? (payResponse as { message: string }).message : null) ?? "결제가 취소되었습니다.");
         setSubmitting(false);
         return;
       }
+      sessionStorage.removeItem(`consult_draft_${slug}`);
 
       const res = await fetch("/api/reservation", {
         method: "POST",
