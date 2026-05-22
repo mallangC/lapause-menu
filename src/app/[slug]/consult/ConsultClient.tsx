@@ -484,7 +484,7 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
         currency: "KRW",
         payMethod: "CARD",
         customer: { fullName: name, phoneNumber: parsePhone(phone) },
-        windowType: { pc: "POPUP", mobile: "REDIRECT" },
+        windowType: { pc: "POPUP" },
         redirectUrl: `${window.location.origin}/${slug}/consult`,
       });
       if (!payResponse || "code" in payResponse) {
