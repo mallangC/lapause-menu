@@ -65,6 +65,8 @@ interface DraftData {
   address: string;
   addressDetail: string;
   kakaoConsent: boolean;
+  privacyAgreed: boolean;
+  cancellationAgreed: boolean;
   finalPrice: number;
 }
 
@@ -345,6 +347,26 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
     window.history.replaceState({}, "", `/${slug}/consult`);
 
     if (params.get("code")) {
+      // 결제 실패 — 드래프트에서 폼 복원 후 step 3으로 이동
+      const saved = sessionStorage.getItem(`consult_draft_${slug}`);
+      if (saved) {
+        try {
+          const draft: DraftData = JSON.parse(saved);
+          setForm(draft.form);
+          setSelectedProduct(products.find(p => p.id === draft.product.id) ?? null);
+          setName(draft.name);
+          setPhone(formatPhone(draft.phone));
+          setRecipientName(draft.recipientName);
+          if (draft.recipientPhone) setRecipientPhone(formatPhone(draft.recipientPhone));
+          setAddress(draft.address);
+          setAddressDetail(draft.addressDetail);
+          setKakaoConsent(draft.kakaoConsent);
+          setPrivacyAgreed(draft.privacyAgreed);
+          setCancellationAgreed(draft.cancellationAgreed);
+          setStep(3);
+        } catch { /* 파싱 실패 시 step 1 유지 */ }
+        sessionStorage.removeItem(`consult_draft_${slug}`);
+      }
       setError(params.get("message") ?? "결제가 취소되었습니다.");
       return;
     }
@@ -471,6 +493,8 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
         address,
         addressDetail,
         kakaoConsent,
+        privacyAgreed,
+        cancellationAgreed,
         finalPrice,
       } satisfies DraftData));
 
@@ -860,6 +884,18 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
               <h2 className="text-lg font-medium text-gray-900 mb-1">예약 확인</h2>
               <p className="text-sm text-gray-500">정보를 확인하고 예약을 완료해주세요.</p>
             </div>
+
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-start gap-3">
+                <svg className="w-5 h-5 text-red-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                </svg>
+                <div>
+                  <p className="text-sm font-medium text-red-700">결제가 완료되지 않았습니다</p>
+                  <p className="text-xs text-red-500 mt-0.5">{error}</p>
+                </div>
+              </div>
+            )}
 
             {consultNotice && (
               <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
