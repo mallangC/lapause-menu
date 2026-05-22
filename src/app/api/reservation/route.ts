@@ -52,10 +52,8 @@ export async function POST(request: NextRequest) {
   try {
     const body: ReservationBody = await request.json();
     const { slug, orderer, paymentId } = body;
-    console.warn("[reservation] START slug:", slug, "paymentId:", paymentId);
 
     if (!orderer.name || !orderer.phone || !body.product?.id) {
-      console.warn("[reservation] 필수 정보 누락");
       return NextResponse.json({ error: "필수 정보가 누락되었습니다." }, { status: 400 });
     }
 
@@ -70,20 +68,16 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (!dbProduct) {
-        console.warn("[reservation] 상품 정보 없음:", body.product.id);
         return NextResponse.json({ error: "상품 정보를 찾을 수 없습니다." }, { status: 400 });
       }
 
-      console.warn("[reservation] 포트원 검증 시작, secret 존재:", !!process.env.PORTONE_API_SECRET);
       const portoneRes = await fetch(`https://api.portone.io/payments/${paymentId}`, {
         headers: { Authorization: `PortOne ${process.env.PORTONE_API_SECRET}` },
       });
-      console.warn("[reservation] 포트원 응답:", portoneRes.status);
       if (!portoneRes.ok) {
         return NextResponse.json({ error: "결제 정보를 확인할 수 없습니다." }, { status: 400 });
       }
       const portoneData = await portoneRes.json();
-      console.warn("[reservation] 포트원 상태:", portoneData.status, "금액:", portoneData.amount?.total);
       if (portoneData.status !== "PAID") {
         return NextResponse.json({ error: "결제가 완료되지 않았습니다." }, { status: 400 });
       }
@@ -93,7 +87,6 @@ export async function POST(request: NextRequest) {
     }
     const { data: companyId, error: companyError } = await supabase
       .rpc("get_company_id_by_slug", { p_slug: slug });
-    console.warn("[reservation] companyId:", companyId, "error:", companyError?.message);
     if (companyError) console.error("[reservation] company 조회 실패:", companyError.message);
     if (!companyId) {
       return NextResponse.json({ success: true });
@@ -181,12 +174,10 @@ export async function POST(request: NextRequest) {
 
     // 사장님에게 카카오 알림 발송
     try {
-      const { data: ownerPhone, error: phoneErr } = await supabase.rpc("get_owner_phone_by_slug", { p_slug: slug });
-      console.warn("[reservation] ownerPhone:", ownerPhone, "phoneErr:", phoneErr);
+      const { data: ownerPhone } = await supabase.rpc("get_owner_phone_by_slug", { p_slug: slug });
       if (ownerPhone) {
         const { form, product, orderer, finalPrice } = body;
         const desiredDateTime = `${form.desiredDate}${form.desiredTime ? ` ${form.desiredTime}` : ""}`;
-        console.warn("[reservation] 알림톡 발송 시작:", ownerPhone);
         await sendReservationConfirmedOwner({
           to: ownerPhone,
           companyName: body.companyName,
@@ -199,7 +190,6 @@ export async function POST(request: NextRequest) {
           requests: form.requests,
           slug,
         });
-        console.warn("[reservation] 알림톡 발송 완료");
       }
     } catch (alimErr) {
       console.warn("[reservation] 사장님 알림톡 실패:", alimErr);
