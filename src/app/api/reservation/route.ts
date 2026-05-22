@@ -194,7 +194,6 @@ export async function POST(request: NextRequest) {
           requests: form.requests,
           slug,
         });
-      }
         console.log("[reservation] 알림톡 발송 완료");
       }
     } catch (alimErr) {
