@@ -95,6 +95,7 @@ interface Props {
   shoppingBagEnabled?: boolean;
   shoppingBagPrice?: number;
   preselectedProduct?: Product | null;
+  initialPaymentId?: string | null;
 }
 
 async function geocodeKakao(address: string): Promise<{ lat: number; lng: number } | null> {
@@ -305,7 +306,7 @@ function scoreProducts(products: Product[], form: ConsultForm): Product[] {
     .map(({ product }) => product);
 }
 
-export default function ConsultClient({ slug, companyName, notificationEmail, products, businessHours, closedDates, minLeadTimes = {}, consultNotice, storeAddress = null, deliveryEnabled = false, deliveryFees = {}, messageCardEnabled = false, messageCardPrice = 2000, shoppingBagEnabled = false, shoppingBagPrice = 2000, preselectedProduct = null }: Props) {
+export default function ConsultClient({ slug, companyName, notificationEmail, products, businessHours, closedDates, minLeadTimes = {}, consultNotice, storeAddress = null, deliveryEnabled = false, deliveryFees = {}, messageCardEnabled = false, messageCardPrice = 2000, shoppingBagEnabled = false, shoppingBagPrice = 2000, preselectedProduct = null, initialPaymentId = null }: Props) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [form, setForm] = useState<ConsultForm>(EMPTY_FORM);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(preselectedProduct);
@@ -334,6 +335,7 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
   const [deliveryDistance, setDeliveryDistance] = useState<number | null>(null);
   const [deliveryFee, setDeliveryFee] = useState<number | null>(null);
   const [distanceLoading, setDistanceLoading] = useState(false);
+  const [isProcessingRedirect, setIsProcessingRedirect] = useState(!!initialPaymentId);
 
   const set = (key: keyof ConsultForm, value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -368,12 +370,14 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
         sessionStorage.removeItem(`consult_draft_${slug}`);
       }
       setError(params.get("message") ?? "결제가 취소되었습니다.");
+      setIsProcessingRedirect(false);
       return;
     }
 
     const saved = sessionStorage.getItem(`consult_draft_${slug}`);
     if (!saved) {
       setError("결제 정보를 찾을 수 없습니다. 다시 시도해주세요.");
+      setIsProcessingRedirect(false);
       return;
     }
 
@@ -417,6 +421,7 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
         setError(err instanceof Error ? err.message : "예약 중 오류가 발생했습니다.");
       } finally {
         setSubmitting(false);
+        setIsProcessingRedirect(false);
       }
     };
 
@@ -508,7 +513,6 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
         currency: "KRW",
         payMethod: "CARD",
         customer: { fullName: name, phoneNumber: parsePhone(phone) },
-        windowType: { pc: "POPUP" },
         redirectUrl: `${window.location.origin}/${slug}/consult`,
       });
       if (!payResponse || "code" in payResponse) {
@@ -571,6 +575,20 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
     setPayLoading(false);
     setPaidConfirmed(true);
   };
+
+  if (isProcessingRedirect) {
+    return (
+      <div className="min-h-screen bg-beige-100 flex items-center justify-center px-4">
+        <div className="text-center space-y-5">
+          <div className="w-16 h-16 mx-auto rounded-full border-4 border-beige-200 border-t-gold-500 animate-spin" />
+          <div className="space-y-1.5">
+            <p className="text-base font-medium text-gray-800">결제를 처리하고 있습니다</p>
+            <p className="text-sm text-gray-400">잠시만 기다려주세요...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (showNotice) {
     return (

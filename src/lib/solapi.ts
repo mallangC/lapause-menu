@@ -108,7 +108,6 @@ export async function sendReservationConfirmedOwner({
   requests: string;
   slug: string;
 }) {
-  const dashboardUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/${slug}/admin/dashboard`;
   return sendAlimtalk({
     to,
     templateId: TEMPLATES.RESERVATION_CONFIRMED_OWNER,
@@ -121,7 +120,7 @@ export async function sendReservationConfirmedOwner({
       "#{고객성함}": ordererName,
       "#{고객번호}": ordererPhone,
       "#{요청사항내용}": requests || "없음",
-      "#{LINK}": dashboardUrl,
+      "#{LINK}": slug,
     },
   });
 }

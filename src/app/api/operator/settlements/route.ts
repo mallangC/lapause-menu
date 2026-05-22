@@ -96,9 +96,9 @@ export async function POST(request: NextRequest) {
     .eq("company_id", company_id)
     .eq("paid", true)
     .is("settlement_id", null)
-    .neq("status", "취소")
-    .gte("desired_date", period_start)
-    .lte("desired_date", period_end);
+    .eq("status", "픽업/배송완료")
+    .gte("created_at", `${period_start}T00:00:00`)
+    .lte("created_at", `${period_end}T23:59:59`);
 
   if (rErr) return NextResponse.json({ error: rErr.message }, { status: 500 });
 

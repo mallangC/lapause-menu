@@ -49,11 +49,16 @@ export async function PATCH(
         });
         if (!refundRes.ok) {
           const refundData = await refundRes.json().catch(() => ({}));
-          console.error("[status] 환불 실패:", refundData);
-          return NextResponse.json(
-            { error: "환불 처리에 실패했습니다. 포트원 관리자 콘솔을 확인해주세요." },
-            { status: 500 }
-          );
+          // P568: 이미 취소된 결제 → 무시하고 상태만 변경
+          if (refundData?.pgCode === "P568") {
+            console.warn("[status] 이미 취소된 결제, 상태만 변경:", reservation.payment_id);
+          } else {
+            console.error("[status] 환불 실패:", refundData);
+            return NextResponse.json(
+              { error: "환불 처리에 실패했습니다. 포트원 관리자 콘솔을 확인해주세요." },
+              { status: 500 }
+            );
+          }
         }
       } catch (err) {
         console.error("[status] 환불 요청 오류:", err);

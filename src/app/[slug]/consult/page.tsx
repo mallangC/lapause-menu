@@ -5,12 +5,12 @@ import ConsultClient from "./ConsultClient";
 
 interface Props {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ productId?: string }>;
+  searchParams: Promise<{ productId?: string; paymentId?: string }>;
 }
 
 export default async function ConsultPage({ params, searchParams }: Props) {
   const { slug } = await params;
-  const { productId } = await searchParams;
+  const { productId, paymentId } = await searchParams;
   const supabase = await createClient();
 
   const { data: raw } = await supabase
@@ -58,6 +58,7 @@ export default async function ConsultPage({ params, searchParams }: Props) {
       shoppingBagEnabled={(s.shopping_bag_enabled as boolean) ?? false}
       shoppingBagPrice={(s.shopping_bag_price as number) ?? 2000}
       preselectedProduct={preselectedProduct}
+      initialPaymentId={paymentId ?? null}
     />
   );
 }

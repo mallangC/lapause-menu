@@ -39,9 +39,9 @@ export async function GET(request: NextRequest) {
     .eq("paid", true)
     .not("payment_id", "is", null)
     .is("settlement_id", null)
-    .neq("status", "취소")
-    .gte("desired_date", period_start)
-    .lte("desired_date", period_end);
+    .eq("status", "픽업/배송완료")
+    .gte("created_at", `${period_start}T00:00:00`)
+    .lte("created_at", `${period_end}T23:59:59`);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (!reservations?.length) return NextResponse.json([]);

@@ -25,10 +25,11 @@ interface Settings {
   shopping_bag_enabled: boolean;
 }
 
-interface ProductCounts {
-  active: number;
-  inactive: number;
-  sold_out: number;
+interface ReservationCounts {
+  미확인: number;
+  준비중: number;
+  완료: number;
+  취소: number;
   total: number;
 }
 
@@ -77,13 +78,16 @@ function CheckItem({ ok, label, tab, onNavigate }: { ok: boolean; label: string;
 export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate }: Props) {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [companyPhone, setCompanyPhone] = useState<string | null>(null);
-  const [productCounts, setProductCounts] = useState<ProductCounts>({ active: 0, inactive: 0, sold_out: 0, total: 0 });
+  const [reservationCounts, setReservationCounts] = useState<ReservationCounts>({ 미확인: 0, 준비중: 0, 완료: 0, 취소: 0, total: 0 });
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const supabase = createClient();
 
   const load = useCallback(async () => {
-    const [{ data: s }, { data: company }, { data: products }] = await Promise.all([
+    const today = new Date().toISOString().slice(0, 10);
+    const future30 = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+    const [{ data: s }, { data: company }, { data: reservations }] = await Promise.all([
       supabase
         .from("company_settings")
         .select("consult_enabled, consult_apply_status, business_verified_at, bank_account_image_url, bank_name, bank_account, bank_holder, address, delivery_enabled, message_card_enabled, shopping_bag_enabled")
@@ -95,21 +99,24 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
         .eq("id", companyId)
         .single(),
       supabase
-        .from("products")
+        .from("reservations")
         .select("status")
-        .eq("company_id", companyId),
+        .eq("company_id", companyId)
+        .gte("desired_date", today)
+        .lte("desired_date", future30),
     ]);
 
     if (s) setSettings(s);
     if (company?.phone) setCompanyPhone(company.phone);
-    if (products) {
-      const counts = { active: 0, inactive: 0, sold_out: 0, total: products.length };
-      for (const p of products) {
-        if (p.status === "active") counts.active++;
-        else if (p.status === "inactive") counts.inactive++;
-        else if (p.status === "sold_out") counts.sold_out++;
+    if (reservations) {
+      const counts = { 미확인: 0, 준비중: 0, 완료: 0, 취소: 0, total: reservations.length };
+      for (const r of reservations) {
+        if (r.status === "미확인") counts.미확인++;
+        else if (r.status === "준비중") counts.준비중++;
+        else if (r.status === "픽업/배송완료") counts.완료++;
+        else if (r.status === "취소") counts.취소++;
       }
-      setProductCounts(counts);
+      setReservationCounts(counts);
     }
     setLoading(false);
   }, [companyId]);
@@ -167,12 +174,15 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-        {/* 상품 현황 */}
+        {/* 예약 현황 (오늘~30일) */}
         <div className="bg-white border border-gray-200 rounded-2xl px-5 py-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-gray-700">상품 현황</h3>
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700">예약 현황</h3>
+              <p className="text-xs text-gray-400 mt-0.5">오늘부터 30일 이내</p>
+            </div>
             <button
-              onClick={() => onNavigate("products")}
+              onClick={() => onNavigate("reservations")}
               className="text-xs text-gray-400 hover:text-gold-500 transition-colors"
             >
               관리 →
@@ -180,10 +190,10 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
           </div>
           <div className="grid grid-cols-4 gap-2 text-center">
             {[
-              { label: "전체", value: productCounts.total, color: "text-gray-800" },
-              { label: "활성", value: productCounts.active, color: "text-green-600" },
-              { label: "비활성", value: productCounts.inactive, color: "text-gray-400" },
-              { label: "품절", value: productCounts.sold_out, color: "text-red-400" },
+              { label: "미확인", value: reservationCounts.미확인, color: "text-amber-500" },
+              { label: "준비중", value: reservationCounts.준비중, color: "text-blue-500" },
+              { label: "완료", value: reservationCounts.완료, color: "text-green-600" },
+              { label: "취소", value: reservationCounts.취소, color: "text-red-400" },
             ].map(({ label, value, color }) => (
               <div key={label} className="bg-gray-50 rounded-xl py-3">
                 <p className={`text-lg font-semibold ${color}`}>{value}</p>
