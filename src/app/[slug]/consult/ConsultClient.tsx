@@ -332,6 +332,7 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
   const [error, setError] = useState<string | null>(null);
   const [step1FieldErrors, setStep1FieldErrors] = useState<string[]>([]);
   const [step3FieldErrors, setStep3FieldErrors] = useState<string[]>([]);
+  const [paymentMethod, setPaymentMethod] = useState<"CARD" | "TOSSPAY">("CARD");
   const [deliveryDistance, setDeliveryDistance] = useState<number | null>(null);
   const [deliveryFee, setDeliveryFee] = useState<number | null>(null);
   const [distanceLoading, setDistanceLoading] = useState(false);
@@ -506,13 +507,17 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
       const PortOne = await import("@portone/browser-sdk/v2");
       const payResponse = await PortOne.requestPayment({
         storeId: process.env.NEXT_PUBLIC_PORTONE_STORE_ID!,
-        channelKey: process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY!,
+        channelKey: paymentMethod === "TOSSPAY"
+          ? process.env.NEXT_PUBLIC_PORTONE_TOSSPAY_CHANNEL_KEY!
+          : process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY!,
         paymentId,
         orderName: `${companyName} 맞춤 주문`,
         totalAmount: finalPrice,
-        currency: "KRW",
-        payMethod: "CARD",
-        customer: { fullName: name, phoneNumber: parsePhone(phone) },
+        currency: paymentMethod === "TOSSPAY" ? "CURRENCY_KRW" : "KRW",
+        payMethod: paymentMethod === "TOSSPAY" ? "EASY_PAY" : "CARD",
+        ...(paymentMethod === "CARD" && {
+          customer: { fullName: name, phoneNumber: parsePhone(phone) },
+        }),
         redirectUrl: `${window.location.origin}/${slug}/consult`,
       });
       if (!payResponse || "code" in payResponse) {
@@ -1323,7 +1328,42 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
                 </ul>
               </div>
             )}
-            <div className="flex gap-3 pt-2">
+            <div className="space-y-2 pt-2">
+              <p className="text-xs font-medium text-gray-500">결제 수단</p>
+              <div className="flex gap-3">
+                {/* 카드 */}
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod("CARD")}
+                  className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-xl text-sm font-medium border-2 transition-all ${
+                    paymentMethod === "CARD"
+                      ? "bg-gold-500 text-white border-gold-500"
+                      : "bg-white text-gray-700 border-gray-200 hover:border-gold-400"
+                  }`}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="1" y="4" width="22" height="16" rx="2"/>
+                    <line x1="1" y1="10" x2="23" y2="10"/>
+                  </svg>
+                  카드
+                </button>
+
+                {/* 토스페이 */}
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod("TOSSPAY")}
+                  className={`flex-1 flex items-center justify-center gap-2.5 py-4 rounded-xl text-sm font-medium border-2 transition-all ${
+                    paymentMethod === "TOSSPAY"
+                      ? "border-[#0064FF] bg-blue-50"
+                      : "bg-white border-gray-200 hover:border-[#0064FF]"
+                  }`}
+                >
+                  <Image src="/tosspay-logo.png" alt="토스페이" width={100} height={32} className="object-contain" />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
               <button
                 type="button"
                 onClick={() => setStep(preselectedProduct ? 1 : 2)}
