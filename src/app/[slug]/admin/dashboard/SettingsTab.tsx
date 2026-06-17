@@ -191,34 +191,21 @@ export default function SettingsTab({ companyId, initialBg, initialAccent, initi
               </div>
             ))}
             {showProductTypeForm ? (
-              <div className="col-span-3 space-y-1">
-                <div className="flex gap-1">
-                  <input
-                    autoFocus
-                    value={newProductTypeName}
-                    onChange={(e) => { setNewProductTypeName(e.target.value); if (duplicateError === "product_type") setDuplicateError(null); }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") { e.preventDefault(); addCategory("product_type", newProductTypeName, () => { setNewProductTypeName(""); setShowProductTypeForm(false); }); }
-                      if (e.key === "Escape") { setShowProductTypeForm(false); setNewProductTypeName(""); setDuplicateError(null); }
-                    }}
-                    placeholder="새 유형 이름"
-                    className={`flex-1 min-w-0 border rounded-lg px-2.5 py-1.5 text-sm placeholder-gray-300 focus:outline-none ${duplicateError === "product_type" ? "border-red-400 text-red-500" : "border-gray-300 text-gray-600 focus:border-gray-400"}`}
-                  />
-                  <button
-                    onClick={() => addCategory("product_type", newProductTypeName, () => { setNewProductTypeName(""); setShowProductTypeForm(false); })}
-                    className="px-3 py-1.5 rounded-lg bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors whitespace-nowrap"
-                  >
-                    추가
-                  </button>
-                  <button
-                    onClick={() => { setShowProductTypeForm(false); setNewProductTypeName(""); setDuplicateError(null); }}
-                    className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-400 text-sm hover:bg-gray-50 transition-colors"
-                  >
-                    취소
-                  </button>
-                </div>
+              <div className="space-y-1">
+                <input
+                  autoFocus
+                  value={newProductTypeName}
+                  onChange={(e) => { setNewProductTypeName(e.target.value); if (duplicateError === "product_type") setDuplicateError(null); }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") { e.preventDefault(); addCategory("product_type", newProductTypeName, () => { setNewProductTypeName(""); setShowProductTypeForm(false); }); }
+                    if (e.key === "Escape") { setShowProductTypeForm(false); setNewProductTypeName(""); setDuplicateError(null); }
+                  }}
+                  onBlur={() => { if (!newProductTypeName.trim()) { setShowProductTypeForm(false); setDuplicateError(null); } }}
+                  placeholder="이름 입력"
+                  className={`w-full border rounded-lg px-2.5 py-2 text-sm placeholder-gray-300 focus:outline-none ${duplicateError === "product_type" ? "border-red-400 text-red-500" : "border-gold-400 text-gray-700 focus:border-gold-500"}`}
+                />
                 {duplicateError === "product_type" && (
-                  <p className="text-xs text-red-500">이미 존재하는 유형 이름입니다.</p>
+                  <p className="text-xs text-red-500 leading-tight">중복된 이름</p>
                 )}
               </div>
             ) : (
@@ -275,34 +262,21 @@ export default function SettingsTab({ companyId, initialBg, initialAccent, initi
               </div>
             ))}
             {showSeasonForm ? (
-              <div className="col-span-3 space-y-1">
-                <div className="flex gap-1">
-                  <input
-                    autoFocus
-                    value={newSeasonName}
-                    onChange={(e) => { setNewSeasonName(e.target.value); if (duplicateError === "season") setDuplicateError(null); }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") { e.preventDefault(); addCategory("season", newSeasonName, () => { setNewSeasonName(""); setShowSeasonForm(false); }); }
-                      if (e.key === "Escape") { setShowSeasonForm(false); setNewSeasonName(""); setDuplicateError(null); }
-                    }}
-                    placeholder="새 시즌 이름"
-                    className={`flex-1 min-w-0 border rounded-lg px-2.5 py-1.5 text-sm placeholder-gray-300 focus:outline-none ${duplicateError === "season" ? "border-red-400 text-red-500" : "border-gray-300 text-gray-600 focus:border-gray-400"}`}
-                  />
-                  <button
-                    onClick={() => addCategory("season", newSeasonName, () => { setNewSeasonName(""); setShowSeasonForm(false); })}
-                    className="px-3 py-1.5 rounded-lg bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors whitespace-nowrap"
-                  >
-                    추가
-                  </button>
-                  <button
-                    onClick={() => { setShowSeasonForm(false); setNewSeasonName(""); setDuplicateError(null); }}
-                    className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-400 text-sm hover:bg-gray-50 transition-colors"
-                  >
-                    취소
-                  </button>
-                </div>
+              <div className="space-y-1">
+                <input
+                  autoFocus
+                  value={newSeasonName}
+                  onChange={(e) => { setNewSeasonName(e.target.value); if (duplicateError === "season") setDuplicateError(null); }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") { e.preventDefault(); addCategory("season", newSeasonName, () => { setNewSeasonName(""); setShowSeasonForm(false); }); }
+                    if (e.key === "Escape") { setShowSeasonForm(false); setNewSeasonName(""); setDuplicateError(null); }
+                  }}
+                  onBlur={() => { if (!newSeasonName.trim()) { setShowSeasonForm(false); setDuplicateError(null); } }}
+                  placeholder="이름 입력"
+                  className={`w-full border rounded-lg px-2.5 py-2 text-sm placeholder-gray-300 focus:outline-none ${duplicateError === "season" ? "border-red-400 text-red-500" : "border-gold-400 text-gray-700 focus:border-gold-500"}`}
+                />
                 {duplicateError === "season" && (
-                  <p className="text-xs text-red-500">이미 존재하는 시즌 이름입니다.</p>
+                  <p className="text-xs text-red-500 leading-tight">중복된 이름</p>
                 )}
               </div>
             ) : (
