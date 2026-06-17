@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
     // DB에 예약 저장
     let savedReservationId: string | null = null;
     if (companyId) {
-      const { form, product, orderer, delivery, finalPrice, kakaoConsent } = body;
+      const { form, product, orderer, delivery, finalPrice, kakaoConsent, source } = body;
       const { data: insertData, error: insertError } = await supabase.from("reservations").insert({
         company_id: companyId,
         customer_profile_id: customerProfileId,
@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
           type: product.product_type,
           name: product.name,
           price: product.price,
-          image_url: product.image_url ?? null,
+          product_id: product.id ?? null,
           message_card: form.messageCard,
           message_card_content: form.messageCardContent || null,
           shopping_bag: form.shoppingBag,
@@ -158,6 +158,7 @@ export async function POST(request: NextRequest) {
         recipient_phone: delivery?.recipientPhone || null,
         address: delivery?.address || null,
         address_detail: delivery?.addressDetail || null,
+        source: source || null,
       }).select("id");
 
       if (insertError) console.error("[reservation] insert 실패:", insertError.message);

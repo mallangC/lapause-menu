@@ -5,6 +5,8 @@ import { Reservation } from "./types";
 import { STATUS_OPTIONS } from "./constants";
 import { formatDateTime, formatPhone } from "./utils";
 import CopyButton from "./CopyButton";
+import { createClient } from "@/lib/supabase/client";
+import { Product } from "@/types";
 
 const STATUS_STYLE: Record<string, { dot: string; text: string; bg: string }> = {
   미확인:      { dot: "bg-red-400",    text: "text-red-600",    bg: "hover:bg-red-50" },
@@ -69,6 +71,15 @@ export default function ReservationDetail({
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [pendingStatus, setPendingStatus] = useState("");
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [productDetail, setProductDetail] = useState<Product | null>(null);
+
+  useEffect(() => {
+    const productId = r.items?.[0]?.product_id;
+    if (!productId) return;
+    const supabase = createClient();
+    supabase.from("products").select("*").eq("id", productId).single()
+      .then(({ data }) => { if (data) setProductDetail(data as Product); });
+  }, [r.items]);
 
   const handleStatusChange = (status: string) => {
     if (status === r.status) return;
@@ -156,23 +167,40 @@ export default function ReservationDetail({
         {/* 섹션 카드들 */}
         <div className="flex gap-3">
 
-          {/* 상품 이미지 */}
-          {r.items?.[0]?.image_url && (
-            <div
-              className="w-20 h-20 shrink-0 rounded-xl overflow-hidden bg-gray-100 cursor-zoom-in"
-              onClick={() => onOpenLightbox(r.items[0].image_url!)}
-            >
-              <img
-                src={r.items[0].image_url}
-                alt={r.items[0].name}
-                className="w-full h-full object-cover"
-              />
+          {/* 상품 이미지 + 상품 정보 */}
+          {productDetail && (
+            <div className="shrink-0 w-28 space-y-1.5">
+              {productDetail.image_url && (
+                <div
+                  className="w-28 h-28 rounded-xl overflow-hidden bg-gray-100 cursor-zoom-in"
+                  onClick={() => onOpenLightbox(productDetail.image_url!)}
+                >
+                  <img
+                    src={productDetail.image_url}
+                    alt={productDetail.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
+              {productDetail.flower_colors?.length > 0 && (
+                <div className="text-xs text-gray-500 leading-relaxed">
+                  <span className="text-gray-400">꽃 색상</span><br />
+                  {productDetail.flower_colors.join(", ")}
+                </div>
+              )}
+              {productDetail.wrapping_color && (
+                <div className="text-xs text-gray-500 leading-relaxed">
+                  <span className="text-gray-400">포장지</span><br />
+                  {productDetail.wrapping_color}
+                </div>
+              )}
             </div>
           )}
 
           <div className="flex-1 min-w-0 space-y-2">
             {/* 주문 정보 */}
             <SectionCard>
+              {r.source && <Row label="유입 경로">{r.source}</Row>}
               {r.channel && <Row label="채널">{r.channel}</Row>}
               <Row label="결제">
                 <button

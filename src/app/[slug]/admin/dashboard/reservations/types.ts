@@ -7,7 +7,7 @@ export interface ReservationItem {
   shopping_bag: string;
   memo: string | null;
   status?: string;
-  image_url?: string | null;
+  product_id?: string | null;
 }
 
 export interface Reservation {
@@ -40,6 +40,7 @@ export interface Reservation {
   address_detail: string | null;
   customer_profile_id: string | null;
   reference_images: string[] | null;
+  source: string | null;
 }
 
 export type SortKey = "desired_date";
