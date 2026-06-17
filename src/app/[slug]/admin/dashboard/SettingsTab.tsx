@@ -201,7 +201,7 @@ export default function SettingsTab({ companyId, initialBg, initialAccent, initi
                     if (e.key === "Escape") { setShowProductTypeForm(false); setNewProductTypeName(""); setDuplicateError(null); }
                   }}
                   onBlur={() => { if (!newProductTypeName.trim()) { setShowProductTypeForm(false); setDuplicateError(null); } }}
-                  placeholder="이름 입력"
+                  placeholder="이름 입력 후 엔터"
                   className={`w-full border rounded-lg px-2.5 py-2 text-sm placeholder-gray-300 focus:outline-none ${duplicateError === "product_type" ? "border-red-400 text-red-500" : "border-gold-400 text-gray-700 focus:border-gold-500"}`}
                 />
                 {duplicateError === "product_type" && (
@@ -272,7 +272,7 @@ export default function SettingsTab({ companyId, initialBg, initialAccent, initi
                     if (e.key === "Escape") { setShowSeasonForm(false); setNewSeasonName(""); setDuplicateError(null); }
                   }}
                   onBlur={() => { if (!newSeasonName.trim()) { setShowSeasonForm(false); setDuplicateError(null); } }}
-                  placeholder="이름 입력"
+                  placeholder="이름 입력 후 엔터"
                   className={`w-full border rounded-lg px-2.5 py-2 text-sm placeholder-gray-300 focus:outline-none ${duplicateError === "season" ? "border-red-400 text-red-500" : "border-gold-400 text-gray-700 focus:border-gold-500"}`}
                 />
                 {duplicateError === "season" && (
