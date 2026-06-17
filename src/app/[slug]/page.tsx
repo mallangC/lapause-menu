@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import MainLayout from "@/components/main/MainLayout";
 import { Product } from "@/types";
@@ -57,23 +58,25 @@ export default async function CompanyMenuPage({ params }: Props) {
   );
 
   return (
-    <MainLayout
-      slug={slug}
-      companyName={slug}
-      logoImage={(s.logo_image as string | null) ?? null}
-      themeVars={themeVars}
-      products={(products as Product[]) ?? []}
-      homeFeaturedImage={(s.home_featured_image as string | null) ?? null}
-      homeAllImage={(s.home_all_image as string | null) ?? null}
-      homeSeasonImage={(s.home_season_image as string | null) ?? null}
-      homeConsultImage={(s.home_consult_image as string | null) ?? null}
-      locationUrl={(s.location_url as string | null) ?? null}
-      kakaoChannelUrl={(s.kakao_channel_url as string | null) ?? null}
-      instagramUrl={(s.instagram_url as string | null) ?? null}
-      youtubeUrl={(s.youtube_url as string | null) ?? null}
-      hiddenProductTypes={(s.hidden_product_types as string[]) ?? []}
-      hiddenSeasons={(s.hidden_seasons as string[]) ?? []}
-      consultEnabled={(s.consult_enabled as boolean) ?? false}
-    />
+    <Suspense>
+      <MainLayout
+        slug={slug}
+        companyName={slug}
+        logoImage={(s.logo_image as string | null) ?? null}
+        themeVars={themeVars}
+        products={(products as Product[]) ?? []}
+        homeFeaturedImage={(s.home_featured_image as string | null) ?? null}
+        homeAllImage={(s.home_all_image as string | null) ?? null}
+        homeSeasonImage={(s.home_season_image as string | null) ?? null}
+        homeConsultImage={(s.home_consult_image as string | null) ?? null}
+        locationUrl={(s.location_url as string | null) ?? null}
+        kakaoChannelUrl={(s.kakao_channel_url as string | null) ?? null}
+        instagramUrl={(s.instagram_url as string | null) ?? null}
+        youtubeUrl={(s.youtube_url as string | null) ?? null}
+        hiddenProductTypes={(s.hidden_product_types as string[]) ?? []}
+        hiddenSeasons={(s.hidden_seasons as string[]) ?? []}
+        consultEnabled={(s.consult_enabled as boolean) ?? false}
+      />
+    </Suspense>
   );
 }

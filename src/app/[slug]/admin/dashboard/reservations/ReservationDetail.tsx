@@ -7,6 +7,7 @@ import { formatDateTime, formatPhone } from "./utils";
 import CopyButton from "./CopyButton";
 import { createClient } from "@/lib/supabase/client";
 import { Product } from "@/types";
+import { FLOWER_COLOR_MAP } from "@/lib/constants";
 
 const STATUS_STYLE: Record<string, { dot: string; text: string; bg: string }> = {
   미확인:      { dot: "bg-red-400",    text: "text-red-600",    bg: "hover:bg-red-50" },
@@ -169,7 +170,7 @@ export default function ReservationDetail({
 
           {/* 상품 이미지 + 상품 정보 */}
           {productDetail && (
-            <div className="shrink-0 w-28 space-y-1.5">
+            <div className="shrink-0 w-28 flex flex-col items-center gap-1.5">
               {productDetail.image_url && (
                 <div
                   className="w-28 h-28 rounded-xl overflow-hidden bg-gray-100 cursor-zoom-in"
@@ -183,16 +184,19 @@ export default function ReservationDetail({
                 </div>
               )}
               {productDetail.flower_colors?.length > 0 && (
-                <div className="text-xs text-gray-500 leading-relaxed">
-                  <span className="text-gray-400">꽃 색상</span><br />
-                  {productDetail.flower_colors.join(", ")}
+                <div className="flex gap-1 flex-wrap justify-center">
+                  {productDetail.flower_colors.map((color) => (
+                    <span
+                      key={color}
+                      className="w-4 h-4 rounded-full border border-gray-200 shrink-0"
+                      style={{ backgroundColor: FLOWER_COLOR_MAP[color] ?? "#e5e7eb" }}
+                      title={color}
+                    />
+                  ))}
                 </div>
               )}
               {productDetail.wrapping_color && (
-                <div className="text-xs text-gray-500 leading-relaxed">
-                  <span className="text-gray-400">포장지</span><br />
-                  {productDetail.wrapping_color}
-                </div>
+                <p className="text-xs text-gray-400 text-center">{productDetail.wrapping_color}</p>
               )}
             </div>
           )}
@@ -200,7 +204,6 @@ export default function ReservationDetail({
           <div className="flex-1 min-w-0 space-y-2">
             {/* 주문 정보 */}
             <SectionCard>
-              {r.source && <Row label="유입 경로">{r.source}</Row>}
               {r.channel && <Row label="채널">{r.channel}</Row>}
               <Row label="결제">
                 <button
@@ -218,6 +221,7 @@ export default function ReservationDetail({
                   <CopyButton text={r.orderer_phone} />
                 </span>
               </Row>
+              <Row label="유입 경로">{r.source ?? "직접 유입"}</Row>
             </SectionCard>
 
             {/* 상품 목록 */}

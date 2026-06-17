@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Product, FilterState } from "@/types";
@@ -54,6 +55,12 @@ export default function MainLayout({
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const userClosedFilter = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const from = searchParams.get("from");
+    if (from) sessionStorage.setItem(`consult_source_${slug}`, from);
+  }, [searchParams, slug]);
 
   useEffect(() => {
     if (showHome) return;

@@ -341,19 +341,12 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
   const sourceRef = useRef<string | null>(null);
 
   useEffect(() => {
-    const ref = document.referrer;
-    if (!ref) { sourceRef.current = null; return; }
-    try {
-      const host = new URL(ref).hostname;
-      if (host.includes("naver.com")) sourceRef.current = "네이버";
-      else if (host.includes("google.com")) sourceRef.current = "구글";
-      else if (host.includes("instagram.com")) sourceRef.current = "인스타그램";
-      else if (host.includes("kakao.com") || host.includes("kakaocorp.com")) sourceRef.current = "카카오";
-      else if (host.includes("youtube.com")) sourceRef.current = "유튜브";
-      else if (host.includes("facebook.com")) sourceRef.current = "페이스북";
-      else sourceRef.current = host;
-    } catch { sourceRef.current = null; }
-  }, []);
+    const stored = sessionStorage.getItem(`consult_source_${slug}`);
+    if (stored) {
+      sourceRef.current = stored;
+      sessionStorage.removeItem(`consult_source_${slug}`);
+    }
+  }, [slug]);
 
   const set = (key: keyof ConsultForm, value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
