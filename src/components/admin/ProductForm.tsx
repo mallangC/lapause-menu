@@ -69,6 +69,7 @@ interface ProductFormProps {
   initialData?: Product;
   onSubmit: (data: ProductInput) => Promise<void>;
   onCancel: () => void;
+  companyId: string;
 }
 
 const DEFAULT_INPUT: ProductInput = {
@@ -87,7 +88,7 @@ const DEFAULT_INPUT: ProductInput = {
   message_card_unavailable: false,
 };
 
-export default function ProductForm({ initialData, onSubmit }: ProductFormProps) {
+export default function ProductForm({ initialData, onSubmit, companyId }: ProductFormProps) {
   const [data, setData] = useState<ProductInput>(
     initialData
       ? {
@@ -111,8 +112,27 @@ export default function ProductForm({ initialData, onSubmit }: ProductFormProps)
   const [loading, setLoading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<string[]>([]);
+  const [customCategories, setCustomCategories] = useState<{ category_type: string; name: string }[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
+
+  useEffect(() => {
+    supabase
+      .from("company_categories")
+      .select("category_type, name")
+      .eq("company_id", companyId)
+      .eq("hidden", false)
+      .then(({ data }) => { if (data) setCustomCategories(data); });
+  }, [companyId]);
+
+  const allProductTypes = [
+    ...PRODUCT_TYPES,
+    ...customCategories.filter((c) => c.category_type === "product_type").map((c) => c.name),
+  ];
+  const allSeasons = [
+    ...SEASONS,
+    ...customCategories.filter((c) => c.category_type === "season").map((c) => c.name),
+  ];
 
   const toggleFlowerColor = (color: string) => {
     setData((prev) => ({
@@ -298,7 +318,7 @@ export default function ProductForm({ initialData, onSubmit }: ProductFormProps)
           상품 유형 <span className="text-red-500">*</span>
         </label>
         <div className="grid grid-cols-3 gap-2">
-          {PRODUCT_TYPES.map((t) => (
+          {allProductTypes.map((t) => (
             <button
               key={t}
               type="button"
@@ -415,7 +435,7 @@ export default function ProductForm({ initialData, onSubmit }: ProductFormProps)
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">시즌</label>
         <div className="grid grid-cols-3 gap-2">
-          {SEASONS.map((s) => {
+          {allSeasons.map((s) => {
             const selected = data.seasons[0] === s;
             return (
               <button

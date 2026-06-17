@@ -1,15 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Product, ProductStatus } from "@/types";
 import { BADGE_COLORS, PRODUCT_TYPES } from "@/lib/constants";
+import { createClient } from "@/lib/supabase/client";
 
 interface ProductTableProps {
   products: Product[];
   onEdit: (product: Product) => void;
   onDelete: (id: string) => void;
   onStatusChange: (id: string, status: ProductStatus) => void;
+  companyId: string;
 }
 
 const STATUS_CYCLE: ProductStatus[] = ["active", "inactive", "soldout"];
@@ -24,8 +26,22 @@ const PAGE_SIZE = 10;
 
 const selectCls = "border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-700 bg-white focus:outline-none focus:border-gray-400 cursor-pointer";
 
-export default function ProductTable({ products, onEdit, onDelete, onStatusChange }: ProductTableProps) {
+export default function ProductTable({ products, onEdit, onDelete, onStatusChange, companyId }: ProductTableProps) {
   const [sortKey, setSortKey] = useState<"price_asc" | "price_desc" | "date_desc" | "date_asc">("date_desc");
+  const [knownCustomTypes, setKnownCustomTypes] = useState<string[]>([]);
+  const supabase = createClient();
+
+  useEffect(() => {
+    supabase
+      .from("company_categories")
+      .select("name, category_type")
+      .eq("company_id", companyId)
+      .eq("category_type", "product_type")
+      .then(({ data }) => { if (data) setKnownCustomTypes(data.map((c) => c.name)); });
+  }, [companyId]);
+
+  const isValidType = (type: string) =>
+    (PRODUCT_TYPES as readonly string[]).includes(type) || knownCustomTypes.includes(type);
   const [filterType, setFilterType] = useState("");
   const [filterBadge, setFilterBadge] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
@@ -150,10 +166,12 @@ export default function ProductTable({ products, onEdit, onDelete, onStatusChang
               </tr>
             </thead>
             <tbody>
-              {paginated.map((product) => (
+              {paginated.map((product) => {
+                const typeDeleted = !isValidType(product.product_type);
+                return (
                 <tr
                   key={product.id}
-                  className="border-b border-gray-100 hover:bg-gray-50 transition-colors text-center text-xs md:text-sm"
+                  className={`border-b transition-colors text-center text-xs md:text-sm ${typeDeleted ? "border-red-200 bg-red-50/50 hover:bg-red-50" : "border-gray-100 hover:bg-gray-50"}`}
                 >
                   <td className="py-3">
                     <div className="w-10 h-10 md:w-16 md:h-16 rounded-lg overflow-hidden bg-gray-100 mx-auto">
@@ -179,7 +197,12 @@ export default function ProductTable({ products, onEdit, onDelete, onStatusChang
                       )}
                     </div>
                   </td>
-                  <td className="py-3 px-2 text-gray-700 hidden md:table-cell whitespace-nowrap">{product.product_type}</td>
+                  <td className="py-3 px-2 hidden md:table-cell whitespace-nowrap">
+                    {typeDeleted
+                      ? <span className="text-red-500 font-medium">{product.product_type} (삭제됨)</span>
+                      : <span className="text-gray-700">{product.product_type}</span>
+                    }
+                  </td>
                   <td className="py-2 md:py-3 px-1 md:px-2 whitespace-nowrap">{product.price.toLocaleString()}원</td>
                   <td className="py-2 md:py-3 px-1 md:px-2">
                     <button
@@ -210,7 +233,8 @@ export default function ProductTable({ products, onEdit, onDelete, onStatusChang
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
               {Array.from({ length: PAGE_SIZE - paginated.length }).map((_, i) => (
                 <tr key={`empty-${i}`} className="border-b border-gray-100">
                   <td className="py-3"><div className="w-10 h-10 md:w-16 md:h-16 mx-auto" /></td>

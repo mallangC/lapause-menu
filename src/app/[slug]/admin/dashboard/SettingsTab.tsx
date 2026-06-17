@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { generateThemeVars, DEFAULT_THEME_BG, DEFAULT_THEME_ACCENT } from "@/lib/theme";
 import { PRODUCT_TYPES, SEASONS } from "@/lib/constants";
@@ -33,7 +33,45 @@ export default function SettingsTab({ companyId, initialBg, initialAccent, initi
   const [menuSaving, setMenuSaving] = useState(false);
   const [menuSaved, setMenuSaved] = useState(false);
 
+  type CustomCategory = { id: string; category_type: "product_type" | "season"; name: string; hidden: boolean };
+  const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
+  const [newProductTypeName, setNewProductTypeName] = useState("");
+  const [newSeasonName, setNewSeasonName] = useState("");
+
   const supabase = createClient();
+
+  useEffect(() => {
+    supabase.from("company_categories").select("*").eq("company_id", companyId).then(({ data }) => {
+      if (data) setCustomCategories(data as CustomCategory[]);
+    });
+  }, [companyId]);
+
+  const addCategory = async (type: "product_type" | "season", name: string, resetFn: () => void) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const { data, error } = await supabase
+      .from("company_categories")
+      .insert({ company_id: companyId, category_type: type, name: trimmed, hidden: false })
+      .select()
+      .single();
+    if (!error && data) {
+      setCustomCategories((prev) => [...prev, data as CustomCategory]);
+      resetFn();
+    }
+  };
+
+  const toggleCustomHidden = async (id: string) => {
+    const cat = customCategories.find((c) => c.id === id);
+    if (!cat) return;
+    const newHidden = !cat.hidden;
+    await supabase.from("company_categories").update({ hidden: newHidden }).eq("id", id);
+    setCustomCategories((prev) => prev.map((c) => (c.id === id ? { ...c, hidden: newHidden } : c)));
+  };
+
+  const deleteCategory = async (id: string) => {
+    await supabase.from("company_categories").delete().eq("id", id);
+    setCustomCategories((prev) => prev.filter((c) => c.id !== id));
+  };
 
   const previewVars = generateThemeVars(bg, accent);
 
@@ -106,15 +144,17 @@ export default function SettingsTab({ companyId, initialBg, initialAccent, initi
           <p className="text-xs text-gray-400">고객 화면의 필터에서 숨길 항목을 선택하세요.</p>
         </div>
 
+        {/* 상품 유형 */}
         <div>
-          <p className="text-sm font-medium text-gray-700 mb-2">상품 유형 숨김</p>
+          <p className="text-sm font-medium text-gray-700 mb-2">상품 유형</p>
+          <p className="text-xs text-gray-400 mb-3">클릭하면 고객 필터에서 숨깁니다. 직접 추가한 유형은 삭제도 가능합니다.</p>
           <div className="grid grid-cols-3 gap-2">
             {PRODUCT_TYPES.map((type) => {
               const isHidden = hiddenProductTypes.includes(type);
               return (
                 <button
                   key={type}
-                  onClick={() => toggleProductType(type)}
+                  onClick={() => { toggleProductType(type); setMenuSaved(false); }}
                   className={`py-2 px-3 rounded-lg border text-sm transition-colors ${
                     isHidden
                       ? "border-red-300 bg-red-50 text-red-500 font-medium"
@@ -125,18 +165,58 @@ export default function SettingsTab({ companyId, initialBg, initialAccent, initi
                 </button>
               );
             })}
+            {customCategories.filter((c) => c.category_type === "product_type").map((cat) => (
+              <div key={cat.id} className="relative">
+                <button
+                  onClick={() => toggleCustomHidden(cat.id)}
+                  className={`w-full py-2 px-3 pr-7 rounded-lg border text-sm transition-colors ${
+                    cat.hidden
+                      ? "border-red-300 bg-red-50 text-red-500 font-medium"
+                      : "border-gray-200 text-gray-700 hover:border-gray-300"
+                  }`}
+                >
+                  {cat.hidden ? `${cat.name} (숨김)` : cat.name}
+                </button>
+                <button
+                  onClick={() => deleteCategory(cat.id)}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors text-base leading-none"
+                  title="삭제"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+            <div className="flex gap-1 col-span-2">
+              <input
+                value={newProductTypeName}
+                onChange={(e) => setNewProductTypeName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") { e.preventDefault(); addCategory("product_type", newProductTypeName, () => setNewProductTypeName("")); }
+                }}
+                placeholder="새 유형 이름"
+                className="flex-1 min-w-0 border border-dashed border-gray-300 rounded-lg px-2.5 py-1.5 text-sm text-gray-600 placeholder-gray-300 focus:outline-none focus:border-gray-400"
+              />
+              <button
+                onClick={() => addCategory("product_type", newProductTypeName, () => setNewProductTypeName(""))}
+                className="px-3 py-1.5 rounded-lg border border-dashed border-gray-300 text-gray-400 hover:border-gold-400 hover:text-gold-500 transition-colors text-sm font-medium"
+              >
+                추가
+              </button>
+            </div>
           </div>
         </div>
 
+        {/* 시즌 */}
         <div>
-          <p className="text-sm font-medium text-gray-700 mb-2">시즌 숨김</p>
+          <p className="text-sm font-medium text-gray-700 mb-2">시즌</p>
+          <p className="text-xs text-gray-400 mb-3">클릭하면 고객 필터에서 숨깁니다. 직접 추가한 시즌은 삭제도 가능합니다.</p>
           <div className="grid grid-cols-3 gap-2">
             {SEASONS.map((season) => {
               const isHidden = hiddenSeasons.includes(season);
               return (
                 <button
                   key={season}
-                  onClick={() => toggleSeason(season)}
+                  onClick={() => { toggleSeason(season); setMenuSaved(false); }}
                   className={`py-2 px-3 rounded-lg border text-sm transition-colors ${
                     isHidden
                       ? "border-red-300 bg-red-50 text-red-500 font-medium"
@@ -147,6 +227,44 @@ export default function SettingsTab({ companyId, initialBg, initialAccent, initi
                 </button>
               );
             })}
+            {customCategories.filter((c) => c.category_type === "season").map((cat) => (
+              <div key={cat.id} className="relative">
+                <button
+                  onClick={() => toggleCustomHidden(cat.id)}
+                  className={`w-full py-2 px-3 pr-7 rounded-lg border text-sm transition-colors ${
+                    cat.hidden
+                      ? "border-red-300 bg-red-50 text-red-500 font-medium"
+                      : "border-gray-200 text-gray-700 hover:border-gray-300"
+                  }`}
+                >
+                  {cat.hidden ? `${cat.name} (숨김)` : cat.name}
+                </button>
+                <button
+                  onClick={() => deleteCategory(cat.id)}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors text-base leading-none"
+                  title="삭제"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+            <div className="flex gap-1 col-span-2">
+              <input
+                value={newSeasonName}
+                onChange={(e) => setNewSeasonName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") { e.preventDefault(); addCategory("season", newSeasonName, () => setNewSeasonName("")); }
+                }}
+                placeholder="새 시즌 이름"
+                className="flex-1 min-w-0 border border-dashed border-gray-300 rounded-lg px-2.5 py-1.5 text-sm text-gray-600 placeholder-gray-300 focus:outline-none focus:border-gray-400"
+              />
+              <button
+                onClick={() => addCategory("season", newSeasonName, () => setNewSeasonName(""))}
+                className="px-3 py-1.5 rounded-lg border border-dashed border-gray-300 text-gray-400 hover:border-gold-400 hover:text-gold-500 transition-colors text-sm font-medium"
+              >
+                추가
+              </button>
+            </div>
           </div>
         </div>
 

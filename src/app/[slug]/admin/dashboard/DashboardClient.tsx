@@ -334,8 +334,8 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
               </div>
               <div className="p-6">
                 {editingProduct
-                  ? <ProductForm initialData={editingProduct} onSubmit={handleEdit} onCancel={() => setEditingProduct(null)} />
-                  : <ProductForm onSubmit={handleAdd} onCancel={() => setShowForm(false)} />
+                  ? <ProductForm initialData={editingProduct} onSubmit={handleEdit} onCancel={() => setEditingProduct(null)} companyId={companyId} />
+                  : <ProductForm onSubmit={handleAdd} onCancel={() => setShowForm(false)} companyId={companyId} />
                 }
               </div>
             </div>
@@ -378,6 +378,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
                   onEdit={(product) => { setEditingProduct(product); setShowForm(false); }}
                   onDelete={handleDelete}
                   onStatusChange={handleStatusChange}
+                  companyId={companyId}
                 />
               </div>
             </div>

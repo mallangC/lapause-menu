@@ -130,6 +130,7 @@ function ProductStep({
       <ProductForm
         onSubmit={handleSubmit}
         onCancel={onSkip}
+        companyId={companyId}
       />
 
       <button
