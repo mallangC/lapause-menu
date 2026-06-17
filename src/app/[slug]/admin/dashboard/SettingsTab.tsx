@@ -30,8 +30,6 @@ export default function SettingsTab({ companyId, initialBg, initialAccent, initi
 
   const [hiddenProductTypes, setHiddenProductTypes] = useState<string[]>(initialHiddenProductTypes);
   const [hiddenSeasons, setHiddenSeasons] = useState<string[]>(initialHiddenSeasons);
-  const [menuSaving, setMenuSaving] = useState(false);
-  const [menuSaved, setMenuSaved] = useState(false);
 
   type CustomCategory = { id: string; category_type: "product_type" | "season"; name: string; hidden: boolean };
   const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
@@ -107,25 +105,22 @@ export default function SettingsTab({ companyId, initialBg, initialAccent, initi
     setAccent(DEFAULT_THEME_ACCENT);
   };
 
-  const toggleProductType = (type: string) => {
-    setHiddenProductTypes((prev) => prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]);
-    setMenuSaved(false);
+  const toggleProductType = async (type: string) => {
+    const next = hiddenProductTypes.includes(type)
+      ? hiddenProductTypes.filter((t) => t !== type)
+      : [...hiddenProductTypes, type];
+    setHiddenProductTypes(next);
+    await supabase.from("company_settings").update({ hidden_product_types: next }).eq("company_id", companyId);
+    onMenuSave(next, hiddenSeasons);
   };
 
-  const toggleSeason = (season: string) => {
-    setHiddenSeasons((prev) => prev.includes(season) ? prev.filter((s) => s !== season) : [...prev, season]);
-    setMenuSaved(false);
-  };
-
-  const handleMenuSave = async () => {
-    setMenuSaving(true);
-    await supabase
-      .from("company_settings")
-      .update({ hidden_product_types: hiddenProductTypes, hidden_seasons: hiddenSeasons })
-      .eq("company_id", companyId);
-    setMenuSaving(false);
-    setMenuSaved(true);
-    onMenuSave(hiddenProductTypes, hiddenSeasons);
+  const toggleSeason = async (season: string) => {
+    const next = hiddenSeasons.includes(season)
+      ? hiddenSeasons.filter((s) => s !== season)
+      : [...hiddenSeasons, season];
+    setHiddenSeasons(next);
+    await supabase.from("company_settings").update({ hidden_seasons: next }).eq("company_id", companyId);
+    onMenuSave(hiddenProductTypes, next);
   };
 
   return (
@@ -161,7 +156,7 @@ export default function SettingsTab({ companyId, initialBg, initialAccent, initi
               return (
                 <button
                   key={type}
-                  onClick={() => { toggleProductType(type); setMenuSaved(false); }}
+                  onClick={() => toggleProductType(type)}
                   className={`py-2 px-3 rounded-lg border text-sm transition-colors ${
                     isHidden
                       ? "border-red-300 bg-red-50 text-red-500 font-medium"
@@ -228,7 +223,7 @@ export default function SettingsTab({ companyId, initialBg, initialAccent, initi
               return (
                 <button
                   key={season}
-                  onClick={() => { toggleSeason(season); setMenuSaved(false); }}
+                  onClick={() => toggleSeason(season)}
                   className={`py-2 px-3 rounded-lg border text-sm transition-colors ${
                     isHidden
                       ? "border-red-300 bg-red-50 text-red-500 font-medium"
@@ -285,13 +280,6 @@ export default function SettingsTab({ companyId, initialBg, initialAccent, initi
           </div>
         </div>
 
-        <button
-          onClick={handleMenuSave}
-          disabled={menuSaving}
-          className="bg-gold-500 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-gold-600 transition-colors disabled:opacity-50"
-        >
-          {menuSaving ? "저장 중..." : menuSaved ? "저장됨 ✓" : "저장"}
-        </button>
       </div>
 
       {/* 사이트 색상 */}
