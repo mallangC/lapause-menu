@@ -13,11 +13,13 @@ interface MainNavProps {
   setMobileFilterOpen: Dispatch<SetStateAction<boolean>>;
   hiddenProductTypes?: string[];
   hiddenSeasons?: string[];
+  customProductTypes?: string[];
+  customSeasons?: string[];
   consultEnabled?: boolean;
   slug?: string;
 }
 
-export default function MainNav({ filter, setFilter, setMobileFilterOpen, hiddenProductTypes = [], hiddenSeasons = [], consultEnabled = false, slug }: MainNavProps) {
+export default function MainNav({ filter, setFilter, setMobileFilterOpen, hiddenProductTypes = [], hiddenSeasons = [], customProductTypes = [], customSeasons = [], consultEnabled = false, slug }: MainNavProps) {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const dropdownTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -62,7 +64,7 @@ export default function MainNav({ filter, setFilter, setMobileFilterOpen, hidden
           {openDropdown === "ALL" && (
             <div className="hidden md:block absolute top-full left-1/2 -translate-x-1/2 z-50">
               <div className="bg-white border border-gray-200 rounded-xl shadow-lg p-4 w-80">
-                <FilterPanel filter={filter} setFilter={setFilter} hiddenProductTypes={hiddenProductTypes} />
+                <FilterPanel filter={filter} setFilter={setFilter} hiddenProductTypes={hiddenProductTypes} customProductTypes={customProductTypes} />
               </div>
             </div>
           )}
@@ -83,7 +85,7 @@ export default function MainNav({ filter, setFilter, setMobileFilterOpen, hidden
             <div className="hidden md:block absolute top-full left-1/2 -translate-x-1/2 z-50">
               <div className="bg-white border border-gray-200 rounded-xl shadow-lg p-3 min-w-36">
                 <div className="flex flex-col gap-1">
-                  {SEASONS.filter((s) => !hiddenSeasons.includes(s)).map((season) => (
+                  {[...SEASONS.filter((s) => !hiddenSeasons.includes(s)), ...customSeasons].map((season) => (
                     <button
                       key={season}
                       onClick={() =>

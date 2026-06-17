@@ -52,6 +52,24 @@ export default async function CompanyMenuPage({ params }: Props) {
     .eq("status", "active")
     .order("price", { ascending: true });
 
+  const { data: customCats } = await supabase
+    .from("company_categories")
+    .select("category_type, name, hidden")
+    .eq("company_id", raw.id);
+
+  const customProductTypes = (customCats ?? [])
+    .filter((c) => c.category_type === "product_type" && !c.hidden)
+    .map((c) => c.name as string);
+  const customSeasons = (customCats ?? [])
+    .filter((c) => c.category_type === "season" && !c.hidden)
+    .map((c) => c.name as string);
+  const hiddenCustomProductTypes = (customCats ?? [])
+    .filter((c) => c.category_type === "product_type" && c.hidden)
+    .map((c) => c.name as string);
+  const hiddenCustomSeasons = (customCats ?? [])
+    .filter((c) => c.category_type === "season" && c.hidden)
+    .map((c) => c.name as string);
+
   const themeVars = generateThemeVars(
     (s.theme_bg as string | null) ?? DEFAULT_THEME_BG,
     (s.theme_accent as string | null) ?? DEFAULT_THEME_ACCENT
@@ -73,8 +91,10 @@ export default async function CompanyMenuPage({ params }: Props) {
         kakaoChannelUrl={(s.kakao_channel_url as string | null) ?? null}
         instagramUrl={(s.instagram_url as string | null) ?? null}
         youtubeUrl={(s.youtube_url as string | null) ?? null}
-        hiddenProductTypes={(s.hidden_product_types as string[]) ?? []}
-        hiddenSeasons={(s.hidden_seasons as string[]) ?? []}
+        hiddenProductTypes={[...((s.hidden_product_types as string[]) ?? []), ...hiddenCustomProductTypes]}
+        hiddenSeasons={[...((s.hidden_seasons as string[]) ?? []), ...hiddenCustomSeasons]}
+        customProductTypes={customProductTypes}
+        customSeasons={customSeasons}
         consultEnabled={(s.consult_enabled as boolean) ?? false}
       />
     </Suspense>

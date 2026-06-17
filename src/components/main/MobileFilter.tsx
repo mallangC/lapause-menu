@@ -13,9 +13,11 @@ interface MobileFilterProps {
   onToggle: () => void;
   hiddenProductTypes?: string[];
   hiddenSeasons?: string[];
+  customProductTypes?: string[];
+  customSeasons?: string[];
 }
 
-export default function MobileFilter({ filter, setFilter, isOpen, onToggle, hiddenProductTypes = [], hiddenSeasons = [] }: MobileFilterProps) {
+export default function MobileFilter({ filter, setFilter, isOpen, onToggle, hiddenProductTypes = [], hiddenSeasons = [], customProductTypes = [], customSeasons = [] }: MobileFilterProps) {
   const isAll = !filter.featured && !filter.isSeason;
   const isSeason = filter.isSeason;
 
@@ -27,10 +29,10 @@ export default function MobileFilter({ filter, setFilter, isOpen, onToggle, hidd
       </button>
       {isOpen && (
         <div className="px-4 pb-4 space-y-4">
-          {isAll && <FilterPanel filter={filter} setFilter={setFilter} hiddenProductTypes={hiddenProductTypes} />}
+          {isAll && <FilterPanel filter={filter} setFilter={setFilter} hiddenProductTypes={hiddenProductTypes} customProductTypes={customProductTypes} />}
           {isSeason && (
             <div className="grid grid-cols-3 gap-1.5">
-              {SEASONS.filter((s) => !hiddenSeasons.includes(s)).map((season) => (
+              {[...SEASONS.filter((s) => !hiddenSeasons.includes(s)), ...customSeasons].map((season) => (
                 <button
                   key={season}
                   onClick={() =>

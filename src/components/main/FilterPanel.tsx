@@ -9,9 +9,10 @@ interface FilterPanelProps {
   filter: FilterState;
   setFilter: Dispatch<SetStateAction<FilterState>>;
   hiddenProductTypes?: string[];
+  customProductTypes?: string[];
 }
 
-export default function FilterPanel({ filter, setFilter, hiddenProductTypes = [] }: FilterPanelProps) {
+export default function FilterPanel({ filter, setFilter, hiddenProductTypes = [], customProductTypes = [] }: FilterPanelProps) {
   const hasFilter =
     filter.productTypes.length > 0 ||
     filter.flowerColors.length > 0 ||
@@ -63,7 +64,7 @@ export default function FilterPanel({ filter, setFilter, hiddenProductTypes = []
       <div className="mb-4">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-gold-500 mb-2">상품 유형</h3>
         <div className="grid grid-cols-2 gap-1">
-          {PRODUCT_TYPES.filter((t) => !hiddenProductTypes.includes(t)).map((type) => (
+          {[...PRODUCT_TYPES.filter((t) => !hiddenProductTypes.includes(t)), ...customProductTypes].map((type) => (
             <button
               key={type}
               onClick={() => toggleProductType(type)}

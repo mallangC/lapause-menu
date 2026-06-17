@@ -29,6 +29,8 @@ interface MainLayoutProps {
   youtubeUrl?: string | null;
   hiddenProductTypes?: string[];
   hiddenSeasons?: string[];
+  customProductTypes?: string[];
+  customSeasons?: string[];
   consultEnabled?: boolean;
 }
 
@@ -48,6 +50,8 @@ export default function MainLayout({
   youtubeUrl,
   hiddenProductTypes = [],
   hiddenSeasons = [],
+  customProductTypes = [],
+  customSeasons = [],
   consultEnabled = false,
 }: MainLayoutProps) {
   const [showHome, setShowHome] = useState(true);
@@ -125,6 +129,8 @@ export default function MainLayout({
           }}
           hiddenProductTypes={hiddenProductTypes}
           hiddenSeasons={hiddenSeasons}
+          customProductTypes={customProductTypes}
+          customSeasons={customSeasons}
           consultEnabled={consultEnabled}
           slug={slug}
         />
@@ -142,6 +148,8 @@ export default function MainLayout({
           }}
           hiddenProductTypes={hiddenProductTypes}
           hiddenSeasons={hiddenSeasons}
+          customProductTypes={customProductTypes}
+          customSeasons={customSeasons}
         />
       )}
 
