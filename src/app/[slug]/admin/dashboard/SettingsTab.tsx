@@ -49,6 +49,11 @@ export default function SettingsTab({ companyId, initialBg, initialAccent, initi
   const addCategory = async (type: "product_type" | "season", name: string, resetFn: () => void) => {
     const trimmed = name.trim();
     if (!trimmed) return;
+    const builtins = type === "product_type" ? (PRODUCT_TYPES as readonly string[]) : (SEASONS as readonly string[]);
+    const isDuplicate =
+      builtins.includes(trimmed) ||
+      customCategories.some((c) => c.category_type === type && c.name === trimmed);
+    if (isDuplicate) return;
     const { data, error } = await supabase
       .from("company_categories")
       .insert({ company_id: companyId, category_type: type, name: trimmed, hidden: false })
