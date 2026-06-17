@@ -37,6 +37,7 @@ export default function SettingsTab({ companyId, initialBg, initialAccent, initi
   const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
   const [newProductTypeName, setNewProductTypeName] = useState("");
   const [newSeasonName, setNewSeasonName] = useState("");
+  const [duplicateError, setDuplicateError] = useState<"product_type" | "season" | null>(null);
 
   const supabase = createClient();
 
@@ -53,7 +54,8 @@ export default function SettingsTab({ companyId, initialBg, initialAccent, initi
     const isDuplicate =
       builtins.includes(trimmed) ||
       customCategories.some((c) => c.category_type === type && c.name === trimmed);
-    if (isDuplicate) return;
+    if (isDuplicate) { setDuplicateError(type); return; }
+    setDuplicateError(null);
     const { data, error } = await supabase
       .from("company_categories")
       .insert({ company_id: companyId, category_type: type, name: trimmed, hidden: false })
@@ -191,22 +193,27 @@ export default function SettingsTab({ companyId, initialBg, initialAccent, initi
                 </button>
               </div>
             ))}
-            <div className="flex gap-1 col-span-2">
-              <input
-                value={newProductTypeName}
-                onChange={(e) => setNewProductTypeName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") { e.preventDefault(); addCategory("product_type", newProductTypeName, () => setNewProductTypeName("")); }
-                }}
-                placeholder="새 유형 이름"
-                className="flex-1 min-w-0 border border-dashed border-gray-300 rounded-lg px-2.5 py-1.5 text-sm text-gray-600 placeholder-gray-300 focus:outline-none focus:border-gray-400"
-              />
-              <button
-                onClick={() => addCategory("product_type", newProductTypeName, () => setNewProductTypeName(""))}
-                className="px-3 py-1.5 rounded-lg border border-dashed border-gray-300 text-gray-400 hover:border-gold-400 hover:text-gold-500 transition-colors text-sm font-medium"
-              >
-                추가
-              </button>
+            <div className="col-span-2 space-y-1">
+              <div className="flex gap-1">
+                <input
+                  value={newProductTypeName}
+                  onChange={(e) => { setNewProductTypeName(e.target.value); if (duplicateError === "product_type") setDuplicateError(null); }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") { e.preventDefault(); addCategory("product_type", newProductTypeName, () => setNewProductTypeName("")); }
+                  }}
+                  placeholder="새 유형 이름"
+                  className={`flex-1 min-w-0 border border-dashed rounded-lg px-2.5 py-1.5 text-sm placeholder-gray-300 focus:outline-none ${duplicateError === "product_type" ? "border-red-400 text-red-500 focus:border-red-400" : "border-gray-300 text-gray-600 focus:border-gray-400"}`}
+                />
+                <button
+                  onClick={() => addCategory("product_type", newProductTypeName, () => setNewProductTypeName(""))}
+                  className="px-3 py-1.5 rounded-lg border border-dashed border-gray-300 text-gray-400 hover:border-gold-400 hover:text-gold-500 transition-colors text-sm font-medium"
+                >
+                  추가
+                </button>
+              </div>
+              {duplicateError === "product_type" && (
+                <p className="text-xs text-red-500">이미 존재하는 유형 이름입니다.</p>
+              )}
             </div>
           </div>
         </div>
@@ -253,22 +260,27 @@ export default function SettingsTab({ companyId, initialBg, initialAccent, initi
                 </button>
               </div>
             ))}
-            <div className="flex gap-1 col-span-2">
-              <input
-                value={newSeasonName}
-                onChange={(e) => setNewSeasonName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") { e.preventDefault(); addCategory("season", newSeasonName, () => setNewSeasonName("")); }
-                }}
-                placeholder="새 시즌 이름"
-                className="flex-1 min-w-0 border border-dashed border-gray-300 rounded-lg px-2.5 py-1.5 text-sm text-gray-600 placeholder-gray-300 focus:outline-none focus:border-gray-400"
-              />
-              <button
-                onClick={() => addCategory("season", newSeasonName, () => setNewSeasonName(""))}
-                className="px-3 py-1.5 rounded-lg border border-dashed border-gray-300 text-gray-400 hover:border-gold-400 hover:text-gold-500 transition-colors text-sm font-medium"
-              >
-                추가
-              </button>
+            <div className="col-span-2 space-y-1">
+              <div className="flex gap-1">
+                <input
+                  value={newSeasonName}
+                  onChange={(e) => { setNewSeasonName(e.target.value); if (duplicateError === "season") setDuplicateError(null); }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") { e.preventDefault(); addCategory("season", newSeasonName, () => setNewSeasonName("")); }
+                  }}
+                  placeholder="새 시즌 이름"
+                  className={`flex-1 min-w-0 border border-dashed rounded-lg px-2.5 py-1.5 text-sm placeholder-gray-300 focus:outline-none ${duplicateError === "season" ? "border-red-400 text-red-500 focus:border-red-400" : "border-gray-300 text-gray-600 focus:border-gray-400"}`}
+                />
+                <button
+                  onClick={() => addCategory("season", newSeasonName, () => setNewSeasonName(""))}
+                  className="px-3 py-1.5 rounded-lg border border-dashed border-gray-300 text-gray-400 hover:border-gold-400 hover:text-gold-500 transition-colors text-sm font-medium"
+                >
+                  추가
+                </button>
+              </div>
+              {duplicateError === "season" && (
+                <p className="text-xs text-red-500">이미 존재하는 시즌 이름입니다.</p>
+              )}
             </div>
           </div>
         </div>
