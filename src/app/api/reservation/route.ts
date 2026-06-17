@@ -46,6 +46,7 @@ interface ReservationBody {
     address: string;
     addressDetail: string;
   } | null;
+  source?: string | null;
 }
 
 export async function POST(request: NextRequest) {
