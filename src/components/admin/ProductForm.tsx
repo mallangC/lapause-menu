@@ -83,6 +83,8 @@ const DEFAULT_INPUT: ProductInput = {
   is_popular: false,
   is_recommended: false,
   status: "active",
+  bag_included: false,
+  message_card_unavailable: false,
 };
 
 export default function ProductForm({ initialData, onSubmit }: ProductFormProps) {
@@ -100,6 +102,8 @@ export default function ProductForm({ initialData, onSubmit }: ProductFormProps)
           is_popular: initialData.is_popular,
           is_recommended: initialData.is_recommended,
           status: initialData.status ?? "active",
+          bag_included: initialData.bag_included ?? false,
+          message_card_unavailable: initialData.message_card_unavailable ?? false,
         }
       : DEFAULT_INPUT
   );
@@ -189,7 +193,6 @@ export default function ProductForm({ initialData, onSubmit }: ProductFormProps)
     e.preventDefault();
     const missing: string[] = [];
     if (!data.name) missing.push("상품명");
-    if (!data.image_url) missing.push("이미지");
     if (data.flower_colors.length === 0) missing.push("꽃 색상");
     if (missing.length > 0) {
       setFieldErrors(missing);
@@ -242,7 +245,7 @@ export default function ProductForm({ initialData, onSubmit }: ProductFormProps)
       {/* 이미지 업로드 */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          이미지 <span className="text-red-500">*</span>
+          이미지
         </label>
 
         {data.image_url ? (
@@ -429,6 +432,44 @@ export default function ProductForm({ initialData, onSubmit }: ProductFormProps)
               </button>
             );
           })}
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">맞춤 주문 옵션</label>
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={() => setData({ ...data, bag_included: !data.bag_included })}
+            className={`w-full flex items-center justify-between px-4 py-2.5 rounded-lg border text-sm transition-colors ${
+              data.bag_included
+                ? "border-gold-400 bg-gold-50 text-gold-700"
+                : "border-gray-200 text-gray-600 hover:border-gray-400"
+            }`}
+          >
+            <span>쇼핑백 포함 (추가 선택 불가)</span>
+            <span className={`w-5 h-5 rounded border flex items-center justify-center text-xs font-bold shrink-0 ${
+              data.bag_included ? "bg-gold-400 border-gold-400 text-white" : "border-gray-300"
+            }`}>
+              {data.bag_included ? "✓" : ""}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setData({ ...data, message_card_unavailable: !data.message_card_unavailable })}
+            className={`w-full flex items-center justify-between px-4 py-2.5 rounded-lg border text-sm transition-colors ${
+              data.message_card_unavailable
+                ? "border-gold-400 bg-gold-50 text-gold-700"
+                : "border-gray-200 text-gray-600 hover:border-gray-400"
+            }`}
+          >
+            <span>메시지카드 추가 불가</span>
+            <span className={`w-5 h-5 rounded border flex items-center justify-center text-xs font-bold shrink-0 ${
+              data.message_card_unavailable ? "bg-gold-400 border-gold-400 text-white" : "border-gray-300"
+            }`}>
+              {data.message_card_unavailable ? "✓" : ""}
+            </span>
+          </button>
         </div>
       </div>
 

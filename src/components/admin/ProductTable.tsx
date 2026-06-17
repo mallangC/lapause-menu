@@ -25,13 +25,11 @@ const PAGE_SIZE = 10;
 const selectCls = "border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-700 bg-white focus:outline-none focus:border-gray-400 cursor-pointer";
 
 export default function ProductTable({ products, onEdit, onDelete, onStatusChange }: ProductTableProps) {
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [sortKey, setSortKey] = useState<"price_asc" | "price_desc" | "date_desc" | "date_asc">("date_desc");
   const [filterType, setFilterType] = useState("");
   const [filterBadge, setFilterBadge] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [page, setPage] = useState(1);
-
-  const toggleSort = () => setSortDir((prev) => prev === "asc" ? "desc" : "asc");
 
   const resetPage = () => setPage(1);
 
@@ -42,9 +40,13 @@ export default function ProductTable({ products, onEdit, onDelete, onStatusChang
       if (filterBadge === "recommended" && !p.is_recommended) return false;
       if (filterBadge === "none" && (p.is_popular || p.is_recommended)) return false;
       return !(filterStatus && (p.status ?? "active") !== filterStatus);
-
     })
-    .sort((a, b) => sortDir === "asc" ? a.price - b.price : b.price - a.price);
+    .sort((a, b) => {
+      if (sortKey === "price_asc") return a.price - b.price;
+      if (sortKey === "price_desc") return b.price - a.price;
+      if (sortKey === "date_asc") return a.created_at.localeCompare(b.created_at);
+      return b.created_at.localeCompare(a.created_at);
+    });
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -63,6 +65,17 @@ export default function ProductTable({ products, onEdit, onDelete, onStatusChang
     <div className="space-y-4">
       {/* 필터 */}
       <div className="flex flex-wrap items-center gap-2">
+        <select
+          value={sortKey}
+          onChange={(e) => { setSortKey(e.target.value as typeof sortKey); resetPage(); }}
+          className={selectCls}
+        >
+          <option value="date_desc">최신 순</option>
+          <option value="date_asc">오래된 순</option>
+          <option value="price_asc">가격 낮은 순</option>
+          <option value="price_desc">가격 높은 순</option>
+        </select>
+
         <select
           value={filterType}
           onChange={(e) => { setFilterType(e.target.value); resetPage(); }}
@@ -131,14 +144,7 @@ export default function ProductTable({ products, onEdit, onDelete, onStatusChang
                 <th className="pb-2 font-medium text-gray-400">상품명</th>
                 <th className="pb-2 font-medium text-gray-400 hidden md:table-cell">뱃지</th>
                 <th className="pb-2 font-medium text-gray-400 hidden md:table-cell">유형</th>
-                <th className="pb-2 font-medium text-gray-400">
-                  <div className="flex items-center justify-center gap-1">
-                    가격
-                    <button onClick={toggleSort} className="text-xs leading-none text-gray-900 hover:text-gray-500">
-                      {sortDir === "asc" ? "↑" : "↓"}
-                    </button>
-                  </div>
-                </th>
+                <th className="pb-2 font-medium text-gray-400">가격</th>
                 <th className="pb-2 font-medium text-gray-400">상태</th>
                 <th className="pb-2 font-medium text-gray-400">관리</th>
               </tr>

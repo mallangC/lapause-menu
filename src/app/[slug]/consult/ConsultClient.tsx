@@ -1028,7 +1028,7 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
             <div className="space-y-4">
               {(messageCardEnabled || shoppingBagEnabled) && (
                 <div className="grid grid-cols-2 gap-6">
-                  {messageCardEnabled && (
+                  {messageCardEnabled && !selectedProduct?.message_card_unavailable && (
                     <Section title="메세지 카드" badge={`+${messageCardPrice.toLocaleString()}원`} required>
                       <div className="flex gap-2">
                         {["추가", "없음"].map((v) => (
@@ -1047,7 +1047,7 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
                     </Section>
                   )}
 
-                  {shoppingBagEnabled && (
+                  {shoppingBagEnabled && !selectedProduct?.bag_included && (
                     <Section title="쇼핑백" badge={`+${shoppingBagPrice.toLocaleString()}원`} required>
                       <div className="flex gap-2">
                         {["추가", "없음"].map((v) => (

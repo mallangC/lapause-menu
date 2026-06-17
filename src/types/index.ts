@@ -30,6 +30,8 @@ export interface Product {
   is_recommended: boolean;
   status: ProductStatus;
   created_at: string;
+  bag_included: boolean;
+  message_card_unavailable: boolean;
 }
 
 export interface FilterState {
