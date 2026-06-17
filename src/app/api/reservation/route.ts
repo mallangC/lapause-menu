@@ -134,6 +134,7 @@ export async function POST(request: NextRequest) {
           type: product.product_type,
           name: product.name,
           price: product.price,
+          image_url: product.image_url ?? null,
           message_card: form.messageCard,
           message_card_content: form.messageCardContent || null,
           shopping_bag: form.shoppingBag,

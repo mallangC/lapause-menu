@@ -156,6 +156,20 @@ export default function ReservationDetail({
         {/* 섹션 카드들 */}
         <div className="flex gap-3">
 
+          {/* 상품 이미지 */}
+          {r.items?.[0]?.image_url && (
+            <div
+              className="w-20 h-20 shrink-0 rounded-xl overflow-hidden bg-gray-100 cursor-zoom-in"
+              onClick={() => onOpenLightbox(r.items[0].image_url!)}
+            >
+              <img
+                src={r.items[0].image_url}
+                alt={r.items[0].name}
+                className="w-full h-full object-cover"
+              />
+            </div>
+          )}
+
           <div className="flex-1 min-w-0 space-y-2">
             {/* 주문 정보 */}
             <SectionCard>

@@ -7,6 +7,7 @@ export interface ReservationItem {
   shopping_bag: string;
   memo: string | null;
   status?: string;
+  image_url?: string | null;
 }
 
 export interface Reservation {
