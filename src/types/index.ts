@@ -22,7 +22,7 @@ export interface Product {
   image_url: string | null;
   product_type: string;
   flower_colors: string[];
-  wrapping_color: "밝은 계열" | "어두운 계열" | "기타";
+  wrapping_color: "밝은 계열" | "어두운 계열" | "기타" | null;
   seasons: string[];
   mood: string | null;
   company_id: string;

@@ -81,7 +81,7 @@ export default function FilterPanel({ filter, setFilter, hiddenProductTypes = []
       </div>
 
       <div className="mb-4">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-gold-500 mb-2">꽃 색상</h3>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-gold-500 mb-2">색상</h3>
         <div className="grid grid-cols-3 gap-1">
           {FLOWER_COLORS.map((color) => (
             <button

@@ -213,7 +213,7 @@ export default function ProductForm({ initialData, onSubmit, companyId }: Produc
     e.preventDefault();
     const missing: string[] = [];
     if (!data.name) missing.push("상품명");
-    if (data.flower_colors.length === 0) missing.push("꽃 색상");
+    if (data.flower_colors.length === 0) missing.push("색상");
     if (missing.length > 0) {
       setFieldErrors(missing);
       return;
@@ -363,7 +363,7 @@ export default function ProductForm({ initialData, onSubmit, companyId }: Produc
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          꽃 색상 <span className="text-red-500">*</span>
+          색상 <span className="text-red-500">*</span>
         </label>
         <div className="grid grid-cols-3 gap-2">
           {FLOWER_COLORS.map((color) => {
@@ -392,18 +392,18 @@ export default function ProductForm({ initialData, onSubmit, companyId }: Produc
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          포장지 색상 <span className="text-red-500">*</span>
+          포장지 색상
         </label>
         <div className="grid grid-cols-3 gap-2">
           {WRAPPING_COLORS.map((wc) => (
             <button
               key={wc}
               type="button"
-              onClick={() => setData({ ...data, wrapping_color: wc })}
-              className={`py-1.5 rounded-lg border text-sm transition-colors ${
+              onClick={() => setData({ ...data, wrapping_color: data.wrapping_color === wc ? null : wc })}
+              className={`py-1.5 rounded-xl text-sm border-2 font-medium transition-all ${
                 data.wrapping_color === wc
-                  ? "border-gold-400 bg-gold-400 text-white font-medium"
-                  : "border-gray-200 text-gray-600 hover:border-gold-500 hover:text-gold-500"
+                  ? "border-gold-500 bg-gold-500 text-white"
+                  : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
               }`}
             >
               {wc}

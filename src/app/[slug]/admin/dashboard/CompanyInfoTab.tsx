@@ -43,6 +43,8 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
   const [verifyError, setVerifyError] = useState<string | null>(null);
   const [bankAccountImageUrl, setBankAccountImageUrl] = useState<string | null>(null);
   const [bankImageUploading, setBankImageUploading] = useState(false);
+  const [businessRegImageUrl, setBusinessRegImageUrl] = useState<string | null>(null);
+  const [businessRegUploading, setBusinessRegUploading] = useState(false);
   const [consultApplyStatus, setConsultApplyStatus] = useState<"pending" | "approved" | "rejected" | null>(null);
   const [consultRejectReason, setConsultRejectReason] = useState<string | null>(null);
   const [applying, setApplying] = useState(false);
@@ -55,12 +57,13 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bankImageInputRef = useRef<HTMLInputElement>(null);
+  const businessRegInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
 
   useEffect(() => {
     supabase
       .from("company_settings")
-      .select("notification_email, bank_name, bank_account, bank_holder, address, consult_enabled, business_number, business_verified_at, business_status, bank_account_image_url, consult_apply_status, consult_reject_reason")
+      .select("notification_email, bank_name, bank_account, bank_holder, address, consult_enabled, business_number, business_verified_at, business_status, bank_account_image_url, business_registration_image_url, consult_apply_status, consult_reject_reason")
       .eq("company_id", companyId)
       .single()
       .then(({ data }) => {
@@ -73,6 +76,7 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
         if (data?.business_verified_at) setBusinessVerifiedAt(data.business_verified_at);
         if (data?.business_status) setBusinessStatus(data.business_status);
         if (data?.bank_account_image_url) setBankAccountImageUrl(data.bank_account_image_url);
+        if (data?.business_registration_image_url) setBusinessRegImageUrl(data.business_registration_image_url);
         if (data?.consult_apply_status) setConsultApplyStatus(data.consult_apply_status);
         if (data?.consult_reject_reason) setConsultRejectReason(data.consult_reject_reason);
         setConsultEnabled(data?.consult_enabled ?? false);
@@ -181,6 +185,51 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
       window.open(url, "_blank");
     } else {
       setError("통장사본 조회에 실패했습니다.");
+    }
+  };
+
+  const handleBusinessRegUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setBusinessRegUploading(true);
+
+    let uploadFile: File = file;
+    if (file.type.startsWith("image/")) {
+      uploadFile = await imageCompression(file, {
+        maxSizeMB: 2,
+        maxWidthOrHeight: 2048,
+        useWebWorker: true,
+      });
+    }
+
+    const formData = new FormData();
+    formData.append("file", uploadFile, file.name);
+    formData.append("company_id", companyId);
+    const res = await fetch("/api/company/business-doc", { method: "POST", body: formData });
+    if (res.ok) {
+      setBusinessRegImageUrl("uploaded");
+      if (consultApplyStatus !== null) {
+        setConsultApplyStatus(null);
+        setConsultEnabled(false);
+        await supabase
+          .from("company_settings")
+          .update({ consult_apply_status: null, consult_enabled: false })
+          .eq("company_id", companyId);
+      }
+    } else {
+      const data = await res.json();
+      setError("사업자등록증 업로드 실패: " + (data.error ?? "알 수 없는 오류"));
+    }
+    setBusinessRegUploading(false);
+  };
+
+  const handleViewBusinessReg = async () => {
+    const res = await fetch(`/api/company/business-doc?company_id=${companyId}`);
+    if (res.ok) {
+      const { url } = await res.json();
+      window.open(url, "_blank");
+    } else {
+      setError("사업자등록증 조회에 실패했습니다.");
     }
   };
 
@@ -490,7 +539,7 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
 
         {/* 통장사본 */}
         <div className={consultEnabled ? "opacity-50 pointer-events-none select-none" : ""}>
-          <label className="block text-sm font-medium text-gray-700 mb-1">통장사본</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">통장사본 <span className="text-red-500">*</span></label>
           <p className="text-xs text-gray-400 mb-2">정산 처리를 위해 계좌 확인용으로 사용됩니다.</p>
           {bankAccountImageUrl ? (
             <div className="flex items-center gap-3">
@@ -524,6 +573,46 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
             type="file"
             accept="image/*,application/pdf"
             onChange={handleBankImageUpload}
+            className="hidden"
+          />
+        </div>
+
+        {/* 사업자등록증 */}
+        <div className={`pt-1${consultEnabled ? " opacity-50 pointer-events-none select-none" : ""}`}>
+          <label className="block text-sm font-medium text-gray-700 mb-1">사업자등록증 <span className="text-red-500">*</span></label>
+          <p className="text-xs text-gray-400 mb-2">본인 명의 사업자 확인용으로 사용됩니다. 사진 또는 PDF로 업로드하세요.</p>
+          {businessRegImageUrl ? (
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleViewBusinessReg}
+                className="text-xs text-blue-500 hover:underline"
+              >
+                사업자등록증 확인
+              </button>
+              <button
+                type="button"
+                onClick={() => setBusinessRegImageUrl(null)}
+                className="text-xs text-gray-400 hover:text-red-400"
+              >
+                삭제
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => businessRegInputRef.current?.click()}
+              disabled={businessRegUploading}
+              className="px-4 py-2 border border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-gray-500 hover:text-gray-700 transition-colors disabled:opacity-50"
+            >
+              {businessRegUploading ? "업로드 중..." : "+ 사업자등록증 업로드"}
+            </button>
+          )}
+          <input
+            ref={businessRegInputRef}
+            type="file"
+            accept="image/*,application/pdf"
+            onChange={handleBusinessRegUpload}
             className="hidden"
           />
         </div>
@@ -596,6 +685,7 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
               const canApply =
                 !!businessVerifiedAt &&
                 !!bankAccountImageUrl &&
+                !!businessRegImageUrl &&
                 !!bankName && !!bankAccount && !!bankHolder;
               return (
                 <div className="space-y-2 mt-2">
@@ -603,6 +693,7 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
                     <ul className="text-xs text-gray-400 space-y-0.5 list-disc list-inside">
                       {!businessVerifiedAt && <li>사업자등록번호 인증 필요</li>}
                       {!bankAccountImageUrl && <li>통장사본 업로드 필요</li>}
+                      {!businessRegImageUrl && <li>사업자등록증 업로드 필요</li>}
                       {(!bankName || !bankAccount || !bankHolder) && <li>계좌 정보 입력 필요</li>}
                     </ul>
                   )}

@@ -45,8 +45,7 @@ export async function POST(req: NextRequest) {
 
   const { error } = await supabase
     .from("company_subscriptions")
-    .update(updateData)
-    .eq("company_id", companyId);
+    .upsert({ company_id: companyId, ...updateData }, { onConflict: "company_id" });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

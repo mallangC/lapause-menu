@@ -26,6 +26,7 @@ export async function GET() {
     .select(`
       company_id, business_number, business_verified_at, business_status,
       bank_name, bank_account, bank_holder, bank_account_image_url,
+      business_registration_image_url,
       consult_apply_status, consult_reject_reason,
       companies(name, created_at)
     `)

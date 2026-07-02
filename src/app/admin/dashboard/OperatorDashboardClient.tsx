@@ -7,14 +7,24 @@ import { createClient } from "@/lib/supabase/client";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import SettlementsTab from "./SettlementsTab";
 import VerificationTab from "./VerificationTab";
+import StoreManagementTab from "./StoreManagementTab";
+import BillingLogsTab, { BillingLog } from "./BillingLogsTab";
 
 interface Company {
   id: string;
   name: string;
   slug: string;
   created_at: string;
+  owner_id: string | null;
+  ownerName: string | null;
   settings: { consult_enabled: boolean } | null;
-  subscription: { plan: "none" | "starter" | "pro" | "free" | null } | null;
+  subscription: {
+    plan: "none" | "starter" | "pro" | "free" | null;
+    billing_key: string | null;
+    plan_expires_at: string | null;
+    trial_ends_at: string | null;
+    subscription_plan: string | null;
+  } | null;
 }
 
 interface Reservation {
@@ -35,12 +45,13 @@ interface Props {
   companies: Company[];
   reservations: Reservation[];
   products: Product[];
+  billingLogs: BillingLog[];
 }
 
-export default function OperatorDashboardClient({ companies, reservations, products }: Props) {
+export default function OperatorDashboardClient({ companies, reservations, products, billingLogs }: Props) {
   const router = useRouter();
   const supabase = createClient();
-  const [activeTab, setActiveTab] = useState<"overview" | "settlements" | "verification">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "stores" | "billing" | "settlements" | "verification">("overview");
 
   const now = new Date();
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -209,8 +220,10 @@ export default function OperatorDashboardClient({ companies, reservations, produ
         <div className="flex border-b border-gray-200">
           {([
             { key: "overview", label: "현황" },
+            { key: "stores", label: "매장 관리" },
+            { key: "billing", label: "결제 이력" },
             { key: "settlements", label: "정산 관리" },
-          { key: "verification", label: "검증 관리" },
+            { key: "verification", label: "검증 관리" },
           ] as const).map(tab => (
             <button
               key={tab.key}
@@ -225,6 +238,26 @@ export default function OperatorDashboardClient({ companies, reservations, produ
             </button>
           ))}
         </div>
+
+        {activeTab === "stores" && (
+          <StoreManagementTab
+            stores={companies.map(c => ({
+              id: c.id,
+              name: c.name,
+              slug: c.slug,
+              ownerName: c.ownerName,
+              plan: c.subscription?.plan ?? null,
+              billingKey: c.subscription?.billing_key ?? null,
+              planExpiresAt: c.subscription?.plan_expires_at ?? null,
+              trialEndsAt: c.subscription?.trial_ends_at ?? null,
+              subscriptionPlan: c.subscription?.subscription_plan ?? null,
+            }))}
+          />
+        )}
+
+        {activeTab === "billing" && (
+          <BillingLogsTab logs={billingLogs} />
+        )}
 
         {activeTab === "settlements" && (
           <SettlementsTab companies={companies} />

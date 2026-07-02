@@ -15,7 +15,7 @@ interface Props {
 type StepId = "consult" | "product";
 
 function getSteps(plan: string): StepId[] {
-  if (plan === "pro") return ["consult", "product"];
+  if (plan === "pro") return ["product", "consult"];
   return ["product"];
 }
 
@@ -184,14 +184,14 @@ export default function OnboardingClient({ slug, companyId, plan }: Props) {
           {currentStep === "consult" && (
             <ConsultStep
               onNext={() => finish("company")}
-              onSkip={advance}
+              onSkip={() => finish()}
             />
           )}
           {currentStep === "product" && (
             <ProductStep
               companyId={companyId}
-              onDone={() => finish()}
-              onSkip={() => finish()}
+              onDone={isLastStep ? () => finish() : advance}
+              onSkip={isLastStep ? () => finish() : advance}
               isLastStep={isLastStep}
             />
           )}

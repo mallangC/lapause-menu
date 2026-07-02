@@ -11,6 +11,7 @@ interface Application {
   bank_account: string | null;
   bank_holder: string | null;
   bank_account_image_url: string | null;
+  business_registration_image_url: string | null;
   consult_apply_status: "pending" | "approved" | "rejected";
   consult_reject_reason: string | null;
   companies: { name: string; created_at: string } | null;
@@ -76,6 +77,16 @@ export default function VerificationTab() {
     }
   };
 
+  const handleViewBusinessReg = async (companyId: string) => {
+    const res = await fetch(`/api/company/business-doc?company_id=${companyId}`);
+    if (res.ok) {
+      const { url } = await res.json();
+      window.open(url, "_blank");
+    } else {
+      alert("사업자등록증을 불러올 수 없습니다.");
+    }
+  };
+
   const filtered = applications.filter(a =>
     statusFilter === "all" || a.consult_apply_status === statusFilter
   );
@@ -124,6 +135,7 @@ export default function VerificationTab() {
                 <th className="text-left px-6 py-3 font-medium">인증</th>
                 <th className="text-left px-6 py-3 font-medium">계좌 정보</th>
                 <th className="text-left px-6 py-3 font-medium">통장사본</th>
+                <th className="text-left px-6 py-3 font-medium">사업자등록증</th>
                 <th className="text-left px-6 py-3 font-medium">상태</th>
                 <th className="text-left px-6 py-3 font-medium">액션</th>
               </tr>
@@ -172,7 +184,19 @@ export default function VerificationTab() {
                         보기
                       </button>
                     ) : (
-                      <span className="text-xs text-gray-300">미첨부</span>
+                      <span className="text-xs text-red-400">미첨부</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-3.5">
+                    {app.business_registration_image_url ? (
+                      <button
+                        onClick={() => handleViewBusinessReg(app.company_id)}
+                        className="text-xs text-blue-500 hover:underline whitespace-nowrap"
+                      >
+                        보기
+                      </button>
+                    ) : (
+                      <span className="text-xs text-red-400">미첨부</span>
                     )}
                   </td>
                   <td className="px-6 py-3.5">
