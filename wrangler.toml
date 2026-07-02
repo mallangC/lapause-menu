@@ -12,3 +12,6 @@ NEXT_PUBLIC_PORTONE_CHANNEL_KEY = "channel-key-7c495eb2-40e6-4994-8896-ebe4d5d3f
 [assets]
 directory = ".open-next/assets"
 binding = "ASSETS"
+
+[images]
+binding = "IMAGES"
