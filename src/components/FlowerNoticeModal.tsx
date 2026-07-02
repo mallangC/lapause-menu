@@ -22,10 +22,11 @@ export default function FlowerNoticeModal({ onConfirm, onClose }: Props) {
         className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4"
         onClick={(e) => e.stopPropagation()}
       >
-        <p className="text-sm text-gray-700 leading-relaxed">
-          생화 특성상 선택하신 상품과 <br />똑같은 구성으로 제작이 불가능합니다.<br />
-          이미지를 참고해 비슷한 분위기로 제작해드립니다.
-        </p>
+        <div className="text-sm text-gray-700 leading-relaxed text-center">
+          <p>생화 특성상 선택하신 상품과</p>
+          <p>똑같은 구성으로 제작이 불가능합니다.</p>
+          <p>이미지를 참고해 비슷한 분위기로 제작해드립니다.</p>
+        </div>
         <button
           type="button"
           onClick={onConfirm}

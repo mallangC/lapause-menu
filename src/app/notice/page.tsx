@@ -47,7 +47,7 @@ export default function NoticePage() {
               },
               {
                 title: "메인 화면 — 상품 필터",
-                desc: "상품 유형, 꽃 색상, 포장지 색상으로 원하는 상품을 빠르게 찾을 수 있습니다. PC에서는 호버 드롭다운, 모바일에서는 하단 필터 패널로 동작합니다.",
+                desc: "상품 유형, 색상, 포장지 색상으로 원하는 상품을 빠르게 찾을 수 있습니다. PC에서는 호버 드롭다운, 모바일에서는 하단 필터 패널로 동작합니다.",
               },
               {
                 title: "맞춤 주문하기",
@@ -117,7 +117,7 @@ export default function NoticePage() {
               </div>
               <div className="px-6 py-4 space-y-3">
                 {[
-                  ["상품 추가", "상품명, 가격, 이미지, 유형, 분위기, 뱃지, 꽃 색상, 포장지 색상, 시즌, 상태를 입력해 등록합니다. 이미지는 자동 압축 처리됩니다."],
+                  ["상품 추가", "상품명, 가격, 이미지, 유형, 분위기, 뱃지, 색상, 포장지 색상(선택), 시즌, 상태를 입력해 등록합니다. 이미지는 자동 압축 처리됩니다. 상품 유형은 기본 제공 외에 직접 추가한 커스텀 유형도 사용할 수 있습니다."],
                   ["분위기", "깔끔한 화이트&그린, 화사한 파스텔톤, 선명한 비비드톤, 차분한 딥컬러 중 선택할 수 있습니다. 상담 예약 시 고객 선호와 매칭하는 데 활용됩니다."],
                   ["상품 수정 / 삭제", "목록에서 수정·삭제 버튼으로 즉시 변경할 수 있습니다."],
                   ["상태 변경", "상태 뱃지를 클릭하면 활성 → 비활성 → 품절 순으로 전환됩니다. 비활성·품절 상품은 손님 화면에 표시되지 않습니다."],
@@ -203,7 +203,7 @@ export default function NoticePage() {
               </div>
               <div className="px-6 py-4 space-y-3">
                 {[
-                  ["맞춤 주문 활성화", "Pro 플랜 전용 기능으로, 활성화 전 아래 항목을 모두 준비해야 합니다.\n\n[준비 사항]\n• 매장 전화번호 — 카카오 알림톡 발신 번호로 사용됩니다.\n• 매장 주소 — 배송 거리 계산 및 알림톡에 표시됩니다.\n• 계좌 정보 (은행·계좌번호·예금주) — 정산 이체 시 사용됩니다.\n• 통장사본 — 계좌 확인 및 오이체 방지를 위해 업로드합니다.\n• 사업자등록번호 인증 — 세금계산서 발행을 위해 국세청에서 유효한 사업자인지 확인합니다.\n\n[활성화 순서]\n① 매장 정보 탭에서 위 5가지를 모두 준비합니다.\n② '맞춤 주문 신청' 버튼을 눌러 운영자 검토를 요청합니다.\n③ 운영자가 서류를 확인한 뒤 승인하면 알림이 전달됩니다.\n④ 맞춤 주문 탭에서 토글을 켜면 손님 화면에 '맞춤 주문하기' 버튼이 노출되고 통계 탭이 활성화됩니다."],
+                  ["맞춤 주문 활성화", "Pro 플랜 전용 기능으로, 활성화 전 아래 항목을 모두 준비해야 합니다.\n\n[준비 사항]\n• 매장 전화번호 — 카카오 알림톡 발신 번호로 사용됩니다.\n• 매장 주소 — 배송 거리 계산 및 알림톡에 표시됩니다.\n• 계좌 정보 (은행·계좌번호·예금주) — 정산 이체 시 사용됩니다.\n• 통장사본 — 계좌 확인 및 오이체 방지를 위해 업로드합니다.\n• 사업자등록번호 인증 — 세금계산서 발행을 위해 국세청에서 유효한 사업자인지 확인합니다.\n• 사업자등록증 — 사업자 본인 확인을 위해 사진 또는 PDF를 업로드합니다. 운영자가 서류를 직접 검토합니다.\n\n[활성화 순서]\n① 매장 정보 탭에서 위 6가지를 모두 준비합니다.\n② '맞춤 주문 신청' 버튼을 눌러 운영자 검토를 요청합니다.\n③ 운영자가 서류를 확인한 뒤 승인하면 알림이 전달됩니다.\n④ 맞춤 주문 탭에서 토글을 켜면 손님 화면에 '맞춤 주문하기' 버튼이 노출되고 통계 탭이 활성화됩니다."],
                   ["메시지 카드", "활성화하면 맞춤 주문 폼에 메시지 카드 옵션이 표시됩니다. 추가 금액을 설정하면 최종 가격에 반영됩니다."],
                   ["쇼핑백", "활성화하면 맞춤 주문 폼에 쇼핑백 옵션이 표시됩니다. 추가 금액을 설정할 수 있습니다."],
                   ["배송 기능", "활성화하면 맞춤 주문 폼에 배송 선택이 노출됩니다. 1km 이내 배송비를 먼저 설정해야 활성화할 수 있습니다. 배송은 당일 예약이 불가하도록 설정되어 있습니다."],
@@ -255,7 +255,7 @@ export default function NoticePage() {
                 ["매장 정보 입력", "로그인 시 나오는 팝업에서 상호명, 로고를 등록하고 채널 URL을 입력합니다."],
                 ["상품 등록", "상품 관리 탭에서 판매 할 상품을 추가합니다."],
                 ["디자인 구성", "디자인 탭에서 홈 화면 이미지, 메뉴 필터, 사이트 색상을 취향에 맞게 조정합니다."],
-                ["맞춤 주문 활성화 (선택)", "Pro 플랜 기능입니다. 매장 정보 탭에서 전화번호·주소·계좌 정보를 입력하고, 사업자등록번호 인증과 통장사본 업로드를 완료한 뒤 '맞춤 주문 신청' 버튼을 누릅니다. 운영자 승인 후 맞춤 주문 탭에서 토글을 켜면 기능이 활성화됩니다. 배송을 제공하려면 영업 설정에서 배송비도 설정합니다."],
+                ["맞춤 주문 활성화 (선택)", "Pro 플랜 기능입니다. 매장 정보 탭에서 전화번호·주소·계좌 정보를 입력하고, 사업자등록번호 인증·통장사본·사업자등록증 업로드를 완료한 뒤 '맞춤 주문 신청' 버튼을 누릅니다. 운영자가 서류를 확인한 뒤 승인 시 기능이 활성화됩니다. 배송을 제공하려면 영업 설정에서 배송비도 설정합니다."],
                 ["링크 공유", "메뉴 URL을 SNS, 카카오톡, 네이버 스마트플레이스 등에 공유합니다."],
               ].map(([title, desc], i) => (
                 <li key={title} className="flex gap-5 relative">
@@ -282,9 +282,35 @@ export default function NoticePage() {
           <div className="space-y-3">
             <div className="bg-white rounded-2xl border border-beige-200 overflow-hidden">
               <div className="flex items-center gap-3 px-6 py-3 border-b border-beige-100">
-                <span className="text-xs font-semibold text-gold-500 tracking-widest">2026.04</span>
+                <span className="text-xs font-semibold text-gold-500 tracking-widest">2026.07</span>
               </div>
               <ul className="px-6 py-4 space-y-3">
+                {[
+                  { date: "07.02", text: "사업자등록증 업로드 필수화 — 맞춤 주문 신청 시 사업자등록증 사진·PDF 업로드 필수. 운영자가 서류를 직접 확인한 뒤 승인 처리", isNew: true },
+                  { date: "07.02", text: "커스텀 상품 유형 지원 — 디자인 > 메뉴 설정에서 직접 상품 유형을 추가해 사용 가능. 화병·화분 등 기존 유형에 없던 카테고리 등록 지원", isNew: true },
+                  { date: "07.02", text: "상품 색상 필드명 변경 및 포장지 색상 선택 사항으로 변경 — '꽃 색상'을 '색상'으로 변경, 포장지 색상은 필수에서 선택으로 완화", isNew: true },
+                  { date: "07.02", text: "구독 결제·환불 이력 로그 — 구독 결제·환불 이벤트를 자동 기록. 운영자 페이지에서 결제 이력 탭으로 조회 가능", isNew: true },
+                  { date: "07.02", text: "운영자 결제 이력 탭 추가 — 전체 매장의 구독 결제·환불 내역을 유형·상태·매장명으로 필터링해 조회", isNew: true },
+                ].map(({ date, text, isNew }) => (
+                  <li key={text} className="flex items-start gap-2 text-xs leading-relaxed">
+                    <span className="text-gray-300 shrink-0 w-10 pt-0.5">{date}</span>
+                    {isNew && (
+                      <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-gold-500 text-white leading-none mt-0.5">NEW</span>
+                    )}
+                    <span className="text-gray-500">{text}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <details className="bg-white rounded-2xl border border-beige-200 overflow-hidden group">
+              <summary className="flex items-center justify-between px-6 py-3 cursor-pointer list-none">
+                <span className="text-xs font-semibold text-gold-500 tracking-widest">2026.04</span>
+                <svg className="w-4 h-4 text-gray-300 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m19 9-7 7-7-7" />
+                </svg>
+              </summary>
+              <ul className="px-6 py-4 space-y-3 border-t border-beige-100">
                 {[
                   { date: "04.28", text: "맞춤 주문 신청·승인 플로우 추가 — 사업자등록번호 국세청 인증, 통장사본 업로드(비공개 저장·이미지 자동 압축), 계좌 정보 입력 완료 후 운영자에게 맞춤 주문 신청 가능. 운영자 승인 후 매장에서 직접 토글로 활성화", isNew: true },
                   { date: "04.28", text: "이용 안내 페이지 개선 — 맞춤 주문 활성화 준비 사항 및 단계별 순서 상세 안내 추가", isNew: true },
@@ -309,7 +335,7 @@ export default function NoticePage() {
                   </li>
                 ))}
               </ul>
-            </div>
+            </details>
 
             <details className="bg-white rounded-2xl border border-beige-200 overflow-hidden group">
               <summary className="flex items-center justify-between px-6 py-3 cursor-pointer list-none">
