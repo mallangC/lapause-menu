@@ -24,7 +24,7 @@ export default function HeroSlider({ images }: HeroSliderProps) {
   return (
     <div className="py-4 bg-beige-100">
       {/* 카드 */}
-      <div className="px-4 max-w-sm mx-auto">
+      <div className="px-4 max-w-lg mx-auto">
         <div className="relative aspect-[4/3] rounded-2xl overflow-hidden shadow-lg">
           {images.map((src, i) => (
             <div
