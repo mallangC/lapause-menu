@@ -24,7 +24,7 @@ export default function HeroSlider({ images }: HeroSliderProps) {
   return (
     <div className="py-4 bg-beige-100">
       {/* 양옆이 살짝 보이는 슬라이더 */}
-      <div className="overflow-hidden">
+      <div className="relative overflow-hidden">
         <div
           className="flex transition-transform duration-500 ease-in-out"
           style={{ transform: `translateX(calc(-${current * 80}% - ${current * 12}px + 10%))` }}
@@ -41,40 +41,42 @@ export default function HeroSlider({ images }: HeroSliderProps) {
             </div>
           ))}
         </div>
+
+        {/* 중앙 카드 좌우 화살표 */}
+        {images.length > 1 && (
+          <>
+            <button
+              onClick={prev}
+              className="absolute left-[calc(10%-1.25rem)] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 backdrop-blur-sm border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-white transition-colors shadow-md z-10"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m15 18-6-6 6-6" />
+              </svg>
+            </button>
+            <button
+              onClick={next}
+              className="absolute right-[calc(10%-1.25rem)] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 backdrop-blur-sm border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-white transition-colors shadow-md z-10"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m9 18 6-6-6-6" />
+              </svg>
+            </button>
+          </>
+        )}
       </div>
 
-      {/* 하단 컨트롤 */}
+      {/* 도트 인디케이터 */}
       {images.length > 1 && (
-        <div className="flex items-center justify-center gap-3 mt-3">
-          <button
-            onClick={prev}
-            className="w-7 h-7 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors shadow-sm"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="m15 18-6-6 6-6" />
-            </svg>
-          </button>
-
-          <div className="flex gap-1.5">
-            {images.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setCurrent(i)}
-                className={`h-1.5 rounded-full transition-all duration-300 ${
-                  i === current ? "w-5 bg-gold-500" : "w-1.5 bg-gray-300"
-                }`}
-              />
-            ))}
-          </div>
-
-          <button
-            onClick={next}
-            className="w-7 h-7 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors shadow-sm"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="m9 18 6-6-6-6" />
-            </svg>
-          </button>
+        <div className="flex justify-center gap-1.5 mt-3">
+          {images.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setCurrent(i)}
+              className={`h-1.5 rounded-full transition-all duration-300 ${
+                i === current ? "w-5 bg-gold-500" : "w-1.5 bg-gray-300"
+              }`}
+            />
+          ))}
         </div>
       )}
     </div>
