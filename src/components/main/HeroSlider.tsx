@@ -27,7 +27,7 @@ export default function HeroSlider({ images }: HeroSliderProps) {
       <div className="flex items-center gap-2 px-3">
         {images.length > 1 ? (
           <button onClick={prev} className="shrink-0 p-1 text-gray-400 hover:text-gray-700 transition-colors">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
               <path d="m15 18-6-6 6-6" />
             </svg>
           </button>
@@ -41,7 +41,7 @@ export default function HeroSlider({ images }: HeroSliderProps) {
             {images.map((src, i) => (
               <div
                 key={src}
-                className="relative shrink-0 w-full aspect-[4/3] rounded-2xl overflow-hidden shadow-lg"
+                className="relative shrink-0 w-full aspect-[4/2.2] rounded-2xl overflow-hidden shadow-lg"
               >
                 <Image src={src} alt="" fill className="object-cover" priority={i === 0} />
               </div>
@@ -51,7 +51,7 @@ export default function HeroSlider({ images }: HeroSliderProps) {
 
         {images.length > 1 ? (
           <button onClick={next} className="shrink-0 p-1 text-gray-400 hover:text-gray-700 transition-colors">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
               <path d="m9 18 6-6-6-6" />
             </svg>
           </button>
