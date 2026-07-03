@@ -5,8 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Product, FilterState } from "@/types";
-import { EMPTY_FILTER, applyFilter } from "@/lib/filter";
-import ProductGrid from "./ProductGrid";
+import { EMPTY_FILTER } from "@/lib/filter";
 import MainNav from "./MainNav";
 import HeroSlider from "./HeroSlider";
 import CategorySlider from "./CategorySlider";
@@ -66,12 +65,6 @@ export default function MainLayout({
     if (from) sessionStorage.setItem(`consult_source_${slug}`, from);
   }, [searchParams, slug]);
 
-  const filteredProducts = applyFilter(products, filter).filter((p) => {
-    if (!filter.isSeason && hiddenProductTypes.includes(p.product_type)) return false;
-    if (p.seasons.length > 0 && p.seasons.every((s) => hiddenSeasons.includes(s))) return false;
-    return true;
-  });
-
   const heroImages = [homeFeaturedImage, homeAllImage, homeSeasonImage, homeConsultImage].filter(Boolean) as string[];
 
   const hasChannels = locationUrl || kakaoChannelUrl || instagramUrl || youtubeUrl;
@@ -112,11 +105,6 @@ export default function MainLayout({
             customProductTypes={customProductTypes}
           />
         </div>
-      </div>
-
-      {/* 상품 목록 */}
-      <div className="max-w-6xl mx-auto px-4 py-6">
-        <ProductGrid products={filteredProducts} consultEnabled={consultEnabled} slug={slug} />
       </div>
 
       {/* 하단 */}
