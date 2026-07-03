@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { Product, FilterState } from "@/types";
-import { EMPTY_FILTER } from "@/lib/filter";
+import { Product } from "@/types";
+import { PRODUCT_TYPES } from "@/lib/constants";
 import MainNav from "./MainNav";
 import HeroSlider from "./HeroSlider";
 import CategorySlider from "./CategorySlider";
@@ -18,7 +18,7 @@ const POLICY_LINKS = [
 ];
 
 interface MainLayoutProps {
-  products: Product[];
+  products?: Product[];
   companyName?: string;
   logoImage?: string | null;
   themeVars?: Record<string, string>;
@@ -32,14 +32,11 @@ interface MainLayoutProps {
   instagramUrl?: string | null;
   youtubeUrl?: string | null;
   hiddenProductTypes?: string[];
-  hiddenSeasons?: string[];
   customProductTypes?: string[];
-  customSeasons?: string[];
   consultEnabled?: boolean;
 }
 
 export default function MainLayout({
-  products,
   companyName = "Lapause Fleur",
   logoImage,
   themeVars,
@@ -53,11 +50,10 @@ export default function MainLayout({
   instagramUrl,
   youtubeUrl,
   hiddenProductTypes = [],
-  hiddenSeasons = [],
   customProductTypes = [],
   consultEnabled = false,
 }: MainLayoutProps) {
-  const [filter, setFilter] = useState<FilterState>(EMPTY_FILTER);
+  const router = useRouter();
   const searchParams = useSearchParams();
 
   useEffect(() => {
@@ -68,6 +64,15 @@ export default function MainLayout({
   const heroImages = [homeFeaturedImage, homeAllImage, homeSeasonImage, homeConsultImage].filter(Boolean) as string[];
 
   const hasChannels = locationUrl || kakaoChannelUrl || instagramUrl || youtubeUrl;
+
+  const visibleTypes = [
+    ...PRODUCT_TYPES.filter((t) => !hiddenProductTypes.includes(t)),
+    ...customProductTypes,
+  ];
+
+  const handleCategorySelect = (type: string) => {
+    router.push(`/${slug}/products?type=${encodeURIComponent(type)}`);
+  };
 
   const logo = logoImage ? (
     <Image src={logoImage} alt={companyName} width={200} height={40} className="object-contain h-9 w-auto" />
@@ -84,12 +89,7 @@ export default function MainLayout({
             {slug ? <Link href={`/${slug}/admin`}>{logo}</Link> : logo}
           </div>
         </header>
-        <MainNav
-          filter={filter}
-          setFilter={setFilter}
-          consultEnabled={consultEnabled}
-          slug={slug}
-        />
+        <MainNav slug={slug} consultEnabled={consultEnabled} />
       </div>
 
       {/* 히어로 슬라이더 */}
@@ -98,10 +98,9 @@ export default function MainLayout({
       {/* 카테고리 슬라이더 */}
       <div className="max-w-6xl mx-auto">
         <CategorySlider
-          filter={filter}
-          setFilter={setFilter}
-          hiddenProductTypes={hiddenProductTypes}
-          customProductTypes={customProductTypes}
+          types={visibleTypes}
+          selectedTypes={[]}
+          onSelect={handleCategorySelect}
         />
       </div>
 
@@ -109,7 +108,6 @@ export default function MainLayout({
       <div className="border-t border-gray-100 bg-white mt-4">
         <div className="max-w-4xl mx-auto px-4 py-8 flex flex-col items-center gap-8">
 
-          {/* 맞춤 주문하기 */}
           {consultEnabled && slug && (
             <Link
               href={`/${slug}/consult`}
@@ -119,7 +117,6 @@ export default function MainLayout({
             </Link>
           )}
 
-          {/* 채널 버튼 */}
           {hasChannels && (
             <div className="flex flex-row gap-8 justify-center">
               {locationUrl && (
@@ -166,7 +163,6 @@ export default function MainLayout({
             </div>
           )}
 
-          {/* 정책 링크 + 푸터 */}
           <div className="flex flex-col items-center gap-1">
             <div className="flex items-center justify-center gap-4 text-[10px] text-gray-400">
               {POLICY_LINKS.map(({ label, href }, i) => (

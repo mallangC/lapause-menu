@@ -1,9 +1,5 @@
 "use client";
 
-import { Dispatch, SetStateAction } from "react";
-import { FilterState } from "@/types";
-import { PRODUCT_TYPES } from "@/lib/constants";
-
 const CATEGORY_ICONS: Record<string, string> = {
   "다발": "💐",
   "바구니": "🧺",
@@ -19,35 +15,18 @@ const DISPLAY_NAMES: Record<string, string> = {
 };
 
 interface CategorySliderProps {
-  filter: FilterState;
-  setFilter: Dispatch<SetStateAction<FilterState>>;
-  hiddenProductTypes?: string[];
-  customProductTypes?: string[];
+  types: string[];
+  selectedTypes: string[];
+  onSelect: (type: string) => void;
 }
 
-export default function CategorySlider({ filter, setFilter, hiddenProductTypes = [], customProductTypes = [] }: CategorySliderProps) {
-  const allTypes = [
-    ...PRODUCT_TYPES.filter((t) => !hiddenProductTypes.includes(t)),
-    ...customProductTypes,
-  ];
-
-  const toggleType = (type: string) => {
-    setFilter((f) => ({
-      ...f,
-      featured: false,
-      isSeason: false,
-      productTypes: f.productTypes.includes(type)
-        ? f.productTypes.filter((t) => t !== type)
-        : [...f.productTypes, type],
-    }));
-  };
-
+export default function CategorySlider({ types, selectedTypes, onSelect }: CategorySliderProps) {
   return (
     <div className="flex gap-5 overflow-x-auto px-4 py-5 no-scrollbar justify-center">
-      {allTypes.map((type) => {
-        const isSelected = filter.productTypes.includes(type);
+      {types.map((type) => {
+        const isSelected = selectedTypes.includes(type);
         return (
-          <button key={type} onClick={() => toggleType(type)} className="flex flex-col items-center gap-2 shrink-0">
+          <button key={type} onClick={() => onSelect(type)} className="flex flex-col items-center gap-2 shrink-0">
             <span
               className={`w-16 h-16 rounded-full flex items-center justify-center text-2xl border-2 transition-all ${
                 isSelected ? "border-gold-500 bg-gold-50 shadow-sm" : "border-gray-200 bg-white"

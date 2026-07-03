@@ -1,22 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { Dispatch, SetStateAction } from "react";
-import { FilterState } from "@/types";
-import { EMPTY_FILTER } from "@/lib/filter";
 
 interface MainNavProps {
-  filter: FilterState;
-  setFilter: Dispatch<SetStateAction<FilterState>>;
-  consultEnabled?: boolean;
   slug?: string;
+  activeTab?: "all" | "featured" | "season";
+  consultEnabled?: boolean;
 }
 
-export default function MainNav({ filter, setFilter, consultEnabled = false, slug }: MainNavProps) {
-  const isAll = !filter.featured && !filter.isSeason;
-  const isFeatured = filter.featured;
-  const isSeason = filter.isSeason;
-
+export default function MainNav({ slug, activeTab, consultEnabled = false }: MainNavProps) {
   const tabClass = (active: boolean) =>
     `px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
       active ? "border-gold-500 text-gold-500" : "border-transparent text-gray-500 hover:text-gray-800"
@@ -25,15 +17,15 @@ export default function MainNav({ filter, setFilter, consultEnabled = false, slu
   return (
     <nav className="border-b border-gray-100 bg-white">
       <div className="max-w-6xl mx-auto px-2 flex justify-center gap-0">
-        <button onClick={() => setFilter(EMPTY_FILTER)} className={tabClass(isAll)}>
+        <Link href={`/${slug}/products`} className={tabClass(activeTab === "all")}>
           전체
-        </button>
-        <button onClick={() => setFilter({ ...EMPTY_FILTER, featured: true })} className={tabClass(isFeatured)}>
+        </Link>
+        <Link href={`/${slug}/products?tab=featured`} className={tabClass(activeTab === "featured")}>
           추천/인기
-        </button>
-        <button onClick={() => setFilter({ ...EMPTY_FILTER, isSeason: true })} className={tabClass(isSeason)}>
+        </Link>
+        <Link href={`/${slug}/products?tab=season`} className={tabClass(activeTab === "season")}>
           시즌
-        </button>
+        </Link>
         {consultEnabled && slug && (
           <Link href={`/${slug}/consult`} className={tabClass(false)}>
             맞춤주문
