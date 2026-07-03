@@ -96,15 +96,13 @@ export default function MainLayout({
       <HeroSlider images={heroImages} />
 
       {/* 카테고리 슬라이더 */}
-      <div className="bg-white border-b border-gray-100">
-        <div className="max-w-6xl mx-auto">
-          <CategorySlider
-            filter={filter}
-            setFilter={setFilter}
-            hiddenProductTypes={hiddenProductTypes}
-            customProductTypes={customProductTypes}
-          />
-        </div>
+      <div className="max-w-6xl mx-auto">
+        <CategorySlider
+          filter={filter}
+          setFilter={setFilter}
+          hiddenProductTypes={hiddenProductTypes}
+          customProductTypes={customProductTypes}
+        />
       </div>
 
       {/* 하단 */}
