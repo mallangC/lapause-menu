@@ -1,7 +1,10 @@
 name = "flo-aide"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
-main = ".open-next/worker.js"
+main = "src/cloudflare-worker.ts"
+
+[triggers]
+crons = ["0 18 * * *"]
 
 [vars]
 NEXT_PUBLIC_SUPABASE_URL = "https://yywoqaydqjcgpwxyantp.supabase.co"
