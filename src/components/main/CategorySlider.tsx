@@ -43,7 +43,7 @@ export default function CategorySlider({ filter, setFilter, hiddenProductTypes =
   };
 
   return (
-    <div className="flex gap-5 overflow-x-auto px-4 py-5 no-scrollbar">
+    <div className="flex gap-5 overflow-x-auto px-4 py-5 no-scrollbar justify-center">
       {allTypes.map((type) => {
         const isSelected = filter.productTypes.includes(type);
         return (
