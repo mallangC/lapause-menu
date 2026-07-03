@@ -19,48 +19,65 @@ export default function HeroSlider({ images }: HeroSliderProps) {
     return () => clearTimeout(timer);
   }, [current, next, images.length]);
 
-  if (images.length === 0) return <div className="w-full aspect-[4/3] md:aspect-[16/6] bg-beige-200" />;
+  if (images.length === 0) return <div className="w-full h-52 bg-beige-200" />;
 
   return (
-    <div className="relative w-full aspect-[4/3] md:aspect-[16/6] overflow-hidden bg-beige-200">
-      {images.map((src, i) => (
+    <div className="py-4 bg-beige-100 overflow-hidden">
+      {/* 카드 트랙 */}
+      <div className="relative flex items-center justify-center">
         <div
-          key={src}
-          className={`absolute inset-0 transition-opacity duration-700 ${i === current ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+          className="flex gap-3 transition-transform duration-500 ease-in-out px-4"
+          style={{ transform: `translateX(calc(-${current * 100}% - ${current * 12}px))` }}
         >
-          <Image src={src} alt="" fill className="object-cover" priority={i === 0} />
+          {images.map((src, i) => (
+            <div
+              key={src}
+              onClick={() => setCurrent(i)}
+              className={`relative shrink-0 w-[calc(100vw-2rem)] max-w-sm rounded-2xl overflow-hidden cursor-pointer transition-all duration-500 ${
+                i === current
+                  ? "aspect-[4/3] shadow-lg opacity-100 scale-100"
+                  : "aspect-[4/3] shadow-sm opacity-50 scale-95"
+              }`}
+            >
+              <Image src={src} alt="" fill className="object-cover" priority={i === 0} />
+            </div>
+          ))}
         </div>
-      ))}
+      </div>
 
+      {/* 하단 컨트롤 */}
       {images.length > 1 && (
-        <>
+        <div className="flex items-center justify-center gap-3 mt-3">
           <button
             onClick={prev}
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/30 text-white flex items-center justify-center hover:bg-black/50 transition-colors"
+            className="w-7 h-7 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors shadow-sm"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="m15 18-6-6 6-6" />
             </svg>
           </button>
-          <button
-            onClick={next}
-            className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/30 text-white flex items-center justify-center hover:bg-black/50 transition-colors"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="m9 18 6-6-6-6" />
-            </svg>
-          </button>
 
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+          <div className="flex gap-1.5">
             {images.map((_, i) => (
               <button
                 key={i}
                 onClick={() => setCurrent(i)}
-                className={`h-1.5 rounded-full transition-all duration-300 ${i === current ? "w-5 bg-white" : "w-1.5 bg-white/50"}`}
+                className={`h-1.5 rounded-full transition-all duration-300 ${
+                  i === current ? "w-5 bg-gold-500" : "w-1.5 bg-gray-300"
+                }`}
               />
             ))}
           </div>
-        </>
+
+          <button
+            onClick={next}
+            className="w-7 h-7 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors shadow-sm"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+          </button>
+        </div>
       )}
     </div>
   );
