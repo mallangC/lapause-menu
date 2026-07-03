@@ -23,13 +23,19 @@ export default function HeroSlider({ images }: HeroSliderProps) {
 
   return (
     <div className="py-4 bg-beige-100">
-      {/* 카드 */}
-      <div className="px-4 max-w-lg mx-auto">
-        <div className="relative aspect-[4/3] rounded-2xl overflow-hidden shadow-lg">
+      {/* 양옆이 살짝 보이는 슬라이더 */}
+      <div className="overflow-hidden">
+        <div
+          className="flex transition-transform duration-500 ease-in-out"
+          style={{ transform: `translateX(calc(-${current * 80}% - ${current * 12}px + 10%))` }}
+        >
           {images.map((src, i) => (
             <div
               key={src}
-              className={`absolute inset-0 transition-opacity duration-500 ${i === current ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+              onClick={() => setCurrent(i)}
+              className={`relative shrink-0 w-4/5 aspect-[4/3] rounded-2xl overflow-hidden mx-1.5 cursor-pointer transition-all duration-500 ${
+                i === current ? "shadow-lg scale-100 opacity-100" : "shadow-sm scale-95 opacity-50"
+              }`}
             >
               <Image src={src} alt="" fill className="object-cover" priority={i === 0} />
             </div>
