@@ -8,7 +8,7 @@ interface Env {
 
 export default {
   ...nextWorker,
-  async scheduled(_event: ScheduledEvent, env: Env, _ctx: ExecutionContext) {
+  async scheduled(_event: unknown, env: Env, _ctx: unknown) {
     await fetch(
       `${env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/companies?select=id&limit=1`,
       {
