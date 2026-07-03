@@ -23,46 +23,39 @@ export default function HeroSlider({ images }: HeroSliderProps) {
 
   return (
     <div className="py-4 bg-beige-100">
-      {/* 양옆이 살짝 보이는 슬라이더 */}
-      <div className="relative overflow-hidden">
-        <div
-          className="flex transition-transform duration-500 ease-in-out"
-          style={{ transform: `translateX(calc(-${current * 80}% - ${current * 12}px + 10%))` }}
-        >
-          {images.map((src, i) => (
-            <div
-              key={src}
-              onClick={() => setCurrent(i)}
-              className={`relative shrink-0 w-4/5 aspect-[4/3] rounded-2xl overflow-hidden mx-1.5 cursor-pointer transition-all duration-500 ${
-                i === current ? "shadow-lg scale-100 opacity-100" : "shadow-sm scale-95 opacity-50"
-              }`}
-            >
-              <Image src={src} alt="" fill className="object-cover" priority={i === 0} />
-            </div>
-          ))}
+      {/* 슬라이더 + 좌우 화살표 */}
+      <div className="flex items-center gap-2 px-3">
+        {images.length > 1 ? (
+          <button onClick={prev} className="shrink-0 p-1 text-gray-400 hover:text-gray-700 transition-colors">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m15 18-6-6 6-6" />
+            </svg>
+          </button>
+        ) : <div className="w-8 shrink-0" />}
+
+        <div className="flex-1 overflow-hidden">
+          <div
+            className="flex transition-transform duration-500 ease-in-out"
+            style={{ transform: `translateX(calc(-${current * 100}%))` }}
+          >
+            {images.map((src, i) => (
+              <div
+                key={src}
+                className="relative shrink-0 w-full aspect-[4/3] rounded-2xl overflow-hidden shadow-lg"
+              >
+                <Image src={src} alt="" fill className="object-cover" priority={i === 0} />
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* 중앙 카드 좌우 화살표 */}
-        {images.length > 1 && (
-          <>
-            <button
-              onClick={prev}
-              className="absolute left-[calc(10%-1.25rem)] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 backdrop-blur-sm border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-white transition-colors shadow-md z-10"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="m15 18-6-6 6-6" />
-              </svg>
-            </button>
-            <button
-              onClick={next}
-              className="absolute right-[calc(10%-1.25rem)] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 backdrop-blur-sm border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-white transition-colors shadow-md z-10"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="m9 18 6-6-6-6" />
-              </svg>
-            </button>
-          </>
-        )}
+        {images.length > 1 ? (
+          <button onClick={next} className="shrink-0 p-1 text-gray-400 hover:text-gray-700 transition-colors">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+          </button>
+        ) : <div className="w-8 shrink-0" />}
       </div>
 
       {/* 도트 인디케이터 */}
