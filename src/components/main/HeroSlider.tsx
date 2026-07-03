@@ -22,22 +22,14 @@ export default function HeroSlider({ images }: HeroSliderProps) {
   if (images.length === 0) return <div className="w-full h-52 bg-beige-200" />;
 
   return (
-    <div className="py-4 bg-beige-100 overflow-hidden">
-      {/* 카드 트랙 */}
-      <div className="relative flex items-center justify-center">
-        <div
-          className="flex gap-3 transition-transform duration-500 ease-in-out px-4"
-          style={{ transform: `translateX(calc(-${current * 100}% - ${current * 12}px))` }}
-        >
+    <div className="py-4 bg-beige-100">
+      {/* 카드 */}
+      <div className="px-4 max-w-sm mx-auto">
+        <div className="relative aspect-[4/3] rounded-2xl overflow-hidden shadow-lg">
           {images.map((src, i) => (
             <div
               key={src}
-              onClick={() => setCurrent(i)}
-              className={`relative shrink-0 w-[calc(100vw-2rem)] max-w-sm rounded-2xl overflow-hidden cursor-pointer transition-all duration-500 ${
-                i === current
-                  ? "aspect-[4/3] shadow-lg opacity-100 scale-100"
-                  : "aspect-[4/3] shadow-sm opacity-50 scale-95"
-              }`}
+              className={`absolute inset-0 transition-opacity duration-500 ${i === current ? "opacity-100" : "opacity-0 pointer-events-none"}`}
             >
               <Image src={src} alt="" fill className="object-cover" priority={i === 0} />
             </div>
