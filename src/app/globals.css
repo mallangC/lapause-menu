@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 @font-face {
   font-family: "Pretendard Variable";
   src: url("/fonts/PretendardVariable.woff2") format("woff2-variations");
