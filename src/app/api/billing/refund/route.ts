@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 
+export const dynamic = "force-dynamic";
+
 const PORTONE_API_SECRET = process.env.PORTONE_API_SECRET!;
 const PORTONE_STORE_ID = process.env.PORTONE_STORE_ID ?? process.env.NEXT_PUBLIC_PORTONE_STORE_ID!;
 
