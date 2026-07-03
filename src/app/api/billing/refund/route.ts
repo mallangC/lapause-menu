@@ -12,10 +12,12 @@ const PLAN_AMOUNT: Record<string, number> = {
   pro: 9900,
 };
 
-const supabaseAdmin = createAdminClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+function getSupabaseAdmin() {
+  return createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -33,6 +35,8 @@ export async function POST(req: NextRequest) {
   if (!companyId || !reason?.trim()) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 });
   }
+
+  const supabaseAdmin = getSupabaseAdmin();
 
   // 현재 구독 플랜 조회 (로그용)
   const { data: sub } = await supabaseAdmin
@@ -62,8 +66,8 @@ export async function POST(req: NextRequest) {
   // 결제 내역이 없으면 DB만 초기화
   if (payments.length === 0) {
     await Promise.all([
-      clearSubscription(companyId),
-      logBilling({ companyId, operatorId: user.id, plan, amount, portonePaymentId: null, success: true, reason }),
+      clearSubscription(supabaseAdmin, companyId),
+      logBilling(supabaseAdmin, { companyId, operatorId: user.id, plan, amount, portonePaymentId: null, success: true, reason }),
     ]);
     return NextResponse.json({ ok: true, refunded: false, message: "PortOne 결제 내역 없음. 구독 정보 초기화 완료." });
   }
@@ -87,7 +91,7 @@ export async function POST(req: NextRequest) {
 
   if (!cancelRes.ok) {
     // 환불 실패 → 로그만 남기고 DB 건드리지 않음
-    await logBilling({
+    await logBilling(supabaseAdmin, {
       companyId, operatorId: user.id, plan, amount,
       portonePaymentId: latest.id, success: false, reason,
       errorMessage: cancelData?.message ?? "환불 실패",
@@ -97,14 +101,14 @@ export async function POST(req: NextRequest) {
 
   // 환불 성공 → DB 초기화 + 로그
   await Promise.all([
-    clearSubscription(companyId),
-    logBilling({ companyId, operatorId: user.id, plan, amount, portonePaymentId: latest.id, success: true, reason }),
+    clearSubscription(supabaseAdmin, companyId),
+    logBilling(supabaseAdmin, { companyId, operatorId: user.id, plan, amount, portonePaymentId: latest.id, success: true, reason }),
   ]);
 
   return NextResponse.json({ ok: true, refunded: true });
 }
 
-async function clearSubscription(companyId: string) {
+async function clearSubscription(supabaseAdmin: ReturnType<typeof getSupabaseAdmin>, companyId: string) {
   await Promise.all([
     supabaseAdmin
       .from("company_subscriptions")
@@ -125,7 +129,7 @@ async function clearSubscription(companyId: string) {
   ]);
 }
 
-async function logBilling({
+async function logBilling(supabaseAdmin: ReturnType<typeof getSupabaseAdmin>, {
   companyId, operatorId, plan, amount, portonePaymentId, success, reason, errorMessage,
 }: {
   companyId: string;
