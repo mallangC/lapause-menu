@@ -34,6 +34,7 @@ interface ReservationBody {
     price: number;
     product_type: string;
     image_url: string;
+    bag_included?: boolean;
   };
   orderer: {
     name: string;
@@ -138,7 +139,7 @@ export async function POST(request: NextRequest) {
           product_id: product.id ?? null,
           message_card: form.messageCard,
           message_card_content: form.messageCardContent || null,
-          shopping_bag: form.shoppingBag,
+          shopping_bag: product.bag_included ? "서비스" : form.shoppingBag,
           memo: null,
         }],
         quantity: 1,

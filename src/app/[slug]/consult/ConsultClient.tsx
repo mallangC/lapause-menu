@@ -9,6 +9,7 @@ import DatePicker, { registerLocale } from "react-datepicker";
 import { ko } from "date-fns/locale/ko";
 import "react-datepicker/dist/react-datepicker.css";
 import { Product } from "@/types";
+import { FLOWER_COLOR_MAP } from "@/lib/constants";
 import FlowerNoticeModal from "@/components/FlowerNoticeModal";
 
 registerLocale("ko", ko);
@@ -308,7 +309,7 @@ function scoreProducts(products: Product[], form: ConsultForm): Product[] {
 }
 
 export default function ConsultClient({ slug, companyName, notificationEmail, products, businessHours, closedDates, minLeadTimes = {}, consultNotice, storeAddress = null, deliveryEnabled = false, deliveryFees = {}, messageCardEnabled = false, messageCardPrice = 2000, shoppingBagEnabled = false, shoppingBagPrice = 2000, preselectedProduct = null, initialPaymentId = null }: Props) {
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [form, setForm] = useState<ConsultForm>(EMPTY_FORM);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(preselectedProduct);
   const [name, setName] = useState("");
@@ -331,8 +332,8 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
   const [payLoading, setPayLoading] = useState(false);
   const [finalPriceSnapshot, setFinalPriceSnapshot] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [step1FieldErrors, setStep1FieldErrors] = useState<string[]>([]);
-  const [step3FieldErrors, setStep3FieldErrors] = useState<string[]>([]);
+  const [step2FieldErrors, setStep2FieldErrors] = useState<string[]>([]);
+  const [step4FieldErrors, setStep4FieldErrors] = useState<string[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<"CARD" | "TOSSPAY">("CARD");
   const [deliveryDistance, setDeliveryDistance] = useState<number | null>(null);
   const [deliveryFee, setDeliveryFee] = useState<number | null>(null);
@@ -376,7 +377,7 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
           setKakaoConsent(draft.kakaoConsent);
           setPrivacyAgreed(draft.privacyAgreed);
           setCancellationAgreed(draft.cancellationAgreed);
-          setStep(3);
+          setStep(4);
         } catch { /* 파싱 실패 시 step 1 유지 */ }
         sessionStorage.removeItem(`consult_draft_${slug}`);
       }
@@ -447,22 +448,25 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
     [form.productType, form.mood, form.budget, form.budgetCustom]
   );
 
-  const step1Valid =
-    preselectedProduct || (form.productType && form.mood && form.budget && (form.budget !== "기타" || form.budgetCustom));
+  const step1AnySelected = !!(form.purpose || form.recipientGender || form.recipientAge || form.relationship);
 
   const handleStep1Next = () => {
+    setStep(preselectedProduct ? 4 : 2);
+  };
+
+  const step2Valid = !!(form.productType && form.mood && form.budget && (form.budget !== "기타" || form.budgetCustom));
+
+  const handleStep2Next = () => {
     const missing: string[] = [];
-    if (!preselectedProduct) {
-      if (!form.productType) missing.push("상품 형태");
-      if (!form.mood) missing.push("분위기");
-      if (!form.budget || (form.budget === "기타" && !form.budgetCustom)) missing.push("희망 예산");
-    }
+    if (!form.productType) missing.push("상품 형태");
+    if (!form.mood) missing.push("분위기");
+    if (!form.budget || (form.budget === "기타" && !form.budgetCustom)) missing.push("희망 예산");
     if (missing.length > 0) {
-      setStep1FieldErrors(missing);
+      setStep2FieldErrors(missing);
       return;
     }
-    setStep1FieldErrors([]);
-    setStep(preselectedProduct ? 3 : 2);
+    setStep2FieldErrors([]);
+    setStep(3);
   };
 
   const handleSubmit = async () => {
@@ -477,10 +481,10 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
     if (!privacyAgreed) missing.push("개인정보처리방침 동의");
     if (!cancellationAgreed) missing.push("맞춤 제작 취소 정책 동의");
     if (missing.length > 0) {
-      setStep3FieldErrors(missing);
+      setStep4FieldErrors(missing);
       return;
     }
-    setStep3FieldErrors([]);
+    setStep4FieldErrors([]);
     if (!selectedProduct) return;
     setSubmitting(true);
     setError(null);
@@ -502,6 +506,7 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
           price: selectedProduct.price,
           product_type: selectedProduct.product_type,
           image_url: selectedProduct.image_url,
+          bag_included: selectedProduct.bag_included ?? false,
         },
         name,
         phone: parsePhone(phone),
@@ -554,6 +559,7 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
             price: selectedProduct.price,
             product_type: selectedProduct.product_type,
             image_url: selectedProduct.image_url,
+            bag_included: selectedProduct.bag_included ?? false,
           },
           orderer: { name, phone: parsePhone(phone) },
           kakaoConsent,
@@ -608,15 +614,6 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
     );
   }
 
-  if (showNotice) {
-    return (
-      <FlowerNoticeModal
-        onConfirm={() => { setShowNotice(false); setStep(3); }}
-        onClose={() => setShowNotice(false)}
-      />
-    );
-  }
-
   if (submitted) {
     return (
       <div className="min-h-screen bg-beige-100 flex items-center justify-center px-4">
@@ -657,18 +654,20 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
       <div className="border-b border-gray-100">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-2">
           {(preselectedProduct
-            ? [{ num: 1 as const, label: "옵션 선택" }, { num: 3 as const, label: "예약 확인" }]
-            : [{ num: 1 as const, label: "옵션 선택" }, { num: 2 as const, label: "상품 추천" }, { num: 3 as const, label: "예약 확인" }]
+            ? [{ num: 1 as const, label: "선물 정보" }, { num: 4 as const, label: "예약 확인" }]
+            : [{ num: 1 as const, label: "선물 정보" }, { num: 2 as const, label: "취향 & 예산" }, { num: 3 as const, label: "상품 선택" }, { num: 4 as const, label: "예약 확인" }]
           ).map(({ num, label }, i) => (
             <div key={num} className="flex items-center gap-2">
               {i > 0 && <div className="flex-1 h-px bg-gray-200 w-8" />}
-              <div
+              <button
+                type="button"
+                onClick={() => step > num && setStep(num)}
                 className={`flex items-center gap-1.5 ${
                   step === num
                     ? "text-gold-500"
                     : step > num
-                    ? "text-gray-400"
-                    : "text-gray-300"
+                    ? "text-gray-400 cursor-pointer hover:text-gold-400"
+                    : "text-gray-300 cursor-default"
                 }`}
               >
                 <div
@@ -683,7 +682,7 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
                   {step > num ? "✓" : i + 1}
                 </div>
                 <span className="text-xs hidden sm:block">{label}</span>
-              </div>
+              </button>
             </div>
           ))}
         </div>
@@ -692,12 +691,12 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
 
       <div className="max-w-2xl mx-auto px-4 py-5">
 
-        {/* ── STEP 1: 옵션 선택 ── */}
+        {/* ── STEP 1: 선물 정보 ── */}
         {step === 1 && (
           <div className="space-y-5">
             <Section title="선물 목적">
               <div className="flex flex-wrap gap-2">
-                {["기념", "축하", "감사", "위로", "기타"].map((v) => (
+                {["기념", "축하", "감사", "위로", "데이트", "기타"].map((v) => (
                   <Chip key={v} label={v} selected={form.purpose === v} onClick={() => set("purpose", v)} />
                 ))}
               </div>
@@ -745,95 +744,115 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
               )}
             </Section>
 
-            {!preselectedProduct && (
-              <>
-                <Section title="상품 형태" required>
-                  <div className="flex flex-wrap gap-2">
-                    {["꽃다발", "바구니", "센터피스", "화병꽂이", "기타"].map((v) => (
-                      <Chip key={v} label={v} selected={form.productType === v} onClick={() => set("productType", v)} />
-                    ))}
-                  </div>
-                </Section>
-
-                <Section title="선호하는 분위기" required>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {[
-                      { value: "깔끔한 화이트&그린", swatches: ["#f5f5f5", "#e8ede0", "#22c55e"] },
-                      { value: "화사한 파스텔톤", swatches: ["#f9c0d0", "#fff4a3", "#ffd4b8"] },
-                      { value: "선명한 비비드톤", swatches: ["#ff4040", "#ff8c00", "#ffe600"] },
-                      { value: "차분한 딥컬러", swatches: ["#c0392b", "#7d3c98", "#2c2416"] },
-                    ].map(({ value, swatches }) => (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => set("mood", value)}
-                        className={`relative p-4 rounded-xl border-2 text-left transition-all ${
-                          form.mood === value
-                            ? "border-gold-500 bg-white shadow-sm"
-                            : "border-transparent bg-white hover:border-gray-200 shadow-none"
-                        } ring-1 ${form.mood === value ? "ring-gold-300" : "ring-gray-200"}`}
-                      >
-                        {form.mood === value && (
-                          <span className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-gold-500 flex items-center justify-center text-white text-xs">
-                            ✓
-                          </span>
-                        )}
-                        <div className="flex gap-1.5 mb-2">
-                          {swatches.map((c) => (
-                            <div key={c} className="w-5 h-5 rounded-full border border-gray-200" style={{ backgroundColor: c }} />
-                          ))}
-                        </div>
-                        <span className={`text-sm font-medium transition-colors ${form.mood === value ? "text-gold-600" : "text-gray-700"}`}>{value}</span>
-                      </button>
-                    ))}
-                  </div>
-                </Section>
-
-                <Section title="희망 예산" required>
-                  <div className="flex flex-wrap gap-2">
-                    {["3만원", "5만원", "7만원", "10만원", "12만원", "15만원", "기타"].map((v) => (
-                      <Chip key={v} label={v} selected={form.budget === v} onClick={() => set("budget", v)} />
-                    ))}
-                  </div>
-                  {form.budget === "기타" && (
-                    <div className="flex items-center gap-2 mt-2">
-                      <input
-                        type="number"
-                        min="1"
-                        placeholder="직접 입력"
-                        value={form.budgetCustom}
-                        onChange={(e) => set("budgetCustom", e.target.value)}
-                        className="w-40 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-500 bg-white placeholder:text-gray-300"
-                      />
-                      <span className="text-sm text-gray-500">만원</span>
-                    </div>
-                  )}
-                </Section>
-              </>
-            )}
-
-            {step1FieldErrors.length > 0 && (
-              <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3">
-                <p className="text-xs font-medium text-red-600 mb-1">아래 항목을 선택해주세요.</p>
-                <ul className="list-disc list-inside space-y-0.5">
-                  {step1FieldErrors.map((f) => (
-                    <li key={f} className="text-xs text-red-500">{f}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
             <button
               type="button"
               onClick={handleStep1Next}
               className="w-full bg-gold-500 text-white py-3.5 rounded-xl font-medium hover:bg-gold-600 transition-colors"
             >
-              {preselectedProduct ? "예약 정보 입력하기" : "추천 상품 보기"}
+              {step1AnySelected ? "다음" : "건너뛰기"}
             </button>
           </div>
         )}
 
-        {/* ── STEP 2: 추천 상품 선택 ── */}
+        {/* ── STEP 2: 취향 & 예산 ── */}
         {step === 2 && (
+          <div className="space-y-5">
+            <Section title="상품 형태" required>
+              <div className="flex flex-wrap gap-2">
+                {["꽃다발", "바구니", "센터피스", "화병꽂이", "기타"].map((v) => (
+                  <Chip key={v} label={v} selected={form.productType === v} onClick={() => set("productType", v)} />
+                ))}
+              </div>
+            </Section>
+
+            <Section title="선호하는 분위기" required>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                  { value: "깔끔한 화이트&그린", swatches: ["#f5f5f5", "#e8ede0", "#22c55e"] },
+                  { value: "화사한 파스텔톤", swatches: ["#f9c0d0", "#fff4a3", "#ffd4b8"] },
+                  { value: "선명한 비비드톤", swatches: ["#ff4040", "#ff8c00", "#ffe600"] },
+                  { value: "차분한 딥컬러", swatches: ["#c0392b", "#7d3c98", "#2c2416"] },
+                ].map(({ value, swatches }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => set("mood", value)}
+                    className={`relative p-4 rounded-xl border-2 text-left transition-all ${
+                      form.mood === value
+                        ? "border-gold-500 bg-white shadow-sm"
+                        : "border-transparent bg-white hover:border-gray-200 shadow-none"
+                    } ring-1 ${form.mood === value ? "ring-gold-300" : "ring-gray-200"}`}
+                  >
+                    {form.mood === value && (
+                      <span className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-gold-500 flex items-center justify-center text-white text-xs">
+                        ✓
+                      </span>
+                    )}
+                    <div className="flex gap-1.5 mb-2">
+                      {swatches.map((c) => (
+                        <div key={c} className="w-5 h-5 rounded-full border border-gray-200" style={{ backgroundColor: c }} />
+                      ))}
+                    </div>
+                    <span className={`text-sm font-medium transition-colors ${form.mood === value ? "text-gold-600" : "text-gray-700"}`}>{value}</span>
+                  </button>
+                ))}
+              </div>
+            </Section>
+
+            <Section title="희망 예산" required>
+              <div className="flex flex-wrap gap-2">
+                {["3만원", "5만원", "7만원", "10만원", "12만원", "15만원", "기타"].map((v) => (
+                  <Chip key={v} label={v} selected={form.budget === v} onClick={() => set("budget", v)} />
+                ))}
+              </div>
+              {form.budget === "기타" && (
+                <div className="flex items-center gap-2 mt-2">
+                  <input
+                    type="number"
+                    min="1"
+                    placeholder="직접 입력"
+                    value={form.budgetCustom}
+                    onChange={(e) => set("budgetCustom", e.target.value)}
+                    className="w-40 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-500 bg-white placeholder:text-gray-300"
+                  />
+                  <span className="text-sm text-gray-500">만원</span>
+                </div>
+              )}
+            </Section>
+
+            {step2FieldErrors.length > 0 && (
+              <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3">
+                <p className="text-xs font-medium text-red-600 mb-1">아래 항목을 선택해주세요.</p>
+                <ul className="list-disc list-inside space-y-0.5">
+                  {step2FieldErrors.map((f) => (
+                    <li key={f} className="text-xs text-red-500">{f}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setStep(1)}
+                className="flex-1 py-3.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-700 hover:border-gray-400 transition-colors"
+              >
+                이전
+              </button>
+              <button
+                type="button"
+                onClick={handleStep2Next}
+                disabled={!step2Valid}
+                className="flex-1 bg-gold-500 text-white py-3.5 rounded-xl font-medium hover:bg-gold-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                추천 상품 보기
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── STEP 3: 추천 상품 선택 ── */}
+        {step === 3 && (
           <div className="space-y-6">
             <div>
               <h2 className="text-lg font-medium text-gray-900 mb-1">추천 상품</h2>
@@ -879,14 +898,31 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
                         </div>
                       )}
                     </div>
-                    <div className="flex-1 min-w-0 p-3">
-                      <div className="flex items-start justify-between gap-1">
-                        <span className="font-medium text-gray-900 text-sm leading-snug">{product.name}</span>
+                    <div className="flex-1 min-w-0 p-3 space-y-1.5">
+                      <div>
+                        <span className="text-xs text-gray-400">{product.product_type}</span>
+                        <p className="font-medium text-gray-900 text-sm leading-snug">{product.name}</p>
+                        <p className="text-gold-600 font-medium text-sm mt-0.5">{product.price.toLocaleString()}원</p>
                       </div>
-                      <span className="text-xs text-gray-400">{product.product_type}</span>
-                      <div className="mt-1 text-gold-600 font-medium text-sm">
-                        {product.price.toLocaleString()}원
-                      </div>
+                      {(product.flower_colors.length > 0 || product.wrapping_color) && (
+                        <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                          {product.flower_colors.length > 0 && (
+                            <div className="flex gap-1 flex-wrap">
+                              {product.flower_colors.map((color) => (
+                                <span
+                                  key={color}
+                                  className="w-3.5 h-3.5 rounded-full border border-gray-200 inline-block shrink-0"
+                                  style={{ backgroundColor: FLOWER_COLOR_MAP[color] ?? "#a8a29e" }}
+                                  title={color}
+                                />
+                              ))}
+                            </div>
+                          )}
+                          {product.wrapping_color && (
+                            <span className="text-xs text-gray-400 shrink-0">{product.wrapping_color}</span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </button>
                 ))}
@@ -896,7 +932,7 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
             <div className="flex gap-3 pt-2">
               <button
                 type="button"
-                onClick={() => { setStep(1); setSelectedProduct(null); }}
+                onClick={() => { setStep(2); setSelectedProduct(null); }}
                 className="flex-1 py-3.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-700 hover:border-gray-400 transition-colors"
               >
                 이전
@@ -913,8 +949,8 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
           </div>
         )}
 
-        {/* ── STEP 3: 예약자 정보 & 확인 ── */}
-        {step === 3 && (
+        {/* ── STEP 4: 예약자 정보 & 확인 ── */}
+        {step === 4 && (
           <div className="space-y-4">
             <div>
               <h2 className="text-lg font-medium text-gray-900 mb-1">예약 확인</h2>
@@ -1331,11 +1367,11 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
               </span>
             </label>
 
-            {step3FieldErrors.length > 0 && (
+            {step4FieldErrors.length > 0 && (
               <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3">
                 <p className="text-xs font-medium text-red-600 mb-1">아래 항목을 입력해주세요.</p>
                 <ul className="list-disc list-inside space-y-0.5">
-                  {step3FieldErrors.map((f) => (
+                  {step4FieldErrors.map((f) => (
                     <li key={f} className="text-xs text-red-500">{f}</li>
                   ))}
                 </ul>
@@ -1379,7 +1415,7 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
             <div className="flex gap-3">
               <button
                 type="button"
-                onClick={() => setStep(preselectedProduct ? 1 : 2)}
+                onClick={() => setStep(preselectedProduct ? 1 : 3)}
                 className="flex-1 py-3.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-700 hover:border-gray-400 transition-colors"
               >
                 이전
@@ -1396,6 +1432,13 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
           </div>
         )}
       </div>
+
+      {showNotice && (
+        <FlowerNoticeModal
+          onConfirm={() => { setShowNotice(false); setStep(4); }}
+          onClose={() => setShowNotice(false)}
+        />
+      )}
     </div>
   );
 }

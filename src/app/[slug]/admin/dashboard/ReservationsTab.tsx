@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useRef, Dispatch, SetStateAction } from "react";
 import { createClient } from "@/lib/supabase/client";
 import AddReservationModal from "./AddReservationModal";
 import { Reservation, SortKey } from "./reservations/types";
@@ -9,22 +9,105 @@ import ReservationDetail from "./reservations/ReservationDetail";
 import CustomerProfileModal from "./reservations/CustomerProfileModal";
 import { formatDateHeader, formatTimeOnly } from "./reservations/utils";
 
-interface Props {
-  companyId: string;
+const ACTION_WIDTH = 116;
+
+function SwipeableReservationCard({
+  children,
+  onEdit,
+  onDelete,
+}: {
+  children: React.ReactNode;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const [offset, setOffset] = useState(0);
+  const startX = useRef(0);
+  const startOffset = useRef(0);
+  const liveOffset = useRef(0);
+  const isDragging = useRef(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    startX.current = e.touches[0].clientX;
+    startOffset.current = liveOffset.current;
+    isDragging.current = true;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging.current) return;
+    const dx = e.touches[0].clientX - startX.current;
+    const next = Math.max(-ACTION_WIDTH, Math.min(0, startOffset.current + dx));
+    liveOffset.current = next;
+    setOffset(next);
+  };
+
+  const handleTouchEnd = () => {
+    isDragging.current = false;
+    const snap = liveOffset.current < -(ACTION_WIDTH / 2) ? -ACTION_WIDTH : 0;
+    liveOffset.current = snap;
+    setOffset(snap);
+  };
+
+  return (
+    <div className="relative">
+      {/* 액션 버튼 — 카드 뒤에 위치, 스와이프 시 드러남 */}
+      <div className="absolute inset-y-0 right-0 flex items-stretch" style={{ width: ACTION_WIDTH }}>
+        <button
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => { e.stopPropagation(); setOffset(0); liveOffset.current = 0; onEdit(); }}
+          className="flex-1 flex flex-col items-center justify-center gap-1 bg-blue-500 text-white"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" />
+          </svg>
+        </button>
+        <button
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => { e.stopPropagation(); setOffset(0); liveOffset.current = 0; onDelete(); }}
+          className="flex-1 flex items-center justify-center bg-red-500 text-white"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+          </svg>
+        </button>
+      </div>
+      {/* 카드 본체 — z-10으로 버튼 위에 올라가 있다가 슬라이드로 버튼을 드러냄 */}
+      <div
+        ref={cardRef}
+        style={{ transform: `translateX(${offset}px)`, transition: isDragging.current ? "none" : "transform 0.2s ease" }}
+        className="relative z-10"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        {children}
+      </div>
+    </div>
+  );
 }
 
-export default function ReservationsTab({ companyId }: Props) {
-  const [allReservations, setAllReservations] = useState<Reservation[]>([]);
-  const [loading, setLoading] = useState(true);
+interface Props {
+  companyId: string;
+  allReservations: Reservation[];
+  setAllReservations: Dispatch<SetStateAction<Reservation[]>>;
+  loading: boolean;
+  onRefresh: () => void;
+  initialStatusFilter?: string;
+  onClearStatusFilter?: () => void;
+}
+
+export default function ReservationsTab({ companyId, allReservations, setAllReservations, loading, onRefresh, initialStatusFilter, onClearStatusFilter }: Props) {
   const [page, setPage] = useState(1);
   const sortKey: SortKey = "desired_date";
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [mobileDetailId, setMobileDetailId] = useState<string | null>(null);
   const [editingReservation, setEditingReservation] = useState<Reservation | null>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [viewYear, setViewYear] = useState(() => new Date().getFullYear());
   const [viewMonth, setViewMonth] = useState(() => new Date().getMonth() + 1);
-  const [showPast, setShowPast] = useState(false);
+  const [showPast, setShowPast] = useState(() => !!initialStatusFilter);
+  const [statusFilter, setStatusFilter] = useState<string | undefined>(initialStatusFilter);
   const [profileModal, setProfileModal] = useState<{ profileId: string; name: string; phone: string } | null>(null);
   const [itemStatusPopover, setItemStatusPopover] = useState<{ reservationId: string; itemIdx: number; x: number; y: number } | null>(null);
   const [messageCardEnabled, setMessageCardEnabled] = useState(false);
@@ -35,23 +118,9 @@ export default function ReservationsTab({ companyId }: Props) {
   const supabase = createClient();
 
   useEffect(() => {
-    document.body.style.overflow = (lightboxUrl || showAddModal || !!profileModal || !!editingReservation) ? "hidden" : "";
+    document.body.style.overflow = (lightboxUrl || showAddModal || !!profileModal || !!editingReservation || !!mobileDetailId) ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
-  }, [lightboxUrl, showAddModal, profileModal, editingReservation]);
-
-  const fetchReservations = useCallback(async () => {
-    setLoading(true);
-    const { data } = await supabase
-      .from("reservations")
-      .select("*")
-      .eq("company_id", companyId)
-      .order("created_at", { ascending: false });
-    setAllReservations((data as Reservation[]) ?? []);
-    setLoading(false);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [companyId]);
-
-  useEffect(() => { fetchReservations(); }, [fetchReservations]);
+  }, [lightboxUrl, showAddModal, profileModal, editingReservation, mobileDetailId]);
 
   useEffect(() => {
     supabase
@@ -117,6 +186,19 @@ export default function ReservationsTab({ companyId }: Props) {
     if (!res.ok) return;
     setAllReservations((prev) => prev.filter((r) => r.id !== id));
     setExpandedId(null);
+    setMobileDetailId(null);
+  };
+
+  const mobileDetailReservation = mobileDetailId
+    ? allReservations.find((r) => r.id === mobileDetailId) ?? null
+    : null;
+
+  const STATUS_DOT: Record<string, string> = {
+    미확인: "bg-red-400",
+    준비중: "bg-gray-400",
+    제작완료: "bg-yellow-400",
+    "픽업/배송완료": "bg-blue-400",
+    취소: "bg-gray-300",
   };
 
   // 클라이언트 사이드 정렬 / 페이지네이션
@@ -129,6 +211,7 @@ export default function ReservationsTab({ companyId }: Props) {
   const filtered = allReservations.filter((r) => {
     if (!r.desired_date.startsWith(monthPrefix)) return false;
     if (isCurrentMonth && !showPast && r.desired_date < today) return false;
+    if (statusFilter && r.status !== statusFilter) return false;
     return true;
   });
 
@@ -218,12 +301,45 @@ export default function ReservationsTab({ companyId }: Props) {
         <AddReservationModal
           companyId={companyId}
           onClose={() => setShowAddModal(false)}
-          onSaved={() => { setShowAddModal(false); fetchReservations(); }}
+          onSaved={() => { setShowAddModal(false); onRefresh(); }}
           messageCardEnabled={messageCardEnabled}
           messageCardPrice={messageCardPrice}
           shoppingBagEnabled={shoppingBagEnabled}
           shoppingBagPrice={shoppingBagPrice}
         />
+      )}
+
+      {/* 모바일 상세 모달 */}
+      {mobileDetailReservation && (
+        <div className="fixed inset-0 z-50 flex flex-col md:hidden" style={{ backgroundColor: "rgba(0,0,0,0.4)" }}>
+          <div className="flex-1" onClick={() => setMobileDetailId(null)} />
+          <div className="bg-white rounded-t-2xl max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 shrink-0">
+              <div className="flex items-center gap-2">
+                <span className={`w-2.5 h-2.5 rounded-full ${STATUS_DOT[mobileDetailReservation.status] ?? "bg-gray-300"}`} />
+                <span className="text-sm font-semibold text-gray-900">{mobileDetailReservation.orderer_name}</span>
+                <span className="text-xs text-gray-400">{formatDateHeader(mobileDetailReservation.desired_date)}</span>
+              </div>
+              <button onClick={() => setMobileDetailId(null)} className="text-gray-400 hover:text-gray-600 transition-colors p-1">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="overflow-y-auto px-4 py-4">
+              <ReservationDetail
+                key={mobileDetailReservation.id}
+                r={mobileDetailReservation}
+                onUpdateStatus={updateStatus}
+                onOpenLightbox={setLightboxUrl}
+                onSaveDeliveryFee={saveDeliveryFee}
+                onTogglePaid={togglePaid}
+                onEdit={(r) => { setMobileDetailId(null); setEditingReservation(r); }}
+                onDelete={(id) => { setMobileDetailId(null); handleDeleteReservation(id); }}
+              />
+            </div>
+          </div>
+        </div>
       )}
 
       {/* 예약 수정 모달 */}
@@ -233,7 +349,7 @@ export default function ReservationsTab({ companyId }: Props) {
           initialData={editingReservation}
           reservationId={editingReservation.id}
           onClose={() => setEditingReservation(null)}
-          onSaved={() => { setEditingReservation(null); fetchReservations(); }}
+          onSaved={() => { setEditingReservation(null); onRefresh(); }}
           messageCardEnabled={messageCardEnabled}
           messageCardPrice={messageCardPrice}
           shoppingBagEnabled={shoppingBagEnabled}
@@ -245,13 +361,45 @@ export default function ReservationsTab({ companyId }: Props) {
         {/* 헤더 */}
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-medium text-gray-900">예약 관리</h2>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="bg-gold-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gold-600 transition-colors whitespace-nowrap"
-          >
-            + 예약 추가
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onRefresh}
+              disabled={loading}
+              className="text-gray-400 hover:text-gray-600 transition-colors p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-40"
+              title="새로고침"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+              </svg>
+            </button>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="bg-gold-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gold-600 transition-colors whitespace-nowrap"
+            >
+              + 예약 추가
+            </button>
+          </div>
         </div>
+
+        {/* 상태 필터 배지 */}
+        {statusFilter && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500">필터:</span>
+            <span className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-gold-50 text-gold-600 border border-gold-200 font-medium">
+              {statusFilter === "픽업/배송완료" ? "완료" : statusFilter}
+              <button
+                onClick={() => {
+                  setStatusFilter(undefined);
+                  setShowPast(false);
+                  onClearStatusFilter?.();
+                }}
+                className="hover:text-gold-800 transition-colors"
+              >
+                ✕
+              </button>
+            </span>
+          </div>
+        )}
 
         {/* 월 네비게이션 + 상태 범례 */}
         <div className="flex flex-col gap-2">
@@ -305,7 +453,66 @@ export default function ReservationsTab({ companyId }: Props) {
         ) : total === 0 ? (
           <div className="py-16 text-center text-gray-400 text-sm">접수된 예약이 없습니다.</div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          {/* 모바일 카드 목록 */}
+          <div className="flex flex-col md:hidden">
+            {paginated.map((r) => {
+              const isCancelled = r.status === "취소";
+              const productSummary = r.items?.length > 1
+                ? `${r.items[0]?.name || r.items[0]?.type || "상품"} 외 ${r.items.length - 1}건`
+                : r.items?.[0]?.name || r.items?.[0]?.type || "—";
+              return (
+                <SwipeableReservationCard
+                  key={r.id}
+                  onEdit={() => setEditingReservation(r)}
+                  onDelete={() => handleDeleteReservation(r.id)}
+                >
+                  <div
+                    onClick={() => setMobileDetailId(r.id)}
+                    className={`border-b border-gray-200 p-3.5 cursor-pointer active:brightness-95 transition-all ${isCancelled ? "bg-gray-100" : (STATUS_ROW_BG[r.status] ?? "bg-white")}`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className={`text-xs font-medium ${isCancelled ? "text-gray-400" : "text-gray-700"}`}>{formatDateHeader(r.desired_date)}</span>
+                        {r.desired_time && <span className="text-xs text-gray-400">{formatTimeOnly(r.desired_time)}</span>}
+                      </div>
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${isCancelled ? "border border-gray-300 text-gray-400" : r.delivery_type === "배송" ? "border border-blue-400 text-blue-500" : "border border-gray-400 text-gray-500"}`}>
+                        {r.delivery_type}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className={`text-sm font-semibold ${isCancelled ? "text-gray-400" : "text-gray-900"}`}>{r.orderer_name}</span>
+                      <span className="text-xs text-gray-400 truncate max-w-[150px]">{productSummary}</span>
+                    </div>
+                    <div className="flex items-center justify-between mt-1.5">
+                      <span className={`text-sm font-medium ${isCancelled ? "text-gray-400" : "text-gray-800"}`}>
+                        {r.final_price ? `${r.final_price.toLocaleString()}원` : "—"}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        {!isCancelled && r.items?.some((item) => item.shopping_bag && item.shopping_bag !== "없음") && (
+                          <span style={{ color: "#22c55e" }}>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007Z" />
+                            </svg>
+                          </span>
+                        )}
+                        {!isCancelled && r.items?.some((item) => item.message_card && item.message_card !== "없음") && (
+                          <span style={{ color: "#22c55e" }}>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+                            </svg>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </SwipeableReservationCard>
+              );
+            })}
+          </div>
+
+          {/* 데스크톱 테이블 */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200 text-center">
@@ -469,6 +676,7 @@ export default function ReservationsTab({ companyId }: Props) {
               </tbody>
             </table>
           </div>
+          </>
         )}
 
         {/* 페이지네이션 */}

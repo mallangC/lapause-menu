@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Product, ProductInput, ProductStatus } from "@/types";
+import { Reservation } from "./reservations/types";
 import { createClient } from "@/lib/supabase/client";
 import { generateThemeVars } from "@/lib/theme";
 import ProductForm from "@/components/admin/ProductForm";
@@ -11,14 +12,16 @@ import ProductTable from "@/components/admin/ProductTable";
 import CompanyInfoTab from "./CompanyInfoTab";
 import MyInfoTab from "./MyInfoTab";
 import SettingsTab from "./SettingsTab";
+import MenuSettingsTab from "./MenuSettingsTab";
 import ReservationSettingsTab from "./ReservationSettingsTab";
 import BusinessSettingsTab from "./BusinessSettingsTab";
+import OrderSettingsTab from "./OrderSettingsTab";
 import ReservationsTab from "./ReservationsTab";
 import StatsTab from "./StatsTab";
 import PlanTab from "./PlanTab";
 import DashboardOverviewTab from "./DashboardOverviewTab";
 
-type Tab = "dashboard" | "reservations" | "products" | "stats" | "company" | "business" | "reservation" | "settings" | "plan" | "myinfo";
+type Tab = "dashboard" | "reservations" | "products" | "stats" | "company" | "ordersettings" | "business" | "reservation" | "menusettings" | "settings" | "plan" | "myinfo";
 
 interface Props {
   slug: string;
@@ -88,12 +91,41 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
   const [currentHiddenProductTypes, setCurrentHiddenProductTypes] = useState(hiddenProductTypes);
   const [currentHiddenSeasons, setCurrentHiddenSeasons] = useState(hiddenSeasons);
   const [currentConsultEnabled, setCurrentConsultEnabled] = useState(consultEnabled);
+  const [reservationStatusFilter, setReservationStatusFilter] = useState<string | undefined>(undefined);
+  const [allReservations, setAllReservations] = useState<Reservation[]>([]);
+  const [reservationsLoading, setReservationsLoading] = useState(plan !== "starter");
   const supabase = createClient();
 
   useEffect(() => {
     document.body.style.overflow = (showForm || !!editingProduct) ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [showForm, editingProduct]);
+
+  useEffect(() => {
+    if (plan === "starter") return;
+    setReservationsLoading(true);
+    supabase
+      .from("reservations")
+      .select("*")
+      .eq("company_id", companyId)
+      .order("created_at", { ascending: false })
+      .then(({ data }) => {
+        setAllReservations((data as Reservation[]) ?? []);
+        setReservationsLoading(false);
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companyId]);
+
+  const fetchReservations = async () => {
+    setReservationsLoading(true);
+    const { data } = await supabase
+      .from("reservations")
+      .select("*")
+      .eq("company_id", companyId)
+      .order("created_at", { ascending: false });
+    setAllReservations((data as Reservation[]) ?? []);
+    setReservationsLoading(false);
+  };
 
 
   const handleAdd = async (data: ProductInput) => {
@@ -157,7 +189,9 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
   const settingsTabs: { key: Tab; label: string }[] = [
     { key: "company", label: "매장 정보" },
     { key: "business", label: "영업 설정" },
+    { key: "ordersettings", label: "주문 설정" },
     { key: "reservation", label: "맞춤 주문" },
+    { key: "menusettings", label: "메뉴 설정" },
     { key: "settings", label: "디자인" },
     { key: "myinfo", label: "내 정보" },
   ];
@@ -180,7 +214,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
       {/* 모바일 탭 내비게이션 */}
       <div className="md:hidden bg-white border-b border-gray-100">
         {/* 메인 탭 행 */}
-        <div className="flex">
+        <div className="flex overflow-x-auto no-scrollbar">
           {mainTabs.map((tab) => (
             <div
               key={tab.key}
@@ -211,7 +245,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
         </div>
         {/* 설정 하위 탭 행 */}
         <div className={`overflow-hidden transition-all duration-300 ${showSettingsDropdown || isSettingsTab ? "max-h-12" : "max-h-0"}`}>
-          <div className="flex border-t border-gray-50 bg-gray-50">
+          <div className="flex overflow-x-auto no-scrollbar border-t border-gray-50 bg-gray-50">
             {settingsTabs.map((tab) => (
               <button
                 key={tab.key}
@@ -348,41 +382,53 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
               companyId={companyId}
               slug={slug}
               plan={plan}
-              onNavigate={(tab) => setActiveTab(tab as Tab)}
+              onNavigate={(tab, statusFilter) => {
+                setReservationStatusFilter(statusFilter);
+                setActiveTab(tab as Tab);
+              }}
             />
           )}
 
           {activeTab === "reservations" && (
             <div className="bg-white border border-gray-200 rounded-xl p-6">
-              {plan === "starter" ? <ProGate /> : <ReservationsTab companyId={companyId} />}
+              {plan === "starter" ? <ProGate /> : (
+                <ReservationsTab
+                  companyId={companyId}
+                  allReservations={allReservations}
+                  setAllReservations={setAllReservations}
+                  loading={reservationsLoading}
+                  onRefresh={fetchReservations}
+                  initialStatusFilter={reservationStatusFilter}
+                  onClearStatusFilter={() => setReservationStatusFilter(undefined)}
+                />
+              )}
             </div>
           )}
 
-          {activeTab === "products" && (
-            <div>
-              {error && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
-              )}
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-medium text-gray-900">상품 목록</h2>
-                <button
-                  onClick={() => products.length >= 100 ? setShowLimitModal(true) : setShowForm(true)}
-                  className="bg-gold-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gold-600 transition-colors"
-                >
-                  + 상품 추가
-                </button>
-              </div>
-              <div className="bg-white border border-gray-200 rounded-xl p-6">
-                <ProductTable
-                  products={products}
-                  onEdit={(product) => { setEditingProduct(product); setShowForm(false); }}
-                  onDelete={handleDelete}
-                  onStatusChange={handleStatusChange}
-                  companyId={companyId}
-                />
-              </div>
+          {/* 상품관리: 항상 마운트, 비활성 시 hidden으로 숨김 (캐싱) */}
+          <div className={activeTab === "products" ? "" : "hidden"}>
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
+            )}
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-medium text-gray-900">상품 목록</h2>
+              <button
+                onClick={() => products.length >= 100 ? setShowLimitModal(true) : setShowForm(true)}
+                className="bg-gold-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gold-600 transition-colors"
+              >
+                + 상품 추가
+              </button>
             </div>
-          )}
+            <div className="bg-white border border-gray-200 rounded-xl p-6">
+              <ProductTable
+                products={products}
+                onEdit={(product) => { setEditingProduct(product); setShowForm(false); }}
+                onDelete={handleDelete}
+                onStatusChange={handleStatusChange}
+                companyId={companyId}
+              />
+            </div>
+          </div>
 
           {activeTab === "stats" && (
             <div className="bg-white border border-gray-200 rounded-xl p-6">
@@ -415,6 +461,12 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
             </div>
           )}
 
+          {activeTab === "ordersettings" && (
+            <div className="bg-white border border-gray-200 rounded-xl p-6">
+              <OrderSettingsTab companyId={companyId} plan={plan} />
+            </div>
+          )}
+
           {activeTab === "business" && (
             <div className="bg-white border border-gray-200 rounded-xl p-6">
               {plan === "starter" ? <ProGate /> : <BusinessSettingsTab companyId={companyId} />}
@@ -427,8 +479,23 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
                 <ReservationSettingsTab
                   companyId={companyId}
                   onConsultToggle={handleConsultToggle}
+                  onGoToOrderSettings={() => setActiveTab("ordersettings")}
                 />
               )}
+            </div>
+          )}
+
+          {activeTab === "menusettings" && (
+            <div className="bg-white border border-gray-200 rounded-xl p-6">
+              <MenuSettingsTab
+                companyId={companyId}
+                initialHiddenProductTypes={currentHiddenProductTypes}
+                initialHiddenSeasons={currentHiddenSeasons}
+                onSave={(types, seasons) => {
+                  setCurrentHiddenProductTypes(types);
+                  setCurrentHiddenSeasons(seasons);
+                }}
+              />
             </div>
           )}
 
@@ -438,18 +505,12 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
                 companyId={companyId}
                 initialBg={themeBg}
                 initialAccent={themeAccent}
-                initialHiddenProductTypes={currentHiddenProductTypes}
-                initialHiddenSeasons={currentHiddenSeasons}
                 initialFeaturedImage={homeFeaturedImage}
                 initialAllImage={homeAllImage}
                 initialSeasonImage={homeSeasonImage}
                 initialConsultImage={homeConsultImage}
                 consultEnabled={consultEnabled}
                 onThemeChange={(bg, accent) => setThemeVars(generateThemeVars(bg, accent))}
-                onMenuSave={(types, seasons) => {
-                  setCurrentHiddenProductTypes(types);
-                  setCurrentHiddenSeasons(seasons);
-                }}
               />
             </div>
           )}

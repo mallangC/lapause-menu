@@ -165,12 +165,48 @@ export default function ReservationDetail({
       )}
 
       <div className="space-y-2">
+        {/* 상품 이미지 — 모바일: 전체 너비 상단, 데스크톱: 좌측 고정 */}
+        {productDetail?.image_url && (
+          <div
+            className="relative w-full md:hidden rounded-xl overflow-hidden bg-gray-100"
+            style={{ aspectRatio: "4/3" }}
+          >
+            <img
+              src={productDetail.image_url}
+              alt={productDetail.name}
+              className="w-full h-full object-cover"
+            />
+            {/* 꽃색 + 포장지 색 오버레이 */}
+            {(productDetail.flower_colors?.length > 0 || productDetail.wrapping_color) && (
+              <div className="absolute bottom-2 left-2 flex flex-col gap-1">
+                {productDetail.flower_colors?.length > 0 && (
+                  <div className="flex gap-1 flex-wrap">
+                    {productDetail.flower_colors.map((color) => (
+                      <span
+                        key={color}
+                        className="w-4 h-4 rounded-full border border-white/60 shadow-sm shrink-0"
+                        style={{ backgroundColor: FLOWER_COLOR_MAP[color] ?? "#e5e7eb" }}
+                        title={color}
+                      />
+                    ))}
+                  </div>
+                )}
+                {productDetail.wrapping_color && (
+                  <span className="text-[10px] font-medium text-white bg-black/40 rounded-md px-1.5 py-0.5 w-fit backdrop-blur-sm">
+                    {productDetail.wrapping_color}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* 섹션 카드들 */}
         <div className="flex gap-3">
 
-          {/* 상품 이미지 + 상품 정보 */}
+          {/* 상품 이미지 — 데스크톱 전용 좌측 컬럼 */}
           {productDetail && (
-            <div className="shrink-0 w-28 flex flex-col items-center gap-1.5">
+            <div className="hidden md:flex shrink-0 w-28 flex-col items-center gap-1.5">
               {productDetail.image_url && (
                 <div
                   className="w-28 h-28 rounded-xl overflow-hidden bg-gray-100 cursor-zoom-in"
@@ -368,7 +404,7 @@ export default function ReservationDetail({
               </div>
             )}
           </div>
-          <div className="ml-auto flex gap-1">
+          <div className="ml-auto hidden md:flex gap-1">
             <button type="button" onClick={(e) => { e.stopPropagation(); onEdit(r); }} className="text-xs px-2.5 py-1 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 transition-colors">수정</button>
             <button type="button" onClick={(e) => { e.stopPropagation(); onDelete(r.id); }} className="text-xs px-2.5 py-1 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition-colors">삭제</button>
           </div>
