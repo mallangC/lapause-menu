@@ -7,7 +7,9 @@ interface ReservationBody {
   slug: string;
   companyName: string;
   notificationEmail?: string | null;
-  paymentId?: string;
+  paymentKey?: string;
+  paymentOrderId?: string;
+  paymentAmount?: number;
   form: {
     purpose: string;
     purposeCustom: string;
@@ -53,7 +55,7 @@ interface ReservationBody {
 export async function POST(request: NextRequest) {
   try {
     const body: ReservationBody = await request.json();
-    const { slug, orderer, paymentId } = body;
+    const { slug, orderer, paymentKey, paymentOrderId, paymentAmount } = body;
 
     if (!orderer.name || !orderer.phone || !body.product?.id) {
       return NextResponse.json({ error: "필수 정보가 누락되었습니다." }, { status: 400 });
@@ -61,8 +63,8 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createClient();
 
-    // 포트원 결제 검증
-    if (paymentId) {
+    // 토스 결제 승인 및 검증
+    if (paymentKey) {
       const { data: dbProduct } = await supabase
         .from("products")
         .select("price")
@@ -73,17 +75,28 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "상품 정보를 찾을 수 없습니다." }, { status: 400 });
       }
 
-      const portoneRes = await fetch(`https://api.portone.io/payments/${paymentId}`, {
-        headers: { Authorization: `PortOne ${process.env.PORTONE_API_SECRET}` },
+      const encodedKey = Buffer.from(`${process.env.TOSS_SECRET_KEY!}:`).toString("base64");
+      const tossRes = await fetch("https://api.tosspayments.com/v1/payments/confirm", {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${encodedKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          paymentKey,
+          orderId: paymentOrderId,
+          amount: paymentAmount ?? body.finalPrice ?? dbProduct.price,
+        }),
       });
-      if (!portoneRes.ok) {
-        return NextResponse.json({ error: "결제 정보를 확인할 수 없습니다." }, { status: 400 });
+      if (!tossRes.ok) {
+        const tossError = await tossRes.json().catch(() => ({}));
+        return NextResponse.json({ error: (tossError as { message?: string }).message ?? "결제 확인에 실패했습니다." }, { status: 400 });
       }
-      const portoneData = await portoneRes.json();
-      if (portoneData.status !== "PAID") {
+      const tossData = await tossRes.json();
+      if (tossData.status !== "DONE") {
         return NextResponse.json({ error: "결제가 완료되지 않았습니다." }, { status: 400 });
       }
-      if (portoneData.amount?.total < dbProduct.price) {
+      if (tossData.totalAmount < dbProduct.price) {
         return NextResponse.json({ error: "결제 금액이 상품 가격보다 작습니다." }, { status: 400 });
       }
     }
@@ -143,8 +156,8 @@ export async function POST(request: NextRequest) {
           memo: null,
         }],
         quantity: 1,
-        paid: !!paymentId,
-        payment_id: paymentId ?? null,
+        paid: !!paymentKey,
+        payment_id: paymentKey ?? null,
         final_price: finalPrice ?? product.price,
         purpose: form.purpose === "기타" ? form.purposeCustom : form.purpose,
         recipient_gender: form.recipientGender,

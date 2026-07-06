@@ -6,8 +6,8 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { billingKey, pgProvider, companyId, subscriptionPlan } = await req.json();
-  if (!billingKey || !companyId || !subscriptionPlan) {
+  const { authKey, customerKey, companyId, subscriptionPlan } = await req.json();
+  if (!authKey || !customerKey || !companyId || !subscriptionPlan) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 });
   }
 
@@ -21,7 +21,30 @@ export async function POST(req: NextRequest) {
 
   if (!company) return NextResponse.json({ error: "Company not found" }, { status: 404 });
 
-  // 체험은 한 번만: 기존에 trial_ends_at이 있으면 새로 부여하지 않음
+  // 토스 빌링키 발급
+  const encodedKey = Buffer.from(`${process.env.TOSS_SECRET_KEY!}:`).toString("base64");
+  const tossRes = await fetch(`https://api.tosspayments.com/v1/billing/authorizations/${authKey}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${encodedKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ customerKey }),
+  });
+
+  if (!tossRes.ok) {
+    const tossError = await tossRes.json().catch(() => ({}));
+    console.error("[billing/issue-key] 토스 빌링키 발급 실패:", tossError);
+    return NextResponse.json(
+      { error: (tossError as { message?: string }).message ?? "빌링키 발급에 실패했습니다." },
+      { status: 500 }
+    );
+  }
+
+  const tossData = await tossRes.json();
+  const billingKey: string = tossData.billingKey;
+
+  // 체험은 한 번만
   const { data: existingSub } = await supabase
     .from("company_subscriptions")
     .select("trial_ends_at")
@@ -33,7 +56,7 @@ export async function POST(req: NextRequest) {
   const updateData: Record<string, unknown> = {
     plan: "pro",
     billing_key: billingKey,
-    pg_provider: pgProvider ?? null,
+    pg_provider: "toss",
     subscription_plan: subscriptionPlan,
   };
 

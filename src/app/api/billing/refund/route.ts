@@ -4,9 +4,6 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
 
-const PORTONE_API_SECRET = process.env.PORTONE_API_SECRET!;
-const PORTONE_STORE_ID = process.env.PORTONE_STORE_ID ?? process.env.NEXT_PUBLIC_PORTONE_STORE_ID!;
-
 const PLAN_AMOUNT: Record<string, number> = {
   starter: 3900,
   pro: 9900,
@@ -38,7 +35,7 @@ export async function POST(req: NextRequest) {
 
   const supabaseAdmin = getSupabaseAdmin();
 
-  // 현재 구독 플랜 조회 (로그용)
+  // 현재 구독 플랜 조회
   const { data: sub } = await supabaseAdmin
     .from("company_subscriptions")
     .select("subscription_plan")
@@ -47,65 +44,62 @@ export async function POST(req: NextRequest) {
   const plan = sub?.subscription_plan as string | null;
   const amount = plan ? (PLAN_AMOUNT[plan] ?? null) : null;
 
-  // PortOne에서 해당 고객의 최근 완료 결제 조회
-  const paymentsRes = await fetch(
-    `https://api.portone.io/payments?storeId=${encodeURIComponent(PORTONE_STORE_ID)}&customerId=${encodeURIComponent(companyId)}&status=PAID`,
-    {
-      headers: { "Authorization": `PortOne ${PORTONE_API_SECRET}` },
+  // 가장 최근 빌링 결제 내역 조회 (토스 paymentKey 저장된 경우)
+  const { data: recentLog } = await supabaseAdmin
+    .from("billing_logs")
+    .select("portone_payment_id")
+    .eq("company_id", companyId)
+    .eq("success", true)
+    .neq("type", "refund")
+    .not("portone_payment_id", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
+
+  const paymentKey = recentLog?.portone_payment_id ?? null;
+
+  // 토스 결제 취소 시도 (paymentKey가 있을 때만)
+  let refunded = false;
+  if (paymentKey) {
+    try {
+      const encodedKey = Buffer.from(`${process.env.TOSS_SECRET_KEY!}:`).toString("base64");
+      const cancelRes = await fetch(`https://api.tosspayments.com/v1/payments/${paymentKey}/cancel`, {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${encodedKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ cancelReason: reason }),
+      });
+
+      if (!cancelRes.ok) {
+        const cancelData = await cancelRes.json().catch(() => ({}));
+        await logBilling(supabaseAdmin, {
+          companyId, operatorId: user.id, plan, amount,
+          portonePaymentId: paymentKey, success: false, reason,
+          errorMessage: (cancelData as { message?: string }).message ?? "환불 실패",
+        });
+        return NextResponse.json({ error: "토스 환불 실패", detail: cancelData }, { status: 500 });
+      }
+
+      refunded = true;
+    } catch (err) {
+      console.error("[billing/refund] 환불 요청 오류:", err);
+      return NextResponse.json({ error: "환불 요청 중 오류가 발생했습니다." }, { status: 500 });
     }
-  );
-
-  if (!paymentsRes.ok) {
-    const errData = await paymentsRes.json().catch(() => ({}));
-    return NextResponse.json({ error: "PortOne 결제 조회 실패", detail: errData }, { status: 500 });
   }
 
-  const paymentsData = await paymentsRes.json();
-  const payments: Array<{ id: string; paidAt: string }> = paymentsData.items ?? paymentsData.payments ?? [];
-
-  // 결제 내역이 없으면 DB만 초기화
-  if (payments.length === 0) {
-    await Promise.all([
-      clearSubscription(supabaseAdmin, companyId),
-      logBilling(supabaseAdmin, { companyId, operatorId: user.id, plan, amount, portonePaymentId: null, success: true, reason }),
-    ]);
-    return NextResponse.json({ ok: true, refunded: false, message: "PortOne 결제 내역 없음. 구독 정보 초기화 완료." });
-  }
-
-  // 가장 최근 결제 취소
-  const latest = payments.sort((a, b) => new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime())[0];
-
-  const cancelRes = await fetch(
-    `https://api.portone.io/payments/${encodeURIComponent(latest.id)}/cancel`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `PortOne ${PORTONE_API_SECRET}`,
-      },
-      body: JSON.stringify({ storeId: PORTONE_STORE_ID, reason }),
-    }
-  );
-
-  const cancelData = await cancelRes.json();
-
-  if (!cancelRes.ok) {
-    // 환불 실패 → 로그만 남기고 DB 건드리지 않음
-    await logBilling(supabaseAdmin, {
-      companyId, operatorId: user.id, plan, amount,
-      portonePaymentId: latest.id, success: false, reason,
-      errorMessage: cancelData?.message ?? "환불 실패",
-    });
-    return NextResponse.json({ error: "PortOne 환불 실패", detail: cancelData }, { status: 500 });
-  }
-
-  // 환불 성공 → DB 초기화 + 로그
+  // 구독 초기화 + 로그
   await Promise.all([
     clearSubscription(supabaseAdmin, companyId),
-    logBilling(supabaseAdmin, { companyId, operatorId: user.id, plan, amount, portonePaymentId: latest.id, success: true, reason }),
+    logBilling(supabaseAdmin, { companyId, operatorId: user.id, plan, amount, portonePaymentId: paymentKey, success: true, reason }),
   ]);
 
-  return NextResponse.json({ ok: true, refunded: true });
+  return NextResponse.json({
+    ok: true,
+    refunded,
+    message: refunded ? undefined : "결제 내역 없음. 구독 정보 초기화 완료.",
+  });
 }
 
 async function clearSubscription(supabaseAdmin: ReturnType<typeof getSupabaseAdmin>, companyId: string) {

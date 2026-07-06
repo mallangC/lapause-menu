@@ -37,25 +37,26 @@ export async function PATCH(
       .single();
 
     if (reservation?.payment_id) {
-      // 포트원 카드 결제 → 환불 시도, 실패 시 상태 변경 차단
+      // 토스 카드 결제 → 환불 시도, 실패 시 상태 변경 차단
       try {
-        const refundRes = await fetch(`https://api.portone.io/payments/${reservation.payment_id}/cancel`, {
+        const encodedKey = Buffer.from(`${process.env.TOSS_SECRET_KEY!}:`).toString("base64");
+        const refundRes = await fetch(`https://api.tosspayments.com/v1/payments/${reservation.payment_id}/cancel`, {
           method: "POST",
           headers: {
-            Authorization: `PortOne ${process.env.PORTONE_API_SECRET}`,
+            Authorization: `Basic ${encodedKey}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ reason: cancelReason ?? "관리자 취소" }),
+          body: JSON.stringify({ cancelReason: cancelReason ?? "관리자 취소" }),
         });
         if (!refundRes.ok) {
           const refundData = await refundRes.json().catch(() => ({}));
-          // P568: 이미 취소된 결제 → 무시하고 상태만 변경
-          if (refundData?.pgCode === "P568") {
+          // ALREADY_CANCELED: 이미 취소된 결제 → 무시하고 상태만 변경
+          if ((refundData as { code?: string })?.code === "ALREADY_CANCELED") {
             console.warn("[status] 이미 취소된 결제, 상태만 변경:", reservation.payment_id);
           } else {
             console.error("[status] 환불 실패:", refundData);
             return NextResponse.json(
-              { error: "환불 처리에 실패했습니다. 포트원 관리자 콘솔을 확인해주세요." },
+              { error: `환불 실패: ${(refundData as { message?: string })?.message ?? JSON.stringify(refundData)}` },
               { status: 500 }
             );
           }

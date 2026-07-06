@@ -58,7 +58,7 @@ const EMPTY_FORM: ConsultForm = {
 
 interface DraftData {
   form: ConsultForm;
-  product: { id: string; name: string; price: number; product_type: string; image_url: string | null };
+  product: { id: string; name: string; price: number; product_type: string; image_url: string | null; bag_included?: boolean };
   name: string;
   phone: string;
   recipientName: string;
@@ -352,16 +352,19 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
   const set = (key: keyof ConsultForm, value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
-  // 모바일 리다이렉트 결제 복귀 처리
+  // 토스 결제 리다이렉트 복귀 처리
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const returnedPaymentId = params.get("paymentId");
-    if (!returnedPaymentId) return;
+    const returnedPaymentKey = params.get("paymentKey");
+    const returnedOrderId = params.get("orderId");
+    const failCode = params.get("code");
+
+    if (!returnedPaymentKey && !returnedOrderId) return;
 
     window.history.replaceState({}, "", `/${slug}/consult`);
 
-    if (params.get("code")) {
-      // 결제 실패 — 드래프트에서 폼 복원 후 step 3으로 이동
+    if (failCode) {
+      // 결제 실패 — 드래프트에서 폼 복원 후 step 4로 이동
       const saved = sessionStorage.getItem(`consult_draft_${slug}`);
       if (saved) {
         try {
@@ -385,6 +388,14 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
       setIsProcessingRedirect(false);
       return;
     }
+
+    if (!returnedPaymentKey) {
+      setError("결제 정보를 찾을 수 없습니다. 다시 시도해주세요.");
+      setIsProcessingRedirect(false);
+      return;
+    }
+
+    const returnedAmount = Number(params.get("amount") ?? "0");
 
     const saved = sessionStorage.getItem(`consult_draft_${slug}`);
     if (!saved) {
@@ -418,7 +429,9 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
               addressDetail: draft.addressDetail,
             } : null,
             finalPrice: draft.finalPrice,
-            paymentId: returnedPaymentId,
+            paymentKey: returnedPaymentKey,
+            paymentOrderId: returnedOrderId,
+            paymentAmount: returnedAmount,
             source: draft.source ?? null,
           }),
         });
@@ -495,9 +508,9 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
       (form.deliveryType === "배송" && deliveryFee !== null ? deliveryFee : 0);
 
     try {
-      const paymentId = `order${Date.now()}`;
+      const orderId = `order${Date.now()}`;
 
-      // 모바일 리다이렉트 대비 폼 데이터 임시 저장
+      // 리다이렉트 복귀 대비 폼 데이터 임시 저장
       sessionStorage.setItem(`consult_draft_${slug}`, JSON.stringify({
         form,
         product: {
@@ -521,72 +534,35 @@ export default function ConsultClient({ slug, companyName, notificationEmail, pr
         source: sourceRef.current,
       } satisfies DraftData));
 
-      const PortOne = await import("@portone/browser-sdk/v2");
-      const payResponse = await PortOne.requestPayment({
-        storeId: process.env.NEXT_PUBLIC_PORTONE_STORE_ID!,
-        channelKey: paymentMethod === "TOSSPAY"
-          ? process.env.NEXT_PUBLIC_PORTONE_TOSSPAY_CHANNEL_KEY!
-          : process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY!,
-        paymentId,
-        orderName: `${companyName} 맞춤 주문`,
-        totalAmount: finalPrice,
-        currency: paymentMethod === "TOSSPAY" ? "CURRENCY_KRW" : "KRW",
-        payMethod: paymentMethod === "TOSSPAY" ? "EASY_PAY" : "CARD",
-        ...(paymentMethod === "CARD" && {
-          customer: { fullName: name, phoneNumber: parsePhone(phone) },
-        }),
-        redirectUrl: `${window.location.origin}/${slug}/consult`,
-      });
-      if (!payResponse || "code" in payResponse) {
-        sessionStorage.removeItem(`consult_draft_${slug}`);
-        setError(("message" in (payResponse ?? {}) ? (payResponse as { message: string }).message : null) ?? "결제가 취소되었습니다.");
-        setSubmitting(false);
-        return;
+      const { loadTossPayments } = await import("@tosspayments/tosspayments-sdk");
+      const toss = await loadTossPayments(process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY!);
+      const payment = toss.payment({ customerKey: orderId });
+      if (paymentMethod === "TOSSPAY") {
+        await payment.requestPayment({
+          method: "CARD",
+          amount: { currency: "KRW", value: finalPrice },
+          orderId,
+          orderName: `${companyName} 맞춤 주문`,
+          successUrl: `${window.location.origin}/${slug}/consult`,
+          failUrl: `${window.location.origin}/${slug}/consult`,
+          card: { flowMode: "DIRECT", easyPay: "토스페이" },
+        });
+      } else {
+        await payment.requestPayment({
+          method: "CARD",
+          amount: { currency: "KRW", value: finalPrice },
+          orderId,
+          orderName: `${companyName} 맞춤 주문`,
+          successUrl: `${window.location.origin}/${slug}/consult`,
+          failUrl: `${window.location.origin}/${slug}/consult`,
+          customerName: name,
+          customerMobilePhone: parsePhone(phone),
+        });
       }
-      sessionStorage.removeItem(`consult_draft_${slug}`);
-
-      const res = await fetch("/api/reservation", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          slug,
-          companyName,
-          notificationEmail,
-          form,
-          product: {
-            id: selectedProduct.id,
-            name: selectedProduct.name,
-            price: selectedProduct.price,
-            product_type: selectedProduct.product_type,
-            image_url: selectedProduct.image_url,
-            bag_included: selectedProduct.bag_included ?? false,
-          },
-          orderer: { name, phone: parsePhone(phone) },
-          kakaoConsent,
-          delivery: form.deliveryType === "배송" ? {
-            recipientName,
-            recipientPhone: parsePhone(recipientPhone),
-            address,
-            addressDetail,
-          } : null,
-          finalPrice,
-          paymentId,
-          source: sourceRef.current,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "예약 저장 실패");
-      const rid = data.reservationId ?? null;
-      setReservationId(rid);
-      setFinalPriceSnapshot(finalPrice);
-      // 카드 결제 완료 → 바로 paid 처리 후 완료 화면으로
-      if (rid) {
-        await fetch(`/api/reservation/${rid}/paid`, { method: "PATCH" });
-      }
-      setSubmitted(true);
-      setPaidConfirmed(true);
+      // 위 호출은 결제 페이지로 리다이렉트되므로 이 아래는 실행되지 않음
     } catch (err) {
-      setError(err instanceof Error ? err.message : "예약 중 오류가 발생했습니다. 다시 시도해주세요.");
+      sessionStorage.removeItem(`consult_draft_${slug}`);
+      setError(err instanceof Error ? err.message : "결제 중 오류가 발생했습니다. 다시 시도해주세요.");
     } finally {
       setSubmitting(false);
     }
