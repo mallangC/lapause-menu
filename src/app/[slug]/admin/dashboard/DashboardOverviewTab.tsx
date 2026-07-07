@@ -8,7 +8,7 @@ interface Props {
   companyId: string;
   slug: string;
   plan: "starter" | "pro" | "free";
-  onNavigate: (tab: string) => void;
+  onNavigate: (tab: string, statusFilter?: string) => void;
 }
 
 interface Settings {
@@ -84,8 +84,12 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
   const supabase = createClient();
 
   const load = useCallback(async () => {
-    const today = new Date().toISOString().slice(0, 10);
-    const future30 = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth() + 1;
+    const monthStart = `${y}-${String(m).padStart(2, "0")}-01`;
+    const lastDay = new Date(y, m, 0).getDate();
+    const monthEnd = `${y}-${String(m).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
 
     const [{ data: s }, { data: company }, { data: reservations }] = await Promise.all([
       supabase
@@ -102,8 +106,8 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
         .from("reservations")
         .select("status")
         .eq("company_id", companyId)
-        .gte("desired_date", today)
-        .lte("desired_date", future30),
+        .gte("desired_date", monthStart)
+        .lte("desired_date", monthEnd),
     ]);
 
     if (s) setSettings(s);
@@ -179,7 +183,7 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
           <div className="flex items-center justify-between mb-3">
             <div>
               <h3 className="text-sm font-semibold text-gray-700">예약 현황</h3>
-              <p className="text-xs text-gray-400 mt-0.5">오늘부터 30일 이내</p>
+              <p className="text-xs text-gray-400 mt-0.5">이번 달</p>
             </div>
             <button
               onClick={() => onNavigate("reservations")}
@@ -190,15 +194,19 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
           </div>
           <div className="grid grid-cols-4 gap-2 text-center">
             {[
-              { label: "미확인", value: reservationCounts.미확인, color: "text-amber-500" },
-              { label: "준비중", value: reservationCounts.준비중, color: "text-blue-500" },
-              { label: "완료", value: reservationCounts.완료, color: "text-green-600" },
-              { label: "취소", value: reservationCounts.취소, color: "text-red-400" },
-            ].map(({ label, value, color }) => (
-              <div key={label} className="bg-gray-50 rounded-xl py-3">
-                <p className={`text-lg font-semibold ${color}`}>{value}</p>
+              { label: "미확인", statusKey: "미확인", value: reservationCounts.미확인 },
+              { label: "준비중", statusKey: "준비중", value: reservationCounts.준비중 },
+              { label: "완료", statusKey: "픽업/배송완료", value: reservationCounts.완료 },
+              { label: "취소", statusKey: "취소", value: reservationCounts.취소 },
+            ].map(({ label, statusKey, value }) => (
+              <button
+                key={label}
+                onClick={() => onNavigate("reservations", statusKey)}
+                className="bg-gray-50 rounded-xl py-3 hover:bg-gray-100 transition-colors cursor-pointer"
+              >
+                <p className="text-lg font-semibold text-gray-900">{value}</p>
                 <p className="text-xs text-gray-400 mt-0.5">{label}</p>
-              </div>
+              </button>
             ))}
           </div>
         </div>

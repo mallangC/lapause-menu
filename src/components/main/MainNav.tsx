@@ -20,14 +20,14 @@ export default function MainNav({ slug, activeTab, consultEnabled = false }: Mai
         <Link href={`/${slug}/products`} className={tabClass(activeTab === "all")}>
           전체
         </Link>
-        <Link href={`/${slug}/products?tab=featured`} className={tabClass(activeTab === "featured")}>
-          추천/인기
-        </Link>
         <Link href={`/${slug}/products?tab=season`} className={tabClass(activeTab === "season")}>
           시즌
         </Link>
         {consultEnabled && slug && (
-          <Link href={`/${slug}/consult`} className={tabClass(false)}>
+          <Link
+            href={`/${slug}/consult`}
+            className="my-auto ml-2 px-4 py-1.5 rounded-full bg-gold-500 text-white text-xs font-medium hover:bg-gold-600 transition-colors whitespace-nowrap"
+          >
             맞춤주문
           </Link>
         )}

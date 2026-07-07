@@ -1,14 +1,12 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Product } from "@/types";
-import { PRODUCT_TYPES } from "@/lib/constants";
 import MainNav from "./MainNav";
-import HeroSlider from "./HeroSlider";
-import CategorySlider from "./CategorySlider";
+import HomeMasonry from "./HomeMasonry";
 import FloAideFooter from "@/components/FloAideFooter";
 
 const POLICY_LINKS = [
@@ -23,10 +21,6 @@ interface MainLayoutProps {
   logoImage?: string | null;
   themeVars?: Record<string, string>;
   slug?: string;
-  homeFeaturedImage?: string | null;
-  homeAllImage?: string | null;
-  homeSeasonImage?: string | null;
-  homeConsultImage?: string | null;
   locationUrl?: string | null;
   kakaoChannelUrl?: string | null;
   instagramUrl?: string | null;
@@ -41,19 +35,15 @@ export default function MainLayout({
   logoImage,
   themeVars,
   slug,
-  homeFeaturedImage,
-  homeAllImage,
-  homeSeasonImage,
-  homeConsultImage,
   locationUrl,
   kakaoChannelUrl,
   instagramUrl,
   youtubeUrl,
+  products = [],
   hiddenProductTypes = [],
   customProductTypes = [],
   consultEnabled = false,
 }: MainLayoutProps) {
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   useEffect(() => {
@@ -61,18 +51,8 @@ export default function MainLayout({
     if (from) sessionStorage.setItem(`consult_source_${slug}`, from);
   }, [searchParams, slug]);
 
-  const heroImages = [homeFeaturedImage, homeAllImage, homeSeasonImage, homeConsultImage].filter(Boolean) as string[];
-
   const hasChannels = locationUrl || kakaoChannelUrl || instagramUrl || youtubeUrl;
 
-  const visibleTypes = [
-    ...PRODUCT_TYPES.filter((t) => !hiddenProductTypes.includes(t)),
-    ...customProductTypes,
-  ];
-
-  const handleCategorySelect = (type: string) => {
-    router.push(`/${slug}/products?type=${encodeURIComponent(type)}`);
-  };
 
   const logo = logoImage ? (
     <Image src={logoImage} alt={companyName} width={200} height={40} className="object-contain h-9 w-auto" />
@@ -81,31 +61,22 @@ export default function MainLayout({
   );
 
   return (
-    <div className="min-h-screen bg-beige-100" style={themeVars}>
+    <div className="min-h-screen bg-white" style={themeVars}>
       {/* 헤더 + 서브탭 고정 */}
       <div className="sticky top-0 z-40">
         <header className="border-b border-gray-100 bg-white">
           <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-center">
-            {slug ? <Link href={`/${slug}/admin`}>{logo}</Link> : logo}
+            {slug ? <Link href={`/${slug}`}>{logo}</Link> : logo}
           </div>
         </header>
         <MainNav slug={slug} consultEnabled={consultEnabled} />
       </div>
 
-      {/* 히어로 슬라이더 */}
-      <HeroSlider images={heroImages} />
-
-      {/* 카테고리 슬라이더 */}
-      <div className="max-w-6xl mx-auto">
-        <CategorySlider
-          types={visibleTypes}
-          selectedTypes={[]}
-          onSelect={handleCategorySelect}
-        />
-      </div>
+      {/* 추천/인기 상품 마소너리 */}
+      <HomeMasonry slug={slug ?? ""} products={products} />
 
       {/* 하단 */}
-      <div className="border-t border-gray-100 bg-white mt-4">
+      <div className="bg-white mt-2">
         <div className="max-w-4xl mx-auto px-4 py-8 flex flex-col items-center gap-8">
 
           {consultEnabled && slug && (

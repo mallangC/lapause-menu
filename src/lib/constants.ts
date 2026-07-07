@@ -1,4 +1,4 @@
-export const PRODUCT_TYPES = ["다발", "바구니", "센터피스", "화병꽂이", "식물", "조화"] as const;
+export const PRODUCT_TYPES = ["꽃다발", "꽃바구니", "센터피스", "화병꽂이", "식물", "조화"] as const;
 
 export const FLOWER_COLORS = [
   "핑크색",

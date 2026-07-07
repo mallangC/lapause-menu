@@ -11,7 +11,6 @@ export default function HeroSlider({ images }: HeroSliderProps) {
   const [current, setCurrent] = useState(0);
 
   const next = useCallback(() => setCurrent((i) => (i + 1) % images.length), [images.length]);
-  const prev = useCallback(() => setCurrent((i) => (i - 1 + images.length) % images.length), [images.length]);
 
   useEffect(() => {
     if (images.length <= 1) return;
@@ -22,43 +21,24 @@ export default function HeroSlider({ images }: HeroSliderProps) {
   if (images.length === 0) return <div className="w-full h-52 bg-beige-200" />;
 
   return (
-    <div className="py-4 bg-beige-100">
-      {/* 슬라이더 + 좌우 화살표 */}
-      <div className="flex items-center gap-2 px-3">
-        {images.length > 1 ? (
-          <button onClick={prev} className="shrink-0 p-1 text-gray-400 hover:text-gray-700 transition-colors">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              <path d="m15 18-6-6 6-6" />
-            </svg>
-          </button>
-        ) : <div className="w-8 shrink-0" />}
-
-        <div className="flex-1 overflow-hidden">
+    <div className="py-4 bg-beige-100 overflow-hidden">
+      <div
+        className="flex gap-3 transition-transform duration-500 ease-in-out"
+        style={{ transform: `translateX(calc(8% - ${current * 84}% - ${current * 12}px))` }}
+      >
+        {images.map((src, i) => (
           <div
-            className="flex transition-transform duration-500 ease-in-out"
-            style={{ transform: `translateX(calc(-${current * 100}%))` }}
+            key={src}
+            onClick={() => setCurrent(i)}
+            className={`relative shrink-0 w-[84%] aspect-[4/2.2] rounded-2xl overflow-hidden cursor-pointer transition-all duration-500 ${
+              i === current ? "shadow-lg opacity-100 scale-100" : "shadow-sm opacity-40 scale-95"
+            }`}
           >
-            {images.map((src, i) => (
-              <div
-                key={src}
-                className="relative shrink-0 w-full aspect-[4/2.2] rounded-2xl overflow-hidden shadow-lg"
-              >
-                <Image src={src} alt="" fill className="object-cover" priority={i === 0} />
-              </div>
-            ))}
+            <Image src={src} alt="" fill className="object-cover" priority={i === 0} />
           </div>
-        </div>
-
-        {images.length > 1 ? (
-          <button onClick={next} className="shrink-0 p-1 text-gray-400 hover:text-gray-700 transition-colors">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              <path d="m9 18 6-6-6-6" />
-            </svg>
-          </button>
-        ) : <div className="w-8 shrink-0" />}
+        ))}
       </div>
 
-      {/* 도트 인디케이터 */}
       {images.length > 1 && (
         <div className="flex justify-center gap-1.5 mt-3">
           {images.map((_, i) => (

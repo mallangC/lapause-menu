@@ -1,11 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Product } from "@/types";
 import { FLOWER_COLOR_MAP, BADGE_COLORS } from "@/lib/constants";
-import FlowerNoticeModal from "@/components/FlowerNoticeModal";
 
 interface ProductCardProps {
   product: Product;
@@ -13,30 +11,14 @@ interface ProductCardProps {
   slug?: string;
 }
 
-export default function ProductCard({ product, consultEnabled, slug }: ProductCardProps) {
+export default function ProductCard({ product, slug }: ProductCardProps) {
   const router = useRouter();
-  const [modalOpen, setModalOpen] = useState(false);
-  const [noticeOpen, setNoticeOpen] = useState(false);
-
-  useEffect(() => {
-    document.body.style.overflow = (modalOpen || noticeOpen) ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
-  }, [modalOpen, noticeOpen]);
-
-  useEffect(() => {
-    if (!modalOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setModalOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [modalOpen]);
 
   return (
     <>
       <div
         className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-200 hover:shadow-md transition-shadow cursor-pointer flex flex-col h-full"
-        onClick={() => setModalOpen(true)}
+        onClick={() => router.push(`/${slug}/products/${product.id}`)}
       >
         <div className="relative aspect-square bg-beige-200">
           {product.image_url ? (
@@ -117,99 +99,6 @@ export default function ProductCard({ product, consultEnabled, slug }: ProductCa
         </div>
       </div>
 
-      {/* 모달 */}
-      {modalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
-          onClick={() => setModalOpen(false)}
-        >
-          <div
-            className="bg-white rounded-2xl shadow-xl w-full max-w-xl overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* 이미지 */}
-            <div className="relative aspect-square bg-beige-200">
-              {product.image_url ? (
-                <Image src={product.image_url} alt={product.name} fill className="object-cover" />
-              ) : (
-                <div className="absolute inset-0 flex items-center justify-center text-beige-400 text-5xl">🌸</div>
-              )}
-              <div className="absolute top-3 left-3 flex flex-col gap-1">
-                {product.is_popular && (
-                  <span className="text-white text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: BADGE_COLORS.popular.bg }}>
-                    {BADGE_COLORS.popular.label}
-                  </span>
-                )}
-                {product.is_recommended && (
-                  <span className="text-white text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: BADGE_COLORS.recommended.bg }}>
-                    {BADGE_COLORS.recommended.label}
-                  </span>
-                )}
-              </div>
-              <button
-                onClick={() => setModalOpen(false)}
-                className="absolute top-3 right-3 bg-black/40 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-black/60 transition-colors text-sm"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* 상품 정보 */}
-            <div className="p-4 space-y-3">
-              <div>
-                <p className="text-xs text-gold-500 font-medium">{product.product_type}</p>
-                <h3 className="font-semibold text-gray-900 text-base mt-0.5">{product.name}</h3>
-                <p className="text-lg font-bold text-gray-900 mt-2">{product.price ? `${product.price.toLocaleString()}원` : "가격 문의"}</p>
-              </div>
-
-              {(product.flower_colors.length > 0 || product.wrapping_color) && (
-                <div className="space-y-1.5 pt-3 border-t border-gray-100">
-                  {product.flower_colors.length > 0 && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-400 shrink-0">꽃 색상</span>
-                      <span className="text-xs text-gray-300 px-2">—</span>
-                      <div className="flex gap-1 flex-wrap">
-                        {product.flower_colors.map((color) => (
-                          <span
-                            key={color}
-                            className="w-4 h-4 rounded-full border border-gray-200 shrink-0"
-                            style={{ backgroundColor: FLOWER_COLOR_MAP[color] ?? "#a8a29e" }}
-                            title={color}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {product.wrapping_color && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-400 shrink-0">포장지</span>
-                      <span className="text-xs text-gray-300 pr-2 pl-2.5">—</span>
-                      <span className="text-xs text-gray-600">{product.wrapping_color}</span>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {consultEnabled && (
-                <button
-                  type="button"
-                  onClick={() => setNoticeOpen(true)}
-                  className="block w-full bg-gold-500 text-white text-center py-3 rounded-xl font-medium text-sm hover:bg-gold-600 transition-colors"
-                >
-                  이 상품으로 예약하기
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {noticeOpen && (
-        <FlowerNoticeModal
-          onConfirm={() => router.push(`/${slug}/consult?productId=${product.id}`)}
-          onClose={() => setNoticeOpen(false)}
-        />
-      )}
     </>
   );
 }
