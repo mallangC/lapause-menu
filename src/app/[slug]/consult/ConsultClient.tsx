@@ -233,8 +233,8 @@ function TimePicker({ value, onChange, minTime, maxTime, disabled }: {
 }
 
 const TYPE_MAP: Record<string, string> = {
-  꽃다발: "다발",
-  바구니: "바구니",
+  꽃다발: "꽃다발",
+  바구니: "꽃바구니",
   센터피스: "센터피스",
   화병꽂이: "화병꽂이",
 };

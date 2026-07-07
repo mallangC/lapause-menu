@@ -76,7 +76,7 @@ const DEFAULT_INPUT: ProductInput = {
   name: "",
   price: 0,
   image_url: null,
-  product_type: "다발",
+  product_type: "꽃다발",
   flower_colors: [],
   wrapping_color: "밝은 계열",
   seasons: [],

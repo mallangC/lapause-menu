@@ -50,6 +50,7 @@ export default async function CompanyMenuPage({ params }: Props) {
     .select("*")
     .eq("company_id", raw.id)
     .eq("status", "active")
+    .order("product_type", { ascending: true })
     .order("price", { ascending: true });
 
   const { data: customCats } = await supabase
