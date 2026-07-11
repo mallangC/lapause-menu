@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
   let refunded = false;
   if (paymentKey) {
     try {
-      const encodedKey = Buffer.from(`${process.env.TOSS_SECRET_KEY!}:`).toString("base64");
+      const encodedKey = Buffer.from(`${process.env.TOSS_BILLING_SECRET_KEY!}:`).toString("base64");
       const cancelRes = await fetch(`https://api.tosspayments.com/v1/payments/${paymentKey}/cancel`, {
         method: "POST",
         headers: {

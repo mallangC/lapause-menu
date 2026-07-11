@@ -27,6 +27,7 @@ export default function PlanTab({ companyId, customerName, plan, subscriptionPla
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showPolicy, setShowPolicy] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
@@ -48,9 +49,16 @@ export default function PlanTab({ companyId, customerName, plan, subscriptionPla
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ companyId, newPlan }),
     });
+    const data = res.ok ? await res.json() : null;
     setLoading(false);
     if (res.ok) {
-      setSuccess(newPlan === "pro" ? "Pro로 업그레이드되었습니다." : "다음 결제부터 Starter 가격이 적용됩니다.");
+      if (data?.undone) {
+        setSuccess("Pro 플랜을 유지합니다.");
+      } else if (newPlan === "pro") {
+        setSuccess("Pro로 업그레이드되었습니다.");
+      } else {
+        setSuccess("현재 기간 종료 후 Starter로 전환됩니다. 그 전까지는 Pro 기능을 계속 이용할 수 있습니다.");
+      }
       setTimeout(() => router.refresh(), 1000);
     }
   };
@@ -173,9 +181,19 @@ export default function PlanTab({ companyId, customerName, plan, subscriptionPla
           </ul>
 
           {/* Starter 버튼 */}
-          {subscriptionPlan === "starter" ? (
+          {subscriptionPlan === "starter" && plan !== "pro" ? (
             <div className="w-full py-2.5 rounded-xl text-sm font-semibold text-center border border-gray-200 text-gray-300 cursor-default">
               현재 구독 플랜
+            </div>
+          ) : subscriptionPlan === "starter" && plan === "pro" ? (
+            // 다운그레이드 예약 상태: 만료일까지 Pro 유지
+            <div className="space-y-1">
+              <div className="w-full py-2.5 rounded-xl text-sm font-semibold text-center border border-gray-200 text-gray-400 cursor-default">
+                다음 결제부터 적용
+              </div>
+              <p className="text-[10px] text-gray-400 text-center">
+                {planExpiresAt ? `${formatDate(planExpiresAt)}까지 Pro 기능 유지` : "현재 기간 종료 후 Starter 전환"}
+              </p>
             </div>
           ) : subscriptionPlan === "pro" ? (
             <div className="space-y-1.5">
@@ -213,7 +231,9 @@ export default function PlanTab({ companyId, customerName, plan, subscriptionPla
             <span className="text-sm text-gray-400 ml-1">/ 월</span>
           </div>
           <p className="text-xs text-gray-400 mb-1">{PLAN_DESCRIPTIONS.pro}</p>
-          <p className="text-xs font-semibold text-gold-500 mb-4">첫 30일 무료 체험</p>
+          {trialEndsAt === null && (
+            <p className="text-xs font-semibold text-gold-500 mb-4">첫 30일 무료 체험</p>
+          )}
           <ul className="space-y-2.5 mb-6 flex-1">
             {PLAN_FEATURES.pro.map((item, i) => (
               <li key={i} className="flex items-start gap-2 text-sm">
@@ -228,6 +248,20 @@ export default function PlanTab({ companyId, customerName, plan, subscriptionPla
             <div className="w-full py-2.5 rounded-xl text-sm font-semibold text-center border border-gold-200 text-gold-400 cursor-default">
               현재 구독 플랜
             </div>
+          ) : subscriptionPlan === "starter" && plan === "pro" ? (
+            // 다운그레이드 예약 상태: 만료일까지 Pro 이용 중
+            <div className="space-y-1">
+              <div className="w-full py-2.5 rounded-xl text-sm font-semibold text-center border border-gold-200 text-gold-400 cursor-default">
+                이용 중 (Starter 전환 예약)
+              </div>
+              <button
+                onClick={() => handleChangePlan("pro")}
+                disabled={loading}
+                className="w-full py-2 rounded-xl text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2 transition-colors disabled:opacity-50"
+              >
+                전환 취소 (Pro 유지)
+              </button>
+            </div>
           ) : subscriptionPlan === "starter" ? (
             hasBillingKey ? (
               <div className="space-y-1.5">
@@ -240,7 +274,10 @@ export default function PlanTab({ companyId, customerName, plan, subscriptionPla
                   {loading ? "처리 중..." : "Pro로 업그레이드"}
                 </button>
                 <p className="text-[10px] text-gray-400 text-center">
-                  {expiryDate ? `${formatDate(expiryDate)} 이후 ₩${PLAN_PRICES.pro.toLocaleString()}/월 적용` : "즉시 Pro 기능 이용 가능"}
+                  즉시 ₩{PLAN_PRICES.pro.toLocaleString()} 결제 · 30일 새로 시작
+                </p>
+                <p className="text-[10px] text-gray-400 text-center">
+                  첫 업그레이드 시 · 결제 후 3일 이내면 Starter 요금 자동 환불
                 </p>
               </div>
             ) : (
@@ -250,7 +287,7 @@ export default function PlanTab({ companyId, customerName, plan, subscriptionPla
                   customerName={customerName}
                   subscriptionPlan="pro"
                   onSuccess={() => { setSuccess("Pro로 업그레이드되었습니다."); setTimeout(() => router.refresh(), 1000); }}
-                  buttonLabel="Pro 구독 시작"
+                  buttonLabel={trialEndsAt === null ? "30일 무료 체험 시작" : "Pro 구독 시작"}
                 />
                 <p className="text-[10px] text-gray-400 text-center">
                   {expiryDate ? `${formatDate(expiryDate)} 이후 ₩${PLAN_PRICES.pro.toLocaleString()}/월 적용` : ""}
@@ -264,10 +301,36 @@ export default function PlanTab({ companyId, customerName, plan, subscriptionPla
               customerName={customerName}
               subscriptionPlan="pro"
               onSuccess={() => { setSuccess("Pro 구독이 시작되었습니다."); setTimeout(() => router.refresh(), 1000); }}
-              buttonLabel="Pro 구독 시작"
+              buttonLabel={trialEndsAt === null ? "30일 무료 체험 시작" : "Pro 구독 시작"}
             />
           )}
         </div>
+      </div>
+
+      {/* ── 구독 정책 안내 ── */}
+      <div className="mt-4">
+        <button
+          onClick={() => setShowPolicy((v) => !v)}
+          className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-gray-600 transition-colors"
+        >
+          <span className="font-semibold uppercase tracking-wide">구독 정책 안내</span>
+          <svg
+            className={`w-3 h-3 transition-transform ${showPolicy ? "rotate-180" : ""}`}
+            fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+        {showPolicy && (
+          <ul className="mt-2 text-[11px] text-gray-400 space-y-1.5">
+            <li>· 매월 자동 결제되며, 결제 실패 시 24시간 간격으로 최대 3회 재시도됩니다.</li>
+            <li>· 3회 모두 실패하면 구독이 자동 해지됩니다.</li>
+            <li>· 구독 해지 시 현재 기간 종료 후 자동 결제가 중단되며, 잔여 기간은 정상 이용 가능합니다.</li>
+            <li>· 잔여 기간에 대한 환불은 제공되지 않습니다.</li>
+            <li>· Starter → Pro 업그레이드 시 즉시 ₩{PLAN_PRICES.pro.toLocaleString()}이 결제되고 30일이 새로 시작됩니다. (첫 업그레이드에 한해 결제 후 3일 이내면 Starter 요금 자동 환불)</li>
+            <li>· Pro → Starter 다운그레이드 시 현재 결제 기간이 끝날 때까지 Pro 기능을 유지하며, 다음 결제부터 Starter 요금이 적용됩니다.</li>
+          </ul>
+        )}
       </div>
 
       {/* ── 구독 해지 / 해지 취소 ── */}
@@ -289,11 +352,11 @@ export default function PlanTab({ companyId, customerName, plan, subscriptionPla
               <button
                 onClick={() => setShowCancelModal(true)}
                 disabled={loading}
-                className="text-xs text-gray-400 hover:text-red-500 underline underline-offset-2 transition-colors disabled:opacity-50"
+                className="text-xs text-gray-500 hover:text-red-500 underline underline-offset-2 transition-colors disabled:opacity-50"
               >
                 구독 해지
               </button>
-              <p className="text-[11px] text-gray-300 mt-1">해지 시 현재 기간 종료 후 자동 결제가 중단됩니다.</p>
+              <p className="text-[11px] text-gray-400 mt-1">해지 시 현재 기간 종료 후 자동 결제가 중단됩니다.</p>
             </>
           )}
         </div>

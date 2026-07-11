@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import MainLayout from "@/components/main/MainLayout";
+import ServiceSuspended from "@/components/main/ServiceSuspended";
 import { Product } from "@/types";
 import { generateThemeVars, DEFAULT_THEME_BG, DEFAULT_THEME_ACCENT } from "@/lib/theme";
 import type { Metadata } from "next";
@@ -27,6 +28,7 @@ export default async function CompanyMenuPage({ params }: Props) {
     .from("companies")
     .select(`
       id,
+      name,
       settings:company_settings(
         logo_image, theme_bg, theme_accent,
         home_featured_image, home_all_image, home_season_image, home_consult_image,
@@ -43,7 +45,9 @@ export default async function CompanyMenuPage({ params }: Props) {
   const s = raw.settings as unknown as Record<string, unknown> | null ?? {};
   const sub = raw.subscription as unknown as Record<string, unknown> | null ?? {};
 
-  if (sub.plan === "none") notFound();
+  if (!sub.plan || sub.plan === "none") {
+    return <ServiceSuspended companyName={raw.name} />;
+  }
 
   const { data: products } = await supabase
     .from("products")
