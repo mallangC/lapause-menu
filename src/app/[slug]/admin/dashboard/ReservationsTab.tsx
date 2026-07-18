@@ -49,7 +49,7 @@ function SwipeableReservationCard({
   };
 
   return (
-    <div className="relative">
+    <div className="relative overflow-hidden">
       {/* 액션 버튼 — 카드 뒤에 위치, 스와이프 시 드러남 */}
       <div className="absolute inset-y-0 right-0 flex items-stretch" style={{ width: ACTION_WIDTH }}>
         <button

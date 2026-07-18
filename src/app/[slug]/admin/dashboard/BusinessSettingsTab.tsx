@@ -135,7 +135,7 @@ export default function BusinessSettingsTab({ companyId }: Props) {
           <p className="text-xs text-gray-400 mt-0.5">현재 시각 기준 몇 시간 이후부터 예약 가능한지 설정합니다. (기본값: 2시간)</p>
         </div>
         <div className="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
-          {["꽃다발", "바구니", "센터피스", "화병꽂이", "기타"].map((type) => (
+          {["꽃다발", "꽃바구니", "센터피스", "화병꽂이", "기타"].map((type) => (
             <div key={type} className="flex items-center justify-between px-4 py-3 bg-white">
               <span className="text-sm text-gray-700">{type}</span>
               <div className="flex items-center gap-1.5">

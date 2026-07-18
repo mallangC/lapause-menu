@@ -10,7 +10,7 @@ import { ko } from "date-fns/locale";
 import "react-datepicker/dist/react-datepicker.css";
 registerLocale("ko", ko);
 
-const PRODUCT_TYPES = ["다발", "바구니", "센터피스", "화병", "식물", "기타"];
+const PRODUCT_TYPES = ["꽃다발", "꽃바구니", "센터피스", "화병", "식물", "기타"];
 
 interface ItemForm {
   type: string;
@@ -101,8 +101,8 @@ function parseNaverText(text: string) {
   if (optSection) {
     const optText = optSection[1];
     const optLines = optText.split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("*"));
-    if (optText.includes("꽃다발") || optText.includes("다발")) r.productType = "다발";
-    else if (optText.includes("바구니")) r.productType = "바구니";
+    if (optText.includes("꽃다발") || optText.includes("다발")) r.productType = "꽃다발";
+    else if (optText.includes("바구니")) r.productType = "꽃바구니";
     else if (optText.includes("센터피스")) r.productType = "센터피스";
     else if (optText.includes("화병")) r.productType = "화병꽂이";
     if (optText.includes("쇼핑백")) r.shoppingBag = "추가";
@@ -166,7 +166,7 @@ export default function AddReservationModal({
       }));
     }
     if (reservationId) return [emptyItem()];
-    return [{ ...emptyItem(), type: "다발" }];
+    return [{ ...emptyItem(), type: "꽃다발" }];
   });
 
   const updateItem = (index: number, field: keyof ItemForm, value: string) => {

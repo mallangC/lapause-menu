@@ -200,7 +200,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
 
   return (
     <div className="min-h-screen bg-beige-100 flex flex-col" style={themeVars as React.CSSProperties}>
-      <header className="border-b border-gray-200 bg-white shrink-0">
+      <header className="border-b border-gray-200 bg-white shrink-0 sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link href={`/${slug}`} className="text-lg font-medium text-gray-900 hover:text-gray-600 transition-colors">
             {companyName} — 관리자
@@ -212,7 +212,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
       </header>
 
       {/* 모바일 탭 내비게이션 */}
-      <div className="md:hidden bg-white border-b border-gray-100">
+      <div className="md:hidden bg-white border-b border-gray-100 sticky top-[61px] z-30">
         {/* 메인 탭 행 */}
         <div className="flex overflow-x-auto no-scrollbar">
           {mainTabs.map((tab) => (
@@ -293,7 +293,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
                   <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
                 </svg>
               </button>
-              <div className={`overflow-hidden transition-all duration-300 ${showSettingsDropdown || isSettingsTab ? "max-h-60" : "max-h-0"}`}>
+              <div className={`overflow-hidden transition-all duration-300 ${showSettingsDropdown || isSettingsTab ? "max-h-80" : "max-h-0"}`}>
                 <ul className="mt-1 space-y-0.5 pl-2">
                   {settingsTabs.map((tab) => (
                     <li key={tab.key}>
@@ -410,16 +410,16 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
             {error && (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
             )}
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-medium text-gray-900">상품 목록</h2>
-              <button
-                onClick={() => products.length >= 100 ? setShowLimitModal(true) : setShowForm(true)}
-                className="bg-gold-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gold-600 transition-colors"
-              >
-                + 상품 추가
-              </button>
-            </div>
             <div className="bg-white border border-gray-200 rounded-xl p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-medium text-gray-900">상품 목록</h2>
+                <button
+                  onClick={() => products.length >= 100 ? setShowLimitModal(true) : setShowForm(true)}
+                  className="bg-gold-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gold-600 transition-colors"
+                >
+                  + 상품 추가
+                </button>
+              </div>
               <ProductTable
                 products={products}
                 onEdit={(product) => { setEditingProduct(product); setShowForm(false); }}

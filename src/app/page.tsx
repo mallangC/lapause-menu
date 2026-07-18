@@ -41,7 +41,7 @@ function FadeIn({ children, delay = 0, className = "" }: { children: React.React
 }
 
 // ────────────────────────────────────────────────
-// FAQ Accordion
+// Q&A Accordion
 // ────────────────────────────────────────────────
 function FaqItem({ q, a, isLast = false }: { q: string; a: string; isLast?: boolean }) {
   const [open, setOpen] = useState(false);
@@ -90,12 +90,14 @@ const capabilities = [
 const steps = [
   { num: "01", title: "한달 무료로 시작", desc: "회원가입 후 가게 정보를 입력하세요." },
   { num: "02", title: "상품 등록", desc: "사진과 가격을 입력하면 메뉴판 완성." },
-  { num: "03", title: "맞춤 주문 설정", desc: "고객이 꽃·색상·예산을 직접 선택할 수 있게 설정하세요." },
-  { num: "04", title: "바로 운영", desc: "링크를 공유하는 순간 예약을 받을 수 있습니다." },
+  { num: "03", title: "맞춤 주문 신청", desc: "사업자 등록증·통장 사본을 제출하면 맞춤 주문 기능이 활성화됩니다." },
+  { num: "04", title: "맞춤 주문 설정", desc: "고객이 꽃·색상·예산을 직접 선택할 수 있게 설정하세요." },
+  { num: "05", title: "운영 시작", desc: "링크를 공유하는 순간 예약을 받을 수 있습니다." },
 ];
 
 const faqs = [
   { q: "앱을 설치해야 하나요?", a: "아니요. 가게 링크를 공유하면 고객은 앱 설치 없이 바로 메뉴를 볼 수 있습니다. 관리자도 웹 브라우저만 있으면 관리할 수 있습니다." },
+  { q: "누구나 플로에이드에서 꽃을 판매할 수 있나요?", a: "사업자 등록이 되어 있는 사장님만 판매가 가능합니다. 맞춤 주문 기능을 통해 꽃을 판매하시려면 사업자 등록증과 통장 사본 등의 서류를 제출해 주셔야 합니다." },
   { q: "기존 SNS나 네이버 스마트스토어와 함께 쓸 수 있나요?", a: "네. 플로에이드는 기존 채널을 대체하는 게 아니라 보완하는 도구입니다. 링크만 공유하면 어디서든 연결됩니다." },
   { q: "상품은 몇 개까지 등록할 수 있나요?", a: "상품은 최대 100개까지 등록 할 수 있습니다." },
   { q: "고객이 예약하면 제가 직접 확정해야 하나요, 아니면 자동으로 되나요?", a: "기본적으로 관리자가 직접 확정하는 방식입니다. 예약 요청이 들어오면 알림을 받고, 관리 페이지에서 판매 가능한 예약건인지 확인 후 확정 또는 취소 처리를 할 수 있습니다." },
@@ -108,6 +110,14 @@ export default function Landing() {
   const [scrolled, setScrolled] = useState(false);
   const [activeCap, setActiveCap] = useState(0);
   const capCarouselRef = useRef<HTMLDivElement>(null);
+  const [painProgress, setPainProgress] = useState(0);
+  const painRef = useRef<HTMLDivElement>(null);
+  const [consultFlipped, setConsultFlipped] = useState(false);
+
+  useEffect(() => {
+    const t = setInterval(() => setConsultFlipped((v) => !v), 3000);
+    return () => clearInterval(t);
+  }, []);
 
   function goToCap(idx: number) {
     setActiveCap(idx);
@@ -132,6 +142,19 @@ export default function Landing() {
   }, []);
 
   useEffect(() => {
+    const onScroll = () => {
+      const el = painRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const total = el.offsetHeight - window.innerHeight;
+      const progress = Math.max(0, Math.min(1, -rect.top / total));
+      setPainProgress(progress);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
     const track = capCarouselRef.current;
     if (!track) return;
     const onScroll = () => {
@@ -152,56 +175,70 @@ export default function Landing() {
 
 
   return (
-    <div className="bg-white">
+    <div className="bg-white" style={{ overflowX: "clip" }}>
 
       {/* ── NAV ── */}
-      <header
-        className="fixed top-0 left-0 right-0 z-50 transition-all duration-300"
-        style={{
-          background: scrolled ? "rgba(255,255,255,0.97)" : "transparent",
-          borderBottom: scrolled ? "1px solid #e5e5e5" : "none",
-          backdropFilter: scrolled ? "blur(8px)" : "none",
-        }}
-      >
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between relative">
-          <a href="/" className="flex items-center">
-            <Image
-              src={scrolled ? "/logo-light.png" : "/logo-dark.png"}
-              alt="Flo.Aide"
-              width={72}
-              height={24}
-              className="object-contain"
-            />
-          </a>
-          <nav className="hidden md:flex items-center gap-8 absolute left-1/2 -translate-x-1/2">
-            {[
-              { label: "기능", href: "#기능" },
-              { label: "효과", href: "#효과" },
-              { label: "사용 방법", href: "#사용 방법" },
-              { label: "FAQ", href: "#FAQ" },
-            ].map((item) => (
-              <a key={item.label} href={item.href} className={`text-[13px] transition-colors hover:opacity-70 ${scrolled ? "text-neutral-600" : "text-white/80"}`}>
-                {item.label}
+      <div className="fixed top-4 left-0 right-0 z-50 flex justify-center px-4 transition-all duration-300" style={{ width: "100dvw" }}>
+        <header
+          className="w-full transition-all duration-300"
+          style={{
+            maxWidth: scrolled ? 900 : 1152,
+            borderRadius: 999,
+            background: scrolled
+              ? "rgba(255,255,255,0.72)"
+              : "rgba(255,255,255,0.08)",
+            border: scrolled
+              ? "1px solid rgba(0,0,0,0.08)"
+              : "1px solid rgba(255,255,255,0.18)",
+            backdropFilter: "blur(20px) saturate(180%)",
+            WebkitBackdropFilter: "blur(20px) saturate(180%)",
+            boxShadow: scrolled
+              ? "0 4px 24px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.6)"
+              : "0 2px 12px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.15)",
+          }}
+        >
+          <div className="px-4 md:px-7 h-14 md:h-16 flex items-center justify-between relative">
+            <a href="/" className="flex items-center shrink-0">
+              <Image
+                src={scrolled ? "/logo-light.png" : "/logo-dark.png"}
+                alt="Flo.Aide"
+                width={76}
+                height={24}
+                className="object-contain md:w-[88px] md:h-[28px]"
+              />
+            </a>
+            <nav className="hidden md:flex items-center gap-9 absolute left-1/2 -translate-x-1/2">
+              {[
+                { label: "기능", href: "#기능" },
+                { label: "효과", href: "#효과" },
+                { label: "사용 방법", href: "#사용 방법" },
+                { label: "Q&A", href: "#Q&A" },
+              ].map((item) => (
+                <a key={item.label} href={item.href}
+                  className={`text-[14px] font-medium transition-colors hover:opacity-70 ${scrolled ? "text-neutral-700" : "text-white/85"}`}>
+                  {item.label}
+                </a>
+              ))}
+            </nav>
+            <div className="flex items-center gap-3 shrink-0">
+              <a href="/login"
+                className={`text-[13px] md:text-[14px] font-medium transition-colors hover:opacity-70 ${scrolled ? "text-neutral-600" : "text-white/80"}`}>
+                로그인
               </a>
-            ))}
-          </nav>
-          <div className="flex items-center gap-3">
-            <a href="/login" className={`text-[13px] transition-colors ${scrolled ? "text-neutral-600" : "text-white/80"} hover:opacity-70`}>
-              로그인
-            </a>
-            <a
-              href="/login"
-              className="text-[13px] px-4 py-2 rounded-full font-medium transition-all"
-              style={{
-                background: scrolled ? "#2c2416" : "white",
-                color: scrolled ? "white" : "#2c2416",
-              }}
-            >
-              무료로 시작하기
-            </a>
+              <a
+                href="/login"
+                className="text-[13px] md:text-[14px] px-4 md:px-5 py-2 rounded-full font-semibold transition-all whitespace-nowrap"
+                style={{
+                  background: scrolled ? "#2c2416" : "rgba(255,255,255,0.9)",
+                  color: scrolled ? "white" : "#2c2416",
+                }}
+              >
+                무료 시작
+              </a>
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
+      </div>
 
       {/* ── HERO ── */}
       <section className="relative min-h-screen flex items-center overflow-hidden" style={{ background: "#18130e" }}>
@@ -296,49 +333,314 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── STATS ── */}
-      <section className="bg-white py-20 border-b border-neutral-100">
-        <div className="max-w-5xl mx-auto px-6">
-          <FadeIn className="grid grid-cols-3 gap-8 text-center">
-            {[
-              { num: "0원", label: "시작 비용", sub: "한달 무료로 시작, 필요할 때 업그레이드" },
-              { num: "설치 없이", label: "바로 사용 가능", sub: "앱 다운로드 없이 링크 하나로" },
-              { num: "24/7", label: "언제나 운영 가능", sub: "쉬는 날에도 메뉴판은 열려 있어요" },
-            ].map(({ num, label, sub }) => (
-              <div key={label}>
-                <div
-                  className="text-[clamp(1.6rem,4vw,3rem)] font-semibold not-italic leading-none mb-2"
-                  style={{ color: "#2c2416" }}
-                >
-                  {num}
-                </div>
-                <div className="text-[14px] font-medium text-neutral-700 mb-1">{label}</div>
-                <div className="text-[12px] text-neutral-400 leading-snug">{sub}</div>
+
+      {/* ── PAIN POINTS + SOLUTION — Scroll Animation ── */}
+      <div ref={painRef} style={{ height: "380vh" }}>
+        {(() => {
+          const flyProgress = Math.max(0, Math.min(1, (painProgress - 0.25) / 0.20));
+          const solutionOpacity = Math.max(0, Math.min(1, (painProgress - 0.38) / 0.20));
+          const painTitleOpacity = Math.max(0, 1 - flyProgress * 2);
+          const zoomProgress = Math.max(0, Math.min(1, (painProgress - 0.68) / 0.32));
+          const solutionFadeOut = Math.max(0, Math.min(1, zoomProgress * 2.5));
+
+
+          return (
+            <div className="sticky top-0 h-screen overflow-hidden bg-white">
+
+              {/* 해결 문구 — 포스트잇 뒤에서 점점 드러남 */}
+              <div
+                className="absolute inset-0 flex flex-col items-center justify-center px-6"
+                style={{
+                  opacity: Math.max(0, solutionOpacity - solutionFadeOut),
+                  filter: `blur(${(1 - solutionOpacity) * 8}px)`,
+                }}
+              >
+                <p className="text-[12px] tracking-[0.25em] uppercase mb-4 font-medium" style={{ color: "#c9a96e" }}>Solution</p>
+                <h2 className="font-semibold text-center" style={{ fontSize: "clamp(2rem,5vw,3.2rem)", color: "#2c2416", lineHeight: 1.2 }}>
+                  플로에이드가<br />해결해드립니다
+                </h2>
               </div>
-            ))}
+
+              {/* 포스트잇 — 앞에 떠있다가 날아감 */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center px-4 sm:px-6">
+                <div
+                  className="text-center mb-5 sm:mb-8"
+                  style={{ opacity: painTitleOpacity, transform: `translateY(${flyProgress * -24}px)` }}
+                >
+                  <p className="text-[12px] tracking-[0.25em] uppercase mb-3 font-medium" style={{ color: "#c9a96e" }}>Pain Point</p>
+                  <h2 className="font-semibold" style={{ fontSize: "clamp(1.4rem,4vw,2.6rem)", color: "#2c2416", lineHeight: 1.2 }}>
+                    꽃집 사장님들의 불편함
+                  </h2>
+                </div>
+
+                {(() => {
+                  const allPostIts = [
+                    { quote: "내 홈페이지를\n가지고 싶어요",                       fly: { x: -160, y: -110, r: -28 }, rotate: -8  },
+                    { quote: "비슷한 내용의\n상담에 시간을\n많이 쓰고 있어요",        fly: { x: -130, y: -110, r: -30 }, rotate: -2  },
+                    { quote: "손님이 상품을\n문의할 때마다\n사진 찾는 게 번거로워요",   fly: { x: 130, y: -110, r: 30 }, rotate: 2.5 },
+                    { quote: "색감별로 또는\n분위기별로 상품을\n한번에 안내하고 싶어요", fly: { x: 160, y: -110, r: 32 }, rotate: -7   },
+                    { quote: "영업 중에도\n문의가 너무\n많아요",                   fly: { x: -160, y: 110, r: -28 }, rotate: 6  },
+                    { quote: "상품을 한번에\n소개할 수 있는\n메뉴판이 필요해요",       fly: { x: -130, y: 110, r: -25 }, rotate: -1.5 },
+                    { quote: "흩어진 예약 정보를\n한 곳에서\n보고 싶어요",           fly: { x: 130, y: 110, r: 25 }, rotate: 3   },
+                    { quote: "SNS 사진만으론\n상품 안내가\n부족해요",              fly: { x: 160, y: 110, r: 30 }, rotate: -3   },
+                  ];
+                  return (
+                    <div className="w-full grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3" style={{ maxWidth: "clamp(300px, 78vw, 920px)" }}>
+                      {allPostIts.map((item, i) => (
+                        <div
+                          key={i}
+                          className="postit-card"
+                          style={{
+                            background: "#FFFDE7",
+                            borderRadius: 4,
+                            aspectRatio: "1 / 1",
+                            padding: "clamp(8px, 3%, 20px)",
+                            boxShadow: "0 6px 24px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.07)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            transform: `translateX(${flyProgress * item.fly.x}vw) translateY(${flyProgress * item.fly.y}vh) rotate(${item.rotate + flyProgress * item.fly.r}deg)`,
+                            opacity: Math.max(0, 1 - flyProgress * 1.4),
+                            willChange: "transform, opacity",
+                          }}
+                        >
+                          <p style={{ fontSize: "clamp(16px, 3.5vw, 28px)", fontFamily: "'Nanum Pen Script', cursive", fontWeight: 400, color: "#3a2e1e", lineHeight: 1.8, whiteSpace: "pre-line", margin: 0, textAlign: "center" }}>
+                            {item.quote}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* 스포트라이트 1번 — 페이드인 오버레이 */}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  background: "#0c0906",
+                  opacity: zoomProgress,
+                  pointerEvents: "none",
+                  willChange: "opacity",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  overflow: "hidden",
+                }}
+              >
+                <div className="absolute inset-0 pointer-events-none">
+                  <div className="absolute" style={{ width: 900, height: 900, top: -200, right: -150, background: "radial-gradient(circle, rgba(201,169,110,0.08) 0%, transparent 65%)" }} />
+                  <div className="absolute" style={{ width: 600, height: 600, bottom: -100, left: -100, background: "radial-gradient(circle, rgba(210,120,130,0.05) 0%, transparent 65%)" }} />
+                </div>
+                <div className="relative z-10 w-full max-w-300 mx-auto px-6 md:px-8 py-10 md:py-28 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-20 items-center">
+                  <div>
+                    <p className="text-[11px] md:text-[12px] tracking-[0.3em] uppercase mb-3 md:mb-5 font-medium" style={{ color: "#c9a96e" }}>전자 메뉴판</p>
+                    <h2 className="font-semibold text-white leading-[1.15] mb-3 md:mb-6" style={{ fontSize: "clamp(1.5rem,4.5vw,3.4rem)", whiteSpace: "pre-line" }}>{"어플 설치 없이\n링크 하나로 충분합니다"}</h2>
+                    <p className="text-[13px] md:text-[15px] leading-relaxed mb-4 md:mb-8" style={{ color: "rgba(255,255,255,0.45)" }}>
+                      사진·가격·설명을 한 번 등록하면, 고객은 링크를 열어 직접 보고 고릅니다.
+                    </p>
+                    <ul className="space-y-2 md:space-y-3">
+                      {["앱 설치 없이 링크만으로 바로 접속", "색상·분위기·포장 필터로 원하는 상품 탐색", "PC·모바일 모두 지원 — 어떤 기기에서나 바로 사용"].map((item) => (
+                        <li key={item} className="flex items-center gap-3 text-[13px] md:text-[14px]" style={{ color: "rgba(255,255,255,0.6)" }}>
+                          <span className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] shrink-0 font-bold" style={{ background: "rgba(201,169,110,0.2)", color: "#c9a96e" }}>✓</span>
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="flex justify-center">
+                    <div className="relative spotlight-wrap" style={{ width: "clamp(260px, 50vw, 360px)", height: 680 }}>
+                      {/* 앞 캡처 */}
+                      <div className="absolute overflow-hidden" style={{ bottom: 0, left: "-10%", width: "78%", borderRadius: 14, transform: "translateY(-8px)", boxShadow: "0 32px 80px rgba(0,0,0,0.7)", border: "1px solid rgba(255,255,255,0.15)", zIndex: 2 }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img className="spotlight-img" src="/landing/screen-menu1.png" alt="전자 메뉴판 화면" style={{ width: "100%", height: 600, objectFit: "cover", objectPosition: "top", display: "block" }} />
+                      </div>
+
+                      {/* 맞춤 주문 버튼 */}
+                      <div style={{ position: "absolute", top: 50, left: -100, zIndex: 10, display: "flex", alignItems: "center", gap: 8, background: "#b8934a", borderRadius: 999, padding: "10px 18px", boxShadow: "0 8px 24px rgba(184,147,74,0.4)", animation: "floatY 4s ease-in-out infinite" }}>
+                        <span style={{ fontSize: 15 }}>✨</span>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: "white" }}>맞춤 주문하기</span>
+                      </div>
+
+                      {/* 색상 필터 뱃지 */}
+                      <div style={{ position: "absolute", bottom: 60, right: 70, zIndex: 10, background: "white", borderRadius: 14, padding: "12px 14px", boxShadow: "0 8px 24px rgba(0,0,0,0.25)", animation: "floatY 5s ease-in-out infinite 1s" }}>
+                        <p style={{ fontSize: 10, fontWeight: 600, color: "#b8934a", margin: "0 0 8px", letterSpacing: "0.05em" }}>색상</p>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                          {[
+                            { label: "핑크색", hex: "#f472b6", active: true },
+                            { label: "하얀색", hex: "#f5f5f5", active: false },
+                            { label: "보라색", hex: "#a855f7", active: false },
+                          ].map((c) => (
+                            <div key={c.label} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 999, fontSize: 12, border: `1px solid ${c.active ? "#b8934a" : "#e5e7eb"}`, background: c.active ? "#b8934a" : "transparent", color: c.active ? "white" : "#4b5563" }}>
+                              <span style={{ width: 10, height: 10, borderRadius: 999, background: c.hex, border: "1px solid rgba(255,255,255,0.4)", flexShrink: 0, display: "inline-block" }} />
+                              {c.label}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* 링크 공유 뱃지 — 데스크탑 전용 */}
+                      <div className="badge-desktop-only" style={{ position: "absolute", top: 400, left: -150, zIndex: 10, background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", backdropFilter: "blur(12px)", borderRadius: 10, padding: "8px 14px", animation: "floatY 6s ease-in-out infinite 0.5s" }}>
+                        <p style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", margin: "0 0 3px" }}>공유 링크</p>
+                        <p style={{ fontSize: 12, fontWeight: 600, color: "white", margin: 0 }}>flo-aide.com/<span style={{ color: "#c9a96e" }}>내꽃집</span></p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* ── FEATURE SPOTLIGHT — 3 핵심 기능 ── */}
+
+      {/* 02 맞춤 주문 */}
+      <section className="relative min-h-screen flex items-center overflow-hidden bg-white">
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute" style={{ width: 700, height: 700, bottom: -200, right: -100, background: "radial-gradient(circle, rgba(201,169,110,0.07) 0%, transparent 65%)" }} />
+          <div className="absolute" style={{ width: 500, height: 500, top: -100, left: -100, background: "radial-gradient(circle, rgba(210,120,130,0.05) 0%, transparent 65%)" }} />
+        </div>
+        <div className="relative z-10 max-w-[1200px] mx-auto px-6 md:px-8 w-full py-16 md:py-28 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-20 items-center">
+          <FadeIn>
+            <p className="text-[11px] md:text-[12px] tracking-[0.3em] uppercase mb-3 md:mb-5 font-medium" style={{ color: "#c9a96e" }}>맞춤 주문</p>
+            <h2 className="font-semibold leading-[1.15] mb-3 md:mb-6" style={{ fontSize: "clamp(1.5rem,4.5vw,3.4rem)", color: "#2c2416", whiteSpace: "pre-line" }}>{"고객이 직접 고르고\n주문하도록 하세요"}</h2>
+            <p className="text-[13px] md:text-[15px] leading-relaxed mb-4 md:mb-8 text-neutral-500">
+              꽃 종류, 색상, 포장, 예산, 원하는 분위기까지 — 고객이 단계별로 직접 선택합니다.
+            </p>
+            <ul className="space-y-2 md:space-y-3">
+              {["꽃·색상·포장·예산·분위기 선택 폼 제공", "주문 접수 즉시 관리자에게 알림", "카드 결제까지 한 번에 — 결제 수수료 0%"].map((item) => (
+                <li key={item} className="flex items-center gap-3 text-[13px] md:text-[14px] text-neutral-600">
+                  <span className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] shrink-0 font-bold" style={{ background: "rgba(201,169,110,0.2)", color: "#c9a96e" }}>✓</span>
+                  {item}
+                </li>
+              ))}
+            </ul>
+            <div className="mt-5 md:mt-8 inline-flex items-center gap-2 px-4 py-2 rounded-full text-[12px] font-medium" style={{ background: "rgba(201,169,110,0.1)", color: "#9a7a3a", border: "1px solid rgba(201,169,110,0.3)" }}>
+              <span>📋</span> 사업자 등록증·통장 사본 제출로 신청
+            </div>
+          </FadeIn>
+          <FadeIn delay={150}>
+            <div className="flex justify-center" style={{ perspective: "1200px" }}>
+              <div className="consult-flip-wrap" style={{
+                width: "clamp(260px, 50vw, 360px)",
+                height: 700,
+                position: "relative",
+                transformStyle: "preserve-3d",
+                transition: "transform 0.9s cubic-bezier(0.4,0,0.2,1)",
+                transform: consultFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
+              }}>
+                {/* 앞면: 스텝 카드 */}
+                <div className="consult-steps" style={{ position: "absolute", inset: 0, backfaceVisibility: "hidden" }}>
+                  {[
+                    { step: "STEP 1", title: "상품 형태", top: 165, rotate: -3, zIndex: 1, items: ["꽃다발", "꽃바구니", "센터피스", "화병꽂이"], active: "꽃다발" },
+                    { step: "STEP 2", title: "선호하는 분위기", top: 295, rotate: 2, zIndex: 2, items: ["화사한 파스텔톤", "깔끔한 화이트", "차분한 딥컬러"], active: "화사한 파스텔톤" },
+                    { step: "STEP 3", title: "희망 예산", top: 425, rotate: -1, zIndex: 3, items: ["5만원", "7만원", "10만원"], active: "10만원" },
+                  ].map((card) => (
+                    <div key={card.step} className="step-card absolute w-full rounded-2xl" style={{ top: card.top, background: "white", border: "1px solid #ede8e0", boxShadow: "0 8px 32px rgba(0,0,0,0.10)", padding: "16px 20px 14px", transform: `rotate(${card.rotate}deg)`, zIndex: card.zIndex }}>
+                      <p className="text-[10px] font-bold tracking-widest uppercase mb-1" style={{ color: "#c9a96e" }}>{card.step}</p>
+                      <p className="text-[15px] font-semibold mb-3" style={{ color: "#2c2416" }}>{card.title}</p>
+                      <div>
+                        {card.items.map((v, idx) => (
+                          <div key={v} className="flex items-center justify-between" style={{ padding: "9px 0", borderTop: idx === 0 ? "none" : "1px solid #e8e0d5" }}>
+                            <span style={{ fontSize: 13, color: v === card.active ? "#2c2416" : "#b0a090", fontWeight: v === card.active ? 600 : 400 }}>{v}</span>
+                            {v === card.active ? (
+                              <span style={{ width: 16, height: 16, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, background: "#2c2416", color: "white", flexShrink: 0 }}>✓</span>
+                            ) : (
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d0c8bc" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6"/></svg>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {/* 뒷면: 캡처 이미지 */}
+                <div style={{ position: "absolute", inset: 0, backfaceVisibility: "hidden", transform: "rotateY(180deg)", borderRadius: 16, overflow: "hidden", boxShadow: "0 24px 64px rgba(0,0,0,0.12)" }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/landing/screen-consult.png" alt="맞춤 주문 화면" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} />
+                </div>
+              </div>
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* 03 예약 관리 */}
+      <section className="relative min-h-screen flex items-center overflow-hidden" style={{ background: "#0c0906" }}>
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute" style={{ width: 900, height: 900, top: -300, left: -200, background: "radial-gradient(circle, rgba(110,155,110,0.06) 0%, transparent 65%)" }} />
+          <div className="absolute" style={{ width: 700, height: 700, bottom: -200, right: -100, background: "radial-gradient(circle, rgba(201,169,110,0.07) 0%, transparent 65%)" }} />
+        </div>
+        <div className="relative z-10 max-w-[1200px] mx-auto px-6 md:px-8 w-full py-16 md:py-28 grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-20 items-center">
+          <FadeIn>
+            <p className="text-[11px] md:text-[12px] tracking-[0.3em] uppercase mb-3 md:mb-5 font-medium" style={{ color: "#c9a96e" }}>예약 관리</p>
+            <h2 className="font-semibold text-white leading-[1.15] mb-3 md:mb-6" style={{ fontSize: "clamp(1.5rem,4.5vw,3.4rem)", whiteSpace: "pre-line" }}>{"모든 예약을\n한눈에 관리하세요"}</h2>
+            <p className="text-[13px] md:text-[15px] leading-relaxed mb-4 md:mb-8" style={{ color: "rgba(255,255,255,0.45)" }}>
+              언제 예약이 몰리는지 파악하고, 예약 확정·취소를 버튼 하나로 처리합니다. 확정하면 고객 카카오톡으로 알림이 자동 발송됩니다.
+            </p>
+            <ul className="space-y-2 md:space-y-3">
+              {["월별로 예약 현황 한눈에 파악", "예약 확정 시 카카오 알림 자동 발송", "인기 상품·매출 통계 분석"].map((item) => (
+                <li key={item} className="flex items-center gap-3 text-[13px] md:text-[14px]" style={{ color: "rgba(255,255,255,0.6)" }}>
+                  <span className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] shrink-0 font-bold" style={{ background: "rgba(201,169,110,0.2)", color: "#c9a96e" }}>✓</span>
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </FadeIn>
+          <FadeIn delay={150}>
+            <div className="flex justify-center">
+              <div className="relative spotlight-wrap" style={{ width: "clamp(260px, 50vw, 360px)", height: 680 }}>
+                {/* 앞 캡처 */}
+                <div className="absolute overflow-hidden" style={{ bottom: 0, left: 0, width: "78%", borderRadius: 14, transform: "translateY(-8px)", boxShadow: "0 32px 80px rgba(0,0,0,0.7)", border: "1px solid rgba(255,255,255,0.15)", zIndex: 2 }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img className="spotlight-img" src="/landing/screen-reservation1.png" alt="예약 관리 화면" style={{ width: "100%", height: 600, objectFit: "cover", objectPosition: "top", display: "block" }} />
+                </div>
+
+                {/* 카카오 알림 뱃지 */}
+                <div className="badge-kakao" style={{ position: "absolute", top: 150, left: 200, zIndex: 10, background: "#FEE500", borderRadius: 14, padding: "10px 14px", boxShadow: "0 8px 24px rgba(254,229,0,0.35)", animation: "floatY 4s ease-in-out infinite 0.8s" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 18 }}>💬</span>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "#3C1E1E" }}>예약 확정 알림 발송</div>
+                      <div style={{ fontSize: 11, color: "rgba(60,30,30,0.6)" }}>이민준님 · 방금 전</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 이번 달 예약 통계 뱃지 */}
+                <div className="badge-stats" style={{ position: "absolute", bottom: 60, left: -80, zIndex: 10, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", backdropFilter: "blur(12px)", borderRadius: 14, padding: "14px 18px", animation: "floatY 5s ease-in-out infinite 1.5s" }}>
+                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 4 }}>이번 달 예약</div>
+                  <div style={{ fontSize: 26, fontWeight: 700, color: "white", lineHeight: 1 }}>28건</div>
+                  <div style={{ fontSize: 11, marginTop: 6, color: "#22c55e" }}>▲ 전월 대비 +12%</div>
+                </div>
+              </div>
+            </div>
           </FadeIn>
         </div>
       </section>
 
       {/* ── CAPABILITIES (Squarespace-style tabbed carousel) ── */}
       <section id="기능" className="pt-20 pb-16 bg-white" style={{ scrollMarginTop: 64 }}>
-        {/* 섹션 헤더 — 중앙 정렬 */}
         <div className="max-w-6xl mx-auto px-6 mb-10 text-center">
           <FadeIn>
-            <p className="text-[15px] tracking-[0.2em] uppercase text-neutral-400 mb-3">기능</p>
+            <p className="text-[13px] tracking-[0.2em] uppercase text-neutral-400 mb-3">Features</p>
             <h2 className="text-[clamp(1.8rem,4vw,2.8rem)] font-semibold not-italic text-neutral-900 leading-tight">
-              꽃집 운영에 필요한<br />모든 도구
+              꽃집 운영에 필요한 모든 도구
             </h2>
             <p className="text-[14px] text-neutral-400 mt-3">하나의 플랫폼에서 누리는 올인원 솔루션</p>
           </FadeIn>
         </div>
 
-        {/* 카테고리 탭 — 중앙 정렬 */}
+        {/* 카테고리 탭 */}
         <div className="mb-8">
           <div
-            className="flex justify-center overflow-x-auto"
-            style={{ scrollbarWidth: "none", borderBottom: "1px solid #e5e5e5" }}
+            className="flex overflow-x-auto md:justify-center"
+            style={{ scrollbarWidth: "none", borderBottom: "1px solid #e5e5e5", WebkitOverflowScrolling: "touch" }}
           >
+            <div className="shrink-0 w-4 md:hidden" />
             {capabilities.map((cap, i) => (
               <button
                 key={cap.title}
@@ -353,10 +655,11 @@ export default function Landing() {
                 {cap.title}
               </button>
             ))}
+            <div className="shrink-0 w-4 md:hidden" />
           </div>
         </div>
 
-        {/* 카드 캐러셀 — 한 화면에 1개, 양옆 살짝 peek */}
+        {/* 카드 캐러셀 */}
         <div
           ref={capCarouselRef}
           className="flex"
@@ -380,43 +683,19 @@ export default function Landing() {
                 scrollSnapAlign: "center",
               }}
             >
-              {/* 이미지 + 텍스트 오버레이 (이미지 왼쪽 하단 고정) */}
               <div
                 className="relative w-full overflow-hidden"
                 style={{ height: "clamp(320px, 60vh, 580px)" }}
               >
-                {/* 플레이스홀더 배경 */}
-                <div
-                  className="absolute inset-0"
-                  style={{ background: "linear-gradient(135deg, #f0ebe4 0%, #ddd0c4 100%)" }}
-                />
+                <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, #f0ebe4 0%, #ddd0c4 100%)" }} />
                 <div className="absolute inset-0 flex items-center justify-center">
                   <span className="text-[13px] text-neutral-400 tracking-wide">{cap.title} 이미지</span>
                 </div>
-                {/* 실제 이미지 */}
-                <div
-                  className="absolute inset-0"
-                  style={{
-                    backgroundImage: `url(${cap.img})`,
-                    backgroundSize: "cover",
-                    backgroundPosition: "center",
-                  }}
-                />
-                {/* 왼쪽 하단 그라데이션 */}
-                <div
-                  className="absolute inset-0"
-                  style={{
-                    background: "linear-gradient(to top, rgba(10,7,4,0.75) 0%, rgba(10,7,4,0.2) 40%, transparent 65%)",
-                  }}
-                />
-                {/* 텍스트 — 이미지 왼쪽 하단 고정 */}
+                <div className="absolute inset-0" style={{ backgroundImage: `url(${cap.img})`, backgroundSize: "cover", backgroundPosition: "center" }} />
+                <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(10,7,4,0.75) 0%, rgba(10,7,4,0.2) 40%, transparent 65%)" }} />
                 <div className="absolute bottom-0 left-0 p-8 max-w-lg">
-                  <h3 className="text-[clamp(1.3rem,2.8vw,1.8rem)] font-semibold text-white leading-snug mb-3">
-                    {cap.title}
-                  </h3>
-                  <p className="text-[14px] leading-relaxed" style={{ color: "rgba(255,255,255,0.72)" }}>
-                    {cap.desc}
-                  </p>
+                  <h3 className="text-[clamp(1.3rem,2.8vw,1.8rem)] font-semibold text-white leading-snug mb-3">{cap.title}</h3>
+                  <p className="text-[14px] leading-relaxed" style={{ color: "rgba(255,255,255,0.72)" }}>{cap.desc}</p>
                 </div>
               </div>
             </div>
@@ -425,10 +704,10 @@ export default function Landing() {
       </section>
 
       {/* ── BEFORE / AFTER ── */}
-      <section id="효과" className="py-24" style={{ background: "#fdf6ee" }}>
+      <section id="효과" className="py-24 bg-white">
         <div className="max-w-5xl mx-auto px-6">
           <FadeIn className="text-center mb-14">
-            <p className="text-[11px] tracking-[0.2em] uppercase text-neutral-400 mb-3">Before / After</p>
+            <p className="text-[13px] tracking-[0.2em] uppercase text-neutral-400 mb-3">Before / After</p>
             <h2 className="text-[clamp(1.8rem,4vw,2.8rem)] font-semibold not-italic leading-tight" style={{ color: "#2c2416" }}>
               하루가 이렇게 바뀝니다
             </h2>
@@ -436,16 +715,22 @@ export default function Landing() {
 
           {/* 숫자 강조 */}
           <FadeIn>
-            <div className="grid grid-cols-3 gap-4 mb-14">
+            <div className="grid grid-cols-2 md:flex md:items-center md:justify-center mb-14">
               {[
-                { num: "↓ 80%", label: "반복 문의 감소", sub: "상품·가격 질문이 링크로 해결" },
+                { num: "80%", label: "반복 문의 감소", sub: "상품·가격 질문이 링크로 해결" },
                 { num: "0건", label: "놓치는 예약", sub: "모든 예약이 대시보드에 기록" },
+                { num: "앱 없이", label: "바로 사용 가능", sub: "앱 다운로드 없이 링크 하나로" },
                 { num: "24/7", label: "쉬는 날도 예약 접수", sub: "관리자가 자리를 비워도 OK" },
-              ].map(({ num, label, sub }) => (
-                <div key={label} className="bg-white rounded-2xl p-6 text-center border border-neutral-100">
-                  <div className="text-[clamp(1.6rem,3.5vw,2.4rem)] font-semibold not-italic mb-1.5" style={{ color: "#2c2416" }}>{num}</div>
-                  <div className="text-[14px] font-medium text-neutral-800 mb-1">{label}</div>
-                  <div className="text-[12px] text-neutral-400">{sub}</div>
+              ].map(({ num, label }, i) => (
+                <div key={label} className="flex md:items-center">
+                  <div className={`flex flex-col items-center text-center px-4 py-8 md:px-14 md:py-8 w-full
+                    ${i % 2 === 0 ? "border-r border-neutral-200 md:border-r-0" : ""}
+                    ${i < 2 ? "border-b border-neutral-200 md:border-b-0" : ""}
+                  `}>
+                    <div className="text-[clamp(1.6rem,3.5vw,2.6rem)] font-semibold not-italic mb-1.5" style={{ color: "#2c2416" }}>{num}</div>
+                    <div className="text-[14px] md:text-[16px] font-medium text-neutral-800">{label}</div>
+                  </div>
+                  {i < 3 && <div className="hidden md:block w-px h-16 bg-neutral-200 shrink-0" />}
                 </div>
               ))}
             </div>
@@ -455,7 +740,7 @@ export default function Landing() {
           <FadeIn delay={100}>
             <div className="grid md:grid-cols-2 gap-4">
               {/* Before */}
-              <div className="rounded-2xl border border-neutral-200 bg-white p-7">
+              <div className="rounded-2xl border border-neutral-200 p-7" style={{ background: "#fafafa" }}>
                 <p className="text-[11px] font-semibold tracking-widest uppercase text-neutral-400 mb-5">지금 방식</p>
                 <ul className="space-y-4">
                   {[
@@ -463,7 +748,7 @@ export default function Landing() {
                     "\"얼마예요?\" 질문에 매번 답장",
                     "예약 날짜·시간 수동으로 조율",
                     "메모장·엑셀로 예약 관리",
-                    "쉬는 날엔 예약 접수 불가",
+                    "쉬는 날엔 상담 및 예약 불가",
                   ].map((item) => (
                     <li key={item} className="flex items-start gap-3 text-[14px] text-neutral-500">
                       <span className="mt-0.5 shrink-0 text-neutral-300">✕</span>
@@ -500,7 +785,7 @@ export default function Landing() {
       <section id="사용 방법" className="py-24" style={{ background: "#18130e", scrollMarginTop: 64 }}>
         <div className="max-w-5xl mx-auto px-6">
           <FadeIn className="text-center mb-16">
-            <p className="text-[15px] tracking-[0.2em] uppercase mb-4" style={{ color: "rgba(201,169,110,0.7)" }}>사용 방법</p>
+            <p className="text-[13px] tracking-[0.2em] uppercase mb-4" style={{ color: "rgba(201,169,110,0.7)" }}>How it works</p>
             <h2 className="text-[clamp(1.8rem,4vw,2.8rem)] font-semibold not-italic text-white leading-tight">
               가입하고 상품 올리면<br />바로 준비 완료
             </h2>
@@ -508,7 +793,7 @@ export default function Landing() {
           <div className="relative">
             {/* connecting line */}
             <div className="hidden md:block absolute top-8 left-[6%] right-[6%] h-px" style={{ background: "rgba(255,255,255,0.08)" }} />
-            <div className="grid md:grid-cols-4 gap-8 relative z-10">
+            <div className="grid md:grid-cols-5 gap-6 relative z-10">
               {steps.map((step, i) => (
                 <FadeIn key={step.num} delay={i * 100}>
                   <div className="flex flex-col items-center text-center">
@@ -532,7 +817,7 @@ export default function Landing() {
       <section id="pricing" className="py-24 bg-white" style={{ scrollMarginTop: 64 }}>
         <div className="max-w-4xl mx-auto px-6">
           <FadeIn className="text-center mb-14">
-            <p className="text-[11px] tracking-[0.2em] uppercase text-neutral-400 mb-3">Pricing</p>
+            <p className="text-[13px] tracking-[0.2em] uppercase text-neutral-400 mb-3">Pricing</p>
             <h2 className="text-[clamp(1.8rem,4vw,2.8rem)] font-semibold not-italic leading-tight" style={{ color: "#2c2416" }}>
               합리적인 요금제
             </h2>
@@ -551,7 +836,7 @@ export default function Landing() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
 
               {/* Starter */}
-              <div className="rounded-2xl border border-beige-200 p-6 sm:p-8 flex flex-col bg-beige-50">
+              <div className="rounded-2xl border border-neutral-200 p-6 sm:p-8 flex flex-col bg-white">
                 <div className="mb-6">
                   <p className="text-[12px] font-semibold tracking-[0.2em] uppercase text-neutral-500 mb-3">Starter</p>
                   <div className="flex items-end gap-1.5 mb-2">
@@ -581,7 +866,7 @@ export default function Landing() {
               </div>
 
               {/* Pro */}
-              <div className="rounded-2xl border p-6 sm:p-8 flex flex-col relative" style={{ background: "#fdf6ee", borderColor: "#e8ddc9" }}>
+              <div className="rounded-2xl border p-6 sm:p-8 flex flex-col relative bg-white" style={{ borderColor: "#e8ddc9" }}>
                 {/* Badge */}
                 <div
                   className="absolute top-5 right-5 text-[11px] font-bold tracking-widest uppercase px-3 py-1 rounded-full"
@@ -631,20 +916,20 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── FAQ ── */}
-      <section id="FAQ" className="py-24" style={{ background: "#fdf6ee", scrollMarginTop: 64 }}>
+      {/* ── Q&A ── */}
+      <section id="Q&A" className="py-24 bg-white" style={{ scrollMarginTop: 64 }}>
         <div className="max-w-3xl mx-auto px-6">
           <FadeIn className="mb-12">
-            <p className="text-[15px] tracking-[0.2em] uppercase text-neutral-400 mb-3">FAQ</p>
+            <p className="text-[13px] tracking-[0.2em] uppercase text-neutral-400 mb-3">Q&A</p>
             <h2 className="text-[clamp(1.8rem,4vw,2.8rem)] font-semibold not-italic leading-tight" style={{ color: "#2c2416" }}>
               자주 묻는 질문
             </h2>
           </FadeIn>
-          <FadeIn delay={100} className="bg-white rounded-2xl px-8 py-2 shadow-sm">
+          <div className="bg-white rounded-2xl px-8 py-2" style={{ border: "1px solid #d4d4d4", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
             {faqs.map((faq, i) => (
               <FaqItem key={faq.q} q={faq.q} a={faq.a} isLast={i === faqs.length - 1} />
             ))}
-          </FadeIn>
+          </div>
         </div>
       </section>
 
@@ -695,9 +980,30 @@ export default function Landing() {
       </footer>
 
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&display=swap');
         @keyframes fadein {
           from { opacity: 0; transform: translateY(12px); }
           to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes floatY {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-10px); }
+        }
+        @keyframes revolve {
+          0%, 100% { transform: rotateY(-12deg); }
+          50% { transform: rotateY(12deg); }
+        }
+        @media (max-width: 768px) {
+          .postit-card { aspect-ratio: 4/3 !important; }
+          .spotlight-wrap { height: 420px !important; }
+          .spotlight-img { height: 350px !important; }
+          .consult-flip-wrap { height: 420px !important; }
+          .consult-steps .step-card:nth-child(1) { top: 20px !important; }
+          .consult-steps .step-card:nth-child(2) { top: 155px !important; }
+          .consult-steps .step-card:nth-child(3) { top: 290px !important; }
+          .badge-desktop-only { display: none !important; }
+          .badge-kakao { top: 20px !important; left: auto !important; right: -30px !important; }
+          .badge-stats { bottom: 20px !important; left: -60px !important; }
         }
       `}</style>
     </div>
