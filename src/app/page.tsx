@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import { PLAN_PRICES, PLAN_DESCRIPTIONS, PLAN_FEATURES } from "@/lib/constants";
+import { PLAN_PRICES, PLAN_FEATURES } from "@/lib/constants";
 
 // ────────────────────────────────────────────────
 // Scroll animation
@@ -78,13 +78,13 @@ function FaqItem({ q, a, isLast = false }: { q: string; a: string; isLast?: bool
 const hero = { tag: "전자 메뉴판 & 예약 관리", headline: "상담 시간은 줄이고\n예약은 편리하게", sub: "링크 하나로 상품을 소개하고\n예약을 받으세요.", bg: "/landing/hero-menu.jpg" };
 
 const capabilities = [
-  { title: "전자 메뉴판", desc: "앱 없이 링크만으로 상품 카탈로그를 공유하세요.", img: "/landing/cap-menu.jpg" },
-  { title: "맞춤 주문", desc: "고객이 직접 꽃 종류, 예산, 색상을 선택합니다.", img: "/landing/cap-order.jpg" },
-  { title: "예약 관리", desc: "월별로 모든 예약을 한눈에 확인하세요.", img: "/landing/cap-reservation.jpg" },
-  { title: "카카오 알림", desc: "예약 확인, 확정, 취소 알림을 자동으로 발송합니다.", img: "/landing/cap-kakao.jpg" },
-  { title: "매출 분석", desc: "어떤 상품이 잘 팔리는지 데이터로 확인하세요.", img: "/landing/cap-stats.jpg" },
-  { title: "나만의 링크", desc: "flo-aide.com/내가게주소로 브랜드를 만드세요.", img: "/landing/cap-link.jpg" },
-  { title: "쉬운 설정", desc: "가입하고 상품만 등록하면 바로 운영 시작. 별도 설치 없이도 누구나 쉽게.", img: "/landing/cap-setup.jpg" },
+  { title: "전자 메뉴판", desc: "앱 없이 링크만으로 상품 카탈로그를 공유하세요.", img: "/landing/cap-menu.jpg", mobileImg: "/landing/cap-menu-m.png" },
+  { title: "맞춤 주문", desc: "고객이 직접 꽃 종류, 예산, 색상을 선택합니다.", img: "/landing/cap-order.jpg", mobileImg: "/landing/cap-order-m.png" },
+  { title: "예약 관리", desc: "월별로 모든 예약을 한눈에 확인하세요.", img: "/landing/cap-reservation.jpg", mobileImg: "/landing/cap-reservation-m.png" },
+  { title: "카카오 알림", desc: "예약 확인, 확정, 취소 알림을 자동으로 발송합니다.", img: "/landing/cap-kakao.jpg", mobileImg: "/landing/cap-kakao-m.png" },
+  { title: "매출 분석", desc: "어떤 상품이 잘 팔리는지 데이터로 확인하세요.", img: "/landing/cap-stats.jpg", mobileImg: "/landing/cap-stats-m.png" },
+  { title: "나만의 링크", desc: "flo-aide.com/내가게주소로 브랜드를 만드세요.", img: "/landing/cap-link.jpg", mobileImg: "/landing/cap-link-m.png" },
+  { title: "쉬운 설정", desc: "가입하고 상품만 등록하면 바로 운영 시작. 별도 설치 없이도 누구나 쉽게.", img: "/landing/cap-setup.jpg", mobileImg: "/landing/cap-setup-m.png" },
 ];
 
 const steps = [
@@ -103,20 +103,70 @@ const faqs = [
   { q: "고객이 예약하면 제가 직접 확정해야 하나요, 아니면 자동으로 되나요?", a: "기본적으로 관리자가 직접 확정하는 방식입니다. 예약 요청이 들어오면 알림을 받고, 관리 페이지에서 판매 가능한 예약건인지 확인 후 확정 또는 취소 처리를 할 수 있습니다." },
   { q: "메뉴에 가격을 표시하지 않을 수 있나요?", a: "네. 상품을 추가할 때 가격을 입력하지 않으면 가격이 표시되지 않습니다." },
   { q: "카카오 알림은 어떻게 작동하나요?", a: "고객이 예약을 완료하면 관리자에게, 관리자가 예약을 확정하거나 취소하면 고객 카카오톡으로 알림이 발송됩니다." },
-  { q: "비용은 얼마인가요?", a: `첫 1개월은 무료 체험입니다. 이후 스타터 플랜 월 ${PLAN_PRICES.starter.toLocaleString()}원(전자 메뉴판·가게 링크), 프로 플랜 월 ${PLAN_PRICES.pro.toLocaleString()}원(맞춤 주문·예약·통계·카카오 알림·결제 수수료 0%)으로 이용하실 수 있습니다.` },
+  { q: "비용은 얼마인가요?", a: `첫 1개월은 무료 체험입니다. 이후 월간 플랜 월 ${PLAN_PRICES.monthly.toLocaleString()}원, 연간 플랜 월 ${PLAN_PRICES.annual.toLocaleString()}원(연 ${PLAN_PRICES.annualTotal.toLocaleString()}원 일괄 결제)으로 이용하실 수 있습니다. 두 플랜 모두 맞춤 주문·예약·통계·카카오 알림·결제 수수료 0% 등 모든 기능이 포함됩니다.` },
 ];
 
 export default function Landing() {
+  const [pricingCycle, setPricingCycle] = useState<"monthly" | "annual">("annual");
   const [scrolled, setScrolled] = useState(false);
   const [activeCap, setActiveCap] = useState(0);
   const capCarouselRef = useRef<HTMLDivElement>(null);
   const [painProgress, setPainProgress] = useState(0);
   const painRef = useRef<HTMLDivElement>(null);
-  const [consultFlipped, setConsultFlipped] = useState(false);
+  const [step2Visible, setStep2Visible] = useState(false);
+  const [step3Visible, setStep3Visible] = useState(false);
+  const [imageVisible, setImageVisible] = useState(false);
+  const [selected, setSelected] = useState<Record<number, number>>({});
+  const [cursorPos, setCursorPos] = useState<{ y: number; clicking: boolean } | null>(null);
+  const animTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const cardsWrapperRef = useRef<HTMLDivElement>(null);
+
+  const getOptY = (cardIdx: number, optIdx: number): number => {
+    const wrapper = cardsWrapperRef.current;
+    if (!wrapper) return 200;
+    const card = wrapper.querySelector(`[data-card="${cardIdx}"]`) as HTMLElement;
+    if (!card) return 200;
+    const opt = card.querySelector(`[data-opt="${optIdx}"]`) as HTMLElement;
+    if (!opt) return 200;
+    return card.offsetTop + opt.offsetTop + opt.offsetHeight / 2;
+  };
 
   useEffect(() => {
-    const t = setInterval(() => setConsultFlipped((v) => !v), 3000);
-    return () => clearInterval(t);
+    const push = (fn: () => void, delay: number) => {
+      animTimers.current.push(setTimeout(fn, delay));
+    };
+    const start = () => {
+      animTimers.current.forEach(clearTimeout);
+      animTimers.current = [];
+      setStep2Visible(false);
+      setStep3Visible(false);
+      setImageVisible(false);
+      setSelected({});
+      push(() => setCursorPos({ y: getOptY(0, 0) - 80, clicking: false }), 0);
+
+      // STEP 1: 클릭 후 그 자리에서 대기
+      push(() => setCursorPos({ y: getOptY(0, 0), clicking: false }), 150);
+      push(() => setCursorPos({ y: getOptY(0, 0), clicking: true }), 600);
+      push(() => { setSelected((s) => ({ ...s, 0: 0 })); setCursorPos({ y: getOptY(0, 0), clicking: false }); }, 750);
+      // 300ms 후 STEP 2 등장 → 이동
+      push(() => setStep2Visible(true), 1050);
+      push(() => setCursorPos({ y: getOptY(1, 0), clicking: false }), 1250);
+      // STEP 2: 클릭
+      push(() => setCursorPos({ y: getOptY(1, 0), clicking: true }), 1750);
+      push(() => { setSelected((s) => ({ ...s, 1: 0 })); setCursorPos({ y: getOptY(1, 0), clicking: false }); }, 1900);
+      // 300ms 후 STEP 3 등장 → 이동
+      push(() => setStep3Visible(true), 2200);
+      push(() => setCursorPos({ y: getOptY(2, 2), clicking: false }), 2400);
+      // STEP 3: 클릭 후 0.5초 대기
+      push(() => setCursorPos({ y: getOptY(2, 2), clicking: true }), 2900);
+      push(() => { setSelected((s) => ({ ...s, 2: 2 })); setCursorPos({ y: getOptY(2, 2), clicking: false }); }, 3050);
+      // 이미지 슬라이드
+      push(() => setImageVisible(true), 3550);
+      push(() => setCursorPos(null), 3650);
+      push(() => start(), 6200);
+    };
+    start();
+    return () => animTimers.current.forEach(clearTimeout);
   }, []);
 
   function goToCap(idx: number) {
@@ -212,6 +262,7 @@ export default function Landing() {
                 { label: "기능", href: "#기능" },
                 { label: "효과", href: "#효과" },
                 { label: "사용 방법", href: "#사용 방법" },
+                { label: "요금제", href: "#요금제" },
                 { label: "Q&A", href: "#Q&A" },
               ].map((item) => (
                 <a key={item.label} href={item.href}
@@ -416,6 +467,7 @@ export default function Landing() {
 
               {/* 스포트라이트 1번 — 페이드인 오버레이 */}
               <div
+                className="spotlight1-overlay"
                 style={{
                   position: "absolute",
                   inset: 0,
@@ -433,7 +485,7 @@ export default function Landing() {
                   <div className="absolute" style={{ width: 900, height: 900, top: -200, right: -150, background: "radial-gradient(circle, rgba(201,169,110,0.08) 0%, transparent 65%)" }} />
                   <div className="absolute" style={{ width: 600, height: 600, bottom: -100, left: -100, background: "radial-gradient(circle, rgba(210,120,130,0.05) 0%, transparent 65%)" }} />
                 </div>
-                <div className="relative z-10 w-full max-w-300 mx-auto px-6 md:px-8 py-10 md:py-28 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-20 items-center">
+                <div className="relative z-10 w-full max-w-300 mx-auto px-6 md:px-8 pt-28 pb-10 md:py-28 grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-20 items-center">
                   <div>
                     <p className="text-[11px] md:text-[12px] tracking-[0.3em] uppercase mb-3 md:mb-5 font-medium" style={{ color: "#c9a96e" }}>전자 메뉴판</p>
                     <h2 className="font-semibold text-white leading-[1.15] mb-3 md:mb-6" style={{ fontSize: "clamp(1.5rem,4.5vw,3.4rem)", whiteSpace: "pre-line" }}>{"어플 설치 없이\n링크 하나로 충분합니다"}</h2>
@@ -449,22 +501,22 @@ export default function Landing() {
                       ))}
                     </ul>
                   </div>
-                  <div className="flex justify-center">
-                    <div className="relative spotlight-wrap" style={{ width: "clamp(260px, 50vw, 360px)", height: 680 }}>
+                  <div className="flex justify-center md:justify-end md:-mr-4">
+                    <div className="relative spotlight-wrap" style={{ width: "clamp(260px, 50vw, 420px)", height: 760 }}>
                       {/* 앞 캡처 */}
-                      <div className="absolute overflow-hidden" style={{ bottom: 0, left: "-10%", width: "78%", borderRadius: 14, transform: "translateY(-8px)", boxShadow: "0 32px 80px rgba(0,0,0,0.7)", border: "1px solid rgba(255,255,255,0.15)", zIndex: 2 }}>
+                      <div className="spotlight-img-wrapper absolute overflow-hidden" style={{ bottom: 0, left: "-10%", width: "78%", borderRadius: 14, transform: "translateY(-8px)", boxShadow: "0 32px 80px rgba(0,0,0,0.7)", border: "1px solid rgba(255,255,255,0.15)", zIndex: 2 }}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img className="spotlight-img" src="/landing/screen-menu1.png" alt="전자 메뉴판 화면" style={{ width: "100%", height: 600, objectFit: "cover", objectPosition: "top", display: "block" }} />
+                        <img className="spotlight-img" src="/landing/screen-menu1.png" alt="전자 메뉴판 화면" style={{ width: "100%", height: 680, objectFit: "cover", objectPosition: "top", display: "block" }} />
                       </div>
 
                       {/* 맞춤 주문 버튼 */}
-                      <div style={{ position: "absolute", top: 50, left: -100, zIndex: 10, display: "flex", alignItems: "center", gap: 8, background: "#b8934a", borderRadius: 999, padding: "10px 18px", boxShadow: "0 8px 24px rgba(184,147,74,0.4)", animation: "floatY 4s ease-in-out infinite" }}>
+                      <div className="badge-order" style={{ position: "absolute", top: 50, left: -100, zIndex: 10, display: "flex", alignItems: "center", gap: 8, background: "#b8934a", borderRadius: 999, padding: "10px 18px", boxShadow: "0 8px 24px rgba(184,147,74,0.4)", animation: "floatY 4s ease-in-out infinite" }}>
                         <span style={{ fontSize: 15 }}>✨</span>
                         <span style={{ fontSize: 13, fontWeight: 600, color: "white" }}>맞춤 주문하기</span>
                       </div>
 
                       {/* 색상 필터 뱃지 */}
-                      <div style={{ position: "absolute", bottom: 60, right: 70, zIndex: 10, background: "white", borderRadius: 14, padding: "12px 14px", boxShadow: "0 8px 24px rgba(0,0,0,0.25)", animation: "floatY 5s ease-in-out infinite 1s" }}>
+                      <div className="badge-color" style={{ position: "absolute", bottom: 60, right: 70, zIndex: 10, background: "white", borderRadius: 14, padding: "12px 14px", boxShadow: "0 8px 24px rgba(0,0,0,0.25)", animation: "floatY 5s ease-in-out infinite 1s" }}>
                         <p style={{ fontSize: 10, fontWeight: 600, color: "#b8934a", margin: "0 0 8px", letterSpacing: "0.05em" }}>색상</p>
                         <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                           {[
@@ -497,13 +549,13 @@ export default function Landing() {
 
       {/* ── FEATURE SPOTLIGHT — 3 핵심 기능 ── */}
 
-      {/* 02 맞춤 주문 */}
-      <section className="relative min-h-screen flex items-center overflow-hidden bg-white">
+      {/* 02 맞춤 주문 — 자동 애니메이션 */}
+      <section className="spotlight2-section relative bg-white overflow-hidden" style={{ minHeight: "100vh", display: "flex", alignItems: "center" }}>
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           <div className="absolute" style={{ width: 700, height: 700, bottom: -200, right: -100, background: "radial-gradient(circle, rgba(201,169,110,0.07) 0%, transparent 65%)" }} />
           <div className="absolute" style={{ width: 500, height: 500, top: -100, left: -100, background: "radial-gradient(circle, rgba(210,120,130,0.05) 0%, transparent 65%)" }} />
         </div>
-        <div className="relative z-10 max-w-[1200px] mx-auto px-6 md:px-8 w-full py-16 md:py-28 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-20 items-center">
+        <div className="relative z-10 max-w-[1200px] mx-auto px-6 md:px-8 w-full pt-28 pb-10 md:py-28 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-20 items-center">
           <FadeIn>
             <p className="text-[11px] md:text-[12px] tracking-[0.3em] uppercase mb-3 md:mb-5 font-medium" style={{ color: "#c9a96e" }}>맞춤 주문</p>
             <h2 className="font-semibold leading-[1.15] mb-3 md:mb-6" style={{ fontSize: "clamp(1.5rem,4.5vw,3.4rem)", color: "#2c2416", whiteSpace: "pre-line" }}>{"고객이 직접 고르고\n주문하도록 하세요"}</h2>
@@ -522,85 +574,151 @@ export default function Landing() {
               <span>📋</span> 사업자 등록증·통장 사본 제출로 신청
             </div>
           </FadeIn>
-          <FadeIn delay={150}>
-            <div className="flex justify-center" style={{ perspective: "1200px" }}>
-              <div className="consult-flip-wrap" style={{
-                width: "clamp(260px, 50vw, 360px)",
-                height: 700,
-                position: "relative",
-                transformStyle: "preserve-3d",
-                transition: "transform 0.9s cubic-bezier(0.4,0,0.2,1)",
-                transform: consultFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
-              }}>
-                {/* 앞면: 스텝 카드 */}
-                <div className="consult-steps" style={{ position: "absolute", inset: 0, backfaceVisibility: "hidden" }}>
-                  {[
-                    { step: "STEP 1", title: "상품 형태", top: 165, rotate: -3, zIndex: 1, items: ["꽃다발", "꽃바구니", "센터피스", "화병꽂이"], active: "꽃다발" },
-                    { step: "STEP 2", title: "선호하는 분위기", top: 295, rotate: 2, zIndex: 2, items: ["화사한 파스텔톤", "깔끔한 화이트", "차분한 딥컬러"], active: "화사한 파스텔톤" },
-                    { step: "STEP 3", title: "희망 예산", top: 425, rotate: -1, zIndex: 3, items: ["5만원", "7만원", "10만원"], active: "10만원" },
-                  ].map((card) => (
-                    <div key={card.step} className="step-card absolute w-full rounded-2xl" style={{ top: card.top, background: "white", border: "1px solid #ede8e0", boxShadow: "0 8px 32px rgba(0,0,0,0.10)", padding: "16px 20px 14px", transform: `rotate(${card.rotate}deg)`, zIndex: card.zIndex }}>
-                      <p className="text-[10px] font-bold tracking-widest uppercase mb-1" style={{ color: "#c9a96e" }}>{card.step}</p>
-                      <p className="text-[15px] font-semibold mb-3" style={{ color: "#2c2416" }}>{card.title}</p>
-                      <div>
-                        {card.items.map((v, idx) => (
-                          <div key={v} className="flex items-center justify-between" style={{ padding: "9px 0", borderTop: idx === 0 ? "none" : "1px solid #e8e0d5" }}>
-                            <span style={{ fontSize: 13, color: v === card.active ? "#2c2416" : "#b0a090", fontWeight: v === card.active ? 600 : 400 }}>{v}</span>
-                            {v === card.active ? (
-                              <span style={{ width: 16, height: 16, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, background: "#2c2416", color: "white", flexShrink: 0 }}>✓</span>
-                            ) : (
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d0c8bc" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6"/></svg>
-                            )}
-                          </div>
-                        ))}
+
+          {/* 오른쪽: 자동 애니메이션 */}
+          {(() => {
+            const cardData = [
+              { step: "STEP 1", title: "상품 형태", visible: true, items: ["꽃다발", "꽃바구니", "센터피스", "화병꽂이"], active: "꽃다발" },
+              { step: "STEP 2", title: "선호하는 분위기", visible: step2Visible, items: ["화사한 파스텔톤", "깔끔한 화이트", "차분한 딥컬러"], active: "화사한 파스텔톤" },
+              { step: "STEP 3", title: "희망 예산", visible: step3Visible, items: ["5만원", "7만원", "10만원"], active: "7만원" },
+            ];
+            return (
+              <div className="flex justify-center">
+                <div className="spotlight2-container" style={{ width: "clamp(260px, 50vw, 360px)", position: "relative", overflow: "hidden", minHeight: "clamp(280px, 50vh, 460px)" }}>
+                  {/* 스텝 카드 — 이미지가 오면 왼쪽으로 밀려남 */}
+                  <div ref={cardsWrapperRef} style={{
+                    transform: imageVisible ? "translateX(-110%)" : "translateX(0%)",
+                    transition: "transform 0.65s cubic-bezier(0.4,0,0.2,1)",
+                    willChange: "transform",
+                  }}>
+                    {cardData.map((card, cardIdx) => (
+                      <div
+                        key={card.step}
+                        data-card={cardIdx}
+                        className="spotlight2-card"
+                        style={{
+                          background: "white",
+                          border: "1px solid #ede8e0",
+                          borderRadius: 16,
+                          padding: "16px 20px 14px",
+                          marginBottom: 10,
+                          boxShadow: "0 4px 20px rgba(0,0,0,0.07)",
+                          opacity: card.visible ? 1 : 0,
+                          transform: card.visible ? "translateY(0)" : "translateY(18px)",
+                          transition: "opacity 0.4s ease, transform 0.4s ease",
+                          willChange: "transform, opacity",
+                        }}
+                      >
+                        <p className="spotlight2-step" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: "#c9a96e", marginBottom: 4 }}>{card.step}</p>
+                        <p className="spotlight2-title" style={{ fontSize: 15, fontWeight: 600, color: "#2c2416", marginBottom: 12 }}>{card.title}</p>
+                        {card.items.map((v, optIdx) => {
+                          const isChosen = selected[cardIdx] === optIdx;
+                          return (
+                            <div
+                              key={v}
+                              data-opt={optIdx}
+                              className="spotlight2-item"
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                padding: "9px 10px",
+                                borderTop: optIdx === 0 ? "none" : "1px solid #e8e0d5",
+                              }}
+                            >
+                              <span style={{ fontSize: 13, color: isChosen ? "#2c2416" : "#b0a090", fontWeight: isChosen ? 600 : 400, transition: "color 0.3s ease" }}>{v}</span>
+                              {isChosen
+                                ? <span style={{ width: 18, height: 18, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, background: "#2c2416", color: "white", flexShrink: 0 }}>✓</span>
+                                : <span style={{ width: 18, height: 18, borderRadius: 999, border: "1.5px solid #d8d0c8", display: "inline-block", flexShrink: 0 }} />
+                              }
+                            </div>
+                          );
+                        })}
                       </div>
-                    </div>
-                  ))}
-                </div>
-                {/* 뒷면: 캡처 이미지 */}
-                <div style={{ position: "absolute", inset: 0, backfaceVisibility: "hidden", transform: "rotateY(180deg)", borderRadius: 16, overflow: "hidden", boxShadow: "0 24px 64px rgba(0,0,0,0.12)" }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/landing/screen-consult.png" alt="맞춤 주문 화면" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} />
+                    ))}
+                  </div>
+                  {/* 터치 인디케이터 */}
+                  {cursorPos && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        left: "50%",
+                        top: cursorPos.y,
+                        width: 30,
+                        height: 30,
+                        borderRadius: "50%",
+                        background: "rgba(0,0,0,0.22)",
+                        transform: `translate(-50%, -50%) scale(${cursorPos.clicking ? 0.6 : 1})`,
+                        transition: "top 0.45s cubic-bezier(0.25,0.1,0.25,1), transform 0.12s ease",
+                        pointerEvents: "none",
+                        zIndex: 30,
+                      }}
+                    />
+                  )}
+
+                  {/* 이미지 — 오른쪽에서 스윽 */}
+                  <div style={{
+                    position: "absolute", inset: 0,
+                    transform: imageVisible ? "translateX(0%)" : "translateX(110%)",
+                    transition: "transform 0.65s cubic-bezier(0.4,0,0.2,1)",
+                    borderRadius: 16, overflow: "hidden",
+                    boxShadow: "0 24px 64px rgba(0,0,0,0.12)",
+                    willChange: "transform",
+                  }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/landing/screen-consult.png" alt="맞춤 주문 화면" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} />
+                  </div>
                 </div>
               </div>
-            </div>
-          </FadeIn>
+            );
+          })()}
         </div>
       </section>
 
       {/* 03 예약 관리 */}
-      <section className="relative min-h-screen flex items-center overflow-hidden" style={{ background: "#0c0906" }}>
+      <section className="relative overflow-hidden" style={{ background: "#0c0906" }}>
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           <div className="absolute" style={{ width: 900, height: 900, top: -300, left: -200, background: "radial-gradient(circle, rgba(110,155,110,0.06) 0%, transparent 65%)" }} />
           <div className="absolute" style={{ width: 700, height: 700, bottom: -200, right: -100, background: "radial-gradient(circle, rgba(201,169,110,0.07) 0%, transparent 65%)" }} />
         </div>
-        <div className="relative z-10 max-w-[1200px] mx-auto px-6 md:px-8 w-full py-16 md:py-28 grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-20 items-center">
+        <div className="relative z-10 max-w-5xl mx-auto px-6 md:px-8 w-full pt-28 pb-0 md:pt-24">
+          {/* 텍스트 */}
           <FadeIn>
-            <p className="text-[11px] md:text-[12px] tracking-[0.3em] uppercase mb-3 md:mb-5 font-medium" style={{ color: "#c9a96e" }}>예약 관리</p>
-            <h2 className="font-semibold text-white leading-[1.15] mb-3 md:mb-6" style={{ fontSize: "clamp(1.5rem,4.5vw,3.4rem)", whiteSpace: "pre-line" }}>{"모든 예약을\n한눈에 관리하세요"}</h2>
-            <p className="text-[13px] md:text-[15px] leading-relaxed mb-4 md:mb-8" style={{ color: "rgba(255,255,255,0.45)" }}>
-              언제 예약이 몰리는지 파악하고, 예약 확정·취소를 버튼 하나로 처리합니다. 확정하면 고객 카카오톡으로 알림이 자동 발송됩니다.
-            </p>
-            <ul className="space-y-2 md:space-y-3">
-              {["월별로 예약 현황 한눈에 파악", "예약 확정 시 카카오 알림 자동 발송", "인기 상품·매출 통계 분석"].map((item) => (
-                <li key={item} className="flex items-center gap-3 text-[13px] md:text-[14px]" style={{ color: "rgba(255,255,255,0.6)" }}>
-                  <span className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] shrink-0 font-bold" style={{ background: "rgba(201,169,110,0.2)", color: "#c9a96e" }}>✓</span>
-                  {item}
-                </li>
-              ))}
-            </ul>
+            <div className="max-w-xl mb-10 md:mb-14">
+              <p className="text-[11px] md:text-[12px] tracking-[0.3em] uppercase mb-3 md:mb-5 font-medium" style={{ color: "#c9a96e" }}>예약 관리</p>
+              <h2 className="font-semibold text-white leading-[1.15] mb-3 md:mb-5" style={{ fontSize: "clamp(1.5rem,4.5vw,3.4rem)", whiteSpace: "pre-line" }}>{"모든 예약을\n한눈에 관리하세요"}</h2>
+              <p className="text-[13px] md:text-[15px] leading-relaxed mb-4 md:mb-6" style={{ color: "rgba(255,255,255,0.45)" }}>
+                언제 예약이 몰리는지 파악하고, 예약 확정·취소를 버튼 하나로 처리합니다. 확정하면 고객 카카오톡으로 알림이 자동 발송됩니다.
+              </p>
+              <ul className="space-y-2 md:space-y-3">
+                {["월별로 예약 현황 한눈에 파악", "예약 확정 시 카카오 알림 자동 발송", "인기 상품·매출 통계 분석"].map((item) => (
+                  <li key={item} className="flex items-center gap-3 text-[13px] md:text-[14px]" style={{ color: "rgba(255,255,255,0.6)" }}>
+                    <span className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] shrink-0 font-bold" style={{ background: "rgba(201,169,110,0.2)", color: "#c9a96e" }}>✓</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
           </FadeIn>
-          <FadeIn delay={150}>
-            <div className="flex justify-center">
-              <div className="relative spotlight-wrap" style={{ width: "clamp(260px, 50vw, 360px)", height: 680 }}>
-                {/* 앞 캡처 */}
-                <div className="absolute overflow-hidden" style={{ bottom: 0, left: 0, width: "78%", borderRadius: 14, transform: "translateY(-8px)", boxShadow: "0 32px 80px rgba(0,0,0,0.7)", border: "1px solid rgba(255,255,255,0.15)", zIndex: 2 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img className="spotlight-img" src="/landing/screen-reservation1.png" alt="예약 관리 화면" style={{ width: "100%", height: 600, objectFit: "cover", objectPosition: "top", display: "block" }} />
-                </div>
 
-                {/* 카카오 알림 뱃지 */}
-                <div className="badge-kakao" style={{ position: "absolute", top: 150, left: 200, zIndex: 10, background: "#FEE500", borderRadius: 14, padding: "10px 14px", boxShadow: "0 8px 24px rgba(254,229,0,0.35)", animation: "floatY 4s ease-in-out infinite 0.8s" }}>
+          {/* PC 대시보드 이미지 */}
+          <FadeIn delay={150}>
+            <div className="relative pb-6 md:pb-8 spotlight3-wrap">
+              {/* 이미지 */}
+              <div style={{ borderRadius: 16, overflow: "hidden", boxShadow: "0 -8px 60px rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                <picture>
+                  <source media="(min-width: 768px)" srcSet="/landing/screen-reservation1.png" />
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    className="spotlight3-img"
+                    src="/landing/screen-reservation1-m.png"
+                    alt="예약 관리 대시보드"
+                    style={{ width: "100%", display: "block", objectFit: "cover", objectPosition: "top" }}
+                  />
+                </picture>
+
+                {/* 카카오 알림 뱃지 — 이미지 우상단 */}
+                <div className="badge-kakao" style={{ position: "absolute", top: 20, right: 20, zIndex: 10, background: "#FEE500", borderRadius: 14, padding: "10px 14px", boxShadow: "0 8px 24px rgba(254,229,0,0.35)", animation: "floatY 4s ease-in-out infinite 0.8s" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <span style={{ fontSize: 18 }}>💬</span>
                     <div>
@@ -610,8 +728,8 @@ export default function Landing() {
                   </div>
                 </div>
 
-                {/* 이번 달 예약 통계 뱃지 */}
-                <div className="badge-stats" style={{ position: "absolute", bottom: 60, left: -80, zIndex: 10, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", backdropFilter: "blur(12px)", borderRadius: 14, padding: "14px 18px", animation: "floatY 5s ease-in-out infinite 1.5s" }}>
+                {/* 이번 달 예약 통계 뱃지 — 이미지 좌하단 */}
+                <div className="badge-stats" style={{ position: "absolute", bottom: 44, left: 20, zIndex: 10, background: "rgba(20,15,10,0.7)", border: "1px solid rgba(255,255,255,0.15)", backdropFilter: "blur(12px)", borderRadius: 14, padding: "12px 18px", animation: "floatY 5s ease-in-out infinite 1.5s" }}>
                   <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 4 }}>이번 달 예약</div>
                   <div style={{ fontSize: 26, fontWeight: 700, color: "white", lineHeight: 1 }}>28건</div>
                   <div style={{ fontSize: 11, marginTop: 6, color: "#22c55e" }}>▲ 전월 대비 +12%</div>
@@ -688,10 +806,11 @@ export default function Landing() {
                 style={{ height: "clamp(320px, 60vh, 580px)" }}
               >
                 <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, #f0ebe4 0%, #ddd0c4 100%)" }} />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-[13px] text-neutral-400 tracking-wide">{cap.title} 이미지</span>
-                </div>
-                <div className="absolute inset-0" style={{ backgroundImage: `url(${cap.img})`, backgroundSize: "cover", backgroundPosition: "center" }} />
+                <picture className="absolute inset-0">
+                  <source media="(min-width: 768px)" srcSet={cap.img} />
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={cap.mobileImg} alt={cap.title} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", display: "block" }} />
+                </picture>
                 <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(10,7,4,0.75) 0%, rgba(10,7,4,0.2) 40%, transparent 65%)" }} />
                 <div className="absolute bottom-0 left-0 p-8 max-w-lg">
                   <h3 className="text-[clamp(1.3rem,2.8vw,1.8rem)] font-semibold text-white leading-snug mb-3">{cap.title}</h3>
@@ -814,102 +933,87 @@ export default function Landing() {
       </section>
 
       {/* ── PRICING ── */}
-      <section id="pricing" className="py-24 bg-white" style={{ scrollMarginTop: 64 }}>
+      <section id="요금제" className="py-24 bg-white" style={{ scrollMarginTop: 64 }}>
         <div className="max-w-4xl mx-auto px-6">
           <FadeIn className="text-center mb-14">
             <p className="text-[13px] tracking-[0.2em] uppercase text-neutral-400 mb-3">Pricing</p>
             <h2 className="text-[clamp(1.8rem,4vw,2.8rem)] font-semibold not-italic leading-tight" style={{ color: "#2c2416" }}>
               합리적인 요금제
             </h2>
-            <p className="mt-4 text-[15px] text-neutral-500">필요에 맞는 플랜을 선택하세요</p>
           </FadeIn>
 
           {/* 첫 달 무료 배너 */}
           <FadeIn>
             <div className="rounded-2xl mb-6 py-5 px-6 text-center" style={{ background: "linear-gradient(135deg, #2c2416 0%, #18130e 100%)" }}>
               <p className="text-[15px] font-semibold tracking-widest uppercase mb-1.5" style={{ color: "#c9a96e" }}>첫 1개월 무료 체험</p>
-              <p className="text-[16px]" style={{ color: "rgba(255,255,255,0.7)" }}>구독료 없음 + 결제 수수료 0% — 한 달간 Pro 혜택을 그대로</p>
+              <p className="text-[16px]" style={{ color: "rgba(255,255,255,0.7)" }}>카드 등록 후 30일, 구독료 없이 모든 기능을 이용해 보세요</p>
             </div>
           </FadeIn>
 
           <FadeIn delay={100}>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="max-w-lg mx-auto">
+              <div className="rounded-2xl border p-7 sm:p-10 bg-white" style={{ borderColor: pricingCycle === "annual" ? "#e8ddc9" : "#e5e5e5" }}>
 
-              {/* Starter */}
-              <div className="rounded-2xl border border-neutral-200 p-6 sm:p-8 flex flex-col bg-white">
-                <div className="mb-6">
-                  <p className="text-[12px] font-semibold tracking-[0.2em] uppercase text-neutral-500 mb-3">Starter</p>
-                  <div className="flex items-end gap-1.5 mb-2">
-                    <span className="text-[2.6rem] font-semibold leading-none" style={{ color: "#2c2416" }}>₩{PLAN_PRICES.starter.toLocaleString()}</span>
-                    <span className="text-[15px] font-medium text-neutral-500 mb-1.5">/ 월</span>
-                  </div>
-                  <p className="text-[14px] text-neutral-500">{PLAN_DESCRIPTIONS.starter}</p>
-                </div>
-
-                <ul className="space-y-3.5 mb-8 flex-1">
-                  {PLAN_FEATURES.starter.map((item, i) => (
-                    <li key={i} className="flex items-start gap-2.5 text-[14px] font-medium">
-                      <svg className="w-4 h-4 mt-0.5 shrink-0" style={{ color: "#9ca3af" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                      <span style={{ color: "#374151" }}>{item.text}</span>
-                    </li>
-                  ))}
-                </ul>
-
-                <a
-                  href="/login"
-                  className="block text-center py-3 rounded-xl border border-neutral-300 text-[14px] font-semibold text-neutral-800 hover:border-neutral-600 hover:bg-neutral-50 transition-colors"
-                >
-                  시작하기
-                </a>
-              </div>
-
-              {/* Pro */}
-              <div className="rounded-2xl border p-6 sm:p-8 flex flex-col relative bg-white" style={{ borderColor: "#e8ddc9" }}>
-                {/* Badge */}
-                <div
-                  className="absolute top-5 right-5 text-[11px] font-bold tracking-widest uppercase px-3 py-1 rounded-full"
-                  style={{ background: "rgba(201,169,110,0.15)", color: "#9a7a3a" }}
-                >
-                  추천
-                </div>
-
-                <div className="mb-6">
-                  <p className="text-[12px] font-semibold tracking-[0.2em] uppercase mb-3" style={{ color: "#9a7a3a" }}>Pro</p>
-                  <div className="flex items-end gap-1.5 mb-2">
-                    <span className="text-[2.6rem] font-semibold leading-none" style={{ color: "#2c2416" }}>₩{PLAN_PRICES.pro.toLocaleString()}</span>
-                    <span className="text-[15px] font-medium text-neutral-500 mb-1.5">/ 월</span>
-                  </div>
-                  <p className="text-[14px] text-neutral-500">{PLAN_DESCRIPTIONS.pro}</p>
-                </div>
-
-                <ul className="space-y-3.5 mb-8 flex-1">
-                  {PLAN_FEATURES.pro.map((item, i) => (
-                    <li key={i} className="flex items-start gap-2.5 text-[14px] font-medium">
-                      <svg
-                        className="w-4 h-4 mt-0.5 shrink-0"
-                        style={{ color: item.highlight ? "#b8934a" : "#9ca3af" }}
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+                {/* 토글 */}
+                <div className="flex justify-center mb-8">
+                  <div className="flex rounded-full p-1" style={{ background: "#f3ede4" }}>
+                    {(["monthly", "annual"] as const).map((cycle) => (
+                      <button
+                        key={cycle}
+                        onClick={() => setPricingCycle(cycle)}
+                        className="relative px-6 py-2 rounded-full text-[15px] font-semibold transition-all"
+                        style={{
+                          background: pricingCycle === cycle ? "#2c2416" : "transparent",
+                          color: pricingCycle === cycle ? "white" : "#9a8a7a",
+                        }}
                       >
+                        {cycle === "monthly" ? "월간" : "연간"}
+                        {cycle === "annual" && pricingCycle !== "annual" && (
+                          <span className="absolute -top-2 -right-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "#c9a96e", color: "white" }}>추천</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 가격 */}
+                <div className="text-center mb-8">
+                  <div className="flex items-center justify-center mb-1" style={{ visibility: pricingCycle === "annual" ? "visible" : "hidden" }}>
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(201,169,110,0.15)", color: "#9a7a3a" }}>
+                      연 ₩60,000 절약
+                    </span>
+                  </div>
+                  <div className="flex items-end justify-center gap-1.5">
+                    <span className="text-[3.2rem] font-semibold leading-none" style={{ color: "#2c2416" }}>
+                      ₩{(pricingCycle === "annual" ? PLAN_PRICES.annual : PLAN_PRICES.monthly).toLocaleString()}
+                    </span>
+                    <span className="text-[16px] font-medium text-neutral-400 mb-2">/ 월</span>
+                  </div>
+                  <p className="text-[13px] text-neutral-400 mt-1.5" style={{ visibility: pricingCycle === "annual" ? "visible" : "hidden" }}>
+                    연 ₩{PLAN_PRICES.annualTotal.toLocaleString()} 일괄 결제
+                  </p>
+                </div>
+
+                {/* 혜택 목록 */}
+                <ul className="space-y-3.5 mb-8">
+                  {PLAN_FEATURES.map((item, i) => (
+                    <li key={i} className="flex items-start gap-2.5 text-[14px] font-medium">
+                      <svg className="w-4 h-4 mt-0.5 shrink-0" style={{ color: item.highlight ? "#b8934a" : "#9ca3af" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                       </svg>
-                      <span style={{ color: item.highlight ? "#9a7a3a" : "#374151" }}>
-                        {item.text}
-                      </span>
+                      <span style={{ color: item.highlight ? "#9a7a3a" : "#374151" }}>{item.text}</span>
                     </li>
                   ))}
                 </ul>
 
                 <a
                   href="/login"
-                  className="block text-center py-3 rounded-xl text-[14px] font-semibold transition-all hover:opacity-90"
+                  className="block text-center py-3.5 rounded-xl text-[14px] font-semibold transition-all hover:opacity-90"
                   style={{ background: "#2c2416", color: "#fff" }}
                 >
-                  Pro 시작하기
+                  {pricingCycle === "annual" ? "연간 구독 시작하기" : "월간 구독 시작하기"}
                 </a>
               </div>
-
             </div>
 
           </FadeIn>
@@ -995,15 +1099,31 @@ export default function Landing() {
         }
         @media (max-width: 768px) {
           .postit-card { aspect-ratio: 4/3 !important; }
-          .spotlight-wrap { height: 420px !important; }
-          .spotlight-img { height: 350px !important; }
-          .consult-flip-wrap { height: 420px !important; }
-          .consult-steps .step-card:nth-child(1) { top: 20px !important; }
-          .consult-steps .step-card:nth-child(2) { top: 155px !important; }
-          .consult-steps .step-card:nth-child(3) { top: 290px !important; }
+          .spotlight-wrap { height: 500px !important; width: 80% !important; margin: 0 auto !important; }
+          .spotlight-img { height: 490px !important; object-fit: contain !important; }
           .badge-desktop-only { display: none !important; }
-          .badge-kakao { top: 20px !important; left: auto !important; right: -30px !important; }
-          .badge-stats { bottom: 20px !important; left: -60px !important; }
+
+          /* 이미지 중앙 정렬: width 78% 기준 (100-78)/2 = 11% */
+          .spotlight-img-wrapper { left: 11% !important; top: 24px !important; bottom: auto !important; }
+          .spotlight1-overlay { align-items: flex-start !important; }
+          .spotlight2-section { align-items: flex-start !important; }
+
+          /* Spotlight 2 모바일 compact */
+          .spotlight2-container { width: min(68vw, 260px) !important; min-height: clamp(260px, 48vh, 360px) !important; }
+          .spotlight2-card { padding: 8px 12px 6px !important; margin-bottom: 4px !important; border-radius: 10px !important; }
+          .spotlight2-step { margin-bottom: 1px !important; font-size: 9px !important; }
+          .spotlight2-title { font-size: 12px !important; margin-bottom: 6px !important; }
+          .spotlight2-item { padding: 5px 7px !important; font-size: 11px !important; }
+          .spotlight3-wrap { width: 68% !important; margin: 0 auto !important; }
+          .spotlight3-img { object-fit: contain !important; max-height: 60vh !important; }
+
+          /* Spotlight 1 뱃지 모바일 재배치 */
+          .badge-order { left: auto !important; right: 120 !important; top: 50px !important; }
+          .badge-color { right: auto !important; left: 190px !important; bottom: 24px !important; }
+
+          /* Spotlight 3 뱃지 모바일 재배치 */
+          .badge-kakao { top: 14px !important; right: -16px !important; left: auto !important; }
+          .badge-stats { bottom: 30px !important; left: -20px !important; }
         }
       `}</style>
     </div>

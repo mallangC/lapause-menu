@@ -77,8 +77,10 @@ body {
   font-size: 13px !important;
   color: #2c2416 !important;
 }
-.react-datepicker__day:hover {
-  background-color: #f3ede1 !important;
+@media (hover: hover) {
+  .react-datepicker__day:hover {
+    background-color: #f3ede1 !important;
+  }
 }
 .react-datepicker__day--selected,
 .react-datepicker__day--keyboard-selected {
@@ -96,6 +98,8 @@ body {
 }
 .react-datepicker__day--disabled {
   color: #d9c9a8 !important;
+  pointer-events: none !important;
+  cursor: default !important;
 }
 .react-datepicker__navigation-icon::before {
   border-color: #b8934a !important;
@@ -117,6 +121,58 @@ body {
 }
 .react-datepicker__time-list-item--disabled {
   display: none !important;
+}
+
+/* 맞춤주문 인라인 달력 — 크게 */
+.large-datepicker .react-datepicker {
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  width: 100% !important;
+}
+.large-datepicker .react-datepicker__month-container {
+  float: none !important;
+  width: 100% !important;
+}
+.large-datepicker .react-datepicker__header {
+  background-color: #fff !important;
+  border-bottom: 1px solid #f3ede1 !important;
+  padding: 16px 0 12px !important;
+}
+.large-datepicker .react-datepicker__current-month {
+  font-size: 16px !important;
+  font-weight: 600 !important;
+}
+.large-datepicker .react-datepicker__day-names {
+  margin: 6px 8px 4px !important;
+  display: flex !important;
+}
+.large-datepicker .react-datepicker__week {
+  display: flex !important;
+}
+.large-datepicker .react-datepicker__day-name {
+  flex: 1 !important;
+  width: auto !important;
+  line-height: 2rem !important;
+  margin: 0.1rem !important;
+  font-size: 13px !important;
+}
+.large-datepicker .react-datepicker__day {
+  flex: 1 !important;
+  width: auto !important;
+  aspect-ratio: 1 !important;
+  line-height: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 0.1rem !important;
+  font-size: 15px !important;
+}
+.large-datepicker .react-datepicker__month {
+  margin: 8px 8px 12px !important;
+}
+.large-datepicker .react-datepicker__navigation {
+  top: 16px !important;
 }
 
 /* 관리자 모달 datepicker 전용 - 캘린더 높이를 타임 섹션에 맞춤 */

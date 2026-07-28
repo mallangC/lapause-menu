@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 interface Props {
   companyId: string;
   slug: string;
-  plan: "starter" | "pro" | "free";
+  plan: "monthly" | "annual" | "none" | "free";
   onNavigate: (tab: string, statusFilter?: string) => void;
 }
 
@@ -145,18 +145,18 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
 
   const consultStatus = settings?.consult_apply_status ?? null;
   const consultEnabled = settings?.consult_enabled ?? false;
-  const isPro = plan !== "starter";
+  const isPro = plan !== "none";
 
   const applyBadge = consultStatus ? consultApplyLabels[consultStatus] : null;
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-medium text-gray-900">대시보드</h2>
+    <div className="space-y-3">
+      <h2 className="text-xl font-bold text-gray-900">대시보드</h2>
 
       {/* 메뉴 URL */}
-      <div className="bg-white border border-gray-200 rounded-2xl px-5 py-4 flex items-center gap-3">
+      <div className="bg-white py-4 px-4 -mx-4 flex items-center gap-3 md:mx-0 md:rounded-2xl md:px-5">
         <div className="flex-1 min-w-0">
-          <p className="text-xs text-gray-400 mb-0.5">손님 메뉴 링크</p>
+          <p className="text-xs text-gray-400 mb-0.5">링크 공유</p>
           <p className="text-sm text-gray-700 truncate font-mono">{menuUrl}</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -166,20 +166,13 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
           >
             {copied ? "복사됨 ✓" : "URL 복사"}
           </button>
-          <Link
-            href={`/${slug}`}
-            target="_blank"
-            className="px-3 py-1.5 rounded-lg bg-gold-500 text-white text-xs hover:bg-gold-600 transition-colors"
-          >
-            미리보기
-          </Link>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-transparent -mx-4 md:gap-4 md:mx-0">
 
         {/* 예약 현황 (오늘~30일) */}
-        <div className="bg-white border border-gray-200 rounded-2xl px-5 py-4">
+        <div className="bg-white py-4 px-4 md:rounded-2xl md:px-5">
           <div className="flex items-center justify-between mb-3">
             <div>
               <h3 className="text-sm font-semibold text-gray-700">예약 현황</h3>
@@ -212,7 +205,7 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
         </div>
 
         {/* 기능 ON/OFF */}
-        <div className="bg-white border border-gray-200 rounded-2xl px-5 py-4">
+        <div className="bg-white py-4 px-4 md:rounded-2xl md:px-5">
           <div className="flex items-center justify-between mb-1">
             <h3 className="text-sm font-semibold text-gray-700">기능 현황</h3>
             <button
@@ -228,14 +221,11 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
           <StatusBadge on={settings?.shopping_bag_enabled ?? false} label="쇼핑백" />
         </div>
 
-        {/* 맞춤 주문 신청 상태 (Pro 전용) */}
-        <div className="bg-white border border-gray-200 rounded-2xl px-5 py-4 md:col-span-2">
+        {/* 맞춤 주문 신청 상태 */}
+        <div className="bg-white py-4 px-4 md:col-span-2 md:rounded-2xl md:px-5">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-semibold text-gray-700">맞춤 주문 신청</h3>
-              {!isPro && (
-                <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">Pro 전용</span>
-              )}
               {applyBadge && (
                 <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${applyBadge.color}`}>
                   {applyBadge.label}
@@ -250,9 +240,7 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
             </button>
           </div>
 
-          {!isPro ? (
-            <p className="text-xs text-gray-400">Pro 플랜으로 업그레이드하면 맞춤 주문 기능을 사용할 수 있습니다.</p>
-          ) : consultStatus === "approved" ? (
+          {consultStatus === "approved" ? (
             <p className="text-xs text-green-600">승인이 완료되었습니다. 맞춤 주문 탭에서 기능을 활성화할 수 있습니다.</p>
           ) : (
             <div className="space-y-2.5">

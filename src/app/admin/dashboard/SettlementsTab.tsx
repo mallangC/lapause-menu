@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import * as XLSX from "xlsx";
 
 interface Company {
@@ -52,16 +52,18 @@ export default function SettlementsTab({ companies }: Props) {
   // 정산 대상 탭
   const now = new Date();
   const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  const firstOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
-  const today = now.toISOString().slice(0, 10);
-  const [periodStart, setPeriodStart] = useState(firstOfMonth);
-  const [periodEnd, setPeriodEnd] = useState(today);
+  const threeDaysAgo = new Date(now); threeDaysAgo.setDate(now.getDate() - 3);
+  const [periodStart, setPeriodStart] = useState("");
+  const [periodEnd, setPeriodEnd] = useState("");
+  const [lastSettledDate, setLastSettledDate] = useState<string | null>(null);
+  const [initLoading, setInitLoading] = useState(true);
   const [pendingItems, setPendingItems] = useState<PendingItem[] | null>(null);
   const [pendingLoading, setPendingLoading] = useState(false);
 
   // 이체 완료 모달
+  const today = now.toISOString().slice(0, 10);
   const [completeModal, setCompleteModal] = useState(false);
-  const [transferredAt, setTransferredAt] = useState(now.toISOString().slice(0, 10));
+  const [transferredAt, setTransferredAt] = useState(today);
   const [transferMemo, setTransferMemo] = useState("");
   const [completeLoading, setCompleteLoading] = useState(false);
 
@@ -75,6 +77,19 @@ export default function SettlementsTab({ companies }: Props) {
   const [taxNumber, setTaxNumber] = useState("");
   const [taxIssuedAt, setTaxIssuedAt] = useState("");
   const [taxLoading, setTaxLoading] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      setInitLoading(true);
+      const res = await fetch("/api/operator/settlements/pending");
+      if (res.ok) {
+        const data = await res.json();
+        setLastSettledDate(data.lastSettledDate ?? null);
+        if (data.autoStart) setPeriodStart(data.autoStart);
+      }
+      setInitLoading(false);
+    })();
+  }, []);
 
   const fetchPending = useCallback(async () => {
     if (!periodStart || !periodEnd) return;
@@ -216,30 +231,46 @@ export default function SettlementsTab({ companies }: Props) {
       {/* ── 정산 대상 탭 ── */}
       {innerTab === "target" && (
         <div className="space-y-4">
+          {/* 마지막 정산일 배너 */}
+          {!initLoading && (
+            <div className="flex items-start gap-2 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-sm">
+              <span className="text-blue-400 mt-px">ℹ</span>
+              <div className="text-blue-700">
+                {lastSettledDate
+                  ? <>마지막 정산 완료일: <strong>{lastSettledDate}</strong> · 시작일이 자동 설정되었습니다.</>
+                  : <>이전 정산 내역이 없습니다. 시작일이 <strong>2024-01-01</strong>로 설정되었습니다.</>
+                }
+              </div>
+            </div>
+          )}
+
           <div className="flex items-end gap-3 flex-wrap">
             <div>
-              <label className="block text-xs text-gray-400 mb-1">시작일</label>
+              <label className="block text-xs text-gray-400 mb-1">시작일 (자동)</label>
               <input
                 type="date"
                 value={periodStart}
                 onChange={e => { setPeriodStart(e.target.value); setPendingItems(null); }}
-                className="border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50"
               />
             </div>
             <span className="text-gray-400 pb-2">~</span>
             <div>
-              <label className="block text-xs text-gray-400 mb-1">종료일</label>
+              <label className="block text-xs text-gray-400 mb-1">
+                종료일 <span className="text-orange-400">(PG 정산 기준: 3일 전까지 권장)</span>
+              </label>
               <input
                 type="date"
                 value={periodEnd}
                 min={periodStart}
+                max={threeDaysAgo.toISOString().slice(0, 10)}
                 onChange={e => { setPeriodEnd(e.target.value); setPendingItems(null); }}
                 className="border border-gray-200 rounded-lg px-3 py-2 text-sm"
               />
             </div>
             <button
               onClick={fetchPending}
-              disabled={pendingLoading || !periodStart || !periodEnd}
+              disabled={pendingLoading || !periodStart || !periodEnd || initLoading}
               className="px-4 py-2 bg-gray-900 text-white text-sm rounded-lg hover:bg-gray-700 disabled:opacity-50 transition-colors"
             >
               {pendingLoading ? "조회 중..." : "정산 대상 조회"}

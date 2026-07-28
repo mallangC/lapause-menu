@@ -1,16 +1,13 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import Link from "next/link";
-import Image from "next/image";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { Product, FilterState } from "@/types";
 import { applyFilter, EMPTY_FILTER } from "@/lib/filter";
-import { SEASONS, PRODUCT_TYPES } from "@/lib/constants";
-import MainNav from "@/components/main/MainNav";
-import FilterPanel from "@/components/main/FilterPanel";
+import { SEASONS, PRODUCT_TYPES, FLOWER_COLORS, FLOWER_COLOR_MAP, WRAPPING_COLORS, MOODS } from "@/lib/constants";
 import MobileFilter from "@/components/main/MobileFilter";
 import ProductGrid from "@/components/main/ProductGrid";
+import StoreHeader from "@/components/main/StoreHeader";
 import FloAideFooter from "@/components/FloAideFooter";
 
 interface ProductsClientProps {
@@ -25,6 +22,8 @@ interface ProductsClientProps {
   customSeasons: string[];
   consultEnabled: boolean;
 }
+
+type FilterKey = "flowerColors" | "wrappingColors" | "moods";
 
 export default function ProductsClient({
   slug,
@@ -58,10 +57,12 @@ export default function ProductsClient({
       productTypes: typeParam ? [typeParam] : [],
     });
   }, [activeTab, typeParam]);
+
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
-  const userClosedFilter = useRef(false);
-  const [openDropdown, setOpenDropdown] = useState<"all" | "season" | null>(null);
-  const dropdownTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [openFilterDropdown, setOpenFilterDropdown] = useState<FilterKey | null>(null);
+
+  const productTypeList = [...PRODUCT_TYPES.filter((t) => !hiddenProductTypes.includes(t)), ...customProductTypes];
+  const seasonList = [...SEASONS.filter((s) => !hiddenSeasons.includes(s)), ...customSeasons];
 
   const filteredProducts = applyFilter(products, filter)
     .filter((p) => {
@@ -77,142 +78,181 @@ export default function ProductsClient({
       return (ai === -1 ? order.length : ai) - (bi === -1 ? order.length : bi);
     });
 
-  const logo = logoImage ? (
-    <Image src={logoImage} alt={companyName} width={200} height={40} className="object-contain h-9 w-auto" />
-  ) : (
-    <span className="font-light tracking-widest text-gold-500 text-xl">{companyName}</span>
-  );
+  const hasFilter = filter.flowerColors.length > 0 || filter.wrappingColors.length > 0 || filter.moods.length > 0;
+
+  const toggleFilter = (key: FilterKey, value: string) =>
+    setFilter((f) => ({
+      ...f,
+      [key]: (f[key] as string[]).includes(value)
+        ? (f[key] as string[]).filter((v) => v !== value)
+        : [...(f[key] as string[]), value],
+    }));
+
+  const filterButtons: { key: FilterKey; label: string }[] = [
+    { key: "flowerColors", label: "색상" },
+    { key: "wrappingColors", label: "포장지" },
+    { key: "moods", label: "분위기" },
+  ];
 
   return (
     <div className="min-h-screen bg-beige-100" style={themeVars}>
-      {/* 헤더 + 서브탭 */}
       <div className="sticky top-0 z-40">
-        <header className="border-b border-gray-100 bg-white">
-          <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-center">
-            <Link href={`/${slug}`}>{logo}</Link>
+        <StoreHeader
+          slug={slug}
+          companyName={companyName}
+          logoImage={logoImage}
+          productTypeList={productTypeList}
+          seasonList={seasonList}
+          consultEnabled={consultEnabled}
+        />
+
+        {/* PC 필터 띠 */}
+        <div className="hidden md:flex items-center gap-2 px-8 py-2 bg-white border-b border-gray-100">
+          {/* 선택된 필터 칩 */}
+          <div className="flex items-center gap-1.5 flex-1 flex-wrap">
+            {filter.flowerColors.map((c) => (
+              <span key={c} className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-gold-50 text-gold-700 text-xs font-medium">
+                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: FLOWER_COLOR_MAP[c] }} />
+                {c}
+                <button onClick={() => toggleFilter("flowerColors", c)} className="ml-0.5 opacity-50 hover:opacity-100">✕</button>
+              </span>
+            ))}
+            {filter.wrappingColors.map((c) => (
+              <span key={c} className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-gold-50 text-gold-700 text-xs font-medium">
+                {c}
+                <button onClick={() => toggleFilter("wrappingColors", c)} className="ml-0.5 opacity-50 hover:opacity-100">✕</button>
+              </span>
+            ))}
+            {filter.moods.map((m) => (
+              <span key={m} className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-gold-50 text-gold-700 text-xs font-medium">
+                {m}
+                <button onClick={() => toggleFilter("moods", m)} className="ml-0.5 opacity-50 hover:opacity-100">✕</button>
+              </span>
+            ))}
           </div>
-        </header>
 
-        {/* 서브탭 + 필터 드롭다운 (데스크톱) */}
-        <nav className="border-b border-gray-100 bg-white">
-          <div className="max-w-6xl mx-auto px-2 flex justify-center gap-0">
-
-            {/* 전체 탭 + 호버 드롭다운 */}
-            <div
-              className="relative"
-              onMouseEnter={() => {
-                if (dropdownTimer.current) clearTimeout(dropdownTimer.current);
-                setOpenDropdown("all");
-              }}
-              onMouseLeave={() => {
-                dropdownTimer.current = setTimeout(() => setOpenDropdown(null), 150);
-              }}
+          {/* 필터 해제 */}
+          {hasFilter && (
+            <button
+              onClick={() => setFilter(EMPTY_FILTER)}
+              className="shrink-0 text-xs text-gray-400 hover:text-gray-600 transition-colors whitespace-nowrap"
             >
-              <Link
-                href={`/${slug}/products`}
-                className={`block px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                  activeTab === "all" ? "border-gold-500 text-gold-500" : "border-transparent text-gray-500 hover:text-gray-800"
-                }`}
-              >
-                전체
-              </Link>
-              {openDropdown === "all" && (
-                <div className="hidden md:block absolute top-full left-1/2 -translate-x-1/2 z-50">
-                  <div className="bg-white border border-gray-200 rounded-xl shadow-lg p-4 w-80">
-                    <FilterPanel
-                      filter={filter}
-                      setFilter={setFilter}
-                      hiddenProductTypes={hiddenProductTypes}
-                      customProductTypes={customProductTypes}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
+              필터 해제
+            </button>
+          )}
 
-            {/* 시즌 탭 + 호버 드롭다운 */}
-            <div
-              className="relative"
-              onMouseEnter={() => {
-                if (dropdownTimer.current) clearTimeout(dropdownTimer.current);
-                setOpenDropdown("season");
-              }}
-              onMouseLeave={() => {
-                dropdownTimer.current = setTimeout(() => setOpenDropdown(null), 150);
-              }}
+          {/* 필터 아이콘 */}
+          <div className="relative shrink-0">
+            <button
+              onClick={() => setOpenFilterDropdown(openFilterDropdown === "flowerColors" ? null : "flowerColors")}
+              className={`w-8 h-8 flex items-center justify-center rounded-lg border transition-colors ${
+                hasFilter ? "border-gold-400 text-gold-500" : "border-gray-200 text-gray-400 hover:border-gray-400 hover:text-gray-600"
+              }`}
             >
-              <Link
-                href={`/${slug}/products?tab=season`}
-                className={`block px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                  activeTab === "season" ? "border-gold-500 text-gold-500" : "border-transparent text-gray-500 hover:text-gray-800"
-                }`}
-              >
-                시즌
-              </Link>
-              {openDropdown === "season" && (
-                <div className="hidden md:block absolute top-full left-1/2 -translate-x-1/2 z-50">
-                  <div className="bg-white border border-gray-200 rounded-xl shadow-lg p-3 min-w-36">
-                    <div className="flex flex-col gap-1">
-                      {[...SEASONS.filter((s) => !hiddenSeasons.includes(s)), ...customSeasons].map((season) => (
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="4" y1="6" x2="20" y2="6" />
+                <line x1="8" y1="12" x2="16" y2="12" />
+                <line x1="11" y1="18" x2="13" y2="18" />
+              </svg>
+            </button>
+
+            {openFilterDropdown !== null && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setOpenFilterDropdown(null)} />
+                <div className="absolute top-full right-0 mt-1 z-20 bg-white border border-gray-100 rounded-xl shadow-lg p-4 w-64">
+                  {/* 색상 */}
+                  <p className="text-xs font-semibold text-gold-500 mb-2">색상</p>
+                  <div className="grid grid-cols-2 gap-1 mb-4">
+                    {FLOWER_COLORS.map((color) => {
+                      const active = filter.flowerColors.includes(color);
+                      return (
                         <button
-                          key={season}
-                          onClick={() =>
-                            setFilter({
-                              ...EMPTY_FILTER,
-                              isSeason: true,
-                              seasons: filter.seasons.length === 1 && filter.seasons.includes(season) ? [] : [season],
-                            })
-                          }
-                          className={`text-center text-sm px-3 py-1.5 rounded-lg border transition-colors ${
-                            filter.seasons.includes(season)
-                              ? "border-gold-400 bg-gold-400 text-white font-medium"
-                              : "border-gray-200 text-gray-600 hover:border-gold-500 hover:text-gold-500"
+                          key={color}
+                          onClick={() => toggleFilter("flowerColors", color)}
+                          className={`flex items-center justify-center gap-2 px-2.5 py-1.5 rounded-lg text-sm border transition-colors ${
+                            active ? "border-gold-500 bg-gold-500 text-white font-medium" : "border-gray-200 text-gray-600 hover:bg-gray-50"
                           }`}
                         >
-                          {season}
+                          <span className="w-3.5 h-3.5 rounded-full border border-gray-200 shrink-0" style={{ backgroundColor: FLOWER_COLOR_MAP[color] }} />
+                          {color}
                         </button>
-                      ))}
-                    </div>
+                      );
+                    })}
+                  </div>
+                  {/* 포장지 */}
+                  <p className="text-xs font-semibold text-gold-500 mb-2">포장지</p>
+                  <div className="flex flex-col gap-1 mb-4">
+                    {WRAPPING_COLORS.map((wc) => {
+                      const active = filter.wrappingColors.includes(wc);
+                      return (
+                        <button
+                          key={wc}
+                          onClick={() => toggleFilter("wrappingColors", wc)}
+                          className={`flex items-center justify-center text-center px-2.5 py-1.5 rounded-lg text-sm border transition-colors ${
+                            active ? "border-gold-500 bg-gold-500 text-white font-medium" : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                          }`}
+                        >
+                          {wc}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {/* 분위기 */}
+                  <p className="text-xs font-semibold text-gold-500 mb-2">분위기</p>
+                  <div className="flex flex-col gap-1">
+                    {MOODS.map((mood) => {
+                      const active = filter.moods.includes(mood);
+                      return (
+                        <button
+                          key={mood}
+                          onClick={() => toggleFilter("moods", mood)}
+                          className={`flex items-center justify-center text-center px-2.5 py-1.5 rounded-lg text-sm border transition-colors ${
+                            active ? "border-gold-500 bg-gold-500 text-white font-medium" : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                          }`}
+                        >
+                          {mood}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
-              )}
-            </div>
-
-            {consultEnabled && (
-              <Link
-                href={`/${slug}/consult`}
-                className="my-auto ml-2 px-4 py-1.5 rounded-full bg-gold-500 text-white text-xs font-medium hover:bg-gold-600 transition-colors whitespace-nowrap"
-              >
-                맞춤주문
-              </Link>
+              </>
             )}
           </div>
-        </nav>
+        </div>
 
-        {/* 모바일 필터 */}
+        {/* 모바일 필터 모달 */}
         <MobileFilter
           filter={filter}
           setFilter={setFilter}
           isOpen={mobileFilterOpen}
-          onToggle={() => {
-            if (mobileFilterOpen) userClosedFilter.current = true;
-            setMobileFilterOpen((v) => !v);
-          }}
-          hiddenProductTypes={hiddenProductTypes}
-          hiddenSeasons={hiddenSeasons}
-          customProductTypes={customProductTypes}
-          customSeasons={customSeasons}
+          onClose={() => setMobileFilterOpen(false)}
+          hasFilter={hasFilter}
         />
       </div>
 
       {/* 상품 목록 */}
-      <div className="max-w-6xl mx-auto px-4 py-6">
+      <div className="max-w-6xl mx-auto">
         <ProductGrid products={filteredProducts} consultEnabled={consultEnabled} slug={slug} />
       </div>
 
       <div className="pb-8">
         <FloAideFooter />
       </div>
+
+      {/* 모바일 필터 FAB */}
+      <button
+        onClick={() => setMobileFilterOpen(true)}
+        className="md:hidden fixed bottom-6 right-5 z-30 w-12 h-12 rounded-full bg-white border border-gray-200 shadow-lg flex items-center justify-center"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={hasFilter ? "text-gold-500" : "text-gray-600"}>
+          <line x1="4" y1="6" x2="20" y2="6" />
+          <line x1="8" y1="12" x2="16" y2="12" />
+          <line x1="11" y1="18" x2="13" y2="18" />
+        </svg>
+        {hasFilter && <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-gold-500" />}
+      </button>
+
     </div>
   );
 }

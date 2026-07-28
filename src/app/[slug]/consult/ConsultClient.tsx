@@ -384,7 +384,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
         const rid = data.reservationId ?? null;
         setReservationId(rid);
         setFinalPriceSnapshot(draft.finalPrice);
-        if (rid) await fetch(`/api/reservation/${rid}/paid`, { method: "PATCH" });
+        // paid 처리는 /api/reservation POST 내부에서 수행됨
         setSubmitted(true);
         setPaidConfirmed(true);
       } catch (err) {
@@ -573,7 +573,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className={`min-h-screen ${step === 1 || step === 3 ? "bg-gray-100" : step === 2 ? "bg-gray-100" : "bg-white"}`}>
       {/* Header */}
       <StoreHeader
         slug={slug}
@@ -678,7 +678,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                 <div className="bg-white -mx-4 px-5 py-3.5 md:mx-0 md:rounded-xl">
                   <p className="text-sm text-gray-600 text-center">선물 목적과 받는 분 정보를 알려주시면 더 잘 어울리는 꽃을 준비해드릴 수 있어요.</p>
                 </div>
-                <div className="bg-white -mx-4 md:mx-0 md:rounded-xl overflow-hidden divide-y divide-gray-100 border-t border-b border-gray-100 md:border">
+                <div className="bg-white -mx-4 md:mx-0 md:rounded-xl overflow-hidden divide-y divide-gray-200">
                 {sections.map((section, idx) => {
                   const isOpen = activeSection1 === idx;
                   const isDone = !!section.selected && !isOpen;
@@ -688,15 +688,17 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                       <button
                         type="button"
                         onClick={() => setActiveSection1(isOpen ? -1 : idx)}
-                        className="w-full flex items-center justify-between px-4 py-4 text-left"
+                        className="w-full flex items-center justify-between px-4 py-4 text-left bg-gray-50"
                       >
-                        <span className="text-sm font-semibold text-gray-800">{section.title}</span>
-                        {isDone && (
-                          <span className="text-sm text-gold-600 font-medium">{section.displayValue}</span>
-                        )}
-                        <svg className={`w-4 h-4 text-gray-300 shrink-0 transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
+                        <span className="text-[15px] font-semibold text-gray-700">{section.title}</span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {isDone && (
+                            <span className="text-sm text-gold-600 font-medium">{section.displayValue}</span>
+                          )}
+                          <svg className={`w-4 h-4 text-gray-400 transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
                       </button>
 
                       <div
@@ -707,13 +709,13 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                         }}
                       >
                         <div className="overflow-hidden">
-                        <div className="border-t border-gray-100 divide-y divide-gray-100">
+                        <div className="border-t border-gray-200 divide-y divide-gray-100">
                           {section.options.map((opt) => (
                             <button
                               key={opt}
                               type="button"
                               onClick={() => section.onSelect(opt)}
-                              className={`w-full flex items-center justify-between px-4 py-3.5 text-left transition-colors ${section.selected === opt ? "bg-beige-50" : "hover:bg-gray-50"}`}
+                              className={`w-full flex items-center justify-between pl-8 pr-4 py-3.5 text-left transition-colors ${section.selected === opt ? "bg-beige-50" : "hover:bg-gray-50"}`}
                             >
                               <span className={`text-sm ${section.selected === opt ? "text-gold-600 font-medium" : "text-gray-800"}`}>{opt}</span>
                               <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${section.selected === opt ? "border-gold-500 bg-gold-500" : "border-gray-300"}`}>
@@ -801,7 +803,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
 
           return (
             <div className="space-y-2.5">
-              <div className="bg-white -mx-4 md:mx-0 md:rounded-xl overflow-hidden divide-y divide-gray-100 border-t border-b border-gray-100 md:border">
+              <div className="bg-white -mx-4 md:mx-0 md:rounded-xl overflow-hidden divide-y divide-gray-200">
               {sections2.map((section, idx) => {
                 const isOpen = activeSection2 === idx;
                 const isDone = !!section.selected && !isOpen;
@@ -811,29 +813,31 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                     <button
                       type="button"
                       onClick={() => setActiveSection2(isOpen ? -1 : idx)}
-                      className="w-full flex items-center justify-between px-4 py-4 text-left"
+                      className="w-full flex items-center justify-between px-4 py-4 text-left bg-gray-50"
                     >
-                      <span className="text-sm font-semibold text-gray-800 flex items-center gap-1">
+                      <span className="text-[15px] font-semibold text-gray-700 flex items-center gap-1">
                         {section.title}
-                        {!isDone && <span className="text-red-400 text-xs">*</span>}
+                        <span className="text-red-400 text-xs">*</span>
                       </span>
-                      {isDone && (
-                        <span className="text-sm text-gold-600 font-medium">{section.displayValue}</span>
-                      )}
-                      <svg className={`w-4 h-4 text-gray-300 shrink-0 transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {isDone && (
+                          <span className="text-sm text-gold-600 font-medium">{section.displayValue}</span>
+                        )}
+                        <svg className={`w-4 h-4 text-gray-400 transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
                     </button>
 
                     <div style={{ display: "grid", gridTemplateRows: isOpen ? "1fr" : "0fr", transition: "grid-template-rows 300ms ease-in-out" }}>
                       <div className="overflow-hidden">
-                        <div className="border-t border-gray-100 divide-y divide-gray-100">
+                        <div className="border-t border-gray-200 divide-y divide-gray-100">
                           {section.options.map((opt) => (
                             <button
                               key={opt}
                               type="button"
                               onClick={() => section.onSelect(opt)}
-                              className={`w-full flex items-center justify-between px-4 py-3.5 text-left transition-colors ${section.selected === opt ? "bg-beige-50" : "hover:bg-gray-50"}`}
+                              className={`w-full flex items-center justify-between pl-8 pr-4 py-3.5 text-left transition-colors ${section.selected === opt ? "bg-beige-50" : "hover:bg-gray-50"}`}
                             >
                               <span className={`text-sm ${section.selected === opt ? "text-gold-600 font-medium" : "text-gray-800"}`}>{opt}</span>
                               <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${section.selected === opt ? "border-gold-500 bg-gold-500" : "border-gray-300"}`}>
@@ -901,7 +905,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                 추천 가능한 상품이 없습니다.
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-px bg-gray-300 -mx-4 md:mx-0 border border-gray-300">
+              <div className="grid grid-cols-2 gap-px bg-gray-200 -mx-4 md:mx-0">
                 {recommendations.map((product) => (
                   <button
                     key={product.id}
