@@ -15,8 +15,8 @@ export async function GET(req: NextRequest) {
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 30);
   const errorMessage = "잔액 부족";
-  const retryCount = 1;
-  const maxRetry = 2;
+  const retryCount = 1 as number;
+  const maxRetry = 2 as number;
 
   function header() {
     return `<!DOCTYPE html>
