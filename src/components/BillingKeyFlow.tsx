@@ -5,11 +5,12 @@ import { useState, useRef, useEffect, useCallback } from "react";
 interface Props {
   companyId: string;
   customerName: string;
-  subscriptionPlan: "starter" | "pro";
+  subscriptionPlan: "monthly" | "annual";
   onSuccess: () => void;
   onError?: (msg: string) => void;
   buttonLabel?: string;
   buttonClassName?: string;
+  buttonStyle?: React.CSSProperties;
   disabled?: boolean;
 }
 
@@ -147,6 +148,7 @@ export default function BillingKeyFlow({
   onError,
   buttonLabel = "결제 수단 등록",
   buttonClassName,
+  buttonStyle,
   disabled = false,
 }: Props) {
   const [showModal, setShowModal] = useState(false);
@@ -262,7 +264,7 @@ export default function BillingKeyFlow({
         onClick={openModal}
         disabled={disabled}
         className={buttonClassName ?? "w-full py-3 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"}
-        style={!buttonClassName ? { background: "#2c2416" } : undefined}
+        style={buttonStyle ?? (!buttonClassName ? { background: "#2c2416" } : undefined)}
       >
         {buttonLabel}
       </button>

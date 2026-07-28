@@ -51,12 +51,19 @@ export default function RootLoginForm() {
       return;
     }
 
-    // operator role 체크
+    // 정지 여부 + role 체크
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role")
+      .select("role, is_suspended, suspend_reason")
       .eq("user_id", authData.user.id)
       .single();
+
+    if (profile?.is_suspended) {
+      await supabase.auth.signOut();
+      setError(`${profile.suspend_reason ?? "정책 위반"}으로 계정이 정지되었습니다. 문의: floaide.team@gmail.com`);
+      setLoading(false);
+      return;
+    }
 
     if (profile?.role === "operator") {
       router.push("/admin/dashboard");

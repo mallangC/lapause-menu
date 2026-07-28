@@ -3,10 +3,10 @@
 import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { Product } from "@/types";
-import MainNav from "./MainNav";
+import { PRODUCT_TYPES, SEASONS } from "@/lib/constants";
 import HomeMasonry from "./HomeMasonry";
+import StoreHeader from "./StoreHeader";
 import FloAideFooter from "@/components/FloAideFooter";
 
 const POLICY_LINKS = [
@@ -27,6 +27,8 @@ interface MainLayoutProps {
   youtubeUrl?: string | null;
   hiddenProductTypes?: string[];
   customProductTypes?: string[];
+  hiddenSeasons?: string[];
+  customSeasons?: string[];
   consultEnabled?: boolean;
 }
 
@@ -42,6 +44,8 @@ export default function MainLayout({
   products = [],
   hiddenProductTypes = [],
   customProductTypes = [],
+  hiddenSeasons = [],
+  customSeasons = [],
   consultEnabled = false,
 }: MainLayoutProps) {
   const searchParams = useSearchParams();
@@ -53,27 +57,28 @@ export default function MainLayout({
 
   const hasChannels = locationUrl || kakaoChannelUrl || instagramUrl || youtubeUrl;
 
+  const productTypeList = [...PRODUCT_TYPES.filter((t) => !hiddenProductTypes.includes(t)), ...customProductTypes];
+  const seasonList = [...SEASONS.filter((s) => !hiddenSeasons.includes(s)), ...customSeasons];
 
-  const logo = logoImage ? (
-    <Image src={logoImage} alt={companyName} width={200} height={40} className="object-contain h-9 w-auto" />
-  ) : (
-    <span className="font-light tracking-widest text-gold-500 text-xl">{companyName}</span>
-  );
+  const visibleProducts = products.filter((p) => {
+    if (hiddenProductTypes.includes(p.product_type)) return false;
+    if (p.seasons.length > 0 && p.seasons.every((s) => hiddenSeasons.includes(s))) return false;
+    return true;
+  });
 
   return (
     <div className="min-h-screen bg-white" style={themeVars}>
-      {/* 헤더 + 서브탭 고정 */}
-      <div className="sticky top-0 z-40">
-        <header className="border-b border-gray-100 bg-white">
-          <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-center">
-            {slug ? <Link href={`/${slug}`}>{logo}</Link> : logo}
-          </div>
-        </header>
-        <MainNav slug={slug} consultEnabled={consultEnabled} />
-      </div>
+      <StoreHeader
+        slug={slug ?? ""}
+        companyName={companyName}
+        logoImage={logoImage ?? null}
+        productTypeList={productTypeList}
+        seasonList={seasonList}
+        consultEnabled={consultEnabled}
+      />
 
       {/* 추천/인기 상품 마소너리 */}
-      <HomeMasonry slug={slug ?? ""} products={products} />
+      <HomeMasonry slug={slug ?? ""} products={visibleProducts} />
 
       {/* 하단 */}
       <div className="bg-white mt-2">

@@ -14,7 +14,7 @@ interface Props {
   initialInstagramUrl: string | null;
   initialYoutubeUrl: string | null;
   initialPhone: string | null;
-  plan: "starter" | "pro" | "free";
+  plan: "monthly" | "annual" | "none" | "free";
   onSave: (name: string, logo: string | null, locationUrl: string | null, kakaoChannelUrl: string | null, instagramUrl: string | null, youtubeUrl: string | null) => void;
 }
 

@@ -18,7 +18,7 @@ export default function MainNav({ slug, activeTab, consultEnabled = false }: Mai
     <nav className="border-b border-gray-100 bg-white">
       <div className="max-w-6xl mx-auto px-2 flex justify-center gap-0">
         <Link href={`/${slug}/products`} className={tabClass(activeTab === "all")}>
-          전체
+          전체 상품
         </Link>
         <Link href={`/${slug}/products?tab=season`} className={tabClass(activeTab === "season")}>
           시즌

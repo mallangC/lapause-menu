@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
       .upsert(
         {
           company_id: companyId,
-          plan: "pro",
+          plan: subscriptionPlan,
           billing_key: billingKey,
           pg_provider: "toss",
           subscription_plan: subscriptionPlan,
@@ -97,9 +97,9 @@ export async function POST(req: NextRequest) {
   }
 
   // 재구독: 즉시 결제
-  const planAmount: Record<string, number> = { starter: 3900, pro: 9900 };
-  const amount = planAmount[subscriptionPlan] ?? 9900;
-  const planLabel = subscriptionPlan === "pro" ? "Pro" : "Starter";
+  const planAmount: Record<string, number> = { monthly: 14900, annual: 118800 };
+  const amount = planAmount[subscriptionPlan] ?? 14900;
+  const planLabel = subscriptionPlan === "annual" ? "연간" : "월간";
   const orderId = `r${companyId.replace(/-/g, "").slice(0, 20)}${Date.now().toString().slice(-8)}`;
 
   // 빌링키 먼저 저장 후 결제
@@ -146,7 +146,7 @@ export async function POST(req: NextRequest) {
       type: "charge",
       plan: subscriptionPlan,
       amount,
-      portone_payment_id: null,
+      payment_id: null,
       success: false,
       error_message: (payError as { message?: string }).message ?? "결제 실패",
     });
@@ -166,7 +166,7 @@ export async function POST(req: NextRequest) {
       type: "charge",
       plan: subscriptionPlan,
       amount,
-      portone_payment_id: null,
+      payment_id: null,
       success: false,
       error_message: payData.message ?? "결제 실패",
     });
@@ -174,9 +174,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: payData.message ?? "결제에 실패했습니다." }, { status: 400 });
   }
 
-  // 결제 성공: plan_expires_at 30일 설정
+  // 결제 성공: plan_expires_at 설정 (월간 30일, 연간 365일)
   const expiresAt = new Date(now);
-  expiresAt.setDate(expiresAt.getDate() + 30);
+  if (subscriptionPlan === "annual") {
+    expiresAt.setDate(expiresAt.getDate() + 365);
+  } else {
+    expiresAt.setDate(expiresAt.getDate() + 30);
+  }
 
   await Promise.all([
     supabase
@@ -193,7 +197,7 @@ export async function POST(req: NextRequest) {
       type: "charge",
       plan: subscriptionPlan,
       amount,
-      portone_payment_id: payData.paymentKey ?? orderId,
+      payment_id: payData.paymentKey ?? orderId,
       success: true,
       reason: "재구독 즉시 결제",
     }),

@@ -25,8 +25,8 @@ export default async function OnboardingPage({ params }: Props) {
   const sub = raw.subscription as { plan?: string; subscription_plan?: string } | null;
   const plan = sub?.plan ?? "none";
   if (!plan || plan === "none") redirect("/plan");
+  // free 플랜도 온보딩 허용
 
-  // 실제 선택한 요금제 (starter / pro) — 온보딩 스텝 분기에 사용
   const subscriptionPlan = sub?.subscription_plan ?? plan;
 
   return (

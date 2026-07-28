@@ -93,6 +93,8 @@ export default async function CompanyMenuPage({ params }: Props) {
         youtubeUrl={(s.youtube_url as string | null) ?? null}
         hiddenProductTypes={[...((s.hidden_product_types as string[]) ?? []), ...hiddenCustomProductTypes]}
         customProductTypes={customProductTypes}
+        hiddenSeasons={[...((s.hidden_seasons as string[]) ?? []), ...hiddenCustomSeasons]}
+        customSeasons={customSeasons}
         consultEnabled={(s.consult_enabled as boolean) ?? false}
       />
     </Suspense>

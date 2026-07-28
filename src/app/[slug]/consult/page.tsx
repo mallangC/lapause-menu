@@ -18,9 +18,10 @@ export default async function ConsultPage({ params, searchParams }: Props) {
     .select(`
       id, name,
       settings:company_settings(
-        business_hours, closed_dates, notification_email, min_lead_times,
+        logo_image, business_hours, closed_dates, notification_email, min_lead_times,
         consult_notice, address, delivery_enabled, delivery_fees, consult_enabled,
-        message_card_enabled, message_card_price, shopping_bag_enabled, shopping_bag_price
+        message_card_enabled, message_card_price, shopping_bag_enabled, shopping_bag_price,
+        hidden_product_types, hidden_seasons
       )
     `)
     .eq("slug", slug)
@@ -37,6 +38,23 @@ export default async function ConsultPage({ params, searchParams }: Props) {
     .eq("status", "active")
     .order("price", { ascending: true });
 
+  const { data: customCats } = await supabase
+    .from("company_categories")
+    .select("category_type, name, hidden")
+    .eq("company_id", raw.id);
+
+  const { PRODUCT_TYPES, SEASONS } = await import("@/lib/constants");
+  const hiddenProductTypes = (s.hidden_product_types as string[] | null) ?? [];
+  const hiddenSeasons = (s.hidden_seasons as string[] | null) ?? [];
+  const customProductTypes = (customCats ?? [])
+    .filter((c) => c.category_type === "product_type" && !c.hidden)
+    .map((c) => c.name as string);
+  const customSeasons = (customCats ?? [])
+    .filter((c) => c.category_type === "season" && !c.hidden)
+    .map((c) => c.name as string);
+  const productTypeList = [...PRODUCT_TYPES.filter((t) => !hiddenProductTypes.includes(t)), ...customProductTypes];
+  const seasonList = [...SEASONS.filter((s2) => !hiddenSeasons.includes(s2)), ...customSeasons];
+
   const allProducts = (products as Product[]) ?? [];
   const preselectedProduct = productId ? allProducts.find((p) => p.id === productId) ?? null : null;
 
@@ -44,6 +62,9 @@ export default async function ConsultPage({ params, searchParams }: Props) {
     <ConsultClient
       slug={slug}
       companyName={raw.name}
+      logoImage={(s.logo_image as string | null) ?? null}
+      productTypeList={productTypeList}
+      seasonList={seasonList}
       notificationEmail={(s.notification_email as string | null) ?? null}
       products={allProducts}
       businessHours={(s.business_hours as Record<string, { closed: boolean; open: string; close: string }>) ?? {}}

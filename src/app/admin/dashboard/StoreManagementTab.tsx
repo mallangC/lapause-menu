@@ -7,6 +7,10 @@ interface StoreRow {
   name: string;
   slug: string;
   ownerName: string | null;
+  ownerPhone: string | null;
+  ownerUserId: string | null;
+  isSuspended: boolean;
+  suspendReason: string | null;
   plan: string | null;
   billingKey: string | null;
   planExpiresAt: string | null;
@@ -27,13 +31,19 @@ export default function StoreManagementTab({ stores }: Props) {
   const [refunding, setRefunding] = useState(false);
   const [refundError, setRefundError] = useState<string | null>(null);
   const [refundSuccess, setRefundSuccess] = useState<string | null>(null);
+  const [suspendTarget, setSuspendTarget] = useState<StoreRow | null>(null);
+  const [suspendReason, setSuspendReason] = useState("");
+  const [suspending, setSuspending] = useState(false);
+  const [suspendError, setSuspendError] = useState<string | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [localStores, setLocalStores] = useState<StoreRow[]>(stores);
 
   const filtered = search.trim()
     ? localStores.filter(s =>
         s.name.includes(search) ||
         s.slug.includes(search) ||
-        (s.ownerName ?? "").includes(search)
+        (s.ownerName ?? "").includes(search) ||
+        (s.ownerPhone ?? "").includes(search)
       )
     : localStores;
 
@@ -101,6 +111,46 @@ export default function StoreManagementTab({ stores }: Props) {
     setRefundSuccess(null);
   };
 
+  const handleSuspend = async () => {
+    if (!suspendTarget?.ownerUserId) return;
+    const isSuspending = !suspendTarget.isSuspended;
+    if (isSuspending && !suspendReason.trim()) return;
+
+    setSuspending(true);
+    setSuspendError(null);
+
+    try {
+      const res = await fetch("/api/operator/suspend", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: suspendTarget.ownerUserId,
+          suspend: isSuspending,
+          reason: isSuspending ? suspendReason.trim() : null,
+        }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setSuspendError(data.error ?? "처리 중 오류가 발생했습니다.");
+      } else {
+        setLocalStores(prev =>
+          prev.map(s =>
+            s.id === suspendTarget.id
+              ? { ...s, isSuspended: isSuspending, suspendReason: isSuspending ? suspendReason.trim() : null }
+              : s
+          )
+        );
+        setSuspendTarget(null);
+        setSuspendReason("");
+      }
+    } catch {
+      setSuspendError("네트워크 오류가 발생했습니다.");
+    } finally {
+      setSuspending(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* 검색 */}
@@ -112,7 +162,7 @@ export default function StoreManagementTab({ stores }: Props) {
           type="text"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="매장명, slug, 관리자 이름으로 검색"
+          placeholder="매장명, slug, 담당자 이름·번호로 검색"
           className="w-full text-sm text-gray-700 outline-none placeholder-gray-300"
         />
         {search && (
@@ -128,75 +178,100 @@ export default function StoreManagementTab({ stores }: Props) {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 text-xs text-gray-400">
-                <th className="text-left px-5 py-3 font-medium whitespace-nowrap">매장명</th>
-                <th className="text-left px-5 py-3 font-medium whitespace-nowrap">slug</th>
-                <th className="text-left px-5 py-3 font-medium whitespace-nowrap">관리자</th>
-                <th className="text-left px-5 py-3 font-medium whitespace-nowrap">플랜</th>
-                <th className="text-left px-5 py-3 font-medium whitespace-nowrap">결제일</th>
-                <th className="text-left px-5 py-3 font-medium whitespace-nowrap">만료일</th>
-                <th className="text-left px-5 py-3 font-medium whitespace-nowrap">빌링키</th>
-                <th className="px-5 py-3 font-medium"></th>
+                <th className="text-center px-5 py-3 font-medium whitespace-nowrap">매장명</th>
+                <th className="text-center px-5 py-3 font-medium whitespace-nowrap">slug</th>
+                <th className="text-center px-5 py-3 font-medium whitespace-nowrap">담당자</th>
+                <th className="text-center px-5 py-3 font-medium whitespace-nowrap">플랜</th>
+                <th className="text-center px-5 py-3 font-medium whitespace-nowrap">결제일</th>
+                <th className="text-center px-5 py-3 font-medium whitespace-nowrap">만료일</th>
+                <th className="text-center px-5 py-3 font-medium whitespace-nowrap">관리</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {rows.map((store, i) =>
                 store ? (
-                  <tr key={store.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-5 py-3.5 font-medium text-gray-900 whitespace-nowrap">{store.name}</td>
-                    <td className="px-5 py-3.5 text-xs">
+                  <tr key={store.id} className={`hover:bg-gray-50 transition-colors ${store.isSuspended ? "bg-orange-50/50" : ""}`}>
+                    <td className="px-5 py-3.5 text-center whitespace-nowrap">
+                      <span className="font-medium text-gray-900">{store.name}</span>
+                      {store.isSuspended && (
+                        <span className="ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600">정지</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3.5 text-center text-xs">
                       <a href={`/${store.slug}`} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-600 hover:underline">
                         /{store.slug}
                       </a>
                     </td>
-                    <td className="px-5 py-3.5 text-gray-500 whitespace-nowrap">
-                      {store.ownerName ?? <span className="text-gray-300">—</span>}
+                    <td className="px-5 py-3.5 text-center text-gray-500 whitespace-nowrap">
+                      <div>{store.ownerName ?? <span className="text-gray-300">—</span>}</div>
+                      {store.ownerPhone && (
+                        <div className="text-xs text-gray-400 mt-0.5">{store.ownerPhone}</div>
+                      )}
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-5 py-3.5 text-center">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                        store.plan === "pro" ? "bg-gold-100 text-gold-600" :
-                        store.plan === "starter" ? "bg-blue-50 text-blue-600" :
+                        store.plan === "annual" ? "bg-gold-100 text-gold-600" :
+                        store.plan === "monthly" ? "bg-blue-50 text-blue-600" :
                         store.plan === "free" ? "bg-green-50 text-green-600" :
                         "bg-gray-100 text-gray-400"
                       }`}>
-                        {store.subscriptionPlan === "pro" ? "Pro" : store.subscriptionPlan === "starter" ? "Starter" : store.plan === "free" ? "Free" : "—"}
+                        {store.subscriptionPlan === "annual" ? "연간" : store.subscriptionPlan === "monthly" ? "월간" : store.plan === "free" ? "Free" : "—"}
                       </span>
                     </td>
-                    <td className="px-5 py-3.5 text-gray-500 whitespace-nowrap">
+                    <td className="px-5 py-3.5 text-center text-gray-900 whitespace-nowrap">
                       {getPaymentDate(store) ?? <span className="text-gray-300">—</span>}
                     </td>
-                    <td className="px-5 py-3.5 text-gray-500 whitespace-nowrap">
+                    <td className="px-5 py-3.5 text-center text-gray-900 whitespace-nowrap">
                       {getExpiryDate(store) ? (
-                        <span className={new Date(store.planExpiresAt ?? store.trialEndsAt ?? "") < new Date() ? "text-red-400" : ""}>
+                        <>
                           {getExpiryDate(store)}
                           {store.trialEndsAt && !store.planExpiresAt && (
-                            <span className="ml-1 text-xs text-gray-300">(체험)</span>
+                            <span className="ml-1 text-xs text-gray-900">(체험)</span>
                           )}
-                        </span>
+                        </>
                       ) : (
                         <span className="text-gray-300">—</span>
                       )}
                     </td>
-                    <td className="px-5 py-3.5">
-                      {store.billingKey ? (
-                        <span className="text-xs text-green-600 font-medium">있음</span>
-                      ) : (
-                        <span className="text-xs text-gray-300">없음</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3.5">
-                      {store.billingKey && (
-                        <button
-                          onClick={() => setRefundTarget(store)}
-                          className="text-xs px-3 py-1.5 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition-colors whitespace-nowrap"
-                        >
-                          환불
-                        </button>
+                    <td className="px-5 py-3.5 text-center relative">
+                      <button
+                        onClick={() => setOpenMenuId(openMenuId === store.id ? null : store.id)}
+                        className="w-7 h-7 inline-flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                          <circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/>
+                        </svg>
+                      </button>
+                      {openMenuId === store.id && (
+                        <>
+                          <div className="fixed inset-0 z-10" onClick={() => setOpenMenuId(null)} />
+                          <div className="absolute right-4 top-10 z-20 w-32 bg-white border border-gray-100 rounded-xl shadow-lg py-1 overflow-hidden">
+                            {store.billingKey && (
+                              <button
+                                onClick={() => { setOpenMenuId(null); setRefundTarget(store); }}
+                                className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors"
+                              >
+                                환불
+                              </button>
+                            )}
+                            {store.ownerUserId && (
+                              <button
+                                onClick={() => { setOpenMenuId(null); setSuspendTarget(store); setSuspendReason(""); setSuspendError(null); }}
+                                className={`w-full text-left px-4 py-2 text-sm transition-colors ${
+                                  store.isSuspended ? "text-gray-600 hover:bg-gray-50" : "text-orange-500 hover:bg-orange-50"
+                                }`}
+                              >
+                                {store.isSuspended ? "정지 해제" : "정지"}
+                              </button>
+                            )}
+                          </div>
+                        </>
                       )}
                     </td>
                   </tr>
                 ) : (
                   <tr key={`empty-${i}`} className="h-[52px]">
-                    <td colSpan={8} />
+                    <td colSpan={7} />
                   </tr>
                 )
               )}
@@ -204,6 +279,67 @@ export default function StoreManagementTab({ stores }: Props) {
           </table>
         </div>
       </div>
+
+      {/* 정지 모달 */}
+      {suspendTarget && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 space-y-4 shadow-xl">
+            <div>
+              <h3 className="text-base font-semibold text-gray-900">
+                {suspendTarget.isSuspended ? "정지 해제" : "계정 정지"}
+              </h3>
+              <p className="text-sm text-gray-500 mt-1">
+                <span className="font-medium text-gray-700">{suspendTarget.name}</span>
+                {suspendTarget.isSuspended
+                  ? "의 계정 정지를 해제합니다."
+                  : "의 계정을 정지합니다. 해당 계정으로 로그인이 불가합니다."}
+              </p>
+            </div>
+
+            {!suspendTarget.isSuspended && (
+              <div>
+                <label className="text-xs font-medium text-gray-500 mb-1.5 block">정지 사유</label>
+                <textarea
+                  value={suspendReason}
+                  onChange={e => setSuspendReason(e.target.value)}
+                  placeholder="사유를 입력하세요 (로그인 시 사용자에게 표시됩니다)"
+                  rows={3}
+                  className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-gray-400 resize-none placeholder-gray-300"
+                />
+              </div>
+            )}
+
+            {suspendTarget.isSuspended && suspendTarget.suspendReason && (
+              <div className="bg-orange-50 border border-orange-100 rounded-xl px-3 py-2.5">
+                <p className="text-xs text-gray-500 mb-0.5">현재 정지 사유</p>
+                <p className="text-sm text-gray-700">{suspendTarget.suspendReason}</p>
+              </div>
+            )}
+
+            {suspendError && (
+              <p className="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2">{suspendError}</p>
+            )}
+
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => setSuspendTarget(null)}
+                className="flex-1 text-sm px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleSuspend}
+                disabled={suspending || (!suspendTarget.isSuspended && !suspendReason.trim())}
+                className={`flex-1 text-sm px-4 py-2.5 rounded-xl text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                  suspendTarget.isSuspended ? "bg-gray-700 hover:bg-gray-800" : "bg-orange-500 hover:bg-orange-600"
+                }`}
+              >
+                {suspending ? "처리 중…" : suspendTarget.isSuspended ? "정지 해제" : "정지 확인"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 환불 모달 */}
       {refundTarget && (

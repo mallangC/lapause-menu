@@ -48,27 +48,14 @@ interface Props {
   hiddenProductTypes: string[];
   hiddenSeasons: string[];
   consultEnabled: boolean;
-  plan: "starter" | "pro" | "free";
-  subscriptionPlan: "starter" | "pro" | null;
+  plan: "monthly" | "annual" | "none" | "free";
+  subscriptionPlan: "monthly" | "annual" | null;
   cancelAtPeriodEnd: boolean;
   trialEndsAt: string | null;
   planExpiresAt: string | null;
   hasBillingKey: boolean;
 }
 
-function ProGate() {
-  return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="w-12 h-12 rounded-full bg-gold-50 flex items-center justify-center mb-4">
-        <svg className="w-6 h-6 text-gold-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
-        </svg>
-      </div>
-      <p className="text-sm font-semibold text-gray-800 mb-1">Pro 플랜에서 이용할 수 있습니다</p>
-      <p className="text-xs text-gray-400">요금제 탭에서 Pro로 업그레이드하세요.</p>
-    </div>
-  );
-}
 
 export default function DashboardClient({ slug, userId, userEmail, isOAuth, profileName, profilePhone, companyId, companyName, logoImage, themeBg, themeAccent, initialProducts, homeFeaturedImage, homeAllImage, homeSeasonImage, homeConsultImage, locationUrl, kakaoChannelUrl, instagramUrl, youtubeUrl, companyPhone, hiddenProductTypes, hiddenSeasons, consultEnabled, plan, subscriptionPlan, cancelAtPeriodEnd, trialEndsAt, planExpiresAt, hasBillingKey }: Props) {
   const searchParams = useSearchParams();
@@ -93,7 +80,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
   const [currentConsultEnabled, setCurrentConsultEnabled] = useState(consultEnabled);
   const [reservationStatusFilter, setReservationStatusFilter] = useState<string | undefined>(undefined);
   const [allReservations, setAllReservations] = useState<Reservation[]>([]);
-  const [reservationsLoading, setReservationsLoading] = useState(plan !== "starter");
+  const [reservationsLoading, setReservationsLoading] = useState(true);
   const supabase = createClient();
 
   useEffect(() => {
@@ -102,7 +89,6 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
   }, [showForm, editingProduct]);
 
   useEffect(() => {
-    if (plan === "starter") return;
     setReservationsLoading(true);
     supabase
       .from("reservations")
@@ -199,7 +185,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
   const isSettingsTab = settingsTabs.some((t) => t.key === activeTab);
 
   return (
-    <div className="min-h-screen bg-beige-100 flex flex-col" style={themeVars as React.CSSProperties}>
+    <div className="min-h-screen bg-gray-100 flex flex-col" style={themeVars as React.CSSProperties}>
       <header className="border-b border-gray-200 bg-white shrink-0 sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link href={`/${slug}`} className="text-lg font-medium text-gray-900 hover:text-gray-600 transition-colors">
@@ -391,17 +377,15 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
 
           {activeTab === "reservations" && (
             <div className="bg-white border border-gray-200 rounded-xl p-6">
-              {plan === "starter" ? <ProGate /> : (
-                <ReservationsTab
-                  companyId={companyId}
-                  allReservations={allReservations}
-                  setAllReservations={setAllReservations}
-                  loading={reservationsLoading}
-                  onRefresh={fetchReservations}
-                  initialStatusFilter={reservationStatusFilter}
-                  onClearStatusFilter={() => setReservationStatusFilter(undefined)}
-                />
-              )}
+              <ReservationsTab
+                companyId={companyId}
+                allReservations={allReservations}
+                setAllReservations={setAllReservations}
+                loading={reservationsLoading}
+                onRefresh={fetchReservations}
+                initialStatusFilter={reservationStatusFilter}
+                onClearStatusFilter={() => setReservationStatusFilter(undefined)}
+              />
             </div>
           )}
 
@@ -469,19 +453,17 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
 
           {activeTab === "business" && (
             <div className="bg-white border border-gray-200 rounded-xl p-6">
-              {plan === "starter" ? <ProGate /> : <BusinessSettingsTab companyId={companyId} />}
+              <BusinessSettingsTab companyId={companyId} />
             </div>
           )}
 
           {activeTab === "reservation" && (
             <div className="bg-white border border-gray-200 rounded-xl p-6">
-              {plan === "starter" ? <ProGate /> : (
-                <ReservationSettingsTab
-                  companyId={companyId}
-                  onConsultToggle={handleConsultToggle}
-                  onGoToOrderSettings={() => setActiveTab("ordersettings")}
-                />
-              )}
+              <ReservationSettingsTab
+                companyId={companyId}
+                onConsultToggle={handleConsultToggle}
+                onGoToOrderSettings={() => setActiveTab("ordersettings")}
+              />
             </div>
           )}
 

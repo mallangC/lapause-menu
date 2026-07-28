@@ -32,29 +32,36 @@ export default function HomeMasonry({ slug, products }: HomeMasonryProps) {
   const router = useRouter();
 
   const featured = products.filter((p) => p.is_recommended || p.is_popular);
-  const rest = products.filter((p) => !p.is_recommended && !p.is_popular);
-  const display = [...featured, ...rest].slice(0, 16);
+  const display = (featured.length > 0 ? featured : products).slice(0, 16);
 
-  if (display.length === 0) return null;
+  if (display.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 px-8 text-center">
+        <span className="text-7xl mb-6">🌸</span>
+        <p className="text-3xl font-semibold text-gray-700 mb-3">준비중입니다</p>
+        <p className="text-base text-gray-400">곧 멋진 상품들을 선보일게요</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="px-2 py-3 columns-2 gap-2">
-      {/* 헤더 카드 — 왼쪽 상단 정사각형 */}
-      <div className="break-inside-avoid mb-2">
-        <div className="aspect-square rounded-xl flex flex-col items-center justify-center gap-1 px-4" style={{ background: "linear-gradient(135deg, #c8a96e 0%, #a07840 100%)" }}>
-          <span className="text-4xl">💐</span>
-          <p className="text-2xl font-bold text-white text-center leading-snug">인기 · 추천 상품</p>
-          <p className="text-base text-white/70 text-center leading-relaxed">마음에 드는 상품을 클릭해보세요</p>
+    <div className="columns-1 sm:columns-2 gap-0">
+      {/* 헤더 카드 */}
+      <div className="break-inside-avoid">
+        <div className="aspect-[2/1] sm:aspect-square flex flex-col items-center justify-center gap-1 px-4" style={{ background: "linear-gradient(135deg, #c8a96e 0%, #a07840 100%)" }}>
+          <span className="text-3xl sm:text-4xl">💐</span>
+          <p className="text-lg sm:text-2xl font-bold text-white text-center leading-snug">인기 · 추천 상품</p>
+          <p className="text-xs sm:text-base text-white/70 text-center leading-relaxed">인기 많고, 사장님이 추천하는 상품입니다</p>
         </div>
       </div>
 
       {display.map((product, i) => (
         <div
           key={product.id}
-          className="break-inside-avoid mb-2 cursor-pointer"
+          className="break-inside-avoid cursor-pointer"
           onClick={() => router.push(`/${slug}/products/${product.id}`)}
         >
-          <div className={`relative ${ASPECTS[i % ASPECTS.length]} rounded-xl overflow-hidden bg-beige-200`}>
+          <div className={`relative ${ASPECTS[i % ASPECTS.length]} overflow-hidden bg-beige-200`}>
             {product.image_url ? (
               <Image
                 src={product.image_url}
@@ -79,15 +86,15 @@ export default function HomeMasonry({ slug, products }: HomeMasonryProps) {
       ))}
 
       {/* 맞춤 주문 카드 */}
-      <div className="break-inside-avoid mb-2">
+      <div className="break-inside-avoid">
         <button
           onClick={() => router.push(`/${slug}/consult`)}
-          className="w-full aspect-square rounded-xl flex flex-col items-center justify-center gap-3 px-4 cursor-pointer"
+          className="w-full aspect-[2/1] sm:aspect-square flex flex-col items-center justify-center gap-3 px-4 cursor-pointer"
           style={{ background: "linear-gradient(135deg, #2c2416 0%, #4a3c28 100%)" }}
         >
-          <span className="text-4xl">✨</span>
-          <p className="text-xl font-bold text-white text-center leading-snug">맞춤 주문</p>
-          <p className="text-sm text-white/70 text-center leading-relaxed">내가 원하는 상품을<br />찾아보세요</p>
+          <span className="text-3xl sm:text-4xl">✨</span>
+          <p className="text-lg sm:text-2xl font-bold text-white text-center leading-snug">맞춤 주문</p>
+          <p className="text-xs sm:text-base text-white/70 text-center leading-relaxed">내가 원하는 상품을 찾아보세요</p>
         </button>
       </div>
     </div>

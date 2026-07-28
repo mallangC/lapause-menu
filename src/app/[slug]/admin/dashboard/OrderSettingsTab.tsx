@@ -8,22 +8,10 @@ import { formatPhone, parsePhone } from "@/lib/format";
 
 interface Props {
   companyId: string;
-  plan: "starter" | "pro" | "free";
+  plan: "monthly" | "annual" | "none" | "free";
 }
 
-function ProGate() {
-  return (
-    <div className="absolute inset-0 z-10 rounded-xl bg-white/80 backdrop-blur-[2px] flex flex-col items-center justify-center gap-2 text-center px-4">
-      <svg className="w-5 h-5 text-gold-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
-      </svg>
-      <p className="text-sm font-semibold text-gray-800">Pro 플랜에서 이용 가능합니다</p>
-      <p className="text-xs text-gray-400">요금제 탭에서 Pro로 업그레이드하세요.</p>
-    </div>
-  );
-}
-
-export default function OrderSettingsTab({ companyId, plan }: Props) {
+export default function OrderSettingsTab({ companyId, plan: _plan }: Props) {
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [addressDetail, setAddressDetail] = useState("");
@@ -367,10 +355,9 @@ export default function OrderSettingsTab({ companyId, plan }: Props) {
           <p className="text-xs text-gray-400 mt-3">계좌번호를 잘못 적어서 생기는 불이익은 책임지지 않습니다.</p>
         </div>
 
-        {/* Pro 전용: 통장사본, 사업자등록증, 사업자 정보, 맞춤 주문 신청 */}
+        {/* 통장사본, 사업자등록증, 사업자 정보, 맞춤 주문 신청 */}
         <div className="relative">
-          {plan === "starter" && <ProGate />}
-          <div className={plan === "starter" ? "pointer-events-none select-none" : ""}>
+          <div>
 
             {/* 통장사본 */}
             <div className={disabledByConsult ? "opacity-50 pointer-events-none select-none" : ""}>
