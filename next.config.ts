@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  devIndicators: false,
   serverExternalPackages: ["solapi"],
   env: {
     NEXT_PUBLIC_PORTONE_STORE_ID: "store-7c632ee3-f3ec-47d9-9c8c-bb3f28b36924",

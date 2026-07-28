@@ -150,9 +150,11 @@ export default function BillingLogsTab({ logs }: Props) {
                   <td className="px-5 py-3.5">
                     {log.plan ? (
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                        log.plan === "pro" ? "bg-gold-100 text-gold-600" : "bg-gray-100 text-gray-500"
+                        log.plan === "annual" ? "bg-gold-100 text-gold-600" :
+                        log.plan === "monthly" ? "bg-blue-50 text-blue-600" :
+                        "bg-gray-100 text-gray-500"
                       }`}>
-                        {log.plan === "pro" ? "Pro" : "Starter"}
+                        {log.plan === "annual" ? "연간" : log.plan === "monthly" ? "월간" : log.plan}
                       </span>
                     ) : <span className="text-gray-300">—</span>}
                   </td>

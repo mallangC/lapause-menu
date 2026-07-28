@@ -18,7 +18,7 @@ export default function RefundPage() {
         <div>
           <p className="text-xs font-semibold tracking-[0.2em] text-gold-500 uppercase mb-3">Refund Policy</p>
           <h1 className="text-2xl font-light text-gray-900 mb-2">환불 정책</h1>
-          <p className="text-sm text-gray-400">최종 업데이트: 2026년 4월 11일</p>
+          <p className="text-sm text-gray-400">최종 업데이트: 2026년 7월 18일</p>
         </div>
 
         {/* 일반 소비자 (맞춤 주문·예약 결제) */}
@@ -81,13 +81,13 @@ export default function RefundPage() {
           </div>
         </div>
 
-        {/* 구독 회원 (Starter / Pro 플랜) */}
+        {/* 구독 회원 (월간 · 연간 플랜) */}
         <div>
           <div className="flex items-center gap-2 mb-3 mt-4">
             <span className="text-xs font-bold tracking-widest uppercase px-2.5 py-1 rounded-full bg-gold-400/15 text-gold-600">
               구독 회원
             </span>
-            <span className="text-xs text-gray-400">Starter · Pro 플랜 이용 시</span>
+            <span className="text-xs text-gray-400">월간 · 연간 플랜 이용 시</span>
           </div>
 
           <div className="space-y-4 text-sm text-gray-600 leading-relaxed">
@@ -103,27 +103,41 @@ export default function RefundPage() {
             </section>
 
             <section className="bg-white rounded-2xl border border-beige-200 p-6 space-y-3">
-              <h2 className="font-semibold text-gray-900 text-base">3. 환불 불가 사유</h2>
+              <h2 className="font-semibold text-gray-900 text-base">3. 월간 플랜 환불</h2>
+              <p>월간 플랜은 결제 후 서비스 이용이 즉시 개시되므로 원칙적으로 환불이 제한됩니다.</p>
               <ul className="list-disc list-inside space-y-1.5">
-                <li>구독 기간이 시작된 이후 단순 변심</li>
-                <li>서비스를 실제로 이용한 경우</li>
-                <li>회원 본인의 귀책사유로 서비스 이용이 불가능해진 경우</li>
+                <li>서비스 측 귀책사유가 확인된 경우 전액 환불 처리됩니다.</li>
+                <li>이 외 환불은 운영팀의 판단에 따라 처리됩니다.</li>
               </ul>
             </section>
 
             <section className="bg-white rounded-2xl border border-beige-200 p-6 space-y-3">
-              <h2 className="font-semibold text-gray-900 text-base">4. 환불 가능한 경우</h2>
-              <ul className="list-disc list-inside space-y-1.5">
-                <li>서비스 측 귀책사유로 7일 이상 서비스가 정상 제공되지 않은 경우</li>
-                <li>결제는 완료되었으나 서비스 이용이 전혀 개시되지 않은 경우</li>
-                <li>중복 결제 등 명백한 오류가 발생한 경우</li>
-              </ul>
-              <p>위 사유에 해당하면 이메일(<span className="text-gray-800">floaide.team@gmail.com</span>)로 문의해 주시면 확인 후 처리해 드립니다.</p>
+              <h2 className="font-semibold text-gray-900 text-base">4. 연간 플랜 환불</h2>
+              <p>연간 플랜은 아래 기준에 따라 부분환불 또는 전액환불이 가능합니다.</p>
+              <div className="bg-beige-50 rounded-xl p-4 space-y-2">
+                <p className="font-semibold text-gray-700 text-[13px]">부분환불 계산 방식</p>
+                <p className="text-[13px]">환불액 = 연간 결제 금액(₩118,800) − 사용 개월수 × ₩14,900</p>
+                <p className="text-xs text-gray-400">· 사용 개월수는 결제일로부터 올림 계산합니다. (예: 3개월 1일 이용 시 → 4개월로 산정)</p>
+                <p className="text-xs text-gray-400">· 공제 금액은 할인이 적용되지 않은 월간 정가(₩14,900)를 기준으로 합니다.</p>
+              </div>
+              <div className="bg-beige-50 rounded-xl p-4 space-y-2">
+                <p className="font-semibold text-gray-700 text-[13px]">전액환불</p>
+                <p className="text-xs text-gray-400">서비스 측 귀책사유로 7일 이상 정상 서비스가 제공되지 않은 경우, 또는 중복 결제 등 명백한 오류가 확인된 경우에 한해 전액환불이 가능합니다.</p>
+              </div>
             </section>
 
             <section className="bg-white rounded-2xl border border-beige-200 p-6 space-y-3">
               <h2 className="font-semibold text-gray-900 text-base">5. 구독 해지</h2>
-              <p>구독은 언제든지 해지할 수 있으며, 해지 후에도 현재 결제된 구독 기간 만료일까지 서비스를 이용할 수 있습니다. 잔여 기간에 대한 환불은 제공되지 않습니다.</p>
+              <p>구독은 언제든지 해지할 수 있으며, 해지 후에도 현재 결제된 구독 기간 만료일까지 서비스를 이용할 수 있습니다. 잔여 기간에 대한 환불은 위 항목의 환불 조건에 해당하는 경우에만 가능합니다.</p>
+            </section>
+
+            <section className="bg-white rounded-2xl border border-beige-200 p-6 space-y-3">
+              <h2 className="font-semibold text-gray-900 text-base">6. 환불 불가 사유</h2>
+              <ul className="list-disc list-inside space-y-1.5">
+                <li>구독 기간이 시작된 이후 단순 변심</li>
+                <li>서비스를 실제로 이용한 경우 (부분환불 조건 해당 시 제외)</li>
+                <li>회원 본인의 귀책사유로 서비스 이용이 불가능해진 경우</li>
+              </ul>
             </section>
           </div>
         </div>

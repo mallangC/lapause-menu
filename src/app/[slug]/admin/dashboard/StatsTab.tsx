@@ -33,10 +33,10 @@ const CHANNEL_COLORS: Record<string, string> = {
 
 function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-      <p className="text-xs text-gray-400 mb-1">{label}</p>
-      <p className="text-2xl font-semibold text-gray-900">{value}</p>
-      {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
+    <div className="bg-white border border-gray-100 rounded-2xl p-3 md:p-5 shadow-sm flex items-center justify-between md:block">
+      <p className="text-xs text-gray-400 md:mb-1">{label}{sub && <span className="ml-1.5 text-gray-300 md:hidden">· {sub}</span>}</p>
+      <p className="text-base md:text-2xl font-semibold text-gray-900 truncate">{value}</p>
+      {sub && <p className="text-xs text-gray-400 mt-1 hidden md:block">{sub}</p>}
     </div>
   );
 }
@@ -152,7 +152,7 @@ export default function StatsTab({ companyId }: Props) {
       {/* 이번 달 요약 */}
       <section>
         <h3 className="text-sm font-semibold text-gray-500 mb-3 uppercase tracking-wide">이번 달 요약</h3>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
           <StatCard
             label="총 매출"
             value={`${totalRevenue.toLocaleString()}원`}
@@ -198,21 +198,21 @@ export default function StatsTab({ companyId }: Props) {
       </section>
 
       {/* 채널별 / 수령방법 */}
-      <section className="grid grid-cols-2 gap-6">
+      <section className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
         <div>
-          <h3 className="text-sm font-semibold text-gray-500 mb-4 uppercase tracking-wide">채널별 비율</h3>
-          <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+          <h3 className="text-sm font-semibold text-gray-500 mb-3 md:mb-4">채널별 비율</h3>
+          <div className="bg-white border border-gray-100 rounded-2xl p-4 md:p-5 shadow-sm">
             {channelData.length === 0 ? (
               <p className="text-sm text-gray-400 text-center py-8">데이터 없음</p>
             ) : (
-              <ResponsiveContainer width="100%" height={220}>
+              <ResponsiveContainer width="100%" height={200}>
                 <PieChart>
                   <Pie
                     data={channelData}
                     cx="50%"
-                    cy="45%"
-                    innerRadius={50}
-                    outerRadius={80}
+                    cy="42%"
+                    innerRadius={45}
+                    outerRadius={70}
                     paddingAngle={3}
                     dataKey="value"
                   >
@@ -220,12 +220,8 @@ export default function StatsTab({ companyId }: Props) {
                       <Cell key={i} fill={CHANNEL_COLORS[entry.name] ?? COLORS[i % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(v) => { const total = channelData.reduce((s, d) => s + d.value, 0); const pct = total > 0 ? ((Number(v) / total) * 100).toFixed(0) : 0; return [`${Number(v)}건 (${pct}%)`]; }} contentStyle={{ borderRadius: "10px", border: "1px solid #ede8e0", fontSize: 13 }} />
-                  <Legend
-                    iconType="circle"
-                    iconSize={8}
-                    formatter={(value) => <span style={{ fontSize: 12, color: "#555" }}>{value}</span>}
-                  />
+                  <Tooltip formatter={(v) => { const total = channelData.reduce((s, d) => s + d.value, 0); const pct = total > 0 ? ((Number(v) / total) * 100).toFixed(0) : 0; return [`${Number(v)}건 (${pct}%)`]; }} contentStyle={{ borderRadius: "10px", border: "1px solid #ede8e0", fontSize: 12 }} />
+                  <Legend iconType="circle" iconSize={7} wrapperStyle={{ fontSize: 12, paddingTop: 4 }} formatter={(value) => <span style={{ color: "#555" }}>{value}</span>} />
                 </PieChart>
               </ResponsiveContainer>
             )}
@@ -233,19 +229,19 @@ export default function StatsTab({ companyId }: Props) {
         </div>
 
         <div>
-          <h3 className="text-sm font-semibold text-gray-500 mb-4 uppercase tracking-wide">수령 방법</h3>
-          <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+          <h3 className="text-sm font-semibold text-gray-500 mb-3 md:mb-4">수령 방법</h3>
+          <div className="bg-white border border-gray-100 rounded-2xl p-4 md:p-5 shadow-sm">
             {deliveryData.length === 0 ? (
               <p className="text-sm text-gray-400 text-center py-8">데이터 없음</p>
             ) : (
-              <ResponsiveContainer width="100%" height={220}>
+              <ResponsiveContainer width="100%" height={200}>
                 <PieChart>
                   <Pie
                     data={deliveryData}
                     cx="50%"
-                    cy="45%"
-                    innerRadius={50}
-                    outerRadius={80}
+                    cy="42%"
+                    innerRadius={45}
+                    outerRadius={70}
                     paddingAngle={3}
                     dataKey="value"
                   >
@@ -253,12 +249,8 @@ export default function StatsTab({ companyId }: Props) {
                       <Cell key={i} fill={COLORS[i % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(v) => { const total = deliveryData.reduce((s, d) => s + d.value, 0); const pct = total > 0 ? ((Number(v) / total) * 100).toFixed(0) : 0; return [`${Number(v)}건 (${pct}%)`]; }} contentStyle={{ borderRadius: "10px", border: "1px solid #ede8e0", fontSize: 13 }} />
-                  <Legend
-                    iconType="circle"
-                    iconSize={8}
-                    formatter={(value) => <span style={{ fontSize: 12, color: "#555" }}>{value}</span>}
-                  />
+                  <Tooltip formatter={(v) => { const total = deliveryData.reduce((s, d) => s + d.value, 0); const pct = total > 0 ? ((Number(v) / total) * 100).toFixed(0) : 0; return [`${Number(v)}건 (${pct}%)`]; }} contentStyle={{ borderRadius: "10px", border: "1px solid #ede8e0", fontSize: 12 }} />
+                  <Legend iconType="circle" iconSize={8} formatter={(value) => <span style={{ fontSize: 12, color: "#555" }}>{value}</span>} />
                 </PieChart>
               </ResponsiveContainer>
             )}
@@ -267,26 +259,23 @@ export default function StatsTab({ companyId }: Props) {
       </section>
 
       {/* 상품 유형 순위 + 신규/재방문 */}
-      <section className="grid grid-cols-2 gap-6">
+      <section className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
         <div>
-          <h3 className="text-sm font-semibold text-gray-500 mb-4 uppercase tracking-wide">상품 유형 순위</h3>
-          <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm space-y-3">
+          <h3 className="text-sm font-semibold text-gray-500 mb-3 md:mb-4">상품 유형 순위</h3>
+          <div className="bg-white border border-gray-100 rounded-2xl p-4 md:p-5 shadow-sm space-y-3">
             {typeData.length === 0 ? (
               <p className="text-sm text-gray-400 text-center py-4">데이터 없음</p>
             ) : (
               typeData.map((item, i) => {
                 const max = typeData[0].value;
                 return (
-                  <div key={item.name} className="flex items-center gap-3">
-                    <span className="text-xs text-gray-400 w-4 text-right">{i + 1}</span>
-                    <span className="text-sm text-gray-700 w-16 shrink-0">{item.name}</span>
+                  <div key={item.name} className="flex items-center gap-2">
+                    <span className="text-xs text-gray-400 w-4 text-right shrink-0">{i + 1}</span>
+                    <span className="text-sm text-gray-700 w-14 shrink-0 truncate">{item.name}</span>
                     <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
-                      <div
-                        className="h-full rounded-full"
-                        style={{ width: `${(item.value / max) * 100}%`, backgroundColor: GOLD }}
-                      />
+                      <div className="h-full rounded-full" style={{ width: `${(item.value / max) * 100}%`, backgroundColor: GOLD }} />
                     </div>
-                    <span className="text-sm font-medium text-gray-700 w-8 text-right">{item.value}건</span>
+                    <span className="text-xs font-medium text-gray-700 w-8 text-right shrink-0">{item.value}건</span>
                   </div>
                 );
               })
@@ -295,8 +284,8 @@ export default function StatsTab({ companyId }: Props) {
         </div>
 
         <div>
-          <h3 className="text-sm font-semibold text-gray-500 mb-4 uppercase tracking-wide">신규 / 재방문 비율</h3>
-          <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm space-y-4">
+          <h3 className="text-sm font-semibold text-gray-500 mb-3 md:mb-4">신규 / 재방문 비율</h3>
+          <div className="bg-white border border-gray-100 rounded-2xl p-4 md:p-5 shadow-sm space-y-4">
             {visitData.total === 0 ? (
               <p className="text-sm text-gray-400 text-center py-4">데이터 없음</p>
             ) : (
@@ -310,7 +299,7 @@ export default function StatsTab({ companyId }: Props) {
                     <div key={label} className="space-y-1.5">
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-700">{label}</span>
-                        <span className="font-medium text-gray-900">{count}명 <span className="text-xs text-gray-400 font-normal">({pct}%)</span></span>
+                        <span className="font-medium text-gray-900 whitespace-nowrap">{count}명 <span className="text-xs text-gray-400 font-normal">({pct}%)</span></span>
                       </div>
                       <div className="bg-gray-100 rounded-full h-2 overflow-hidden">
                         <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
@@ -319,8 +308,7 @@ export default function StatsTab({ companyId }: Props) {
                   );
                 })}
                 <p className="text-xs text-gray-400 pt-1">
-                  전체 {visitData.total}명
-                  {visitData.unknown > 0 && ` · 미집계 ${visitData.unknown}건`}
+                  전체 {visitData.total}명{visitData.unknown > 0 && ` · 미집계 ${visitData.unknown}건`}
                 </p>
               </>
             )}

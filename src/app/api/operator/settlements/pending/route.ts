@@ -25,11 +25,34 @@ export async function GET(request: NextRequest) {
   );
 
   const { searchParams } = new URL(request.url);
-  const period_start = searchParams.get("period_start");
+  let period_start = searchParams.get("period_start");
   const period_end = searchParams.get("period_end");
 
-  if (!period_start || !period_end) {
-    return NextResponse.json({ error: "기간을 입력해주세요." }, { status: 400 });
+  // 마지막 정산 완료일 조회 (자동 시작일용)
+  const { data: lastSettlement } = await adminClient
+    .from("settlements")
+    .select("period_end")
+    .eq("status", "completed")
+    .order("period_end", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const lastSettledDate = lastSettlement?.period_end?.slice(0, 10) ?? null;
+
+  // 시작일 미지정 시 마지막 정산일 다음 날 자동 설정
+  if (!period_start) {
+    if (lastSettledDate) {
+      const next = new Date(lastSettledDate);
+      next.setDate(next.getDate() + 1);
+      period_start = next.toISOString().slice(0, 10);
+    } else {
+      period_start = "2024-01-01";
+    }
+  }
+
+  // 종료일만 입력하는 경우 허용 (시작일은 자동)
+  if (!period_end) {
+    return NextResponse.json({ lastSettledDate, autoStart: period_start });
   }
 
   // 미정산 결제 완료 예약 조회

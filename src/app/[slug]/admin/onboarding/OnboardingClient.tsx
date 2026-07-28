@@ -14,9 +14,8 @@ interface Props {
 
 type StepId = "consult" | "product";
 
-function getSteps(plan: string): StepId[] {
-  if (plan === "pro") return ["product", "consult"];
-  return ["product"];
+function getSteps(): StepId[] {
+  return ["product", "consult"];
 }
 
 function ProgressDots({ total, current }: { total: number; current: number }) {
@@ -145,14 +144,19 @@ function ProductStep({
   );
 }
 
-export default function OnboardingClient({ slug, companyId, plan }: Props) {
+export default function OnboardingClient({ slug, companyId, plan: _plan }: Props) {
   const router = useRouter();
-  const steps = getSteps(plan);
+  const steps = getSteps();
   const [stepIndex, setStepIndex] = useState(0);
+  const [checking, setChecking] = useState(true);
 
   useEffect(() => {
     const done = localStorage.getItem(`onboarding_done_${slug}`);
-    if (done) router.replace(`/${slug}/admin/dashboard`);
+    if (done) {
+      router.replace(`/${slug}/admin/dashboard`);
+    } else {
+      setChecking(false);
+    }
   }, [slug, router]);
 
   const finish = (tab?: string) => {
@@ -165,12 +169,20 @@ export default function OnboardingClient({ slug, companyId, plan }: Props) {
   const currentStep = steps[stepIndex];
   const isLastStep = stepIndex === steps.length - 1;
 
+  if (checking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-2 border-beige-200 border-t-gold-500 animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <p className="text-xs font-semibold tracking-[0.2em] uppercase text-gold-500 mb-1">
-            {plan === "pro" ? "Pro" : "Starter"}
+            시작하기
           </p>
           <h1 className="text-xl font-light tracking-widest text-gray-900">시작 설정</h1>
           <p className="text-sm text-gray-400 mt-1">

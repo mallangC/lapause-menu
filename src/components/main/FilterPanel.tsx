@@ -2,8 +2,9 @@
 
 import { Dispatch, SetStateAction } from "react";
 import { FilterState } from "@/types";
-import { PRODUCT_TYPES, FLOWER_COLORS, FLOWER_COLOR_MAP, WRAPPING_COLORS, MOODS } from "@/lib/constants";
+import { PRODUCT_TYPES, WRAPPING_COLORS, MOODS } from "@/lib/constants";
 import { EMPTY_FILTER } from "@/lib/filter";
+
 
 interface FilterPanelProps {
   filter: FilterState;
@@ -75,29 +76,6 @@ export default function FilterPanel({ filter, setFilter, hiddenProductTypes = []
               }`}
             >
               {type}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="mb-4">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-gold-500 mb-2">색상</h3>
-        <div className="grid grid-cols-3 gap-1">
-          {FLOWER_COLORS.map((color) => (
-            <button
-              key={color}
-              onClick={() => toggleFlowerColor(color)}
-              className={`flex items-center gap-2 px-2 py-1.5 rounded-lg border transition-colors ${
-                filter.flowerColors.includes(color)
-                  ? "border-gold-400 bg-gold-400 text-white font-medium"
-                  : "border-gray-200 text-gray-600 hover:border-gold-500 hover:text-gold-500"
-              }`}
-            >
-              <span
-                className="w-4 h-4 rounded-full shrink-0 border border-black/10"
-                style={{ backgroundColor: FLOWER_COLOR_MAP[color] ?? "#a8a29e" }}
-              />
-              <span className="text-xs">{color}</span>
             </button>
           ))}
         </div>

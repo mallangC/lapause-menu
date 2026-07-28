@@ -17,9 +17,13 @@ interface Company {
   created_at: string;
   owner_id: string | null;
   ownerName: string | null;
+  ownerPhone: string | null;
+  ownerUserId: string | null;
+  isSuspended: boolean;
+  suspendReason: string | null;
   settings: { consult_enabled: boolean } | null;
   subscription: {
-    plan: "none" | "starter" | "pro" | "free" | null;
+    plan: "none" | "monthly" | "annual" | "free" | null;
     billing_key: string | null;
     plan_expires_at: string | null;
     trial_ends_at: string | null;
@@ -114,8 +118,8 @@ export default function OperatorDashboardClient({ companies, reservations, produ
 
     const thisMonthReservations = reservations.filter(r => r.desired_date?.slice(0, 7) === thisMonthKey).length;
 
-    // Pro 플랜 사용 비율
-    const proCount = companies.filter(c => c.subscription?.plan === "pro").length;
+    // 유료 플랜 사용 비율
+    const proCount = companies.filter(c => c.subscription?.plan === "monthly" || c.subscription?.plan === "annual").length;
     const proRate = totalCompanies > 0 ? Math.round((proCount / totalCompanies) * 100) : 0;
 
     return { totalCompanies, newThisMonth, activeCompanies, atRiskCount, consultUsageRate, thisMonthReservations, totalCardGMV, thisMonthCardGMV, totalManualGMV, thisMonthManualGMV, totalAllGMV, thisMonthAllGMV, cardRate, proCount, proRate };
@@ -246,6 +250,10 @@ export default function OperatorDashboardClient({ companies, reservations, produ
               name: c.name,
               slug: c.slug,
               ownerName: c.ownerName,
+              ownerPhone: c.ownerPhone,
+              ownerUserId: c.ownerUserId,
+              isSuspended: c.isSuspended,
+              suspendReason: c.suspendReason,
               plan: c.subscription?.plan ?? null,
               billingKey: c.subscription?.billing_key ?? null,
               planExpiresAt: c.subscription?.plan_expires_at ?? null,
@@ -380,8 +388,8 @@ export default function OperatorDashboardClient({ companies, reservations, produ
                     <td className="px-6 py-3.5 text-right text-gray-900 font-medium whitespace-nowrap">{c.totalRevenue > 0 ? `${formatMoney(c.totalRevenue)}원` : <span className="text-gray-300">—</span>}</td>
                     <td className="px-6 py-3.5 text-right text-gray-700 whitespace-nowrap">{c.thisMonthRevenue > 0 ? `${formatMoney(c.thisMonthRevenue)}원` : <span className="text-gray-300">—</span>}</td>
                     <td className="px-6 py-3.5">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${c.subscription?.plan === "pro" ? "bg-gold-100 text-gold-600" : c.subscription?.plan === "free" ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-400"}`}>
-                        {c.subscription?.plan === "pro" ? "Pro" : c.subscription?.plan === "starter" ? "Starter" : c.subscription?.plan === "free" ? "Free" : "—"}
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${c.subscription?.plan === "annual" ? "bg-gold-100 text-gold-600" : c.subscription?.plan === "monthly" ? "bg-blue-50 text-blue-600" : c.subscription?.plan === "free" ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-400"}`}>
+                        {c.subscription?.plan === "annual" ? "연간" : c.subscription?.plan === "monthly" ? "월간" : c.subscription?.plan === "free" ? "Free" : "—"}
                       </span>
                     </td>
                     <td className="px-6 py-3.5">

@@ -7,9 +7,10 @@ import { formatMoney, parseMoney } from "@/lib/format";
 interface Props {
   companyId: string;
   onConsultToggle?: (enabled: boolean) => void;
+  onGoToOrderSettings?: () => void;
 }
 
-export default function ReservationSettingsTab({ companyId, onConsultToggle }: Props) {
+export default function ReservationSettingsTab({ companyId, onConsultToggle, onGoToOrderSettings }: Props) {
   const [consultApplyStatus, setConsultApplyStatus] = useState<"pending" | "approved" | "rejected" | null>(null);
   const [consultEnabled, setConsultEnabled] = useState(false);
   const [messageCardEnabled, setMessageCardEnabled] = useState(false);
@@ -27,6 +28,7 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle }: P
   const [error, setError] = useState<string | null>(null);
   const [hasBankInfo, setHasBankInfo] = useState(false);
   const [showBankWarning, setShowBankWarning] = useState(false);
+  const [showNoticeInfo, setShowNoticeInfo] = useState(false);
 
   const supabase = createClient();
 
@@ -91,6 +93,25 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle }: P
   };
 
   return (
+    <>
+    {/* 안내 문구 예시 이미지 모달 */}
+    {showNoticeInfo && (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4" onClick={() => setShowNoticeInfo(false)}>
+        <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm md:max-w-lg flex flex-col max-h-[85vh]" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
+            <h3 className="text-sm font-semibold text-gray-900">안내 문구 표시 위치</h3>
+            <button type="button" onClick={() => setShowNoticeInfo(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div className="p-5 overflow-y-auto">
+            <img src="/info.png" alt="안내 문구 표시 위치 예시" className="w-full rounded-xl border border-gray-100" />
+          </div>
+        </div>
+      </div>
+    )}
     <div className="max-w-lg space-y-4">
       <h2 className="text-xl font-medium text-gray-900">맞춤 주문</h2>
 
@@ -102,8 +123,16 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle }: P
       {consultApplyStatus !== "approved" ? (
         <div className="p-4 border border-gray-200 rounded-xl bg-gray-50 text-sm text-gray-500">
           {consultApplyStatus === "pending" && "운영자 검토 중입니다. 승인 후 활성화할 수 있습니다."}
-          {consultApplyStatus === "rejected" && "맞춤 주문 신청이 반려되었습니다. 매장 정보 탭에서 재신청해주세요."}
-          {!consultApplyStatus && "맞춤 주문을 사용하려면 매장 정보 탭에서 신청해주세요."}
+          {consultApplyStatus === "rejected" && (
+            <span>맞춤 주문 신청이 반려되었습니다.{" "}
+              <button type="button" onClick={onGoToOrderSettings} className="underline text-gold-600 hover:text-gold-700">주문 설정 탭</button>에서 재신청해주세요.
+            </span>
+          )}
+          {!consultApplyStatus && (
+            <span>맞춤 주문을 사용하려면{" "}
+              <button type="button" onClick={onGoToOrderSettings} className="underline text-gold-600 hover:text-gold-700">주문 설정 탭</button>에서 신청해주세요.
+            </span>
+          )}
         </div>
       ) : (
         <div className="flex items-center justify-between p-4 border border-gray-200 rounded-xl bg-white">
@@ -133,6 +162,26 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle }: P
         </div>
       )}
 
+      {/* 예약 확인 안내 문구 */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-1.5">
+          <p className="text-sm font-medium text-gray-800">예약 확인 안내 문구</p>
+          <button type="button" onClick={() => setShowNoticeInfo(true)}>
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600 transition-colors" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
+            </svg>
+          </button>
+        </div>
+        <p className="text-xs text-gray-400 -mt-1">고객이 예약을 완료하기 직전 확인 화면 상단에 표시됩니다.</p>
+        <textarea
+          value={consultNotice}
+          onChange={(e) => setConsultNotice(e.target.value)}
+          placeholder={"예) 주문 후 입금 완료 시 예약이 확정됩니다.\n당일 취소는 불가하오니 신중히 주문해주세요."}
+          rows={3}
+          className="block w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gray-400 resize-none bg-white"
+        />
+      </div>
+
       {/* 계좌 정보 미입력 경고 팝업 */}
       {showBankWarning && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={() => setShowBankWarning(false)}>
@@ -151,7 +200,7 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle }: P
             <div className="space-y-2 text-xs text-gray-500 leading-relaxed">
               <p>
                 맞춤 주문 기능을 활성화하려면<br />
-                <span className="font-medium text-gray-700">매장 정보 탭 &gt; 예약 알림 정보</span>에서<br />
+                <button type="button" onClick={() => { setShowBankWarning(false); onGoToOrderSettings?.(); }} className="font-medium text-gold-600 underline hover:text-gold-700">주문 설정 탭</button>에서<br />
                 매장 주소, 은행, 계좌번호, 예금주를 모두 입력해주세요.
               </p>
             </div>
@@ -230,7 +279,7 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle }: P
       <div className="flex items-center justify-between p-4 border border-gray-200 rounded-xl bg-white">
         <div>
           <p className="text-sm font-medium text-gray-800">배송 기능</p>
-          <p className="text-xs text-gray-400 mt-0.5">비활성화 시 맞춤 주문에서 배송 선택이 숨겨집니다.</p>
+          <p className="text-xs text-gray-400 mt-0.5">활성화 시 맞춤 주문에서 배송 선택이 추가됩니다.</p>
         </div>
         <button
           type="button"
@@ -308,21 +357,6 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle }: P
         </div>
       </div>
 
-      {/* 예약 확인 안내 문구 */}
-      <div className="space-y-2">
-        <div>
-          <h3 className="text-sm font-medium text-gray-700">예약 확인 안내 문구</h3>
-          <p className="text-xs text-gray-400 mt-0.5">고객이 예약을 완료하기 직전 확인 화면 상단에 표시됩니다.</p>
-        </div>
-        <textarea
-          value={consultNotice}
-          onChange={(e) => setConsultNotice(e.target.value)}
-          placeholder={"예) 주문 후 입금까지 완료되어야 예약이 확정됩니다.\n당일 취소는 불가하오니 신중히 주문해주세요."}
-          rows={3}
-          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gray-400 resize-none bg-white"
-        />
-      </div>
-
       <div className="sticky bottom-0 bg-white border-t border-gray-100 -mx-0 pt-4 pb-1 flex items-center gap-3">
         <button
           type="button"
@@ -340,5 +374,6 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle }: P
         )}
       </div>
     </div>
+    </>
   );
 }

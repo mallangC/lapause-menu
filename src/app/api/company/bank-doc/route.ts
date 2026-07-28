@@ -37,6 +37,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+  const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+  if (!ALLOWED_TYPES.includes(file.type)) {
+    return NextResponse.json({ error: "JPG, PNG, WEBP, PDF 파일만 업로드 가능합니다." }, { status: 400 });
+  }
+  if (file.size > MAX_SIZE) {
+    return NextResponse.json({ error: "파일 크기는 10MB 이하여야 합니다." }, { status: 400 });
+  }
+
   const ext = file.name.split(".").pop();
   const path = `bank-accounts/${companyId}_${Date.now()}.${ext}`;
   const buffer = Buffer.from(await file.arrayBuffer());

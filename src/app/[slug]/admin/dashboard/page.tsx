@@ -35,30 +35,10 @@ export default async function DashboardPage({ params }: Props) {
     ...(raw.subscription as unknown as Record<string, unknown> ?? {}),
   } as typeof raw & Record<string, unknown>;
 
-  const plan = (company.plan ?? "none") as string;
+  const plan = (company.plan ?? "none") as "monthly" | "annual" | "none" | "free";
 
-  // 플랜 미설정이면 플랜 선택 페이지로
+  // 플랜 미설정이면 플랜 선택 페이지로 (free는 허용)
   if (!plan || plan === "none") redirect("/plan");
-
-  // 체험 만료 감지: pro이고 trial 만료됐고 billing_key 없으면 → starter로 전환
-  if (
-    plan === "pro" &&
-    company.trial_ends_at &&
-    new Date(company.trial_ends_at as string) < new Date() &&
-    !company.billing_key
-  ) {
-    await supabase
-      .from("company_subscriptions")
-      .update({ plan: "starter", trial_ends_at: null })
-      .eq("company_id", raw.id);
-    await supabase
-      .from("company_settings")
-      .update({ consult_enabled: false })
-      .eq("company_id", raw.id);
-    company.plan = "starter";
-    company.trial_ends_at = null;
-    company.consult_enabled = false;
-  }
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -100,8 +80,8 @@ export default async function DashboardPage({ params }: Props) {
       hiddenProductTypes={(company.hidden_product_types as string[]) ?? []}
       hiddenSeasons={(company.hidden_seasons as string[]) ?? []}
       consultEnabled={(company.consult_enabled as boolean) ?? false}
-      plan={plan as "starter" | "pro" | "free"}
-      subscriptionPlan={(company.subscription_plan as "starter" | "pro" | null) ?? null}
+      plan={plan as "monthly" | "annual" | "none" | "free"}
+      subscriptionPlan={(company.subscription_plan as "monthly" | "annual" | null) ?? null}
       cancelAtPeriodEnd={(company.cancel_at_period_end as boolean) ?? false}
       trialEndsAt={(company.trial_ends_at as string | null) ?? null}
       planExpiresAt={(company.plan_expires_at as string | null) ?? null}

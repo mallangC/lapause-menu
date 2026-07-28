@@ -36,13 +36,27 @@ export default function LoginForm({ slug }: Props) {
     setError(null);
     setLoading(true);
 
-    const { error: authError } = await supabase.auth.signInWithPassword({
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
-    if (authError) {
+    if (authError || !authData.user) {
       setError("이메일 또는 비밀번호가 올바르지 않습니다.");
+      setLoading(false);
+      return;
+    }
+
+    // 정지 여부 확인
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("is_suspended, suspend_reason")
+      .eq("user_id", authData.user.id)
+      .single();
+
+    if (profile?.is_suspended) {
+      await supabase.auth.signOut();
+      setError(`${profile.suspend_reason ?? "정책 위반"}으로 계정이 정지되었습니다. 문의: floaide.team@gmail.com`);
       setLoading(false);
       return;
     }

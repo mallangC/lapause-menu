@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Product, ProductInput, ProductStatus } from "@/types";
+import { Reservation } from "./reservations/types";
 import { createClient } from "@/lib/supabase/client";
 import { generateThemeVars } from "@/lib/theme";
 import ProductForm from "@/components/admin/ProductForm";
@@ -11,14 +12,16 @@ import ProductTable from "@/components/admin/ProductTable";
 import CompanyInfoTab from "./CompanyInfoTab";
 import MyInfoTab from "./MyInfoTab";
 import SettingsTab from "./SettingsTab";
+import MenuSettingsTab from "./MenuSettingsTab";
 import ReservationSettingsTab from "./ReservationSettingsTab";
 import BusinessSettingsTab from "./BusinessSettingsTab";
+import OrderSettingsTab from "./OrderSettingsTab";
 import ReservationsTab from "./ReservationsTab";
 import StatsTab from "./StatsTab";
 import PlanTab from "./PlanTab";
 import DashboardOverviewTab from "./DashboardOverviewTab";
 
-type Tab = "dashboard" | "reservations" | "products" | "stats" | "company" | "business" | "reservation" | "settings" | "plan" | "myinfo";
+type Tab = "dashboard" | "reservations" | "products" | "stats" | "company" | "ordersettings" | "business" | "reservation" | "menusettings" | "settings" | "plan" | "myinfo";
 
 interface Props {
   slug: string;
@@ -45,27 +48,14 @@ interface Props {
   hiddenProductTypes: string[];
   hiddenSeasons: string[];
   consultEnabled: boolean;
-  plan: "starter" | "pro" | "free";
-  subscriptionPlan: "starter" | "pro" | null;
+  plan: "monthly" | "annual" | "none" | "free";
+  subscriptionPlan: "monthly" | "annual" | null;
   cancelAtPeriodEnd: boolean;
   trialEndsAt: string | null;
   planExpiresAt: string | null;
   hasBillingKey: boolean;
 }
 
-function ProGate() {
-  return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="w-12 h-12 rounded-full bg-gold-50 flex items-center justify-center mb-4">
-        <svg className="w-6 h-6 text-gold-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
-        </svg>
-      </div>
-      <p className="text-sm font-semibold text-gray-800 mb-1">Pro 플랜에서 이용할 수 있습니다</p>
-      <p className="text-xs text-gray-400">요금제 탭에서 Pro로 업그레이드하세요.</p>
-    </div>
-  );
-}
 
 export default function DashboardClient({ slug, userId, userEmail, isOAuth, profileName, profilePhone, companyId, companyName, logoImage, themeBg, themeAccent, initialProducts, homeFeaturedImage, homeAllImage, homeSeasonImage, homeConsultImage, locationUrl, kakaoChannelUrl, instagramUrl, youtubeUrl, companyPhone, hiddenProductTypes, hiddenSeasons, consultEnabled, plan, subscriptionPlan, cancelAtPeriodEnd, trialEndsAt, planExpiresAt, hasBillingKey }: Props) {
   const searchParams = useSearchParams();
@@ -88,12 +78,40 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
   const [currentHiddenProductTypes, setCurrentHiddenProductTypes] = useState(hiddenProductTypes);
   const [currentHiddenSeasons, setCurrentHiddenSeasons] = useState(hiddenSeasons);
   const [currentConsultEnabled, setCurrentConsultEnabled] = useState(consultEnabled);
+  const [reservationStatusFilter, setReservationStatusFilter] = useState<string | undefined>(undefined);
+  const [allReservations, setAllReservations] = useState<Reservation[]>([]);
+  const [reservationsLoading, setReservationsLoading] = useState(true);
   const supabase = createClient();
 
   useEffect(() => {
     document.body.style.overflow = (showForm || !!editingProduct) ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [showForm, editingProduct]);
+
+  useEffect(() => {
+    setReservationsLoading(true);
+    supabase
+      .from("reservations")
+      .select("*")
+      .eq("company_id", companyId)
+      .order("created_at", { ascending: false })
+      .then(({ data }) => {
+        setAllReservations((data as Reservation[]) ?? []);
+        setReservationsLoading(false);
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companyId]);
+
+  const fetchReservations = async () => {
+    setReservationsLoading(true);
+    const { data } = await supabase
+      .from("reservations")
+      .select("*")
+      .eq("company_id", companyId)
+      .order("created_at", { ascending: false });
+    setAllReservations((data as Reservation[]) ?? []);
+    setReservationsLoading(false);
+  };
 
 
   const handleAdd = async (data: ProductInput) => {
@@ -157,7 +175,9 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
   const settingsTabs: { key: Tab; label: string }[] = [
     { key: "company", label: "매장 정보" },
     { key: "business", label: "영업 설정" },
+    { key: "ordersettings", label: "주문 설정" },
     { key: "reservation", label: "맞춤 주문" },
+    { key: "menusettings", label: "메뉴 설정" },
     { key: "settings", label: "디자인" },
     { key: "myinfo", label: "내 정보" },
   ];
@@ -165,8 +185,8 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
   const isSettingsTab = settingsTabs.some((t) => t.key === activeTab);
 
   return (
-    <div className="min-h-screen bg-beige-100 flex flex-col" style={themeVars as React.CSSProperties}>
-      <header className="border-b border-gray-200 bg-white shrink-0">
+    <div className="min-h-screen bg-gray-100 flex flex-col" style={themeVars as React.CSSProperties}>
+      <header className="border-b border-gray-200 bg-white shrink-0 sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link href={`/${slug}`} className="text-lg font-medium text-gray-900 hover:text-gray-600 transition-colors">
             {companyName} — 관리자
@@ -178,9 +198,9 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
       </header>
 
       {/* 모바일 탭 내비게이션 */}
-      <div className="md:hidden bg-white border-b border-gray-100">
+      <div className="md:hidden bg-white border-b border-gray-100 sticky top-[61px] z-30">
         {/* 메인 탭 행 */}
-        <div className="flex">
+        <div className="flex overflow-x-auto no-scrollbar">
           {mainTabs.map((tab) => (
             <div
               key={tab.key}
@@ -211,7 +231,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
         </div>
         {/* 설정 하위 탭 행 */}
         <div className={`overflow-hidden transition-all duration-300 ${showSettingsDropdown || isSettingsTab ? "max-h-12" : "max-h-0"}`}>
-          <div className="flex border-t border-gray-50 bg-gray-50">
+          <div className="flex overflow-x-auto no-scrollbar border-t border-gray-50 bg-gray-50">
             {settingsTabs.map((tab) => (
               <button
                 key={tab.key}
@@ -259,7 +279,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
                   <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
                 </svg>
               </button>
-              <div className={`overflow-hidden transition-all duration-300 ${showSettingsDropdown || isSettingsTab ? "max-h-60" : "max-h-0"}`}>
+              <div className={`overflow-hidden transition-all duration-300 ${showSettingsDropdown || isSettingsTab ? "max-h-80" : "max-h-0"}`}>
                 <ul className="mt-1 space-y-0.5 pl-2">
                   {settingsTabs.map((tab) => (
                     <li key={tab.key}>
@@ -348,21 +368,33 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
               companyId={companyId}
               slug={slug}
               plan={plan}
-              onNavigate={(tab) => setActiveTab(tab as Tab)}
+              onNavigate={(tab, statusFilter) => {
+                setReservationStatusFilter(statusFilter);
+                setActiveTab(tab as Tab);
+              }}
             />
           )}
 
           {activeTab === "reservations" && (
             <div className="bg-white border border-gray-200 rounded-xl p-6">
-              {plan === "starter" ? <ProGate /> : <ReservationsTab companyId={companyId} />}
+              <ReservationsTab
+                companyId={companyId}
+                allReservations={allReservations}
+                setAllReservations={setAllReservations}
+                loading={reservationsLoading}
+                onRefresh={fetchReservations}
+                initialStatusFilter={reservationStatusFilter}
+                onClearStatusFilter={() => setReservationStatusFilter(undefined)}
+              />
             </div>
           )}
 
-          {activeTab === "products" && (
-            <div>
-              {error && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
-              )}
+          {/* 상품관리: 항상 마운트, 비활성 시 hidden으로 숨김 (캐싱) */}
+          <div className={activeTab === "products" ? "" : "hidden"}>
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
+            )}
+            <div className="bg-white border border-gray-200 rounded-xl p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-medium text-gray-900">상품 목록</h2>
                 <button
@@ -372,17 +404,15 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
                   + 상품 추가
                 </button>
               </div>
-              <div className="bg-white border border-gray-200 rounded-xl p-6">
-                <ProductTable
-                  products={products}
-                  onEdit={(product) => { setEditingProduct(product); setShowForm(false); }}
-                  onDelete={handleDelete}
-                  onStatusChange={handleStatusChange}
-                  companyId={companyId}
-                />
-              </div>
+              <ProductTable
+                products={products}
+                onEdit={(product) => { setEditingProduct(product); setShowForm(false); }}
+                onDelete={handleDelete}
+                onStatusChange={handleStatusChange}
+                companyId={companyId}
+              />
             </div>
-          )}
+          </div>
 
           {activeTab === "stats" && (
             <div className="bg-white border border-gray-200 rounded-xl p-6">
@@ -415,20 +445,39 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
             </div>
           )}
 
+          {activeTab === "ordersettings" && (
+            <div className="bg-white border border-gray-200 rounded-xl p-6">
+              <OrderSettingsTab companyId={companyId} plan={plan} />
+            </div>
+          )}
+
           {activeTab === "business" && (
             <div className="bg-white border border-gray-200 rounded-xl p-6">
-              {plan === "starter" ? <ProGate /> : <BusinessSettingsTab companyId={companyId} />}
+              <BusinessSettingsTab companyId={companyId} />
             </div>
           )}
 
           {activeTab === "reservation" && (
             <div className="bg-white border border-gray-200 rounded-xl p-6">
-              {plan === "starter" ? <ProGate /> : (
-                <ReservationSettingsTab
-                  companyId={companyId}
-                  onConsultToggle={handleConsultToggle}
-                />
-              )}
+              <ReservationSettingsTab
+                companyId={companyId}
+                onConsultToggle={handleConsultToggle}
+                onGoToOrderSettings={() => setActiveTab("ordersettings")}
+              />
+            </div>
+          )}
+
+          {activeTab === "menusettings" && (
+            <div className="bg-white border border-gray-200 rounded-xl p-6">
+              <MenuSettingsTab
+                companyId={companyId}
+                initialHiddenProductTypes={currentHiddenProductTypes}
+                initialHiddenSeasons={currentHiddenSeasons}
+                onSave={(types, seasons) => {
+                  setCurrentHiddenProductTypes(types);
+                  setCurrentHiddenSeasons(seasons);
+                }}
+              />
             </div>
           )}
 
@@ -438,18 +487,12 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
                 companyId={companyId}
                 initialBg={themeBg}
                 initialAccent={themeAccent}
-                initialHiddenProductTypes={currentHiddenProductTypes}
-                initialHiddenSeasons={currentHiddenSeasons}
                 initialFeaturedImage={homeFeaturedImage}
                 initialAllImage={homeAllImage}
                 initialSeasonImage={homeSeasonImage}
                 initialConsultImage={homeConsultImage}
                 consultEnabled={consultEnabled}
                 onThemeChange={(bg, accent) => setThemeVars(generateThemeVars(bg, accent))}
-                onMenuSave={(types, seasons) => {
-                  setCurrentHiddenProductTypes(types);
-                  setCurrentHiddenSeasons(seasons);
-                }}
               />
             </div>
           )}
