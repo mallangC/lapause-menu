@@ -567,7 +567,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
   }
 
   return (
-    <div className={`min-h-screen ${step === 1 || step === 3 ? "bg-gray-100" : step === 2 ? "bg-gray-100" : "bg-white"}`}>
+    <div className="min-h-screen bg-gray-100">
       {/* Header */}
       <StoreHeader
         slug={slug}
@@ -1025,10 +1025,10 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
           );
 
           return (
-            <div className="flex flex-col md:flex-row md:gap-8 md:items-stretch">
+            <div className="flex flex-col md:flex-row md:gap-8 md:items-start">
 
               {/* ── 왼쪽: 폼 영역 ── */}
-              <div className="flex-1 min-w-0 space-y-2.5 md:space-y-5">
+              <div className="flex-1 min-w-0 space-y-2 -mx-4 md:mx-0">
 
                 {error && (
                   <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-start gap-3">
@@ -1049,7 +1049,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                 )}
 
                 {/* 예약자 정보 */}
-                <div className="bg-white -mx-4 px-4 py-4 md:mx-0 md:rounded-xl space-y-3">
+                <div className="bg-white px-4 py-4 space-y-3">
                   <h3 className="text-sm font-medium text-gray-700 pb-3 border-b border-gray-100">예약자 정보 <span className="text-red-400">*</span></h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2 items-start">
                     <div>
@@ -1074,7 +1074,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
 
                 {/* 선택 상품 */}
                 {selectedProduct && (
-                  <div className="bg-white -mx-4 px-4 py-4 md:mx-0 md:rounded-xl space-y-3">
+                  <div className="bg-white px-4 py-4 space-y-3">
                     <h3 className="text-sm font-medium text-gray-700 pb-3 border-b border-gray-100">상품 정보</h3>
                     <div className="flex items-center gap-4">
                       {selectedProduct.image_url && (
@@ -1090,7 +1090,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                 )}
 
                 {/* 수령 방법 */}
-                <div className="bg-white -mx-4 md:mx-0 md:rounded-xl overflow-hidden">
+                <div className="bg-white overflow-hidden">
                   <div className="px-4 pt-4 pb-3 border-b border-gray-100">
                     <h3 className="text-sm font-medium text-gray-700">수령 방법 <span className="text-red-400">*</span></h3>
                   </div>
@@ -1191,7 +1191,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                 </div>
 
                 {/* 수령 희망 날짜 */}
-                <div className="bg-white -mx-4 md:mx-0 md:rounded-xl overflow-hidden">
+                <div className="bg-white overflow-hidden">
                   <div className="px-4 pt-4 pb-3 border-b border-gray-100">
                     <h3 className="text-sm font-medium text-gray-700">
                       수령 희망 날짜 <span className="text-red-400">*</span>
@@ -1266,7 +1266,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                     }
                   }
                   return (
-                    <div className="bg-white -mx-4 px-4 py-4 md:mx-0 md:rounded-xl space-y-3">
+                    <div className="bg-white px-4 py-4 space-y-3">
                       <h3 className="text-sm font-medium text-gray-700 flex items-center gap-2 pb-3 border-b border-gray-100">
                         수령 희망 시간 <span className="text-red-400">*</span>
                         {day && <span className="text-xs font-normal text-gray-400">영업시간 · {day.open}~{day.close}</span>}
@@ -1282,10 +1282,10 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                               key={slot}
                               type="button"
                               onClick={() => set("desiredTime", slot)}
-                              className={`py-3 rounded-xl text-sm font-medium whitespace-nowrap transition-colors ${
+                              className={`py-3 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
                                 form.desiredTime === slot
                                   ? "bg-gold-500 text-white"
-                                  : "bg-beige-50 border border-gray-200 text-gray-700 hover:border-gold-400"
+                                  : "bg-beige-100 text-gray-700 hover:bg-beige-200"
                               }`}
                             >
                               {slot}
@@ -1299,7 +1299,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
 
                 {/* 추가 옵션 */}
                 {(messageCardEnabled || shoppingBagEnabled) && (
-                  <div className="bg-white -mx-4 md:mx-0 md:rounded-xl overflow-hidden">
+                  <div className="bg-white overflow-hidden">
                     <div className="px-4 pt-4 pb-3 border-b border-gray-100">
                       <h3 className="text-sm font-medium text-gray-700">추가 옵션</h3>
                     </div>
@@ -1364,7 +1364,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                 )}
 
                 {/* 요청 사항 */}
-                <div className={`bg-white -mx-4 px-4 pt-4 md:mx-0 md:rounded-xl space-y-3 ${requestsOpen ? "pb-4" : "pb-0 md:pb-4"}`}>
+                <div className={`bg-white px-4 pt-4 space-y-2 ${requestsOpen ? "pb-4" : "pb-0 md:pb-4"}`}>
                   {/* 모바일: 토글 헤더 */}
                   <button
                     type="button"
@@ -1393,7 +1393,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                 </div>
 
                 {/* 모바일: 동의 + 버튼 */}
-                <div className="md:hidden space-y-3 pb-4">
+                <div className="md:hidden bg-white px-4 py-4 space-y-3">
                   {agreementJsx}
                   {step4FieldErrors.length > 0 && (
                     <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3">

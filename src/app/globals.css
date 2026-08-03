@@ -60,26 +60,52 @@ body {
   font-weight: 600 !important;
   color: #2c2416 !important;
 }
+.react-datepicker__day-names {
+  display: flex !important;
+  border-bottom: 1px solid #e8ddc9 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+.react-datepicker__week {
+  display: flex !important;
+  border-bottom: 1px solid #ede5d6 !important;
+}
+.react-datepicker__week:last-child {
+  border-bottom: none !important;
+}
+.react-datepicker__month {
+  margin: 0 !important;
+  padding: 0 !important;
+}
 .react-datepicker__day-name,
 .react-datepicker__day {
-  width: 2rem !important;
-  line-height: 2rem !important;
-  margin: 0.1rem !important;
+  flex: 1 !important;
+  width: auto !important;
+  line-height: 2.2rem !important;
+  margin: 0 !important;
   text-align: center !important;
+  border-right: 1px solid #ede5d6 !important;
+}
+.react-datepicker__day-name:last-child,
+.react-datepicker__day:last-child {
+  border-right: none !important;
 }
 .react-datepicker__day-name {
   color: #9a7a3a !important;
   font-size: 12px !important;
   font-weight: 500 !important;
+  padding: 4px 0 !important;
 }
 .react-datepicker__day {
-  border-radius: 8px !important;
+  border-radius: 0 !important;
   font-size: 13px !important;
   color: #2c2416 !important;
+  padding: 2px 0 !important;
 }
 @media (hover: hover) {
   .react-datepicker__day:hover {
     background-color: #f3ede1 !important;
+    border-radius: 0 !important;
   }
 }
 .react-datepicker__day--selected,
@@ -87,6 +113,7 @@ body {
   background-color: #b8934a !important;
   color: #fff !important;
   font-weight: 600 !important;
+  border-radius: 0 !important;
 }
 .react-datepicker__day--today {
   font-weight: 700 !important;
@@ -136,26 +163,30 @@ body {
 }
 .large-datepicker .react-datepicker__header {
   background-color: #fff !important;
-  border-bottom: 1px solid #f3ede1 !important;
-  padding: 16px 0 12px !important;
+  border-bottom: none !important;
+  padding: 16px 0 8px !important;
 }
 .large-datepicker .react-datepicker__current-month {
   font-size: 16px !important;
   font-weight: 600 !important;
 }
 .large-datepicker .react-datepicker__day-names {
-  margin: 6px 8px 4px !important;
+  margin: 4px 6px 2px !important;
   display: flex !important;
-}
-.large-datepicker .react-datepicker__week {
-  display: flex !important;
+  border-bottom: 1px solid #e8ddc9 !important;
+  padding-bottom: 4px !important;
 }
 .large-datepicker .react-datepicker__day-name {
   flex: 1 !important;
   width: auto !important;
   line-height: 2rem !important;
-  margin: 0.1rem !important;
-  font-size: 13px !important;
+  margin: 2px !important;
+  font-size: 12px !important;
+  border-right: none !important;
+}
+.large-datepicker .react-datepicker__week {
+  display: flex !important;
+  border-bottom: none !important;
 }
 .large-datepicker .react-datepicker__day {
   flex: 1 !important;
@@ -165,11 +196,40 @@ body {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  margin: 0.1rem !important;
-  font-size: 15px !important;
+  margin: 2px !important;
+  font-size: 14px !important;
+  border-radius: 8px !important;
+  border-right: none !important;
+  background-color: #faf7f2 !important;
+}
+@media (hover: hover) {
+  .large-datepicker .react-datepicker__day:hover {
+    background-color: #f0e9da !important;
+    border-radius: 8px !important;
+  }
+}
+.large-datepicker .react-datepicker__day--selected,
+.large-datepicker .react-datepicker__day--keyboard-selected {
+  background-color: #b8934a !important;
+  border-radius: 8px !important;
+}
+.large-datepicker .react-datepicker__day--today {
+  color: #b8934a !important;
+  font-weight: 700 !important;
+}
+.large-datepicker .react-datepicker__day--today.react-datepicker__day--selected {
+  color: #fff !important;
+}
+.large-datepicker .react-datepicker__day--disabled {
+  background-color: transparent !important;
+  color: #d9c9a8 !important;
+}
+.large-datepicker .react-datepicker__day--outside-month {
+  background-color: transparent !important;
+  color: #d9c9a8 !important;
 }
 .large-datepicker .react-datepicker__month {
-  margin: 8px 8px 12px !important;
+  margin: 4px 6px 10px !important;
 }
 .large-datepicker .react-datepicker__navigation {
   top: 16px !important;
