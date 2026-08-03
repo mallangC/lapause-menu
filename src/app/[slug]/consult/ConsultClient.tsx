@@ -1025,7 +1025,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
           );
 
           return (
-            <div className="flex flex-col md:flex-row md:gap-8 md:items-start">
+            <div className="flex flex-col md:flex-row md:gap-8 md:items-stretch">
 
               {/* ── 왼쪽: 폼 영역 ── */}
               <div className="flex-1 min-w-0 space-y-2 -mx-4 md:mx-0">
