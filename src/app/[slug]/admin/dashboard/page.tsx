@@ -15,18 +15,32 @@ export default async function DashboardPage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/${slug}/admin`);
 
-  const { data: raw } = await supabase
-    .from("companies")
-    .select(`
-      id, name, phone,
-      settings:company_settings(*),
-      subscription:company_subscriptions(*)
-    `)
-    .eq("slug", slug)
-    .eq("owner_id", user.id)
-    .single();
+  const [{ data: profile }, { data: raw }] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("name, phone_number, is_suspended, suspend_reason")
+      .eq("user_id", user.id)
+      .single(),
+    supabase
+      .from("companies")
+      .select(`
+        id, name, phone,
+        settings:company_settings(*),
+        subscription:company_subscriptions(*)
+      `)
+      .eq("slug", slug)
+      .eq("owner_id", user.id)
+      .single(),
+  ]);
+
+  if (profile?.is_suspended) {
+    await supabase.auth.signOut();
+    redirect(`/${slug}/admin?suspended=1&reason=${encodeURIComponent(profile.suspend_reason ?? "정책 위반")}`);
+  }
 
   if (!raw) redirect("/");
+
+  if (!profile?.name || !profile?.phone_number) redirect("/setup");
 
   // 편의를 위해 flatten
   const company = {
@@ -39,14 +53,6 @@ export default async function DashboardPage({ params }: Props) {
 
   // 플랜 미설정이면 플랜 선택 페이지로 (free는 허용)
   if (!plan || plan === "none") redirect("/plan");
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("name, phone_number")
-    .eq("user_id", user.id)
-    .single();
-
-  if (!profile?.name || !profile?.phone_number) redirect("/setup");
 
   const { data: products } = await supabase
     .from("products")

@@ -28,6 +28,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
+      <head>
+        <link rel="preload" as="image" href="/landing/hero-menu.webp" />
+      </head>
       <body className="antialiased overflow-x-hidden">
         {children}
       </body>

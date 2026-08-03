@@ -9,7 +9,8 @@ crons = ["0 18 * * *"]
 [vars]
 NEXT_PUBLIC_SUPABASE_URL = "https://yywoqaydqjcgpwxyantp.supabase.co"
 NEXT_PUBLIC_SUPABASE_ANON_KEY = "sb_publishable_e5Pbv68IVRK6G6NQtkPmvg_kFEMfU9h"
-NEXT_PUBLIC_TOSS_CLIENT_KEY = "여기에_클라이언트_키_입력"
+NEXT_PUBLIC_TOSS_CLIENT_KEY = "live_ck_Z61JOxRQVEazAlExQX5aVW0X9bAq"
+NEXT_PUBLIC_TOSS_BILLING_CLIENT_KEY = "live_ck_DnyRpQWGrNWmXo1O020L8Kwv1M9E"
 
 [assets]
 directory = ".open-next/assets"

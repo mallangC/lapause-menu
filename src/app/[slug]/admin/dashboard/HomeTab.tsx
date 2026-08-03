@@ -30,12 +30,12 @@ function ImageCard({ companyId, imageKey, label, current, onChange }: ImageCardP
     canvas.width = Math.round(img.naturalWidth * scale);
     canvas.height = Math.round(img.naturalHeight * scale);
     canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
-    const blob = await new Promise<Blob>((resolve) => canvas.toBlob((b) => resolve(b!), "image/jpeg", 0.85));
+    const blob = await new Promise<Blob>((resolve) => canvas.toBlob((b) => resolve(b!), "image/webp", 0.85));
 
-    const path = `home/${companyId}/${imageKey}_${Date.now()}.jpg`;
+    const path = `home/${companyId}/${imageKey}_${Date.now()}.webp`;
     const { error: uploadError } = await supabase.storage
       .from(STORAGE_BUCKET)
-      .upload(path, blob, { upsert: false, contentType: "image/jpeg" });
+      .upload(path, blob, { upsert: false, contentType: "image/webp" });
 
     if (uploadError) { setUploading(false); return; }
 

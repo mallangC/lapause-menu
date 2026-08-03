@@ -174,19 +174,6 @@ const TYPE_MAP: Record<string, string> = {
   화병꽂이: "화병꽂이",
 };
 
-const MOOD_COLORS: Record<string, string[]> = {
-  "깔끔한 화이트&그린": ["흰색", "초록색"],
-  "화사한 파스텔톤": ["핑크색", "노란색", "주황색"],
-  "선명한 비비드톤": ["빨간색", "주황색", "노란색"],
-  "차분한 딥컬러": ["빨간색", "보라색", "검은색"],
-};
-
-const MOOD_WRAPPING: Record<string, string> = {
-  "깔끔한 화이트&그린": "밝은 계열",
-  "화사한 파스텔톤": "밝은 계열",
-  "선명한 비비드톤": "밝은 계열",
-  "차분한 딥컬러": "어두운 계열",
-};
 
 const BUDGET_MAP: Record<string, number> = {
   "3만원": 30000,
@@ -204,42 +191,49 @@ function scoreProducts(products: Product[], form: ConsultForm): Product[] {
       : BUDGET_MAP[form.budget] ?? 0;
 
   const mappedType = TYPE_MAP[form.productType];
+  const isHighBudget = budget >= 100000;
+  const tightUpper = isHighBudget ? 20000 : 10000;   // <10만원: +1만원 / >=10만원: +2만원
+  const wideUpper  = isHighBudget ? 50000 : 30000;   // <10만원: +3만원 / >=10만원: +5만원
 
-  const inBudget = (p: Product) =>
-    budget > 0 ? p.price >= budget && p.price <= budget + 50000 : true;
-  const inBudgetExpanded = (p: Product) =>
-    budget > 0 ? p.price >= budget - 10000 && p.price <= budget + 50000 : true;
+  const score = (p: Product) => {
+    let s = 0;
+    if (mappedType && p.product_type === mappedType) s += 4;
+    if (form.mood && p.mood === form.mood) s += 3;
+    if (p.is_recommended) s += 2;
+    if (p.is_popular) s += 1;
+    return s;
+  };
 
-  // 1차: 가격 + 상품 형태 일치
-  let pool = products.filter((p) => inBudget(p) && (!mappedType || p.product_type === mappedType));
-  // 2차: 가격 범위 확장 + 상품 형태 일치
-  if (pool.length < 4)
-    pool = products.filter((p) => inBudgetExpanded(p) && (!mappedType || p.product_type === mappedType));
-  // 3차: 상품 형태 무관, 가격만 맞는 것
-  if (pool.length < 4)
-    pool = products.filter((p) => inBudgetExpanded(p));
-  if (pool.length === 0) pool = products;
+  const typeMatch = (p: Product) => !mappedType || p.product_type === mappedType;
 
-  const moodColors = MOOD_COLORS[form.mood] ?? [];
+  // 슬롯 1~2: budget ~ budget+tightUpper
+  const tight = budget > 0
+    ? products.filter((p) => typeMatch(p) && p.price >= budget && p.price <= budget + tightUpper)
+    : products.filter(typeMatch);
+  const tightTop = [...tight].sort((a, b) => score(b) - score(a)).slice(0, 2);
+  const usedIds = new Set(tightTop.map((p) => p.id));
 
-  return pool
-    .map((p) => {
-      let score = 0;
+  // 슬롯 3~4: budget+tightUpper 초과 ~ budget+wideUpper
+  const wide = products.filter((p) => {
+    if (!typeMatch(p) || usedIds.has(p.id)) return false;
+    if (budget === 0) return true;
+    return p.price > budget + tightUpper && p.price <= budget + wideUpper;
+  });
+  const wideTop = [...wide].sort((a, b) => score(b) - score(a)).slice(0, 2);
 
-      if (mappedType && p.product_type === mappedType) score += 4;
+  const result = [...tightTop, ...wideTop];
 
-      const moodColorMatches = p.flower_colors.filter((c) => moodColors.includes(c)).length;
-      score += moodColorMatches * 2;
+  // 4개 미만이면 전체에서 보충
+  if (result.length < 4) {
+    const allIds = new Set(result.map((p) => p.id));
+    const fallback = products
+      .filter((p) => !allIds.has(p.id))
+      .sort((a, b) => score(b) - score(a))
+      .slice(0, 4 - result.length);
+    result.push(...fallback);
+  }
 
-      if (p.wrapping_color === MOOD_WRAPPING[form.mood]) score += 1;
-      if (p.is_recommended) score += 2;
-      if (p.is_popular) score += 1;
-
-      return { product: p, score };
-    })
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 4)
-    .map(({ product }) => product);
+  return result;
 }
 
 export default function ConsultClient({ slug, companyName, logoImage = null, productTypeList = [], seasonList = [], notificationEmail, products, businessHours, closedDates, minLeadTimes = {}, consultNotice, storeAddress = null, deliveryEnabled = false, deliveryFees = {}, messageCardEnabled = false, messageCardPrice = 2000, shoppingBagEnabled = false, shoppingBagPrice = 2000, preselectedProduct = null, initialPaymentId = null }: Props) {

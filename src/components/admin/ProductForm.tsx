@@ -158,7 +158,7 @@ export default function ProductForm({ initialData, onSubmit, companyId }: Produc
         canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
         canvas.toBlob(
           (blob) => (blob ? resolve(blob) : reject(new Error("압축 실패"))),
-          "image/jpeg",
+          "image/webp",
           quality
         );
       };
@@ -184,11 +184,11 @@ export default function ProductForm({ initialData, onSubmit, companyId }: Produc
       return;
     }
 
-    const path = `${Date.now()}.jpg`;
+    const path = `${Date.now()}.webp`;
 
     const { error } = await supabase.storage
       .from(STORAGE_BUCKET)
-      .upload(path, uploadTarget, { upsert: false, contentType: "image/jpeg" });
+      .upload(path, uploadTarget, { upsert: false, contentType: "image/webp" });
 
     if (error) {
       setUploadError("업로드 실패: " + error.message);

@@ -75,16 +75,16 @@ function FaqItem({ q, a, isLast = false }: { q: string; a: string; isLast?: bool
 // ────────────────────────────────────────────────
 // Main Page
 // ────────────────────────────────────────────────
-const hero = { tag: "전자 메뉴판 & 예약 관리", headline: "상담 시간은 줄이고\n예약은 편리하게", sub: "링크 하나로 상품을 소개하고\n예약을 받으세요.", bg: "/landing/hero-menu.jpg" };
+const hero = { tag: "전자 메뉴판 & 예약 관리", headline: "상담 시간은 줄이고\n예약은 편리하게", sub: "링크 하나로 상품을 소개하고\n예약을 받으세요.", bg: "/landing/hero-menu.webp" };
 
 const capabilities = [
-  { title: "전자 메뉴판", desc: "앱 없이 링크만으로 상품 카탈로그를 공유하세요.", img: "/landing/cap-menu.jpg", mobileImg: "/landing/cap-menu-m.png" },
-  { title: "맞춤 주문", desc: "고객이 직접 꽃 종류, 예산, 색상을 선택합니다.", img: "/landing/cap-order.jpg", mobileImg: "/landing/cap-order-m.png" },
-  { title: "예약 관리", desc: "월별로 모든 예약을 한눈에 확인하세요.", img: "/landing/cap-reservation.jpg", mobileImg: "/landing/cap-reservation-m.png" },
-  { title: "카카오 알림", desc: "예약 확인, 확정, 취소 알림을 자동으로 발송합니다.", img: "/landing/cap-kakao.jpg", mobileImg: "/landing/cap-kakao-m.png" },
-  { title: "매출 분석", desc: "어떤 상품이 잘 팔리는지 데이터로 확인하세요.", img: "/landing/cap-stats.jpg", mobileImg: "/landing/cap-stats-m.png" },
-  { title: "나만의 링크", desc: "flo-aide.com/내가게주소로 브랜드를 만드세요.", img: "/landing/cap-link.jpg", mobileImg: "/landing/cap-link-m.png" },
-  { title: "쉬운 설정", desc: "가입하고 상품만 등록하면 바로 운영 시작. 별도 설치 없이도 누구나 쉽게.", img: "/landing/cap-setup.jpg", mobileImg: "/landing/cap-setup-m.png" },
+  { title: "전자 메뉴판", desc: "앱 없이 링크만으로 상품 카탈로그를 공유하세요.", img: "/landing/cap-menu.webp", mobileImg: "/landing/cap-menu-m.webp" },
+  { title: "맞춤 주문", desc: "고객이 직접 꽃 종류, 예산, 색상을 선택합니다.", img: "/landing/cap-order.webp", mobileImg: "/landing/cap-order-m.webp" },
+  { title: "예약 관리", desc: "월별로 모든 예약을 한눈에 확인하세요.", img: "/landing/cap-reservation.webp", mobileImg: "/landing/cap-reservation-m.webp" },
+  { title: "카카오 알림", desc: "예약 확인, 확정, 취소 알림을 자동으로 발송합니다.", img: "/landing/cap-kakao.webp", mobileImg: "/landing/cap-kakao-m.webp" },
+  { title: "매출 분석", desc: "어떤 상품이 잘 팔리는지 데이터로 확인하세요.", img: "/landing/cap-stats.webp", mobileImg: "/landing/cap-stats-m.webp" },
+  { title: "나만의 링크", desc: "flo-aide.com/내가게주소로 브랜드를 만드세요.", img: "/landing/cap-link.webp", mobileImg: "/landing/cap-link-m.webp" },
+  { title: "쉬운 설정", desc: "가입하고 상품만 등록하면 바로 운영 시작. 별도 설치 없이도 누구나 쉽게.", img: "/landing/cap-setup.webp", mobileImg: "/landing/cap-setup-m.webp" },
 ];
 
 const steps = [
@@ -506,7 +506,7 @@ export default function Landing() {
                       {/* 앞 캡처 */}
                       <div className="spotlight-img-wrapper absolute overflow-hidden" style={{ bottom: 0, left: "-10%", width: "78%", borderRadius: 14, transform: "translateY(-8px)", boxShadow: "0 32px 80px rgba(0,0,0,0.7)", border: "1px solid rgba(255,255,255,0.15)", zIndex: 2 }}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img className="spotlight-img" src="/landing/screen-menu1.png" alt="전자 메뉴판 화면" style={{ width: "100%", height: 680, objectFit: "cover", objectPosition: "top", display: "block" }} />
+                        <img className="spotlight-img" src="/landing/screen-menu1.webp" alt="전자 메뉴판 화면" loading="lazy" style={{ width: "100%", height: 680, objectFit: "cover", objectPosition: "top", display: "block" }} />
                       </div>
 
                       {/* 맞춤 주문 버튼 */}
@@ -666,7 +666,7 @@ export default function Landing() {
                     willChange: "transform",
                   }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/landing/screen-consult.png" alt="맞춤 주문 화면" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} />
+                    <img src="/landing/screen-consult.webp" alt="맞춤 주문 화면" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} />
                   </div>
                 </div>
               </div>
@@ -707,12 +707,13 @@ export default function Landing() {
               {/* 이미지 */}
               <div style={{ borderRadius: 16, overflow: "hidden", boxShadow: "0 -8px 60px rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.1)" }}>
                 <picture>
-                  <source media="(min-width: 768px)" srcSet="/landing/screen-reservation1.png" />
+                  <source media="(min-width: 768px)" srcSet="/landing/screen-reservation1.webp" />
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     className="spotlight3-img"
-                    src="/landing/screen-reservation1-m.png"
+                    src="/landing/screen-reservation1-m.webp"
                     alt="예약 관리 대시보드"
+                    loading="lazy"
                     style={{ width: "100%", display: "block", objectFit: "cover", objectPosition: "top" }}
                   />
                 </picture>
@@ -809,7 +810,7 @@ export default function Landing() {
                 <picture className="absolute inset-0">
                   <source media="(min-width: 768px)" srcSet={cap.img} />
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={cap.mobileImg} alt={cap.title} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", display: "block" }} />
+                  <img src={cap.mobileImg} alt={cap.title} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", display: "block" }} />
                 </picture>
                 <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(10,7,4,0.75) 0%, rgba(10,7,4,0.2) 40%, transparent 65%)" }} />
                 <div className="absolute bottom-0 left-0 p-8 max-w-lg">
