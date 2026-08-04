@@ -61,7 +61,17 @@ export default function ProductDetailClient({
     .map(({ product }) => product)
     .slice(0, 2);
 
-  const suggestedProducts = [...priceSimilar, ...colorSimilar].slice(0, 4);
+  const merged = [...priceSimilar, ...colorSimilar];
+  const usedIds = new Set(merged.map((p) => p.id));
+
+  // 전체 상품이 5개 초과이면 부족한 자리를 나머지 상품으로 채워 4개 보장
+  const suggestedProducts =
+    allProducts.length > 4
+      ? [
+          ...merged,
+          ...allProducts.filter((p) => !usedIds.has(p.id)),
+        ].slice(0, 4)
+      : merged.slice(0, 4);
 
   return (
     <div className="min-h-screen bg-white" style={themeVars}>

@@ -250,7 +250,6 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
   const [showPostcode, setShowPostcode] = useState(false);
   const [showNotice, setShowNotice] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
   const [privacyAgreed, setPrivacyAgreed] = useState(false);
   const [cancellationAgreed, setCancellationAgreed] = useState(false);
   const [kakaoConsent, setKakaoConsent] = useState(false);
@@ -378,7 +377,15 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
         const rid = data.reservationId ?? null;
         setReservationId(rid);
         setFinalPriceSnapshot(draft.finalPrice);
-        // paid 처리는 /api/reservation POST 내부에서 수행됨
+        // 완료 페이지 표시용 상태 복원
+        setForm(draft.form);
+        setSelectedProduct(products.find((p) => p.id === draft.product.id) ?? null);
+        setName(draft.name);
+        setPhone(formatPhone(draft.phone));
+        setRecipientName(draft.recipientName);
+        if (draft.recipientPhone) setRecipientPhone(formatPhone(draft.recipientPhone));
+        setAddress(draft.address);
+        setAddressDetail(draft.addressDetail);
         setSubmitted(true);
         setPaidConfirmed(true);
       } catch (err) {
@@ -500,65 +507,111 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
   }
 
   if (submitted) {
-    const receiptRows = [
-      { label: "주문자", value: `${name} · ${phone}` },
-      { label: "결제 금액", value: `${finalPriceSnapshot.toLocaleString()}원` },
-      { label: "수령 방법", value: form.deliveryType },
-      ...(form.deliveryType === "배송" && recipientName
-        ? [{ label: "배송지", value: `${recipientName} · ${recipientPhone}\n${address}${addressDetail ? ` ${addressDetail}` : ""}` }]
-        : []),
-      { label: "수령 일시", value: `${form.desiredDate}${form.desiredTime ? ` ${form.desiredTime}` : ""}` },
-      ...(messageCardEnabled && form.messageCard === "있음" && form.messageCardContent
-        ? [{ label: "메시지 카드", value: form.messageCardContent }]
-        : []),
-      ...(form.requests ? [{ label: "요청 사항", value: form.requests }] : []),
-    ];
+    const msgCardAmt  = messageCardEnabled && form.messageCard === "추가" ? messageCardPrice : 0;
+    const bagAmt      = shoppingBagEnabled && form.shoppingBag === "추가" ? shoppingBagPrice : 0;
+    const deliveryAmt = form.deliveryType === "배송" && deliveryFee !== null ? deliveryFee : 0;
+    const hasExtras   = msgCardAmt > 0 || bagAmt > 0 || deliveryAmt > 0;
+
+    const Row = ({ label, value }: { label: string; value: string }) => (
+      <div className="flex px-4 py-3.5 gap-4 border-t border-gray-50">
+        <span className="text-sm text-gray-400 w-24 shrink-0 pt-0.5">{label}</span>
+        <span className="text-sm text-gray-800 whitespace-pre-line leading-relaxed">{value}</span>
+      </div>
+    );
 
     return (
-      <div className="min-h-screen bg-beige-100 flex items-start justify-center px-4 py-10">
-        <div className="w-full max-w-sm space-y-4">
+      <div className="min-h-screen bg-gray-100">
+        <StoreHeader slug={slug} companyName={companyName} logoImage={logoImage} productTypeList={productTypeList} seasonList={seasonList} consultEnabled={true} />
+        <div className="max-w-lg mx-auto px-4 py-6 space-y-3">
+
           {/* 완료 헤더 */}
-          <div className="bg-white rounded-2xl shadow-sm border border-beige-200 p-8 space-y-3 text-center">
-            <div className="w-14 h-14 rounded-full bg-green-50 flex items-center justify-center mx-auto">
-              <svg className="w-7 h-7 text-green-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <div className="bg-white rounded-2xl px-6 py-8 text-center space-y-2">
+            <div className="w-14 h-14 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-3">
+              <svg className="w-7 h-7 text-green-500" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
               </svg>
             </div>
-            <h2 className="text-lg font-medium text-gray-900">결제가 완료되었습니다</h2>
+            <h2 className="text-lg font-semibold text-gray-900">결제가 완료되었습니다</h2>
             <p className="text-sm text-gray-400">매장에서 확인 후 준비를 시작하겠습니다.</p>
           </div>
 
-          {/* 주문 내역 */}
-          <div className="bg-white rounded-2xl shadow-sm border border-beige-200 overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-100">
-              <p className="text-sm font-semibold text-gray-700">주문 내역</p>
-            </div>
-
-            {/* 상품 */}
-            {selectedProduct && (
-              <div className="flex items-center gap-3 px-4 py-3 border-b border-beige-200">
+          {/* 상품 정보 */}
+          {selectedProduct && (
+            <div className="bg-white rounded-2xl overflow-hidden">
+              <p className="px-4 pt-4 pb-3 text-sm font-semibold text-gray-400 border-b border-gray-100">상품 정보</p>
+              <div className="flex items-center gap-3 px-4 py-4">
                 {selectedProduct.image_url && (
-                  <Image src={selectedProduct.image_url} alt={selectedProduct.name} width={56} height={56} className="w-14 h-14 rounded-xl object-cover shrink-0" />
+                  <Image src={selectedProduct.image_url} alt={selectedProduct.name} width={72} height={72} className="w-18 h-18 rounded-xl object-cover shrink-0" />
                 )}
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-gray-800">{selectedProduct.name}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{selectedProduct.product_type}</p>
+                <div className="min-w-0 space-y-1">
+                  <p className="text-sm text-gray-400">{selectedProduct.product_type}</p>
+                  <p className="text-base font-semibold text-gray-900">{selectedProduct.name}</p>
+                  <p className="text-base font-bold text-gold-500">{selectedProduct.price.toLocaleString()}원</p>
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
-            {/* 상세 항목 */}
-            <div className="divide-y divide-gray-100">
-              {receiptRows.map(({ label, value }) => (
-                <div key={label} className="flex px-4 py-3 gap-4">
-                  <span className="text-xs text-gray-400 w-20 shrink-0 pt-0.5">{label}</span>
-                  <span className="text-xs text-gray-800 whitespace-pre-line">{value}</span>
-                </div>
-              ))}
+          {/* 주문자 & 수령 정보 */}
+          <div className="bg-white rounded-2xl overflow-hidden">
+            <p className="px-4 pt-4 pb-3 text-sm font-semibold text-gray-400 border-b border-gray-100">주문 정보</p>
+            <Row label="주문자" value={`${name} · ${phone}`} />
+            <Row label="수령 방법" value={form.deliveryType} />
+            {form.deliveryType === "배송" && recipientName && (
+              <>
+                <Row label="받는 분" value={`${recipientName} · ${recipientPhone}`} />
+                <Row label="배송지" value={`${address}${addressDetail ? ` ${addressDetail}` : ""}`} />
+              </>
+            )}
+            <Row label="수령 날짜" value={form.desiredDate} />
+            {form.desiredTime && <Row label="수령 시간" value={form.desiredTime} />}
+            {msgCardAmt > 0 && <Row label="메시지 카드" value="추가" />}
+            {form.messageCard === "추가" && form.messageCardContent && (
+              <Row label="카드 내용" value={form.messageCardContent} />
+            )}
+            {bagAmt > 0 && <Row label="쇼핑백" value="추가" />}
+            {form.requests && <Row label="요청 사항" value={form.requests} />}
+          </div>
+
+          {/* 결제 금액 */}
+          <div className="bg-white rounded-2xl overflow-hidden">
+            <p className="px-4 pt-4 pb-3 text-sm font-semibold text-gray-400 border-b border-gray-100">결제 금액</p>
+            <div className="px-4 py-4 space-y-3">
+              {hasExtras && (
+                <>
+                  <div className="flex justify-between text-sm text-gray-600">
+                    <span>상품</span>
+                    <span>{(selectedProduct?.price ?? 0).toLocaleString()}원</span>
+                  </div>
+                  {msgCardAmt > 0 && (
+                    <div className="flex justify-between text-sm text-gray-600">
+                      <span>메시지 카드</span>
+                      <span>+{msgCardAmt.toLocaleString()}원</span>
+                    </div>
+                  )}
+                  {bagAmt > 0 && (
+                    <div className="flex justify-between text-sm text-gray-600">
+                      <span>쇼핑백</span>
+                      <span>+{bagAmt.toLocaleString()}원</span>
+                    </div>
+                  )}
+                  {deliveryAmt > 0 && (
+                    <div className="flex justify-between text-sm text-gray-600">
+                      <span>배송비</span>
+                      <span>+{deliveryAmt.toLocaleString()}원</span>
+                    </div>
+                  )}
+                  <div className="border-t border-gray-100" />
+                </>
+              )}
+              <div className="flex justify-between items-center">
+                <span className="text-base font-semibold text-gray-900">총 결제금액</span>
+                <span className="text-xl font-bold text-gold-500">{finalPriceSnapshot.toLocaleString()}원</span>
+              </div>
             </div>
           </div>
 
-          <Link href={`/${slug}`} className="block text-center text-gold-500 text-sm hover:text-gold-600 transition-colors py-2">
+          <Link href={`/${slug}`} className="block text-center text-gold-500 text-base py-3 hover:text-gold-600 transition-colors">
             홈으로 돌아가기 →
           </Link>
         </div>
@@ -1004,7 +1057,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
             if (!cancellationAgreed) missing.push("맞춤 제작 취소 정책 동의");
             if (missing.length > 0) { setStep4FieldErrors(missing); return; }
             setStep4FieldErrors([]);
-            setShowConfirm(true);
+            handleSubmit();
           };
 
           const agreementJsx = (
@@ -1406,9 +1459,10 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                   <button
                     type="button"
                     onClick={handleConfirm}
-                    className="w-full bg-gold-500 text-white py-3.5 rounded-xl font-medium hover:bg-gold-600 transition-colors"
+                    disabled={submitting}
+                    className="w-full bg-gold-500 text-white py-3.5 rounded-xl font-medium hover:bg-gold-600 disabled:opacity-50 transition-colors"
                   >
-                    결제 및 예약하기
+                    {submitting ? "결제 중..." : "결제하기"}
                   </button>
                 </div>
               </div>
@@ -1463,9 +1517,10 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                     <button
                       type="button"
                       onClick={handleConfirm}
-                      className="w-full bg-gold-500 text-white py-3.5 rounded-xl font-medium hover:bg-gold-600 transition-colors"
+                      disabled={submitting}
+                      className="w-full bg-gold-500 text-white py-3.5 rounded-xl font-medium hover:bg-gold-600 disabled:opacity-50 transition-colors"
                     >
-                      결제 및 예약하기
+                      {submitting ? "결제 중..." : "결제하기"}
                     </button>
                   </div>
                 </div>
@@ -1483,109 +1538,6 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
         />
       )}
 
-      {/* 주문 확인 팝업 */}
-      {showConfirm && selectedProduct && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setShowConfirm(false)} />
-          <div className="relative w-full sm:max-w-sm bg-white rounded-t-3xl sm:rounded-2xl shadow-xl overflow-hidden">
-            <div className="px-6 pt-6 pb-2">
-              <h3 className="text-base font-semibold text-gray-900 mb-1">이대로 주문하시겠습니까?</h3>
-              <p className="text-xs text-gray-400">아래 내용을 확인 후 결제를 진행해주세요.</p>
-            </div>
-
-            <div className="px-6 py-4 space-y-3">
-              {/* 상품 */}
-              <div className="flex items-center gap-3 pb-3 border-b border-gray-100">
-                {selectedProduct.image_url && (
-                  <Image src={selectedProduct.image_url} alt={selectedProduct.name} width={52} height={52} className="w-13 h-13 rounded-xl object-cover shrink-0" />
-                )}
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">{selectedProduct.name}</p>
-                  <p className="text-xs text-gray-400">{selectedProduct.product_type}</p>
-                </div>
-              </div>
-
-              {/* 핵심 정보 요약 */}
-              <div className="space-y-2 text-sm">
-                {[
-                  { label: "예약자", value: `${name} · ${phone}` },
-                  { label: "수령 방법", value: form.deliveryType },
-                  { label: "수령 일시", value: `${form.desiredDate}${form.desiredTime ? ` ${form.desiredTime}` : ""}` },
-                  ...(form.deliveryType === "배송" && recipientName ? [{ label: "배송지", value: `${recipientName} · ${address}` }] : []),
-                  ...(form.requests ? [{ label: "요청 사항", value: form.requests }] : []),
-                ].map(({ label, value }) => (
-                  <div key={label} className="flex gap-3">
-                    <span className="text-gray-400 w-20 shrink-0 text-xs pt-0.5">{label}</span>
-                    <span className="text-gray-700 text-xs">{value}</span>
-                  </div>
-                ))}
-              </div>
-
-              {/* 금액 내역 */}
-              {(() => {
-                const hasExtras =
-                  (messageCardEnabled && form.messageCard === "추가") ||
-                  (shoppingBagEnabled && form.shoppingBag === "추가") ||
-                  (form.deliveryType === "배송" && deliveryFee !== null);
-                const total =
-                  selectedProduct.price +
-                  (messageCardEnabled && form.messageCard === "추가" ? messageCardPrice : 0) +
-                  (shoppingBagEnabled && form.shoppingBag === "추가" ? shoppingBagPrice : 0) +
-                  (form.deliveryType === "배송" && deliveryFee !== null ? deliveryFee : 0);
-                return (
-                  <div className="pt-3 border-t border-gray-100 space-y-2">
-                    {hasExtras && (
-                      <>
-                        <div className="flex justify-between text-xs text-gray-500">
-                          <span>상품 금액</span>
-                          <span>{selectedProduct.price.toLocaleString()}원</span>
-                        </div>
-                        {messageCardEnabled && form.messageCard === "추가" && (
-                          <div className="flex justify-between text-xs text-gray-500">
-                            <span>메시지 카드</span>
-                            <span>+{messageCardPrice.toLocaleString()}원</span>
-                          </div>
-                        )}
-                        {shoppingBagEnabled && form.shoppingBag === "추가" && (
-                          <div className="flex justify-between text-xs text-gray-500">
-                            <span>쇼핑백</span>
-                            <span>+{shoppingBagPrice.toLocaleString()}원</span>
-                          </div>
-                        )}
-                        {form.deliveryType === "배송" && deliveryFee !== null && (
-                          <div className="flex justify-between text-xs text-gray-500">
-                            <span>배송비</span>
-                            <span>+{deliveryFee.toLocaleString()}원</span>
-                          </div>
-                        )}
-                        <div className="border-t border-gray-100" />
-                      </>
-                    )}
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-semibold text-gray-800">최종 결제 금액</span>
-                      <span className="text-lg font-bold text-gold-500">{total.toLocaleString()}원</span>
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-
-            <div className="flex gap-2 px-6 pb-6">
-              <button type="button" onClick={() => setShowConfirm(false)} className="flex-1 py-3 rounded-xl border border-gray-200 text-sm text-gray-600 hover:border-gray-400 transition-colors">
-                취소
-              </button>
-              <button
-                type="button"
-                disabled={submitting}
-                onClick={handleSubmit}
-                className="flex-1 py-3 rounded-xl bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 disabled:opacity-40 transition-colors"
-              >
-                {submitting ? "결제 중..." : "결제하기"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
