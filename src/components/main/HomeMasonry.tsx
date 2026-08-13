@@ -68,7 +68,7 @@ export default function HomeMasonry({ slug, products }: HomeMasonryProps) {
                 alt={product.name}
                 fill
                 className="object-cover hover:scale-105 transition-transform duration-500"
-                sizes="50vw"
+                sizes="(min-width: 640px) 50vw, 100vw"
               />
             ) : (
               <div className="absolute inset-0 bg-beige-200 flex items-center justify-center text-beige-400 text-3xl">🌸</div>

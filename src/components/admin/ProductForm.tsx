@@ -143,7 +143,7 @@ export default function ProductForm({ initialData, onSubmit, companyId }: Produc
     }));
   };
 
-  const compressImage = (file: File, maxPx = 1200, quality = 0.8): Promise<Blob> => {
+  const compressImage = (file: File, maxPx = 1200, quality = 0.9): Promise<Blob> => {
     return new Promise((resolve, reject) => {
       const img = document.createElement("img");
       img.onload = () => {
