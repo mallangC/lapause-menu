@@ -41,6 +41,9 @@ export interface Reservation {
   customer_profile_id: string | null;
   reference_images: string[] | null;
   source: string | null;
+  payment_token: string | null;
+  payment_link_expires_at: string | null;
+  payment_id: string | null;
 }
 
 export type SortKey = "desired_date";

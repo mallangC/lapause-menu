@@ -2,10 +2,10 @@
 
 import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
 import { Product } from "@/types";
 import { PRODUCT_TYPES, SEASONS } from "@/lib/constants";
-import HomeMasonry from "./HomeMasonry";
 import StoreHeader from "./StoreHeader";
 import FloAideFooter from "@/components/FloAideFooter";
 
@@ -19,6 +19,7 @@ interface MainLayoutProps {
   products?: Product[];
   companyName?: string;
   logoImage?: string | null;
+  heroImage?: string | null;
   themeVars?: Record<string, string>;
   slug?: string;
   locationUrl?: string | null;
@@ -35,6 +36,7 @@ interface MainLayoutProps {
 export default function MainLayout({
   companyName = "Lapause Fleur",
   logoImage,
+  heroImage,
   themeVars,
   slug,
   locationUrl,
@@ -77,21 +79,49 @@ export default function MainLayout({
         consultEnabled={consultEnabled}
       />
 
-      {/* 추천/인기 상품 마소너리 */}
-      <HomeMasonry slug={slug ?? ""} products={visibleProducts} />
+      {/* 히어로 이미지 */}
+      <div className="relative w-full aspect-video overflow-hidden">
+        {heroImage ? (
+          <Image
+            src={heroImage}
+            alt={companyName}
+            fill
+            priority
+            className="object-cover"
+            sizes="100vw"
+          />
+        ) : (
+          <div className="absolute inset-0 bg-beige-100" />
+        )}
+        {/* 어두운 오버레이 */}
+        <div className="absolute inset-0 bg-black/20" />
+        {/* 텍스트 + 버튼 */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-8 px-6 text-center">
+          <p className="text-white text-3xl md:text-5xl font-light leading-snug tracking-wide drop-shadow-md">
+            당신의 마음을 전하는<br />가장 아름다운 방법
+          </p>
+          <div className="flex gap-4">
+            <Link
+              href={`/${slug}/products`}
+              className="px-7 py-3.5 rounded-full bg-white text-gray-900 text-base font-medium hover:bg-gray-100 transition-colors"
+            >
+              전체 상품 보기
+            </Link>
+            {consultEnabled && (
+              <Link
+                href={`/${slug}/consult`}
+                className="px-7 py-3.5 rounded-full bg-gold-500 text-white text-base font-medium hover:bg-gold-600 transition-colors"
+              >
+                맞춤 주문하기
+              </Link>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* 하단 */}
       <div className="bg-white mt-2">
         <div className="max-w-4xl mx-auto px-4 py-8 flex flex-col items-center gap-8">
-
-          {consultEnabled && slug && (
-            <Link
-              href={`/${slug}/consult`}
-              className="w-full max-w-sm py-3.5 rounded-2xl bg-gold-500 text-white text-center font-medium text-sm hover:bg-gold-600 transition-colors"
-            >
-              맞춤 주문하기
-            </Link>
-          )}
 
           {hasChannels && (
             <div className="flex flex-row gap-8 justify-center">

@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { Product } from "@/types";
@@ -11,6 +11,10 @@ interface Props {
 
 export default async function ProductsPage({ params }: Props) {
   const { slug } = await params;
+
+  // searchParams가 없는 경우 /[slug]로 리다이렉트
+  redirect(`/${slug}`);
+
   const supabase = await createClient();
 
   const { data: raw } = await supabase

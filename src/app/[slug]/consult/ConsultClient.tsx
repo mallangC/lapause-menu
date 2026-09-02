@@ -71,6 +71,10 @@ interface DraftData {
   cancellationAgreed: boolean;
   finalPrice: number;
   source?: string | null;
+  quantity?: number;
+  messageCardCount?: number;
+  shoppingBagCount?: number;
+  messageCardContents?: string[];
 }
 
 interface DayHours {
@@ -101,6 +105,7 @@ interface Props {
   shoppingBagEnabled?: boolean;
   shoppingBagPrice?: number;
   preselectedProduct?: Product | null;
+  initialQuantity?: number;
   initialPaymentId?: string | null;
 }
 
@@ -236,7 +241,7 @@ function scoreProducts(products: Product[], form: ConsultForm): Product[] {
   return result;
 }
 
-export default function ConsultClient({ slug, companyName, logoImage = null, productTypeList = [], seasonList = [], notificationEmail, products, businessHours, closedDates, minLeadTimes = {}, consultNotice, storeAddress = null, deliveryEnabled = false, deliveryFees = {}, messageCardEnabled = false, messageCardPrice = 2000, shoppingBagEnabled = false, shoppingBagPrice = 2000, preselectedProduct = null, initialPaymentId = null }: Props) {
+export default function ConsultClient({ slug, companyName, logoImage = null, productTypeList = [], seasonList = [], notificationEmail, products, businessHours, closedDates, minLeadTimes = {}, consultNotice, storeAddress = null, deliveryEnabled = false, deliveryFees = {}, messageCardEnabled = false, messageCardPrice = 2000, shoppingBagEnabled = false, shoppingBagPrice = 2000, preselectedProduct = null, initialQuantity = 1, initialPaymentId = null }: Props) {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [form, setForm] = useState<ConsultForm>(EMPTY_FORM);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(preselectedProduct);
@@ -261,7 +266,14 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
   const [finalPriceSnapshot, setFinalPriceSnapshot] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [step2FieldErrors, setStep2FieldErrors] = useState<string[]>([]);
-  const [step4FieldErrors, setStep4FieldErrors] = useState<string[]>([]);
+  const [s4fe, setS4fe] = useState<Record<string, boolean>>({});
+  const s4RefName = useRef<HTMLDivElement>(null);
+  const s4RefPhone = useRef<HTMLDivElement>(null);
+  const s4RefDeliveryType = useRef<HTMLDivElement>(null);
+  const s4RefDeliveryInfo = useRef<HTMLDivElement>(null);
+  const s4RefDate = useRef<HTMLDivElement>(null);
+  const s4RefTime = useRef<HTMLDivElement>(null);
+  const s4RefAgreement = useRef<HTMLDivElement>(null);
   const [deliveryDistance, setDeliveryDistance] = useState<number | null>(null);
   const [deliveryFee, setDeliveryFee] = useState<number | null>(null);
   const [distanceLoading, setDistanceLoading] = useState(false);
@@ -269,6 +281,10 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
   const [requestsOpen, setRequestsOpen] = useState(false);
   const [activeSection1, setActiveSection1] = useState(0);
   const [activeSection2, setActiveSection2] = useState(0);
+  const [quantity] = useState(initialQuantity);
+  const [messageCardCount, setMessageCardCount] = useState(0);
+  const [shoppingBagCount, setShoppingBagCount] = useState(0);
+  const [messageCardContents, setMessageCardContents] = useState<string[]>([]);
   const sourceRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -317,6 +333,9 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
           setKakaoConsent(draft.kakaoConsent);
           setPrivacyAgreed(draft.privacyAgreed);
           setCancellationAgreed(draft.cancellationAgreed);
+          if (draft.messageCardCount !== undefined) setMessageCardCount(draft.messageCardCount);
+          if (draft.shoppingBagCount !== undefined) setShoppingBagCount(draft.shoppingBagCount);
+          if (draft.messageCardContents !== undefined) setMessageCardContents(draft.messageCardContents);
           setStep(4);
         } catch { /* 파싱 실패 시 step 1 유지 */ }
         sessionStorage.removeItem(`consult_draft_${slug}`);
@@ -386,6 +405,9 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
         if (draft.recipientPhone) setRecipientPhone(formatPhone(draft.recipientPhone));
         setAddress(draft.address);
         setAddressDetail(draft.addressDetail);
+        if (draft.messageCardCount !== undefined) setMessageCardCount(draft.messageCardCount);
+        if (draft.shoppingBagCount !== undefined) setShoppingBagCount(draft.shoppingBagCount);
+        if (draft.messageCardContents !== undefined) setMessageCardContents(draft.messageCardContents);
         setSubmitted(true);
         setPaidConfirmed(true);
       } catch (err) {
@@ -430,9 +452,18 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
     setSubmitting(true);
     setError(null);
 
+    const effectiveMsgCardCount = quantity >= 2 ? messageCardCount : (form.messageCard === "추가" ? 1 : 0);
+    const effectiveBagCount = quantity >= 2 ? shoppingBagCount : (form.shoppingBag === "추가" ? 1 : 0);
+    const submittedForm: ConsultForm = {
+      ...form,
+      messageCard: effectiveMsgCardCount > 0 ? "추가" : "없음",
+      messageCardContent: messageCardContents.filter(Boolean).join("\n[카드 구분]\n") || form.messageCardContent,
+      shoppingBag: effectiveBagCount > 0 ? "추가" : "없음",
+    };
+
     const finalPrice = selectedProduct.price +
-      (messageCardEnabled && form.messageCard === "추가" ? messageCardPrice : 0) +
-      (shoppingBagEnabled && form.shoppingBag === "추가" ? shoppingBagPrice : 0) +
+      (messageCardEnabled ? effectiveMsgCardCount * messageCardPrice : 0) +
+      (shoppingBagEnabled && !selectedProduct.bag_included ? effectiveBagCount * shoppingBagPrice : 0) +
       (form.deliveryType === "배송" && deliveryFee !== null ? deliveryFee : 0);
 
     try {
@@ -440,7 +471,11 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
 
       // 리다이렉트 복귀 대비 폼 데이터 임시 저장
       sessionStorage.setItem(`consult_draft_${slug}`, JSON.stringify({
-        form,
+        form: submittedForm,
+        quantity,
+        messageCardCount: effectiveMsgCardCount,
+        shoppingBagCount: effectiveBagCount,
+        messageCardContents,
         product: {
           id: selectedProduct.id,
           name: selectedProduct.name,
@@ -507,8 +542,10 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
   }
 
   if (submitted) {
-    const msgCardAmt  = messageCardEnabled && form.messageCard === "추가" ? messageCardPrice : 0;
-    const bagAmt      = shoppingBagEnabled && form.shoppingBag === "추가" ? shoppingBagPrice : 0;
+    const restoredMsgCount = messageCardCount > 0 ? messageCardCount : (messageCardEnabled && form.messageCard === "추가" ? 1 : 0);
+    const restoredBagCount = shoppingBagCount > 0 ? shoppingBagCount : (shoppingBagEnabled && form.shoppingBag === "추가" ? 1 : 0);
+    const msgCardAmt  = messageCardEnabled ? restoredMsgCount * messageCardPrice : 0;
+    const bagAmt      = shoppingBagEnabled && !selectedProduct?.bag_included ? restoredBagCount * shoppingBagPrice : 0;
     const deliveryAmt = form.deliveryType === "배송" && deliveryFee !== null ? deliveryFee : 0;
     const hasExtras   = msgCardAmt > 0 || bagAmt > 0 || deliveryAmt > 0;
 
@@ -669,7 +706,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
         </div>
       </div>
 
-      <div className={`mx-auto px-4 ${step === 4 ? "max-w-5xl pb-5" : "max-w-2xl py-5"}`}>
+      <div className={`mx-auto px-4 ${step === 4 ? "max-w-5xl py-5" : "max-w-2xl py-5"}`}>
 
         {/* ── STEP 1: 선물 정보 ── */}
         {step === 1 && (() => {
@@ -1037,51 +1074,58 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
 
         {/* ── STEP 4: 예약자 정보 & 확인 ── */}
         {step === 4 && (() => {
+          const effectiveMsgCardCount4 = quantity >= 2 ? messageCardCount : (form.messageCard === "추가" ? 1 : 0);
+          const effectiveBagCount4 = quantity >= 2 ? shoppingBagCount : (form.shoppingBag === "추가" ? 1 : 0);
           const finalPrice = selectedProduct
             ? selectedProduct.price +
-              (messageCardEnabled && form.messageCard === "추가" ? messageCardPrice : 0) +
-              (shoppingBagEnabled && form.shoppingBag === "추가" ? shoppingBagPrice : 0) +
+              (messageCardEnabled ? effectiveMsgCardCount4 * messageCardPrice : 0) +
+              (shoppingBagEnabled && !selectedProduct.bag_included ? effectiveBagCount4 * shoppingBagPrice : 0) +
               (form.deliveryType === "배송" && deliveryFee !== null ? deliveryFee : 0)
             : 0;
 
           const handleConfirm = () => {
-            const missing: string[] = [];
-            if (!name) missing.push("예약자 이름");
-            if (parsePhone(phone).length < 10 || parsePhone(phone).length > 11) missing.push("연락처 (10~11자리)");
-            if (!form.deliveryType) missing.push("수령 방법");
-            if (!form.desiredDate) missing.push("수령 희망 날짜");
-            if (form.desiredDate && !form.desiredTime) missing.push("수령 희망 시간");
-            if (form.deliveryType === "배송" && (!recipientName || !recipientPhone || !address)) missing.push("배송 정보");
-            if (form.deliveryType === "배송" && deliveryDistance !== null && deliveryFee === null) missing.push("배송 가능 여부를 매장에 문의해주세요");
-            if (!privacyAgreed) missing.push("개인정보처리방침 동의");
-            if (!cancellationAgreed) missing.push("맞춤 제작 취소 정책 동의");
-            if (missing.length > 0) { setStep4FieldErrors(missing); return; }
-            setStep4FieldErrors([]);
+            const fe: Record<string, boolean> = {};
+            if (!name) fe.name = true;
+            if (parsePhone(phone).length < 10 || parsePhone(phone).length > 11) fe.phone = true;
+            if (!form.deliveryType) fe.deliveryType = true;
+            if (form.deliveryType === "배송" && (!recipientName || !recipientPhone || !address)) fe.deliveryInfo = true;
+            if (!form.desiredDate) fe.date = true;
+            if (form.desiredDate && !form.desiredTime) fe.time = true;
+            if (!privacyAgreed) fe.privacy = true;
+            if (!cancellationAgreed) fe.cancellation = true;
+
+            if (Object.keys(fe).length > 0) {
+              setS4fe(fe);
+              const firstRef = fe.name ? s4RefName : fe.phone ? s4RefPhone : fe.deliveryType ? s4RefDeliveryType : fe.deliveryInfo ? s4RefDeliveryInfo : fe.date ? s4RefDate : fe.time ? s4RefTime : s4RefAgreement;
+              firstRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+              return;
+            }
+            setS4fe({});
             handleSubmit();
           };
 
           const agreementJsx = (
-            <div className="space-y-3">
-              <label className="flex items-start gap-2 text-xs text-gray-500 cursor-pointer">
-                <input type="checkbox" checked={privacyAgreed} onChange={(e) => setPrivacyAgreed(e.target.checked)} className="mt-0.5 accent-gold-500" />
+            <div ref={s4RefAgreement} className="space-y-4">
+              <label className={`flex items-start gap-3 text-sm cursor-pointer ${s4fe.privacy ? "text-red-500" : "text-gray-500"}`}>
+                <input type="checkbox" checked={privacyAgreed} onChange={(e) => { setPrivacyAgreed(e.target.checked); if (s4fe.privacy) setS4fe(p => ({ ...p, privacy: false })); }} className="mt-0.5 w-4 h-4 accent-gold-500 shrink-0" />
                 <span><Link href="/privacy" target="_blank" className="underline text-gold-600">개인정보처리방침</Link>에 동의합니다. <span className="text-red-400">*</span></span>
               </label>
-              <label className="flex items-start gap-2 text-xs text-gray-500 cursor-pointer">
-                <input type="checkbox" checked={cancellationAgreed} onChange={(e) => setCancellationAgreed(e.target.checked)} className="mt-0.5 accent-gold-500" />
+              <label className={`flex items-start gap-3 text-sm cursor-pointer ${s4fe.cancellation ? "text-red-500" : "text-gray-500"}`}>
+                <input type="checkbox" checked={cancellationAgreed} onChange={(e) => { setCancellationAgreed(e.target.checked); if (s4fe.cancellation) setS4fe(p => ({ ...p, cancellation: false })); }} className="mt-0.5 w-4 h-4 accent-gold-500 shrink-0" />
                 <span>맞춤 제작 상품으로 제작 착수 후 취소·환불 불가.{" "}<Link href="/refund" target="_blank" className="underline text-gold-600">환불 정책</Link> 동의 <span className="text-red-400">*</span></span>
               </label>
-              <label className="flex items-start gap-2 text-xs text-gray-500 cursor-pointer">
-                <input type="checkbox" checked={kakaoConsent} onChange={(e) => setKakaoConsent(e.target.checked)} className="mt-0.5 accent-gold-500" />
+              <label className="flex items-start gap-3 text-sm text-gray-500 cursor-pointer">
+                <input type="checkbox" checked={kakaoConsent} onChange={(e) => setKakaoConsent(e.target.checked)} className="mt-0.5 w-4 h-4 accent-gold-500 shrink-0" />
                 <span>카카오톡 알림 받기(선택) — 예약 확정·취소 알림</span>
               </label>
             </div>
           );
 
           return (
-            <div className="flex flex-col md:flex-row md:gap-8 md:items-stretch">
+            <div className="flex flex-col md:flex-row md:gap-5">
 
               {/* ── 왼쪽: 폼 영역 ── */}
-              <div className="flex-1 min-w-0 space-y-2 -mx-4 md:mx-0">
+              <div className="flex-1 min-w-0 md:max-w-xl space-y-2 -mx-4 md:mx-0">
 
                 {error && (
                   <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-start gap-3">
@@ -1105,18 +1149,18 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                 <div className="bg-white px-4 py-4 space-y-3">
                   <h3 className="text-sm font-medium text-gray-700 pb-3 border-b border-gray-100">예약자 정보 <span className="text-red-400">*</span></h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2 items-start">
-                    <div>
-                      <label className="block text-xs text-gray-600 mb-1">주문자</label>
-                      <input type="text" placeholder="홍길동" value={name} onChange={(e) => setName(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-gray-400 bg-beige-50 placeholder:text-gray-400" />
+                    <div ref={s4RefName}>
+                      <label className={`block text-xs mb-1 ${s4fe.name ? "text-red-500 font-medium" : "text-gray-600"}`}>주문자{s4fe.name && " *필수"}</label>
+                      <input type="text" placeholder="홍길동" value={name} onChange={(e) => { setName(e.target.value); if (s4fe.name) setS4fe(p => ({ ...p, name: false })); }} className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none bg-gray-50 placeholder:text-gray-300 ${s4fe.name ? "border-red-400 focus:border-red-400" : "border-gray-200 focus:border-gray-400"}`} />
                     </div>
-                    <div>
-                      <label className="block text-xs text-gray-600 mb-1">휴대전화</label>
+                    <div ref={s4RefPhone}>
+                      <label className={`block text-xs mb-1 ${s4fe.phone ? "text-red-500 font-medium" : "text-gray-600"}`}>휴대전화{s4fe.phone && " *필수"}</label>
                       <input
                         type="tel"
                         placeholder="010-1234-5678"
                         value={phone}
-                        onChange={(e) => setPhone(formatPhone(e.target.value))}
-                        className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none bg-beige-50 placeholder:text-gray-400 transition-colors ${phone && (parsePhone(phone).length < 10 || parsePhone(phone).length > 11) ? "border-red-300 focus:border-red-400" : "border-gray-200 focus:border-gray-400"}`}
+                        onChange={(e) => { setPhone(formatPhone(e.target.value)); if (s4fe.phone) setS4fe(p => ({ ...p, phone: false })); }}
+                        className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none bg-gray-50 placeholder:text-gray-300 transition-colors ${s4fe.phone || (phone && (parsePhone(phone).length < 10 || parsePhone(phone).length > 11)) ? "border-red-300 focus:border-red-400" : "border-gray-200 focus:border-gray-400"}`}
                       />
                       {phone && (parsePhone(phone).length < 10 || parsePhone(phone).length > 11) && (
                         <p className="mt-1 text-xs text-red-500">연락처는 10~11자리로 입력해주세요.</p>
@@ -1143,16 +1187,16 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                 )}
 
                 {/* 수령 방법 */}
-                <div className="bg-white overflow-hidden">
-                  <div className="px-4 pt-4 pb-3 border-b border-gray-100">
-                    <h3 className="text-sm font-medium text-gray-700">수령 방법 <span className="text-red-400">*</span></h3>
+                <div ref={s4RefDeliveryType} className="bg-white overflow-hidden">
+                  <div className={`px-4 pt-4 pb-3 border-b ${s4fe.deliveryType ? "border-red-300 bg-red-50" : "border-gray-100"}`}>
+                    <h3 className={`text-sm font-medium ${s4fe.deliveryType ? "text-red-500" : "text-gray-700"}`}>수령 방법 <span className="text-red-400">*</span>{s4fe.deliveryType && " — 선택해주세요"}</h3>
                   </div>
                   <div className="divide-y divide-gray-100">
                     {(deliveryEnabled ? ["픽업", "배송"] : ["픽업"]).map((v) => (
                       <div key={v}>
                         <button
                           type="button"
-                          onClick={() => set("deliveryType", v)}
+                          onClick={() => { set("deliveryType", v); setS4fe(p => ({ ...p, deliveryType: false })); }}
                           className={`w-full flex items-center justify-between px-4 py-3.5 text-left transition-colors ${form.deliveryType === v ? "bg-beige-50" : "hover:bg-gray-50"}`}
                         >
                           <span className={`text-sm ${form.deliveryType === v ? "text-gold-600 font-medium" : "text-gray-800"}`}>{v}</span>
@@ -1165,26 +1209,26 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                           </div>
                         </button>
                         {v === "배송" && form.deliveryType === "배송" && (
-                    <div className="px-4 pt-4 pb-4 border-t border-gray-100">
+                    <div ref={s4RefDeliveryInfo} className="px-4 pt-4 pb-4 border-t border-gray-100">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-xs text-gray-600 mb-1">받는 분 이름</label>
-                          <input type="text" placeholder="홍길동" value={recipientName} onChange={(e) => setRecipientName(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-gray-400 bg-beige-50 placeholder:text-gray-400" />
+                          <label className={`block text-xs mb-1 ${s4fe.deliveryInfo && !recipientName ? "text-red-500 font-medium" : "text-gray-600"}`}>받는 분 이름</label>
+                          <input type="text" placeholder="홍길동" value={recipientName} onChange={(e) => { setRecipientName(e.target.value); if (s4fe.deliveryInfo) setS4fe(p => ({ ...p, deliveryInfo: false })); }} className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none bg-gray-50 placeholder:text-gray-300 ${s4fe.deliveryInfo && !recipientName ? "border-red-400 focus:border-red-400" : "border-gray-200 focus:border-gray-400"}`} />
                         </div>
                         <div>
-                          <label className="block text-xs text-gray-600 mb-1">받는 분 전화번호</label>
-                          <input type="tel" placeholder="010-1234-5678" value={recipientPhone} onChange={(e) => setRecipientPhone(formatPhone(e.target.value))} className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-gray-400 bg-beige-50 placeholder:text-gray-400" />
+                          <label className={`block text-xs mb-1 ${s4fe.deliveryInfo && !recipientPhone ? "text-red-500 font-medium" : "text-gray-600"}`}>받는 분 전화번호</label>
+                          <input type="tel" placeholder="010-1234-5678" value={recipientPhone} onChange={(e) => { setRecipientPhone(formatPhone(e.target.value)); if (s4fe.deliveryInfo) setS4fe(p => ({ ...p, deliveryInfo: false })); }} className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none bg-gray-50 placeholder:text-gray-300 ${s4fe.deliveryInfo && !recipientPhone ? "border-red-400 focus:border-red-400" : "border-gray-200 focus:border-gray-400"}`} />
                         </div>
                         <div>
-                          <label className="block text-xs text-gray-600 mb-1">주소</label>
+                          <label className={`block text-xs mb-1 ${s4fe.deliveryInfo && !address ? "text-red-500 font-medium" : "text-gray-600"}`}>주소</label>
                           <div className="flex gap-2">
-                            <input type="text" placeholder="주소 검색" value={address} readOnly onClick={() => setShowPostcode(true)} className="flex-1 min-w-0 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-gray-400 bg-beige-50 cursor-pointer" />
-                            <button type="button" onClick={() => setShowPostcode(true)} className="shrink-0 px-3 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-600 hover:border-gray-400 bg-beige-50 transition-colors whitespace-nowrap">찾기</button>
+                            <input type="text" placeholder="주소 검색" value={address} readOnly onClick={() => setShowPostcode(true)} className={`flex-1 min-w-0 border rounded-lg px-3 py-2.5 text-sm focus:outline-none bg-gray-50 cursor-pointer placeholder:text-gray-300 ${s4fe.deliveryInfo && !address ? "border-red-400" : "border-gray-200 focus:border-gray-400"}`} />
+                            <button type="button" onClick={() => setShowPostcode(true)} className="shrink-0 px-3 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-600 hover:border-gray-400 bg-gray-50 transition-colors whitespace-nowrap">찾기</button>
                           </div>
                         </div>
                         <div>
                           <label className="block text-xs text-gray-600 mb-1">상세주소</label>
-                          <input type="text" placeholder="동/호수 등" value={addressDetail} onChange={(e) => setAddressDetail(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-gray-400 bg-beige-50 placeholder:text-gray-400" />
+                          <input type="text" placeholder="동/호수 등" value={addressDetail} onChange={(e) => setAddressDetail(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-gray-400 bg-gray-50 placeholder:text-gray-300" />
                         </div>
                       </div>
                       {address && (
@@ -1244,7 +1288,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                 </div>
 
                 {/* 수령 희망 날짜 */}
-                <div className="bg-white overflow-hidden">
+                <div ref={s4RefDate} className="bg-white overflow-hidden">
                   <div className="px-4 pt-4 pb-3 border-b border-gray-100">
                     <h3 className="text-sm font-medium text-gray-700">
                       수령 희망 날짜 <span className="text-red-400">*</span>
@@ -1319,10 +1363,11 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                     }
                   }
                   return (
-                    <div className="bg-white px-4 py-4 space-y-3">
-                      <h3 className="text-sm font-medium text-gray-700 flex items-center gap-2 pb-3 border-b border-gray-100">
+                    <div ref={s4RefTime} className="bg-white px-4 py-4 space-y-3">
+                      <h3 className={`text-sm font-medium flex items-center gap-2 pb-3 border-b ${s4fe.time ? "text-red-500 border-red-200" : "text-gray-700 border-gray-100"}`}>
                         수령 희망 시간 <span className="text-red-400">*</span>
                         {day && <span className="text-xs font-normal text-gray-400">영업시간 · {day.open}~{day.close}</span>}
+                        {s4fe.time && <span className="text-xs font-normal">— 시간을 선택해주세요</span>}
                       </h3>
                       {!selectedDate ? (
                         <p className="text-xs text-gray-400 px-1">날짜를 먼저 선택해주세요.</p>
@@ -1334,10 +1379,12 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                             <button
                               key={slot}
                               type="button"
-                              onClick={() => set("desiredTime", slot)}
+                              onClick={() => { set("desiredTime", slot); if (s4fe.time) setS4fe(p => ({ ...p, time: false })); }}
                               className={`py-3 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
                                 form.desiredTime === slot
                                   ? "bg-gold-500 text-white"
+                                  : s4fe.time
+                                  ? "bg-red-50 border border-red-200 text-gray-700 hover:bg-red-100"
                                   : "bg-beige-100 text-gray-700 hover:bg-beige-200"
                               }`}
                             >
@@ -1359,28 +1406,95 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                     <div className="divide-y divide-gray-100">
                       {messageCardEnabled && !selectedProduct?.message_card_unavailable && (
                         <div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const next = form.messageCard === "추가" ? "없음" : "추가";
-                              set("messageCard", next);
-                              if (next === "없음") set("messageCardContent", "");
-                            }}
-                            className={`w-full flex items-center justify-between px-4 py-3.5 text-left transition-colors ${form.messageCard === "추가" ? "bg-beige-50" : "hover:bg-gray-50"}`}
-                          >
-                            <div>
-                              <span className={`text-sm ${form.messageCard === "추가" ? "text-gold-600 font-medium" : "text-gray-800"}`}>메시지 카드</span>
-                              <span className="ml-2 text-xs text-gold-500">+{messageCardPrice.toLocaleString()}원</span>
+                          {quantity >= 2 ? (
+                            /* 수량 2개 이상: 카운터 UI */
+                            <div className="flex items-center justify-between px-4 py-3.5">
+                              <div>
+                                <span className="text-sm text-gray-800">메시지 카드</span>
+                                <span className="ml-2 text-xs text-gold-500">+{messageCardPrice.toLocaleString()}원 / 장</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const next = Math.max(0, messageCardCount - 1);
+                                    setMessageCardCount(next);
+                                    setMessageCardContents((prev) => prev.slice(0, next));
+                                  }}
+                                  disabled={messageCardCount === 0}
+                                  className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-gray-400 transition-colors disabled:opacity-30"
+                                >
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" /></svg>
+                                </button>
+                                <span className="text-sm font-medium w-5 text-center">{messageCardCount}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const next = Math.min(quantity, messageCardCount + 1);
+                                    setMessageCardCount(next);
+                                    setMessageCardContents((prev) => {
+                                      const arr = [...prev];
+                                      if (arr.length < next) arr.push("");
+                                      return arr;
+                                    });
+                                  }}
+                                  disabled={messageCardCount >= quantity}
+                                  className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-gray-400 transition-colors disabled:opacity-30"
+                                >
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m-7-7h14" /></svg>
+                                </button>
+                              </div>
                             </div>
-                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${form.messageCard === "추가" ? "border-gold-500 bg-gold-500" : "border-gray-300"}`}>
-                              {form.messageCard === "추가" && (
-                                <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                                </svg>
-                              )}
+                          ) : (
+                            /* 수량 1개: 기존 토글 UI */
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const next = form.messageCard === "추가" ? "없음" : "추가";
+                                set("messageCard", next);
+                                if (next === "없음") set("messageCardContent", "");
+                              }}
+                              className={`w-full flex items-center justify-between px-4 py-3.5 text-left transition-colors ${form.messageCard === "추가" ? "bg-beige-50" : "hover:bg-gray-50"}`}
+                            >
+                              <div>
+                                <span className={`text-sm ${form.messageCard === "추가" ? "text-gold-600 font-medium" : "text-gray-800"}`}>메시지 카드</span>
+                                <span className="ml-2 text-xs text-gold-500">+{messageCardPrice.toLocaleString()}원</span>
+                              </div>
+                              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${form.messageCard === "추가" ? "border-gold-500 bg-gold-500" : "border-gray-300"}`}>
+                                {form.messageCard === "추가" && (
+                                  <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                                  </svg>
+                                )}
+                              </div>
+                            </button>
+                          )}
+                          {/* 메시지 카드 내용 입력 */}
+                          {quantity >= 2 && messageCardCount > 0 && (
+                            <div className="px-4 pb-3 space-y-2">
+                              {Array.from({ length: messageCardCount }).map((_, idx) => (
+                                <div key={idx}>
+                                  {messageCardCount > 1 && (
+                                    <p className="text-xs text-gray-400 mb-1">{idx + 1}번 카드</p>
+                                  )}
+                                  <textarea
+                                    value={messageCardContents[idx] ?? ""}
+                                    onChange={(e) => {
+                                      setMessageCardContents((prev) => {
+                                        const next = Array.from({ length: messageCardCount }, (_, i) => prev[i] ?? "");
+                                        next[idx] = e.target.value;
+                                        return next;
+                                      });
+                                    }}
+                                    placeholder="메시지 카드에 적을 내용을 입력해주세요. (30자 이내 작성 권장)"
+                                    rows={2}
+                                    className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none focus:border-gold-400 bg-gray-50 placeholder:text-gray-300"
+                                  />
+                                </div>
+                              ))}
                             </div>
-                          </button>
-                          {form.messageCard === "추가" && (
+                          )}
+                          {quantity < 2 && form.messageCard === "추가" && (
                             <div className="px-4 pb-3">
                               <textarea
                                 value={form.messageCardContent}
@@ -1393,24 +1507,59 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                           )}
                         </div>
                       )}
-                      {shoppingBagEnabled && !selectedProduct?.bag_included && (
-                        <button
-                          type="button"
-                          onClick={() => set("shoppingBag", form.shoppingBag === "추가" ? "없음" : "추가")}
-                          className={`w-full flex items-center justify-between px-4 py-3.5 text-left transition-colors ${form.shoppingBag === "추가" ? "bg-beige-50" : "hover:bg-gray-50"}`}
-                        >
-                          <div>
-                            <span className={`text-sm ${form.shoppingBag === "추가" ? "text-gold-600 font-medium" : "text-gray-800"}`}>쇼핑백</span>
-                            <span className="ml-2 text-xs text-gold-500">+{shoppingBagPrice.toLocaleString()}원</span>
+                      {shoppingBagEnabled && (
+                        selectedProduct?.bag_included ? (
+                          <div className="w-full flex items-center justify-between px-4 py-3.5">
+                            <span className="text-sm text-gray-400">쇼핑백 포함 제품</span>
+                            <div className="w-5 h-5 rounded-full border-2 border-gray-200 flex items-center justify-center shrink-0" />
                           </div>
-                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${form.shoppingBag === "추가" ? "border-gold-500 bg-gold-500" : "border-gray-300"}`}>
-                            {form.shoppingBag === "추가" && (
-                              <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                              </svg>
-                            )}
+                        ) : quantity >= 2 ? (
+                          /* 수량 2개 이상: 카운터 UI */
+                          <div className="flex items-center justify-between px-4 py-3.5">
+                            <div>
+                              <span className="text-sm text-gray-800">쇼핑백</span>
+                              <span className="ml-2 text-xs text-gold-500">+{shoppingBagPrice.toLocaleString()}원 / 개</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setShoppingBagCount((c) => Math.max(0, c - 1))}
+                                disabled={shoppingBagCount === 0}
+                                className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-gray-400 transition-colors disabled:opacity-30"
+                              >
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" /></svg>
+                              </button>
+                              <span className="text-sm font-medium w-5 text-center">{shoppingBagCount}</span>
+                              <button
+                                type="button"
+                                onClick={() => setShoppingBagCount((c) => Math.min(quantity, c + 1))}
+                                disabled={shoppingBagCount >= quantity}
+                                className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-gray-400 transition-colors disabled:opacity-30"
+                              >
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m-7-7h14" /></svg>
+                              </button>
+                            </div>
                           </div>
-                        </button>
+                        ) : (
+                          /* 수량 1개: 기존 토글 UI */
+                          <button
+                            type="button"
+                            onClick={() => set("shoppingBag", form.shoppingBag === "추가" ? "없음" : "추가")}
+                            className={`w-full flex items-center justify-between px-4 py-3.5 text-left transition-colors ${form.shoppingBag === "추가" ? "bg-beige-50" : "hover:bg-gray-50"}`}
+                          >
+                            <div>
+                              <span className={`text-sm ${form.shoppingBag === "추가" ? "text-gold-600 font-medium" : "text-gray-800"}`}>쇼핑백</span>
+                              <span className="ml-2 text-xs text-gold-500">+{shoppingBagPrice.toLocaleString()}원</span>
+                            </div>
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${form.shoppingBag === "추가" ? "border-gold-500 bg-gold-500" : "border-gray-300"}`}>
+                              {form.shoppingBag === "추가" && (
+                                <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                                </svg>
+                              )}
+                            </div>
+                          </button>
+                        )
                       )}
                     </div>
                   </div>
@@ -1440,7 +1589,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                       onChange={(e) => set("requests", e.target.value)}
                       placeholder="추가 요청사항을 입력해주세요. (선택)"
                       rows={3}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none focus:border-gray-400 bg-beige-50 placeholder:text-gray-300"
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none focus:border-gray-400 bg-gray-50 placeholder:text-gray-300"
                     />
                   </div>
                 </div>
@@ -1448,14 +1597,6 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                 {/* 모바일: 동의 + 버튼 */}
                 <div className="md:hidden bg-white px-4 py-4 space-y-3">
                   {agreementJsx}
-                  {step4FieldErrors.length > 0 && (
-                    <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3">
-                      <p className="text-xs font-medium text-red-600 mb-1">아래 항목을 입력해주세요.</p>
-                      <ul className="list-disc list-inside space-y-0.5">
-                        {step4FieldErrors.map((f) => <li key={f} className="text-xs text-red-500">{f}</li>)}
-                      </ul>
-                    </div>
-                  )}
                   <button
                     type="button"
                     onClick={handleConfirm}
@@ -1468,8 +1609,8 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
               </div>
 
               {/* ── 오른쪽: 고정 사이드 패널 (PC 전용) ── */}
-              <div className="hidden md:block w-80 shrink-0">
-                <div className="sticky top-28 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="hidden md:flex md:flex-col md:w-80 md:shrink-0 md:self-start md:sticky md:top-[100px]">
+                <div className="bg-white border border-gray-100 overflow-hidden">
                   {/* 결제 금액 요약 */}
                   {selectedProduct && (
                     <div className="px-5 py-4 border-b border-gray-100 space-y-2">
@@ -1506,14 +1647,6 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                   {/* 동의 + 버튼 */}
                   <div className="px-5 py-4 space-y-4">
                     {agreementJsx}
-                    {step4FieldErrors.length > 0 && (
-                      <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3">
-                        <p className="text-xs font-medium text-red-600 mb-1">아래 항목을 입력해주세요.</p>
-                        <ul className="list-disc list-inside space-y-0.5">
-                          {step4FieldErrors.map((f) => <li key={f} className="text-xs text-red-500">{f}</li>)}
-                        </ul>
-                      </div>
-                    )}
                     <button
                       type="button"
                       onClick={handleConfirm}

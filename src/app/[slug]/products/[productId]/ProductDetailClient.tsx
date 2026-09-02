@@ -7,6 +7,7 @@ import { Product } from "@/types";
 import { FLOWER_COLOR_MAP, BADGE_COLORS, PRODUCT_TYPES, SEASONS } from "@/lib/constants";
 import FlowerNoticeModal from "@/components/FlowerNoticeModal";
 import StoreHeader from "@/components/main/StoreHeader";
+import { useCart } from "@/hooks/useCart";
 
 interface ProductDetailClientProps {
   slug: string;
@@ -37,6 +38,22 @@ export default function ProductDetailClient({
 }: ProductDetailClientProps) {
   const router = useRouter();
   const [noticeOpen, setNoticeOpen] = useState(false);
+  const [quantity, setQuantity] = useState(1);
+  const [added, setAdded] = useState(false);
+  const { addItem } = useCart(slug);
+
+  const handleAddToCart = () => {
+    addItem({
+      productId: product.id,
+      name: product.name,
+      price: product.price ?? 0,
+      image_url: product.image_url ?? null,
+      product_type: product.product_type,
+      bag_included: product.bag_included ?? false,
+    }, quantity);
+    setAdded(true);
+    setTimeout(() => setAdded(false), 1500);
+  };
 
   const productTypeList = [...PRODUCT_TYPES.filter((t) => !hiddenProductTypes.includes(t)), ...customProductTypes];
   const seasonList = [...SEASONS.filter((s) => !hiddenSeasons.includes(s)), ...customSeasons];
@@ -117,8 +134,8 @@ export default function ProductDetailClient({
           </div>
 
           {/* 오른쪽: 정보 */}
-          <div className="md:w-1/2 flex flex-col justify-between px-8 py-12">
-            <div className="space-y-8">
+          <div className="md:w-1/2 flex flex-col justify-between px-6 py-6 md:px-8 md:py-12">
+            <div className="space-y-5 md:space-y-8">
               {/* 이름 & 가격 */}
               <div>
                 <p className="text-xs text-gray-400 mb-2 tracking-wider uppercase">{product.product_type}</p>
@@ -166,17 +183,59 @@ export default function ProductDetailClient({
               )}
             </div>
 
-            {/* 예약 버튼 */}
-            {consultEnabled && (
-              <div className="mt-10">
-                <button
-                  onClick={() => setNoticeOpen(true)}
-                  className="w-full bg-gold-500 text-white text-center py-4 font-medium text-sm hover:bg-gold-600 transition-colors rounded-2xl"
-                >
-                  이 상품으로 예약하기
-                </button>
+            {/* 수량 + 버튼 */}
+            <div className="mt-6 md:mt-10 space-y-4">
+              {/* 수량 선택 */}
+              <div className="flex items-center gap-4">
+                <span className="text-sm text-gray-500">수량</span>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                    className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-gray-400 transition-colors"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" />
+                    </svg>
+                  </button>
+                  <span className="text-base font-medium w-6 text-center">{quantity}</span>
+                  <button
+                    onClick={() => setQuantity((q) => q + 1)}
+                    className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-gray-400 transition-colors"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m-7-7h14" />
+                    </svg>
+                  </button>
+                </div>
+                {product.price && (
+                  <span className="ml-auto text-base font-bold text-gray-900">
+                    {(product.price * quantity).toLocaleString()}원
+                  </span>
+                )}
               </div>
-            )}
+
+              {/* 버튼 */}
+              <div className="flex gap-3">
+                <button
+                  onClick={handleAddToCart}
+                  className={`flex-1 py-4 rounded-2xl border text-sm font-medium transition-colors ${
+                    added
+                      ? "border-gold-500 bg-gold-50 text-gold-600"
+                      : "border-gray-200 text-gray-700 hover:border-gold-400 hover:text-gold-500"
+                  }`}
+                >
+                  {added ? "담겼습니다 ✓" : "장바구니"}
+                </button>
+                {consultEnabled && (
+                  <button
+                    onClick={() => setNoticeOpen(true)}
+                    className="flex-1 py-4 rounded-2xl bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors"
+                  >
+                    예약하기
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
       </div>
 
@@ -223,7 +282,7 @@ export default function ProductDetailClient({
 
       {noticeOpen && (
         <FlowerNoticeModal
-          onConfirm={() => router.push(`/${slug}/consult?productId=${product.id}`)}
+          onConfirm={() => router.push(`/${slug}/consult?productId=${product.id}&quantity=${quantity}`)}
           onClose={() => setNoticeOpen(false)}
         />
       )}

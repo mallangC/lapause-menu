@@ -114,6 +114,9 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
   const [messageCardPrice, setMessageCardPrice] = useState(0);
   const [shoppingBagEnabled, setShoppingBagEnabled] = useState(false);
   const [shoppingBagPrice, setShoppingBagPrice] = useState(0);
+  const [customProductTypes, setCustomProductTypes] = useState<string[]>([]);
+  const [businessHours, setBusinessHours] = useState<Record<string, { closed: boolean; open: string; close: string }>>({});
+  const [closedDates, setClosedDates] = useState<string[]>([]);
 
   const supabase = createClient();
 
@@ -125,7 +128,7 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
   useEffect(() => {
     supabase
       .from("company_settings")
-      .select("message_card_enabled, message_card_price, shopping_bag_enabled, shopping_bag_price")
+      .select("message_card_enabled, message_card_price, shopping_bag_enabled, shopping_bag_price, business_hours, closed_dates")
       .eq("company_id", companyId)
       .single()
       .then(({ data }) => {
@@ -134,6 +137,16 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
         setMessageCardPrice(data.message_card_price ?? 0);
         setShoppingBagEnabled(data.shopping_bag_enabled ?? false);
         setShoppingBagPrice(data.shopping_bag_price ?? 0);
+        if (data.business_hours) setBusinessHours(data.business_hours as Record<string, { closed: boolean; open: string; close: string }>);
+        if (data.closed_dates) setClosedDates(data.closed_dates as string[]);
+      });
+    supabase
+      .from("company_categories")
+      .select("name, hidden")
+      .eq("company_id", companyId)
+      .eq("category_type", "product_type")
+      .then(({ data }) => {
+        setCustomProductTypes((data ?? []).filter((c) => !c.hidden).map((c) => c.name as string));
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId]);
@@ -306,6 +319,9 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
           messageCardPrice={messageCardPrice}
           shoppingBagEnabled={shoppingBagEnabled}
           shoppingBagPrice={shoppingBagPrice}
+          customProductTypes={customProductTypes}
+          businessHours={businessHours}
+          closedDates={closedDates}
         />
       )}
 
@@ -336,6 +352,8 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
                 onTogglePaid={togglePaid}
                 onEdit={(r) => { setMobileDetailId(null); setEditingReservation(r); }}
                 onDelete={(id) => { setMobileDetailId(null); handleDeleteReservation(id); }}
+                messageCardPrice={messageCardPrice}
+                shoppingBagPrice={shoppingBagPrice}
               />
             </div>
           </div>
@@ -354,6 +372,9 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
           messageCardPrice={messageCardPrice}
           shoppingBagEnabled={shoppingBagEnabled}
           shoppingBagPrice={shoppingBagPrice}
+          customProductTypes={customProductTypes}
+          businessHours={businessHours}
+          closedDates={closedDates}
         />
       )}
 
@@ -666,6 +687,8 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
                               onTogglePaid={togglePaid}
                               onEdit={setEditingReservation}
                               onDelete={handleDeleteReservation}
+                              messageCardPrice={messageCardPrice}
+                              shoppingBagPrice={shoppingBagPrice}
                             />
                           </td>
                         </tr>

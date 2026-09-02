@@ -322,7 +322,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
               </div>
               <h3 className="font-semibold text-gray-900 text-[16px] mb-2">상품 등록 한도 초과</h3>
               <p className="text-[14px] text-gray-500 leading-relaxed mb-6">
-                상품은 최대 <span className="font-semibold text-gray-800">100개</span>까지 등록할 수 있으며, 현재 한도에 도달했습니다.<br />
+                상품은 최대 <span className="font-semibold text-gray-800">500개</span>까지 등록할 수 있으며, 현재 한도에 도달했습니다.<br />
                 더 추가하려면 사용하지 않는 상품을 삭제해 주세요.
               </p>
               <button
@@ -398,7 +398,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-medium text-gray-900">상품 목록</h2>
                 <button
-                  onClick={() => products.length >= 100 ? setShowLimitModal(true) : setShowForm(true)}
+                  onClick={() => products.length >= 500 ? setShowLimitModal(true) : setShowForm(true)}
                   className="bg-gold-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gold-600 transition-colors"
                 >
                   + 상품 추가

@@ -10,7 +10,57 @@ import { ko } from "date-fns/locale";
 import "react-datepicker/dist/react-datepicker.css";
 registerLocale("ko", ko);
 
-const PRODUCT_TYPES = ["꽃다발", "꽃바구니", "센터피스", "화병", "식물", "기타"];
+import { PRODUCT_TYPES as DEFAULT_PRODUCT_TYPES } from "@/lib/constants";
+
+function CustomSelect({ value, onChange, options, placeholder }: {
+  value: string;
+  onChange: (v: string) => void;
+  options: string[];
+  placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className={`w-full flex items-center justify-between px-3 py-2 border rounded-lg text-sm transition-colors bg-white ${open ? "border-gray-400" : "border-gray-200 hover:border-gray-300"}`}
+      >
+        <span className={value ? "text-gray-800" : "text-gray-300"}>{value || placeholder || "선택"}</span>
+        <svg className={`w-4 h-4 text-gray-400 transition-transform shrink-0 ${open ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {open && (
+        <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+          {options.map((opt) => (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => { onChange(opt); setOpen(false); }}
+              className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center justify-between ${
+                value === opt ? "bg-beige-50 text-gold-600 font-medium" : "text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              {opt}
+              {value === opt && (
+                <svg className="w-4 h-4 text-gold-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                </svg>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface ItemForm {
   type: string;
@@ -32,6 +82,8 @@ const emptyItem = (): ItemForm => ({
   memo: "",
 });
 
+interface DayHours { closed: boolean; open: string; close: string; }
+
 interface Props {
   companyId: string;
   onClose: () => void;
@@ -40,6 +92,9 @@ interface Props {
   messageCardPrice?: number;
   shoppingBagEnabled?: boolean;
   shoppingBagPrice?: number;
+  customProductTypes?: string[];
+  businessHours?: Record<string, DayHours>;
+  closedDates?: string[];
   initialData?: Reservation;
   reservationId?: string;
 }
@@ -50,6 +105,12 @@ const CHANNEL_STYLE: Record<string, string> = {
   카카오: "border-[#FEE500] bg-[#FEE500] text-gray-800",
   워크인: "border-orange-400 bg-orange-400 text-white",
   "Flo.Aide": "border-gold-500 bg-gold-500 text-white",
+};
+const CHANNEL_ACTIVE_TEXT: Record<string, string> = {
+  네이버: "text-[#03C75A]",
+  카카오: "text-yellow-500",
+  워크인: "text-orange-400",
+  "Flo.Aide": "text-gold-600",
 };
 const CHANNEL_IDLE: Record<string, string> = {
   네이버: "border-gray-200 text-gray-500 hover:border-[#03C75A] hover:text-[#03C75A]",
@@ -131,12 +192,18 @@ function parseNaverText(text: string) {
   return r;
 }
 
+const DAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
+
 export default function AddReservationModal({
   companyId, onClose, onSaved,
   messageCardEnabled = false, messageCardPrice = 0,
   shoppingBagEnabled = false, shoppingBagPrice = 0,
+  customProductTypes = [],
+  businessHours = {},
+  closedDates = [],
   initialData, reservationId,
 }: Props) {
+  const allProductTypes = [...DEFAULT_PRODUCT_TYPES, ...customProductTypes];
   const [channel, setChannel] = useState<string | null>(
     initialData?.channel ?? (reservationId ? null : "Flo.Aide")
   );
@@ -382,7 +449,9 @@ export default function AddReservationModal({
   };
 
   const inputCls = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400 bg-white placeholder:text-gray-300";
-  const labelCls = "block text-xs text-gray-500 mb-1";
+  const sectionHeaderCls = "px-5 pt-4 pb-3 border-b border-gray-100";
+  const sectionLabelCls = "text-xs font-medium text-gray-400 uppercase tracking-wider";
+  const fieldLabelCls = "block text-xs text-gray-500 mb-1";
 
   return (
     <div
@@ -390,16 +459,18 @@ export default function AddReservationModal({
       style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
+      <div className="bg-gray-100 rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        {/* 헤더 */}
+        <div className="flex items-center justify-between px-5 pt-5 pb-4 bg-white">
           <h3 className="font-medium text-gray-900">{reservationId ? "예약 수정" : "예약 직접 추가"}</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
         </div>
 
-        <div className="p-6 space-y-4">
+        <div className="space-y-2">
 
-          {/* 네이버 예약 텍스트 붙여넣기 */}
-          <div className="border border-dashed border-gray-200 rounded-xl overflow-hidden">
+        {/* 네이버 예약 자동 입력 */}
+        <div className="bg-white px-5 py-4">
+          <div className="border-2 border-dashed border-gray-200 rounded-xl overflow-hidden">
             <div
               role="button"
               onClick={() => {
@@ -409,7 +480,7 @@ export default function AddReservationModal({
               }}
               className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-gray-500 hover:bg-gray-50 transition-colors cursor-pointer"
             >
-              <span className="font-medium">네이버 예약 자동 입력</span>
+              <span className="font-medium text-gray-600">네이버 예약 자동 입력</span>
               <div className="flex items-center gap-2">
                 <button type="button" onClick={(e) => { e.stopPropagation(); setShowCopyInfo(true); }}
                   className="w-5 h-5 rounded-full border border-gray-300 text-gray-400 hover:text-gray-600 hover:border-gray-500 flex items-center justify-center text-xs font-medium transition-colors">
@@ -420,183 +491,186 @@ export default function AddReservationModal({
                 </svg>
               </div>
             </div>
-
-            {showCopyInfo && (
-              <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40" onClick={() => setShowCopyInfo(false)}>
-                <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 flex flex-col max-h-[85vh]" onClick={(e) => e.stopPropagation()}>
-                  <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
-                    <h3 className="text-sm font-semibold text-gray-900">복사 방법 안내</h3>
-                    <button type="button" onClick={() => setShowCopyInfo(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                  <div className="p-5 space-y-3 overflow-y-auto">
-                    <div className="space-y-1.5 text-sm text-gray-600 leading-relaxed">
-                      <p>네이버 예약 관리 페이지에서 예약 상세 내용을 아래 이미지의 범위대로 전체 선택 후 복사하여 붙여넣으세요.</p>
-                      <ul className="list-disc list-inside text-xs text-gray-400 space-y-1 pl-1">
-                        <li>&#39;예약자&#39;부터 &#39;결제/환불정보&#39;까지 드래그하여 복사</li>
-                        <li>이름, 전화번호, 가격, 이용 시간이 자동으로 입력됩니다.</li>
-                        <li>예약자 입력 정보는 모두 요청 사항에 자동으로 입력됩니다</li>
-                      </ul>
-                    </div>
-                    <img src="/copy-info.png" alt="복사 범위 안내" className="w-full rounded-xl border border-gray-100" />
-                  </div>
-                </div>
-              </div>
-            )}
-
             {showPaste && (
-              <div className="px-4 pb-4 space-y-2 border-t border-gray-100">
-                <textarea
-                  ref={pasteTextareaRef}
-                  value={pasteText}
-                  onChange={(e) => setPasteText(e.target.value)}
-                  onPaste={(e) => {
-                    const text = e.clipboardData.getData("text");
-                    if (text.trim()) {
-                      setPasteText(text);
-                      setTimeout(() => {
-                        const parsed = parseNaverText(text);
-                        if (parsed.ordererName) setOrdererName(parsed.ordererName as string);
-                        if (parsed.ordererPhone) setOrdererPhone(formatPhone(parsed.ordererPhone as string));
-                        if (parsed.selectedDate) setSelectedDate(parsed.selectedDate as Date);
-                        if (parsed.channel) setChannel(parsed.channel as string);
-                        else setChannel("네이버");
-                        if (parsed.requests) setRequests(parsed.requests as string);
-                        if (parsed.paid) setPaid(true);
-
-                        // 첫 번째 아이템 업데이트
-                        setItems((prev) => {
-                          const first = { ...prev[0] };
-                          if (parsed.productType) first.type = parsed.productType as string;
-                          if (parsed.productName) first.name = parsed.productName as string;
-                          if (parsed.productPrice) {
-                            let price = Number(parsed.productPrice);
-                            if (shoppingBagEnabled && parsed.shoppingBag === "추가") price -= shoppingBagPrice;
-                            if (messageCardEnabled && parsed.messageCard === "추가") price -= messageCardPrice;
-                            first.price = String(Math.max(0, price));
-                          }
-                          if (messageCardEnabled && parsed.messageCard) first.message_card = parsed.messageCard as string;
-                          if (shoppingBagEnabled && parsed.shoppingBag) first.shopping_bag = parsed.shoppingBag as string;
-                          return [first, ...prev.slice(1)];
-                        });
-
-                        setShowPaste(false);
-                        setPasteText("");
-                      }, 0);
-                      e.preventDefault();
-                    }
-                  }}
-                  placeholder="네이버 예약 내용을 전체 복사해서 붙여넣으세요"
-                  rows={5}
-                  className="w-full mt-3 border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-gold-400 resize-none text-gray-700"
-                />
-              </div>
-            )}
+            <div className="px-4 pb-4 border-t border-gray-100">
+              <textarea
+                ref={pasteTextareaRef}
+                value={pasteText}
+                onChange={(e) => setPasteText(e.target.value)}
+                onPaste={(e) => {
+                  const text = e.clipboardData.getData("text");
+                  if (text.trim()) {
+                    setPasteText(text);
+                    setTimeout(() => {
+                      const parsed = parseNaverText(text);
+                      if (parsed.ordererName) setOrdererName(parsed.ordererName as string);
+                      if (parsed.ordererPhone) setOrdererPhone(formatPhone(parsed.ordererPhone as string));
+                      if (parsed.selectedDate) setSelectedDate(parsed.selectedDate as Date);
+                      if (parsed.channel) setChannel(parsed.channel as string);
+                      else setChannel("네이버");
+                      if (parsed.requests) setRequests(parsed.requests as string);
+                      if (parsed.paid) setPaid(true);
+                      setItems((prev) => {
+                        const first = { ...prev[0] };
+                        if (parsed.productType) first.type = parsed.productType as string;
+                        if (parsed.productName) first.name = parsed.productName as string;
+                        if (parsed.productPrice) {
+                          let price = Number(parsed.productPrice);
+                          if (shoppingBagEnabled && parsed.shoppingBag === "추가") price -= shoppingBagPrice;
+                          if (messageCardEnabled && parsed.messageCard === "추가") price -= messageCardPrice;
+                          first.price = String(Math.max(0, price));
+                        }
+                        if (messageCardEnabled && parsed.messageCard) first.message_card = parsed.messageCard as string;
+                        if (shoppingBagEnabled && parsed.shoppingBag) first.shopping_bag = parsed.shoppingBag as string;
+                        return [first, ...prev.slice(1)];
+                      });
+                      setShowPaste(false);
+                      setPasteText("");
+                    }, 0);
+                    e.preventDefault();
+                  }
+                }}
+                placeholder="네이버 예약 내용을 전체 복사해서 붙여넣으세요"
+                rows={5}
+                className="w-full mt-3 border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-gold-400 resize-none text-gray-700"
+              />
+            </div>
+          )}
           </div>
+        </div>
 
-          {/* 예약자 정보 */}
-          <div className="grid grid-cols-2 gap-3">
+        {showCopyInfo && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40" onClick={() => setShowCopyInfo(false)}>
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 flex flex-col max-h-[85vh]" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
+                <h3 className="text-sm font-semibold text-gray-900">복사 방법 안내</h3>
+                <button type="button" onClick={() => setShowCopyInfo(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="p-5 space-y-3 overflow-y-auto">
+                <div className="space-y-1.5 text-sm text-gray-600 leading-relaxed">
+                  <p>네이버 예약 관리 페이지에서 예약 상세 내용을 아래 이미지의 범위대로 전체 선택 후 복사하여 붙여넣으세요.</p>
+                  <ul className="list-disc list-inside text-xs text-gray-400 space-y-1 pl-1">
+                    <li>&#39;예약자&#39;부터 &#39;결제/환불정보&#39;까지 드래그하여 복사</li>
+                    <li>이름, 전화번호, 가격, 이용 시간이 자동으로 입력됩니다.</li>
+                    <li>예약자 입력 정보는 모두 요청 사항에 자동으로 입력됩니다</li>
+                  </ul>
+                </div>
+                <img src="/copy-info.png" alt="복사 범위 안내" className="w-full rounded-xl border border-gray-100" />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 섹션: 예약자 정보 */}
+        <div className="bg-white">
+          <div className={sectionHeaderCls}>
+            <p className={sectionLabelCls}>예약자 정보</p>
+          </div>
+          <div className="px-5 py-4 space-y-3">
             <div>
-              <label className={labelCls}>예약자 이름 <span className="text-red-500">*</span></label>
+              <label className={fieldLabelCls}>이름 <span className="text-red-500">*</span></label>
               <input className={inputCls} value={ordererName} onChange={(e) => setOrdererName(e.target.value)} placeholder="홍길동" />
             </div>
             <div>
-              <label className={labelCls}>예약자 연락처 <span className="text-red-500">*</span></label>
+              <label className={fieldLabelCls}>연락처 <span className="text-red-500">*</span></label>
               <input className={inputCls} type="tel" value={ordererPhone}
                 onChange={(e) => setOrdererPhone(formatPhone(e.target.value))} placeholder="010-1234-5678" />
             </div>
-          </div>
-
-          {/* 채널 */}
-          <div>
-            <label className={labelCls}>채널 <span className="text-red-500">*</span></label>
-            <div className="flex flex-wrap gap-2">
-              {CHANNELS.map((c) => (
-                <button key={c} type="button" onClick={() => setChannel(channel === c ? null : c)}
-                  className={`px-4 py-2 rounded-xl text-sm font-medium border-2 transition-all ${channel === c ? CHANNEL_STYLE[c] : CHANNEL_IDLE[c] + " bg-white"}`}>
-                  {c}
-                </button>
-              ))}
+            <div>
+              <label className={fieldLabelCls}>채널 <span className="text-red-500">*</span></label>
+              <div className="flex p-1 bg-gray-100 rounded-xl">
+                {CHANNELS.map((c) => (
+                  <button key={c} type="button" onClick={() => setChannel(channel === c ? null : c)}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      channel === c ? "bg-gold-500 text-white shadow-sm" : "text-gray-400 hover:text-gray-500"
+                    }`}>
+                    {c}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
+        </div>
 
-          {/* 상품 목록 */}
-          <div className="space-y-3">
+        {/* 섹션: 상품 */}
+        <div className="bg-white">
+          <div className={sectionHeaderCls}>
+            <p className={sectionLabelCls}>상품</p>
+          </div>
+          <div className="px-5 py-4 space-y-4">
             {items.map((item, idx) => (
-              <div key={idx} className="relative border border-gray-200 rounded-xl p-4 space-y-3">
-                {items.length > 1 && (
-                  <button type="button" onClick={() => removeItem(idx)}
-                    className="absolute top-3 right-4 text-xs text-red-400 hover:text-red-600 transition-colors">
-                    삭제
-                  </button>
-                )}
-
-                {/* 상품 유형 */}
+              <div key={idx} className={`space-y-3 ${idx > 0 ? "pt-4 border-t border-gray-100" : ""}`}>
+                <div className="flex items-center justify-between">
+                  {items.length > 1 && <p className="text-xs text-gray-400">상품 {idx + 1}</p>}
+                  {items.length > 1 && (
+                    <button type="button" onClick={() => removeItem(idx)}
+                      className="text-xs text-red-400 hover:text-red-600 transition-colors">
+                      삭제
+                    </button>
+                  )}
+                </div>
                 <div>
-                  <label className={labelCls}>상품 유형 <span className="text-red-500">*</span></label>
-                  <div className="flex flex-wrap gap-2">
-                    {PRODUCT_TYPES.map((t) => (
-                      <button key={t} type="button" onClick={() => updateItem(idx, "type", t)}
-                        className={`px-3 py-1.5 rounded-xl text-sm font-medium border-2 transition-all ${
-                          item.type === t ? "border-gold-500 bg-gold-500 text-white" : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
-                        }`}>
-                        {t}
-                      </button>
-                    ))}
+                  <label className={fieldLabelCls}>상품 유형 <span className="text-red-500">*</span></label>
+                  <CustomSelect
+                    value={item.type}
+                    onChange={(v) => updateItem(idx, "type", v)}
+                    options={allProductTypes}
+                    placeholder="유형 선택"
+                  />
+                </div>
+                <div>
+                  <label className={fieldLabelCls}>상품명</label>
+                  <input className={inputCls} value={item.name}
+                    onChange={(e) => updateItem(idx, "name", e.target.value)} placeholder="예) 핑크 꽃다발" />
+                </div>
+                <div>
+                  <label className={fieldLabelCls}>금액</label>
+                  <div className="flex items-center gap-2">
+                    <input className={inputCls} type="text" inputMode="numeric"
+                      value={item.price === "" ? "" : formatMoney(item.price)}
+                      onChange={(e) => {
+                        const raw = parseMoney(e.target.value);
+                        updateItem(idx, "price", raw === 0 && e.target.value !== "0" ? "" : String(raw));
+                      }}
+                      placeholder="0" />
+                    <span className="text-sm text-gray-500 shrink-0">원</span>
                   </div>
                 </div>
-
-                {/* 상품명 + 금액 */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className={labelCls}>상품명</label>
-                    <input className={inputCls} value={item.name}
-                      onChange={(e) => updateItem(idx, "name", e.target.value)} placeholder="예) 핑크 꽃다발" />
-                  </div>
-                  <div>
-                    <label className={labelCls}>금액</label>
-                    <div className="flex items-center gap-2">
-                      <input className={inputCls} type="text" inputMode="numeric"
-                        value={item.price === "" ? "" : formatMoney(item.price)}
-                        onChange={(e) => {
-                          const raw = parseMoney(e.target.value);
-                          updateItem(idx, "price", raw === 0 && e.target.value !== "0" ? "" : String(raw));
-                        }}
-                        placeholder="0" />
-                      <span className="text-sm text-gray-500 shrink-0">원</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 메시지 카드 + 쇼핑백 (2열) */}
                 {(messageCardEnabled || shoppingBagEnabled) && (
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-3">
                     {messageCardEnabled && (
                       <div>
-                        <label className={labelCls}>메시지 카드{messageCardPrice > 0 && <span className="text-gray-400 font-normal ml-1">(+{messageCardPrice.toLocaleString()}원)</span>}</label>
-                        <div className="flex gap-1">
+                        <label className={fieldLabelCls}>메시지 카드{messageCardPrice > 0 && <span className="text-gray-400 font-normal ml-1">(+{messageCardPrice.toLocaleString()}원)</span>}</label>
+                        <div className="flex p-1 bg-gray-100 rounded-xl">
                           {["추가", "서비스", "없음"].map((opt) => (
                             <button key={opt} type="button" onClick={() => updateItem(idx, "message_card", opt)}
-                              className={`flex-1 py-1.5 rounded-xl text-xs border-2 font-medium transition-all ${
-                                item.message_card === opt ? "border-gold-500 bg-gold-500 text-white" : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
+                              className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                                item.message_card === opt ? "bg-gold-500 text-white shadow-sm" : "text-gray-400 hover:text-gray-500"
                               }`}>
                               {opt}
                             </button>
                           ))}
                         </div>
+                        {(item.message_card === "추가" || item.message_card === "서비스") && (
+                          <textarea className={`${inputCls} resize-none mt-2`} rows={2}
+                            value={item.message_card_content}
+                            onChange={(e) => updateItem(idx, "message_card_content", e.target.value)}
+                            placeholder="메시지 내용 (30자 이내 작성 권장)" />
+                        )}
                       </div>
                     )}
                     {shoppingBagEnabled && (
                       <div>
-                        <label className={labelCls}>쇼핑백{shoppingBagPrice > 0 && <span className="text-gray-400 font-normal ml-1">(+{shoppingBagPrice.toLocaleString()}원)</span>}</label>
-                        <div className="flex gap-1">
+                        <label className={fieldLabelCls}>쇼핑백{shoppingBagPrice > 0 && <span className="text-gray-400 font-normal ml-1">(+{shoppingBagPrice.toLocaleString()}원)</span>}</label>
+                        <div className="flex p-1 bg-gray-100 rounded-xl">
                           {["추가", "서비스", "없음"].map((opt) => (
                             <button key={opt} type="button" onClick={() => updateItem(idx, "shopping_bag", opt)}
-                              className={`flex-1 py-1.5 rounded-xl text-xs border-2 font-medium transition-all ${
-                                item.shopping_bag === opt ? "border-gold-500 bg-gold-500 text-white" : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
+                              className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                                item.shopping_bag === opt ? "bg-gold-500 text-white shadow-sm" : "text-gray-400 hover:text-gray-500"
                               }`}>
                               {opt}
                             </button>
@@ -606,38 +680,34 @@ export default function AddReservationModal({
                     )}
                   </div>
                 )}
-                {messageCardEnabled && (item.message_card === "추가" || item.message_card === "서비스") && (
-                  <textarea className={`${inputCls} resize-none`} rows={2}
-                    value={item.message_card_content}
-                    onChange={(e) => updateItem(idx, "message_card_content", e.target.value)}
-                    placeholder="메시지 내용 (30자 이내 작성 권장)" />
-                )}
-
-                {/* 상품별 메모 */}
                 <div>
-                  <label className={labelCls}>상품 메모</label>
+                  <label className={fieldLabelCls}>상품 메모</label>
                   <input className={inputCls} value={item.memo}
                     onChange={(e) => updateItem(idx, "memo", e.target.value)}
                     placeholder="이 상품에 대한 메모 (선택)" />
                 </div>
               </div>
             ))}
-
             <button type="button" onClick={addItem}
               className="w-full py-2.5 border-2 border-dashed border-gray-200 rounded-xl text-sm text-gray-400 hover:border-gray-400 hover:text-gray-600 transition-colors">
               + 상품 추가
             </button>
           </div>
+        </div>
 
-          {/* 수령 정보 */}
-          <div className="grid grid-cols-2 gap-3">
+        {/* 섹션: 수령 정보 */}
+        <div className="bg-white">
+          <div className={sectionHeaderCls}>
+            <p className={sectionLabelCls}>수령 정보</p>
+          </div>
+          <div className="px-5 py-4 space-y-3">
             <div>
-              <label className={labelCls}>수령 방법</label>
-              <div className="flex gap-2">
+              <label className={fieldLabelCls}>수령 방법</label>
+              <div className="flex p-1 bg-gray-100 rounded-xl">
                 {DELIVERY_TYPES.map((d) => (
                   <button key={d} type="button" onClick={() => setDeliveryType(d)}
-                    className={`flex-1 py-2 rounded-xl text-sm border-2 font-medium transition-all ${
-                      deliveryType === d ? "border-gold-500 bg-gold-500 text-white" : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
+                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
+                      deliveryType === d ? "bg-gold-500 text-white shadow-sm" : "text-gray-400 hover:text-gray-500"
                     }`}>
                     {d}
                   </button>
@@ -645,7 +715,7 @@ export default function AddReservationModal({
               </div>
             </div>
             <div>
-              <label className={labelCls}>수령 희망 일시 <span className="text-red-500">*</span></label>
+              <label className={fieldLabelCls}>수령 희망 일시 <span className="text-red-500">*</span></label>
               <DatePicker
                 locale="ko"
                 selected={selectedDate}
@@ -672,8 +742,31 @@ export default function AddReservationModal({
                 placeholderText="날짜와 시간을 선택해주세요"
                 className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-gold-400 bg-white cursor-pointer"
                 wrapperClassName="w-full"
-                calendarClassName="!font-sans !text-sm !border-gray-200 !rounded-xl !shadow-lg admin-modal-datepicker"
+                calendarClassName="!font-sans !text-sm !border-gray-200 !rounded-xl !shadow-lg admin-modal-datepicker admin-modal-datepicker-wide"
+                filterDate={(date) => {
+                  const dayKey = String(date.getDay());
+                  const h = businessHours[dayKey];
+                  if (h?.closed) return false;
+                  const formatted = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+                  return !closedDates.includes(formatted);
+                }}
                 popperPlacement="bottom-start"
+                dayClassName={(date) => {
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  return date < today ? "react-datepicker__day--past" : "";
+                }}
+                filterTime={(time) => {
+                  if (Object.keys(businessHours).length === 0) return true;
+                  const dayKey = String(time.getDay());
+                  const h = businessHours[dayKey];
+                  if (!h) return true;
+                  if (h.closed) return false;
+                  const [openH, openM] = h.open.split(":").map(Number);
+                  const [closeH, closeM] = h.close.split(":").map(Number);
+                  const t = time.getHours() * 60 + time.getMinutes();
+                  return t >= openH * 60 + openM && t <= closeH * 60 + closeM;
+                }}
                 renderCustomHeader={({ date, decreaseMonth, increaseMonth, prevMonthButtonDisabled, nextMonthButtonDisabled }) => (
                   <div className="flex items-center justify-between px-3 py-1">
                     <button type="button" onClick={decreaseMonth} disabled={prevMonthButtonDisabled}
@@ -685,127 +778,132 @@ export default function AddReservationModal({
                 )}
               />
             </div>
-          </div>
-
-          {/* 배송 정보 */}
-          {deliveryType === "배송" && (
-            <div className="space-y-3 p-3 bg-gray-50 rounded-xl">
-              <div className="grid grid-cols-2 gap-3">
+            {deliveryType === "배송" && (
+              <div className="space-y-3 pt-2">
                 <div>
-                  <label className={labelCls}>받는 분 이름</label>
+                  <label className={fieldLabelCls}>받는 분 이름</label>
                   <input className={inputCls} value={recipientName} onChange={(e) => setRecipientName(e.target.value)} placeholder="홍길동" />
                 </div>
                 <div>
-                  <label className={labelCls}>받는 분 연락처</label>
+                  <label className={fieldLabelCls}>받는 분 연락처</label>
                   <input className={inputCls} type="tel" value={recipientPhone}
                     onChange={(e) => setRecipientPhone(formatPhone(e.target.value))} placeholder="010-1234-5678" />
                 </div>
-              </div>
-              <div>
-                <label className={labelCls}>배송 주소</label>
-                <div className="flex gap-2">
-                  <input className={`${inputCls} flex-1 min-w-0 cursor-pointer`} value={address} readOnly
-                    onClick={() => setShowPostcode(true)} placeholder="주소 검색" />
-                  <button type="button" onClick={() => setShowPostcode(true)}
-                    className="shrink-0 px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:border-gray-400 bg-white transition-colors whitespace-nowrap">
-                    찾기
-                  </button>
-                </div>
-                {showPostcode && (
-                  <div className="mt-2 border border-gray-200 rounded-xl overflow-hidden">
-                    <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-200">
-                      <span className="text-xs text-gray-500">주소 검색</span>
-                      <button type="button" onClick={() => setShowPostcode(false)} className="text-gray-400 hover:text-gray-600 text-sm">✕</button>
-                    </div>
-                    <DaumPostcodeEmbed
-                      onComplete={(data) => {
-                        setAddress(data.roadAddress || data.jibunAddress);
-                        setShowPostcode(false);
-                      }}
-                      style={{ height: 400 }}
-                    />
+                <div>
+                  <label className={fieldLabelCls}>배송 주소</label>
+                  <div className="flex gap-2">
+                    <input className={`${inputCls} flex-1 min-w-0 cursor-pointer`} value={address} readOnly
+                      onClick={() => setShowPostcode(true)} placeholder="주소 검색" />
+                    <button type="button" onClick={() => setShowPostcode(true)}
+                      className="shrink-0 px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:border-gray-400 bg-white transition-colors whitespace-nowrap">
+                      찾기
+                    </button>
                   </div>
+                  {showPostcode && (
+                    <div className="mt-2 border border-gray-200 rounded-xl overflow-hidden">
+                      <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-200">
+                        <span className="text-xs text-gray-500">주소 검색</span>
+                        <button type="button" onClick={() => setShowPostcode(false)} className="text-gray-400 hover:text-gray-600 text-sm">✕</button>
+                      </div>
+                      <DaumPostcodeEmbed
+                        onComplete={(data) => {
+                          setAddress(data.roadAddress || data.jibunAddress);
+                          setShowPostcode(false);
+                        }}
+                        style={{ height: 400 }}
+                      />
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <label className={fieldLabelCls}>상세 주소</label>
+                  <input className={inputCls} value={addressDetail} onChange={(e) => setAddressDetail(e.target.value)} placeholder="상세 주소" />
+                </div>
+                <div>
+                  <label className={fieldLabelCls}>배송비 (선택)</label>
+                  <input className={inputCls} type="text" inputMode="numeric"
+                    value={deliveryFee ? Number(deliveryFee).toLocaleString() : ""}
+                    onChange={(e) => setDeliveryFee(e.target.value.replace(/[^0-9]/g, ""))}
+                    placeholder="0" />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 섹션: 요청 사항 + 참고 이미지 */}
+        <div className="bg-white">
+          <div className={sectionHeaderCls}>
+            <p className={sectionLabelCls}>추가 정보</p>
+          </div>
+          <div className="px-5 py-4 space-y-3">
+            <div>
+              <label className={fieldLabelCls}>요청 사항</label>
+              <textarea className={`${inputCls} resize-none`} rows={4} value={requests}
+                onChange={(e) => setRequests(e.target.value)} placeholder="요청 사항" />
+            </div>
+            <div>
+              <label className={fieldLabelCls}>참고 이미지 <span className="text-gray-300 font-normal">(최대 3장)</span></label>
+              <div className="flex gap-2 flex-wrap">
+                {refImagePreviews.map((url, i) => (
+                  <div key={i} className="relative w-20 h-20 shrink-0">
+                    <img src={url} alt="" className="w-full h-full object-cover rounded-xl border border-gray-200" />
+                    <button type="button" onClick={() => handleRefImageRemove(i)}
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-700 text-white rounded-full flex items-center justify-center text-xs hover:bg-gray-900 transition-colors">
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                {refImagePreviews.length < 3 && (
+                  <label className="w-20 h-20 shrink-0 flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-gray-400 transition-colors text-gray-400 hover:text-gray-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mb-0.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                    <span className="text-xs">추가</span>
+                    <input type="file" accept="image/*" multiple className="hidden" onChange={handleRefImageAdd} />
+                  </label>
                 )}
               </div>
-              <div>
-                <label className={labelCls}>상세 주소</label>
-                <input className={inputCls} value={addressDetail} onChange={(e) => setAddressDetail(e.target.value)} placeholder="상세 주소" />
+            </div>
+          </div>
+        </div>
+
+        {/* 섹션: 결제 */}
+        <div className="bg-white">
+          <div className={sectionHeaderCls}>
+            <p className={sectionLabelCls}>결제</p>
+          </div>
+          <div className="px-5 py-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-500">최종 금액</span>
+              <div className="text-right">
+                <span className="text-base font-semibold text-gray-900">{finalPrice.toLocaleString()}원</span>
+                {items.length > 0 && (
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {items.map((item) => `${item.type || "상품"} ${Number(item.price).toLocaleString()}`).join(" + ")}
+                    {deliveryType === "배송" && Number(deliveryFee) > 0 && ` + 배송비 ${Number(deliveryFee).toLocaleString()}`}
+                  </p>
+                )}
               </div>
-              <div>
-                <label className={labelCls}>배송비 (선택)</label>
-                <input className={inputCls} type="text" inputMode="numeric"
-                  value={deliveryFee ? Number(deliveryFee).toLocaleString() : ""}
-                  onChange={(e) => setDeliveryFee(e.target.value.replace(/[^0-9]/g, ""))}
-                  placeholder="0" />
+            </div>
+            <div>
+              <label className={fieldLabelCls}>결제 상태</label>
+              <div className="flex p-1 rounded-xl bg-gray-100">
+                <button type="button" onClick={() => setPaid(false)}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${!paid ? "bg-white text-gray-800 shadow-sm" : "text-gray-400 hover:text-gray-500"}`}>
+                  미결제
+                </button>
+                <button type="button" onClick={() => setPaid(true)}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${paid ? "bg-gold-500 text-white shadow-sm" : "text-gray-400 hover:text-gray-500"}`}>
+                  결제 완료
+                </button>
               </div>
             </div>
-          )}
-
-          {/* 상세 정보 추가 (접기/펼치기) — 임시 비활성화 */}
-          {/* <div className="border border-dashed border-gray-200 rounded-xl overflow-hidden">
-            ...
-          </div> */}
-
-          {/* 요청 사항 */}
-          <div>
-            <label className={labelCls}>요청 사항</label>
-            <textarea className={`${inputCls} resize-none`} rows={5} value={requests}
-              onChange={(e) => setRequests(e.target.value)} placeholder="요청 사항" />
           </div>
+        </div>
 
-          {/* 참고 이미지 */}
-          <div>
-            <label className={labelCls}>참고 이미지 <span className="text-gray-300 font-normal">(최대 3장)</span></label>
-            <div className="flex gap-2 flex-wrap">
-              {refImagePreviews.map((url, i) => (
-                <div key={i} className="relative w-20 h-20 shrink-0">
-                  <img src={url} alt="" className="w-full h-full object-cover rounded-xl border border-gray-200" />
-                  <button type="button" onClick={() => handleRefImageRemove(i)}
-                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-700 text-white rounded-full flex items-center justify-center text-xs hover:bg-gray-900 transition-colors">
-                    ✕
-                  </button>
-                </div>
-              ))}
-              {refImagePreviews.length < 3 && (
-                <label className="w-20 h-20 shrink-0 flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-gray-400 transition-colors text-gray-400 hover:text-gray-600">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mb-0.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                  </svg>
-                  <span className="text-xs">추가</span>
-                  <input type="file" accept="image/*" multiple className="hidden" onChange={handleRefImageAdd} />
-                </label>
-              )}
-            </div>
-          </div>
-
-          {/* 최종 가격 + 결제 상태 */}
-          <div className="bg-beige-50 border border-beige-200 rounded-xl px-4 py-3 flex items-center justify-between">
-            <span className="text-sm text-gray-500">최종 가격</span>
-            <div className="text-right">
-              <span className="text-base font-semibold text-gray-900">{finalPrice.toLocaleString()}원</span>
-              {items.length > 0 && (
-                <p className="text-xs text-gray-400 mt-0.5">
-                  {items.map((item, i) => `${item.type || "상품"} ${Number(item.price).toLocaleString()}`).join(" + ")}
-                  {deliveryType === "배송" && Number(deliveryFee) > 0 && ` + 배송비 ${Number(deliveryFee).toLocaleString()}`}
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div>
-            <label className={labelCls}>결제 상태</label>
-            <div className="flex gap-2">
-              <button type="button" onClick={() => setPaid(false)}
-                className={`flex-1 py-2 rounded-xl text-sm border-2 font-medium transition-all ${!paid ? "border-gray-500 bg-gray-500 text-white" : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"}`}>
-                미결제
-              </button>
-              <button type="button" onClick={() => setPaid(true)}
-                className={`flex-1 py-2 rounded-xl text-sm border-2 font-medium transition-all ${paid ? "border-green-500 bg-green-500 text-white" : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"}`}>
-                결제 완료
-              </button>
-            </div>
-          </div>
-
+        {/* 하단 버튼 */}
+        <div className="bg-white px-5 py-4 space-y-3">
           {fieldErrors.length > 0 && (
             <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3">
               <p className="text-xs font-medium text-red-600 mb-1">아래 항목을 입력해주세요.</p>
@@ -817,8 +915,7 @@ export default function AddReservationModal({
             </div>
           )}
           {error && <p className="text-sm text-red-500">{error}</p>}
-
-          <div className="flex gap-3 pt-2">
+          <div className="flex gap-3">
             <button type="button" onClick={onClose}
               className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-700 hover:border-gray-400 transition-colors">
               취소
@@ -829,6 +926,8 @@ export default function AddReservationModal({
             </button>
           </div>
         </div>
+
+        </div>{/* space-y-2 끝 */}
       </div>
     </div>
   );

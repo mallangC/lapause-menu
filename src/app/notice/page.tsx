@@ -323,7 +323,7 @@ export default function NoticePage() {
                   { date: "04.04", text: "배송 제한 — 당일 배송 예약 불가, 20km 초과 또는 미설정 구간은 매장 문의 안내", isNew: false },
                   { date: "04.04", text: "매장 주소 찾기 — 주소 직접 입력 대신 다음 우편번호 검색으로 변경", isNew: false },
                   { date: "04.04", text: "금액·전화번호 자동 포맷 — 금액 입력 시 콤마(,) 자동 삽입, 전화번호 입력 시 대시(-) 자동 삽입. DB 저장 시 숫자만 저장", isNew: false },
-                  { date: "04.04", text: "상품 등록 한도 — 매장별 최대 100개 제한, 초과 시 경고 모달 표시", isNew: false },
+                  { date: "04.04", text: "상품 등록 한도 — 매장별 최대 500개 제한, 초과 시 경고 모달 표시", isNew: false },
                   { date: "04.04", text: "저장 버튼 UX 개선 — 매장 정보·영업 설정·맞춤 주문 탭 저장 버튼 하단 고정, 저장 성공 시 인라인 메시지 표시 후 3초 후 자동 사라짐", isNew: false },
                 ].map(({ date, text, isNew }) => (
                   <li key={text} className="flex items-start gap-2 text-xs leading-relaxed">

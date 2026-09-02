@@ -8,6 +8,8 @@ const TEMPLATES = {
   RESERVATION_CONFIRMED_OWNER: "KA01TP260326133524843omlSt2W5DcZ",
   /** 고객 → 예약 취소 시 발송 */
   RESERVATION_CANCELLED: "KA01TP260326064935575n6c296qNkqi",
+  /** 사장님 → 링크결제 완료 시 발송 (검수 후 실제 템플릿 ID로 교체 필요) */
+  PAYMENT_COMPLETED_OWNER: "KA01TP_PAYMENT_COMPLETED_OWNER_PLACEHOLDER",
 };
 
 type AlimtalkButton = {
@@ -121,6 +123,41 @@ export async function sendReservationConfirmedOwner({
       "#{고객번호}": ordererPhone,
       "#{요청사항내용}": requests || "없음",
       "#{LINK}": slug,
+    },
+  });
+}
+
+/** 사장님에게 링크결제 완료 알림 발송 */
+export async function sendPaymentCompletedOwner({
+  to,
+  companyName,
+  ordererName,
+  ordererPhone,
+  productType,
+  deliveryType,
+  desiredDateTime,
+  finalPrice,
+}: {
+  to: string;
+  companyName: string;
+  ordererName: string;
+  ordererPhone: string;
+  productType: string;
+  deliveryType: string;
+  desiredDateTime: string;
+  finalPrice: number;
+}) {
+  return sendAlimtalk({
+    to,
+    templateId: TEMPLATES.PAYMENT_COMPLETED_OWNER,
+    variables: {
+      "#{매장명}": companyName,
+      "#{고객성함}": ordererName,
+      "#{고객번호}": ordererPhone,
+      "#{상품유형}": productType,
+      "#{수령방법}": deliveryType,
+      "#{수령일시}": desiredDateTime,
+      "#{주문금액}": `${finalPrice.toLocaleString()}원`,
     },
   });
 }

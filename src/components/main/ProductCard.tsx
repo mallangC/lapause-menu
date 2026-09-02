@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Product } from "@/types";
 import { FLOWER_COLOR_MAP, BADGE_COLORS } from "@/lib/constants";
+import { useCart } from "@/hooks/useCart";
 
 interface ProductCardProps {
   product: Product;
@@ -13,6 +14,24 @@ interface ProductCardProps {
 
 export default function ProductCard({ product, slug }: ProductCardProps) {
   const router = useRouter();
+  const { addItem, removeItem, items } = useCart(slug ?? "");
+  const inCart = items.some((i) => i.productId === product.id);
+
+  const handleToggleCart = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (inCart) {
+      removeItem(product.id);
+    } else {
+      addItem({
+        productId: product.id,
+        name: product.name,
+        price: product.price,
+        image_url: product.image_url,
+        product_type: product.product_type,
+        bag_included: product.bag_included,
+      });
+    }
+  };
 
   return (
     <div
@@ -50,6 +69,20 @@ export default function ProductCard({ product, slug }: ProductCardProps) {
             </span>
           )}
         </div>
+
+        {/* 담기 버튼 */}
+        {product.price > 0 && (
+          <button
+            onClick={handleToggleCart}
+            className={`absolute bottom-2 right-2 w-8 h-8 rounded-full flex items-center justify-center shadow-md transition-colors ${
+              inCart ? "bg-gold-500 text-white" : "bg-white text-gray-600 hover:bg-gold-500 hover:text-white"
+            }`}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* 정보 */}

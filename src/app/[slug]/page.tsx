@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
-import MainLayout from "@/components/main/MainLayout";
+import ProductsClient from "./products/ProductsClient";
 import ServiceSuspended from "@/components/main/ServiceSuspended";
 import { Product } from "@/types";
 import { generateThemeVars, DEFAULT_THEME_BG, DEFAULT_THEME_ACCENT } from "@/lib/theme";
@@ -31,7 +31,6 @@ export default async function CompanyMenuPage({ params }: Props) {
       name,
       settings:company_settings(
         logo_image, theme_bg, theme_accent,
-        home_featured_image, home_all_image, home_season_image, home_consult_image,
         location_url, kakao_channel_url, instagram_url, youtube_url,
         hidden_product_types, hidden_seasons, consult_enabled
       ),
@@ -82,21 +81,21 @@ export default async function CompanyMenuPage({ params }: Props) {
 
   return (
     <Suspense>
-      <MainLayout
+      <ProductsClient
         slug={slug}
-        companyName={slug}
+        companyName={raw.name ?? slug}
         logoImage={(s.logo_image as string | null) ?? null}
         themeVars={themeVars}
         products={(products as Product[]) ?? []}
-        locationUrl={(s.location_url as string | null) ?? null}
-        kakaoChannelUrl={(s.kakao_channel_url as string | null) ?? null}
-        instagramUrl={(s.instagram_url as string | null) ?? null}
-        youtubeUrl={(s.youtube_url as string | null) ?? null}
         hiddenProductTypes={[...((s.hidden_product_types as string[]) ?? []), ...hiddenCustomProductTypes]}
         customProductTypes={customProductTypes}
         hiddenSeasons={[...((s.hidden_seasons as string[]) ?? []), ...hiddenCustomSeasons]}
         customSeasons={customSeasons}
         consultEnabled={(s.consult_enabled as boolean) ?? false}
+        locationUrl={(s.location_url as string | null) ?? null}
+        kakaoChannelUrl={(s.kakao_channel_url as string | null) ?? null}
+        instagramUrl={(s.instagram_url as string | null) ?? null}
+        youtubeUrl={(s.youtube_url as string | null) ?? null}
       />
     </Suspense>
   );

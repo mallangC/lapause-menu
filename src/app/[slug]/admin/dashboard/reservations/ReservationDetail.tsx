@@ -25,6 +25,15 @@ interface Props {
   onTogglePaid: (id: string, paid: boolean) => void;
   onEdit: (r: Reservation) => void;
   onDelete: (id: string) => void;
+  messageCardPrice?: number;
+  shoppingBagPrice?: number;
+}
+
+function addonCount(value?: string | null) {
+  if (!value) return 0;
+  if (value === "추가") return 1;
+  const m = value.match(/^(\d+)/);
+  return m ? Number(m[1]) : 0;
 }
 
 function SectionCard({ children }: { children: React.ReactNode }) {
@@ -52,6 +61,8 @@ export default function ReservationDetail({
   onTogglePaid,
   onEdit,
   onDelete,
+  messageCardPrice = 0,
+  shoppingBagPrice = 0,
 }: Props) {
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
   const statusDropdownRef = useRef<HTMLDivElement>(null);
@@ -64,6 +75,69 @@ export default function ReservationDetail({
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  const [showPayLinkModal, setShowPayLinkModal] = useState(false);
+  const [payLinkHours, setPayLinkHours] = useState("24");
+  const [payLinkLoading, setPayLinkLoading] = useState(false);
+  const [payLinkResult, setPayLinkResult] = useState<{ token: string; expiresAt: string } | null>(
+    r.payment_token && r.payment_link_expires_at
+      ? { token: r.payment_token, expiresAt: r.payment_link_expires_at }
+      : null
+  );
+  const [payLinkCopied, setPayLinkCopied] = useState(false);
+  const [isExtending, setIsExtending] = useState(false);
+  const [extendHours, setExtendHours] = useState("24");
+
+  const handleExtendPayLink = async () => {
+    if (!payLinkResult) return;
+    setPayLinkLoading(true);
+    try {
+      const res = await fetch("/api/pay-link/extend", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reservationId: r.id, expiresInHours: Number(extendHours) }),
+      });
+      const data = await res.json();
+      if (data.error) { alert(data.error); return; }
+      setPayLinkResult({ token: payLinkResult.token, expiresAt: data.expiresAt });
+      setIsExtending(false);
+    } catch {
+      alert("연장에 실패했습니다.");
+    } finally {
+      setPayLinkLoading(false);
+    }
+  };
+
+  const handleGeneratePayLink = async () => {
+    setPayLinkLoading(true);
+    try {
+      const res = await fetch("/api/pay-link/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reservationId: r.id, expiresInHours: Number(payLinkHours) }),
+      });
+      const data = await res.json();
+      if (data.error) { alert(data.error); return; }
+      setPayLinkResult(data);
+    } catch {
+      alert("링크 생성에 실패했습니다.");
+    } finally {
+      setPayLinkLoading(false);
+    }
+  };
+
+  const slug = typeof window !== "undefined" ? window.location.pathname.split("/")[1] : "";
+  const payLinkUrl = payLinkResult
+    ? `${typeof window !== "undefined" ? window.location.origin : ""}/${slug}/pay/${payLinkResult.token}`
+    : null;
+
+  const handleCopyPayLink = () => {
+    if (!payLinkUrl) return;
+    navigator.clipboard.writeText(payLinkUrl).then(() => {
+      setPayLinkCopied(true);
+      setTimeout(() => setPayLinkCopied(false), 2000);
+    });
+  };
 
   const [editingDeliveryFee, setEditingDeliveryFee] = useState(false);
   const [deliveryFeeInput, setDeliveryFeeInput] = useState(r.delivery_fee != null ? String(r.delivery_fee) : "");
@@ -115,6 +189,143 @@ export default function ReservationDetail({
 
   return (
     <>
+      {showPayLinkModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => { setShowPayLinkModal(false); setIsExtending(false); }}>
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4 space-y-4" onClick={(e) => e.stopPropagation()}>
+            {/* 헤더 */}
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-900">결제 링크 생성</h3>
+              <button type="button" onClick={() => { setShowPayLinkModal(false); setIsExtending(false); }} className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            {!payLinkResult ? (
+              <>
+                <div className="space-y-1.5">
+                  <p className="text-xs text-gray-400">링크 만료 기간</p>
+                  <div className="flex gap-2 flex-wrap">
+                    {["1", "6", "12", "24", "48"].map((h) => (
+                      <button
+                        key={h}
+                        type="button"
+                        onClick={() => setPayLinkHours(h)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                          payLinkHours === h
+                            ? "bg-gold-500 text-white border-gold-500"
+                            : "border-gray-200 text-gray-500 hover:border-gray-400"
+                        }`}
+                      >
+                        {h}시간
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="bg-gray-50 rounded-xl px-4 py-3 text-sm space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">결제 금액</span>
+                    <span className="font-medium text-gray-800">{r.final_price.toLocaleString()}원</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">만료</span>
+                    <span className="text-gray-600">
+                      {new Date(Date.now() + Number(payLinkHours) * 3600_000).toLocaleString("ko-KR", {
+                        month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit",
+                      })}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleGeneratePayLink}
+                  disabled={payLinkLoading}
+                  className="w-full bg-gold-500 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-gold-600 disabled:opacity-50 transition-colors"
+                >
+                  {payLinkLoading ? "생성 중..." : "링크 생성"}
+                </button>
+              </>
+            ) : isExtending ? (
+              <>
+                <div className="space-y-1.5">
+                  <p className="text-xs text-gray-400">현재 시간 기준으로 만료 연장</p>
+                  <div className="flex gap-2 flex-wrap">
+                    {["1", "6", "12", "24", "48"].map((h) => (
+                      <button
+                        key={h}
+                        type="button"
+                        onClick={() => setExtendHours(h)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                          extendHours === h
+                            ? "bg-gold-500 text-white border-gold-500"
+                            : "border-gray-200 text-gray-500 hover:border-gray-400"
+                        }`}
+                      >
+                        {h}시간
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-400 pt-0.5">
+                    새 만료: {new Date(Date.now() + Number(extendHours) * 3600_000).toLocaleString("ko-KR", {
+                      month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit",
+                    })}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleExtendPayLink}
+                    disabled={payLinkLoading}
+                    className="flex-1 bg-gold-500 text-white py-2 rounded-xl text-sm font-medium hover:bg-gold-600 disabled:opacity-50 transition-colors"
+                  >
+                    {payLinkLoading ? "연장 중..." : "연장하기"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsExtending(false)}
+                    className="flex-1 border border-gray-200 text-gray-500 py-2 rounded-xl text-sm hover:border-gray-400 transition-colors"
+                  >
+                    취소
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <p className="text-xs text-gray-400">생성된 결제 링크</p>
+                  <div className="bg-gray-50 rounded-xl px-3 py-2.5">
+                    <span className="text-xs text-gray-600 truncate block">{payLinkUrl}</span>
+                  </div>
+                  {payLinkResult.expiresAt && (
+                    <p className="text-xs text-gray-400">
+                      만료: {new Date(payLinkResult.expiresAt).toLocaleString("ko-KR", {
+                        month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit",
+                      })}
+                    </p>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleCopyPayLink}
+                    className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${payLinkCopied ? "bg-green-500 text-white" : "bg-gold-500 text-white hover:bg-gold-600"}`}
+                  >
+                    {payLinkCopied ? "복사됨!" : "링크 복사"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setIsExtending(true); setExtendHours("24"); }}
+                    className="flex-1 border border-gray-200 text-gray-600 py-2 rounded-xl text-sm font-medium hover:border-gray-400 transition-colors"
+                  >
+                    만료 연장
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {showConfirmModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowConfirmModal(false)}>
           <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4 space-y-4" onClick={(e) => e.stopPropagation()}>
@@ -245,9 +456,14 @@ export default function ReservationDetail({
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onTogglePaid(r.id, !r.paid); }}
-                  className={`text-xs font-medium px-2 py-0.5 rounded-full transition-colors ${r.paid ? "bg-green-100 text-green-700 hover:bg-green-200" : "bg-red-50 text-red-500 hover:bg-red-100"}`}
+                  className="flex items-center gap-2 group"
                 >
-                  {r.paid ? "결제완료" : "미결제"}
+                  <span className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors duration-200 ${r.paid ? "bg-green-500" : "bg-gray-200"}`}>
+                    <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 my-0.5 ${r.paid ? "translate-x-[18px]" : "translate-x-[2px]"}`} />
+                  </span>
+                  <span className={`text-xs font-medium ${r.paid ? "text-green-600" : "text-gray-400"}`}>
+                    {r.paid ? "결제완료" : "미결제"}
+                  </span>
                 </button>
               </Row>
               <Row label="최종 가격">{(r.final_price ?? 0).toLocaleString()}원</Row>
@@ -276,18 +492,48 @@ export default function ReservationDetail({
                             )}
                           </span>
                           {item.memo && <p className="text-xs text-gray-400 mt-0.5">{item.memo}</p>}
-                          {(item.message_card === "추가" || item.message_card === "서비스") && item.message_card_content && (
-                            <p className="text-xs text-gray-500 mt-1 flex items-start gap-1">
-                              <span className="whitespace-pre-wrap">{item.message_card_content}</span>
-                              <CopyButton text={item.message_card_content} />
-                            </p>
+                          {(item.shopping_bag && item.shopping_bag !== "없음" && item.shopping_bag !== "미포함") && (
+                            <p className="text-xs text-gray-400 mt-0.5">쇼핑백 {item.shopping_bag}</p>
+                          )}
+                          {(item.message_card && item.message_card !== "없음" && item.message_card !== "미포함") && (
+                            <div className="mt-1 space-y-0.5">
+                              <p className="text-xs text-gray-400">메시지카드 {item.message_card}</p>
+                              {item.message_card_content && (
+                                <p className="text-xs text-gray-500 flex items-start gap-1">
+                                  <span className="whitespace-pre-wrap">{item.message_card_content}</span>
+                                  <CopyButton text={item.message_card_content} />
+                                </p>
+                              )}
+                            </div>
                           )}
                         </div>
-                        <span className="font-medium text-gray-800 shrink-0">{item.price.toLocaleString()}원</span>
+                        {(() => {
+                          const addon = messageCardPrice * addonCount(item.message_card) + shoppingBagPrice * addonCount(item.shopping_bag);
+                          const total = item.price + addon;
+                          return (
+                            <div className="text-right shrink-0">
+                              <span className="font-medium text-gray-800">{total.toLocaleString()}원</span>
+                              {addon > 0 && (
+                                <p className="text-[11px] text-gray-400">상품 {item.price.toLocaleString()}원 + 추가 {addon.toLocaleString()}원</p>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   </div>
                 ))}
+                {r.items.length > 1 && (
+                  <div className="pt-2 border-t border-gray-100 flex justify-between text-sm">
+                    <span className="text-gray-500 font-medium">총 상품 금액</span>
+                    <span className="font-semibold text-gray-900">
+                      {r.items.reduce((sum, item) => {
+                        const addon = messageCardPrice * addonCount(item.message_card) + shoppingBagPrice * addonCount(item.shopping_bag);
+                        return sum + item.price + addon;
+                      }, 0).toLocaleString()}원
+                    </span>
+                  </div>
+                )}
               </SectionCard>
             )}
 
@@ -374,6 +620,19 @@ export default function ReservationDetail({
           </div>
         )}
 
+        {/* 모바일: 결제 링크 버튼 */}
+        {!r.paid && (
+          <div className="md:hidden">
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setShowPayLinkModal(true); }}
+              className="w-full text-sm px-4 py-2.5 rounded-xl border border-yellow-200 text-yellow-700 hover:bg-yellow-50 transition-colors font-medium"
+            >
+              결제 링크 생성
+            </button>
+          </div>
+        )}
+
         {/* 하단: 상태 변경 + 수정/삭제 */}
         <div className="flex items-center gap-2 pt-1">
           <span className="text-xs text-gray-500 shrink-0">상태 변경</span>
@@ -404,7 +663,16 @@ export default function ReservationDetail({
               </div>
             )}
           </div>
-          <div className="ml-auto hidden md:flex gap-1">
+          <div className="ml-auto hidden md:flex gap-1 items-center">
+            {!r.paid && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setShowPayLinkModal(true); }}
+                className="text-xs px-2.5 py-1 rounded-lg border border-yellow-200 text-yellow-700 hover:bg-yellow-50 transition-colors"
+              >
+                결제 링크
+              </button>
+            )}
             <button type="button" onClick={(e) => { e.stopPropagation(); onEdit(r); }} className="text-xs px-2.5 py-1 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 transition-colors">수정</button>
             <button type="button" onClick={(e) => { e.stopPropagation(); onDelete(r.id); }} className="text-xs px-2.5 py-1 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition-colors">삭제</button>
           </div>

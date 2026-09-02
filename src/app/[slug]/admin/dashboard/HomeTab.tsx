@@ -119,7 +119,7 @@ export default function HomeTab({ companyId, initialFeaturedImage, initialAllIma
   };
 
   const sections: { key: ImageKey; label: string }[] = [
-    { key: "home_featured_image", label: "추천/인기 버튼" },
+    { key: "home_featured_image", label: "메인 히어로 이미지" },
     { key: "home_all_image", label: "모든 상품 버튼" },
     { key: "home_season_image", label: "시즌 버튼" },
     ...(consultEnabled ? [{ key: "home_consult_image" as ImageKey, label: "맞춤 주문하기 버튼" }] : []),
