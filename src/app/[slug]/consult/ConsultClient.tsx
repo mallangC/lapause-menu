@@ -66,7 +66,6 @@ interface DraftData {
   recipientPhone: string;
   address: string;
   addressDetail: string;
-  kakaoConsent: boolean;
   privacyAgreed: boolean;
   cancellationAgreed: boolean;
   finalPrice: number;
@@ -257,7 +256,6 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
   const [submitting, setSubmitting] = useState(false);
   const [privacyAgreed, setPrivacyAgreed] = useState(false);
   const [cancellationAgreed, setCancellationAgreed] = useState(false);
-  const [kakaoConsent, setKakaoConsent] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [reservationId, setReservationId] = useState<string | null>(null);
   const [bankInfo, setBankInfo] = useState<{ bankName: string | null; bankAccount: string | null; bankHolder: string | null } | null>(null);
@@ -330,7 +328,6 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
           if (draft.recipientPhone) setRecipientPhone(formatPhone(draft.recipientPhone));
           setAddress(draft.address);
           setAddressDetail(draft.addressDetail);
-          setKakaoConsent(draft.kakaoConsent);
           setPrivacyAgreed(draft.privacyAgreed);
           setCancellationAgreed(draft.cancellationAgreed);
           if (draft.messageCardCount !== undefined) setMessageCardCount(draft.messageCardCount);
@@ -377,7 +374,6 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
             form: draft.form,
             product: draft.product,
             orderer: { name: draft.name, phone: draft.phone },
-            kakaoConsent: draft.kakaoConsent,
             delivery: draft.form.deliveryType === "배송" ? {
               recipientName: draft.recipientName,
               recipientPhone: draft.recipientPhone,
@@ -490,7 +486,6 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
         recipientPhone: parsePhone(recipientPhone),
         address,
         addressDetail,
-        kakaoConsent,
         privacyAgreed,
         cancellationAgreed,
         finalPrice,
@@ -1114,10 +1109,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                 <input type="checkbox" checked={cancellationAgreed} onChange={(e) => { setCancellationAgreed(e.target.checked); if (s4fe.cancellation) setS4fe(p => ({ ...p, cancellation: false })); }} className="mt-0.5 w-4 h-4 accent-gold-500 shrink-0" />
                 <span>맞춤 제작 상품으로 제작 착수 후 취소·환불 불가.{" "}<Link href="/refund" target="_blank" className="underline text-gold-600">환불 정책</Link> 동의 <span className="text-red-400">*</span></span>
               </label>
-              <label className="flex items-start gap-3 text-sm text-gray-500 cursor-pointer">
-                <input type="checkbox" checked={kakaoConsent} onChange={(e) => setKakaoConsent(e.target.checked)} className="mt-0.5 w-4 h-4 accent-gold-500 shrink-0" />
-                <span>카카오톡 알림 받기(선택) — 예약 확정·취소 알림</span>
-              </label>
+              <p className="text-xs text-gray-400">예약이 확정되거나 취소되면 입력하신 번호로 카카오톡 알림톡을 보내드립니다.</p>
             </div>
           );
 

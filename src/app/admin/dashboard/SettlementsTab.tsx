@@ -115,27 +115,30 @@ export default function SettlementsTab({ companies }: Props) {
   const handleDownloadExcel = () => {
     if (!pendingItems?.length) return;
 
-    const rows = pendingItems.map((item, idx) => ({
-      순번: idx + 1,
-      수취인명: item.bank_holder ?? "",
-      수취은행: item.bank_name ?? "",
-      수취계좌번호: item.bank_account ?? "",
+    const rows = pendingItems.map((item) => ({
+      입금은행: item.bank_name ?? "",
+      입금계좌: item.bank_account ?? "",
+      고객관리성명: item.bank_holder ?? "",
       이체금액: item.total_amount,
-      적요: `${periodStart}~${periodEnd} 정산`,
+      출금통장표시내용: "Flo.Aide",
+      입금통장표시내용: "라포즈플뢰르정산",
+      입금인코드: "",
+      비고: `${periodStart}~${periodEnd} 정산`,
+      업체사용key: item.company_id,
     }));
 
     const ws = XLSX.utils.json_to_sheet(rows);
 
-    // 계좌번호 컬럼을 텍스트 형식으로 (앞자리 0 보존)
+    // 입금계좌 컬럼을 텍스트 형식으로 (앞자리 0 보존)
     const range = XLSX.utils.decode_range(ws["!ref"] ?? "A1");
     for (let R = range.s.r + 1; R <= range.e.r; R++) {
-      const cell = ws[XLSX.utils.encode_cell({ r: R, c: 3 })];
+      const cell = ws[XLSX.utils.encode_cell({ r: R, c: 1 })];
       if (cell) cell.z = "@";
     }
 
     // 컬럼 너비
     ws["!cols"] = [
-      { wch: 6 }, { wch: 14 }, { wch: 12 }, { wch: 18 }, { wch: 14 }, { wch: 20 },
+      { wch: 12 }, { wch: 18 }, { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 12 }, { wch: 20 }, { wch: 24 },
     ];
 
     const wb = XLSX.utils.book_new();

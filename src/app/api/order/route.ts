@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { sendReservationConfirmedOwner } from "@/lib/solapi";
 
 interface CartItemPayload {
@@ -28,7 +27,6 @@ interface OrderBody {
   desiredTime: string;
   requests: string;
   finalPrice: number;
-  kakaoConsent?: boolean;
   paymentKey?: string;
   paymentOrderId?: string;
   paymentAmount?: number;
@@ -160,16 +158,6 @@ export async function POST(request: NextRequest) {
       }
     } catch (alimErr) {
       console.warn("[order] 사장님 알림톡 실패:", alimErr);
-    }
-
-    if (customerProfileId) {
-      try {
-        const adminClient = createAdminClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.SUPABASE_SERVICE_ROLE_KEY!
-        );
-        await adminClient.from("customer_profiles").update({ kakao_consent: body.kakaoConsent ?? false }).eq("id", customerProfileId);
-      } catch { /* non-critical */ }
     }
 
     return NextResponse.json({ success: true, reservationId: savedReservationId });

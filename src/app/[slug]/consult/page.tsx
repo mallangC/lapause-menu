@@ -60,6 +60,7 @@ export default async function ConsultPage({ params, searchParams }: Props) {
 
   return (
     <ConsultClient
+      key={`${productId ?? "none"}_${quantity ?? "1"}`}
       slug={slug}
       companyName={raw.name}
       logoImage={(s.logo_image as string | null) ?? null}

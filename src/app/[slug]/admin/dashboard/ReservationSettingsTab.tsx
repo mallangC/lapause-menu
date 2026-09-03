@@ -28,14 +28,18 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle, onG
   const [error, setError] = useState<string | null>(null);
   const [hasBankInfo, setHasBankInfo] = useState(false);
   const [showBankWarning, setShowBankWarning] = useState(false);
+  const [mailOrderNumber, setMailOrderNumber] = useState("");
+  const [soldCount, setSoldCount] = useState(0);
+  const [showMailOrderWarning, setShowMailOrderWarning] = useState(false);
   const [showNoticeInfo, setShowNoticeInfo] = useState(false);
 
   const supabase = createClient();
+  const mailOrderBlocked = !mailOrderNumber && soldCount >= 30;
 
   useEffect(() => {
     supabase
       .from("company_settings")
-      .select("consult_enabled, consult_apply_status, message_card_enabled, message_card_price, shopping_bag_enabled, shopping_bag_price, bank_name, bank_account, bank_holder, address, consult_notice, delivery_fees, delivery_enabled")
+      .select("consult_enabled, consult_apply_status, message_card_enabled, message_card_price, shopping_bag_enabled, shopping_bag_price, bank_name, bank_account, bank_holder, address, consult_notice, delivery_fees, delivery_enabled, mail_order_number, sold_count")
       .eq("company_id", companyId)
       .single()
       .then(({ data }) => {
@@ -47,6 +51,8 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle, onG
         setShoppingBagEnabled(data.shopping_bag_enabled ?? false);
         setShoppingBagPrice(data.shopping_bag_price ? formatMoney(String(data.shopping_bag_price)) : "");
         setHasBankInfo(!!(data.address && data.bank_name && data.bank_account && data.bank_holder));
+        setMailOrderNumber(data.mail_order_number ?? "");
+        setSoldCount(data.sold_count ?? 0);
         if (data.consult_notice) setConsultNotice(data.consult_notice);
         setDeliveryEnabled(data.delivery_enabled ?? false);
         if (data.delivery_fees && typeof data.delivery_fees === "object") {
@@ -71,7 +77,7 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle, onG
     const { error: err } = await supabase
       .from("company_settings")
       .update({
-        consult_enabled: consultEnabled,
+        consult_enabled: mailOrderBlocked ? false : consultEnabled,
         message_card_enabled: messageCardEnabled,
         message_card_price: messageCardEnabled ? parseMoney(messageCardPrice) : 0,
         shopping_bag_enabled: shoppingBagEnabled,
@@ -113,7 +119,7 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle, onG
       </div>
     )}
     <div className="max-w-lg space-y-4">
-      <h2 className="text-xl font-medium text-gray-900">맞춤 주문</h2>
+      <h2 className="text-xl font-medium text-gray-900">판매 설정</h2>
 
       {error && (
         <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
@@ -125,40 +131,81 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle, onG
           {consultApplyStatus === "pending" && "운영자 검토 중입니다. 승인 후 활성화할 수 있습니다."}
           {consultApplyStatus === "rejected" && (
             <span>맞춤 주문 신청이 반려되었습니다.{" "}
-              <button type="button" onClick={onGoToOrderSettings} className="underline text-gold-600 hover:text-gold-700">주문 설정 탭</button>에서 재신청해주세요.
+              <button type="button" onClick={onGoToOrderSettings} className="underline text-gold-600 hover:text-gold-700">판매 신청 탭</button>에서 재신청해주세요.
             </span>
           )}
           {!consultApplyStatus && (
             <span>맞춤 주문을 사용하려면{" "}
-              <button type="button" onClick={onGoToOrderSettings} className="underline text-gold-600 hover:text-gold-700">주문 설정 탭</button>에서 신청해주세요.
+              <button type="button" onClick={onGoToOrderSettings} className="underline text-gold-600 hover:text-gold-700">판매 신청 탭</button>에서 신청해주세요.
             </span>
           )}
         </div>
       ) : (
-        <div className="flex items-center justify-between p-4 border border-gray-200 rounded-xl bg-white">
-          <div>
-            <p className="text-sm font-medium text-gray-800">맞춤 주문 기능</p>
-            <p className="text-xs text-gray-400 mt-0.5">홈 화면에 &#34;맞춤 주문하기&#34; 버튼을 표시합니다.</p>
+        <div className="p-4 border border-gray-200 rounded-xl bg-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-800">판매 기능</p>
+              <p className="text-xs text-gray-400 mt-0.5">판매 기능을 활성화하고 맞춤 주문하기 버튼을 표시합니다.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (mailOrderBlocked) {
+                  setShowMailOrderWarning(true);
+                  return;
+                }
+                if (!consultEnabled && !hasBankInfo) {
+                  setShowBankWarning(true);
+                  return;
+                }
+                setConsultEnabled((prev) => !prev);
+              }}
+              className={`shrink-0 w-12 h-6 rounded-full transition-colors relative ${
+                consultEnabled ? "bg-gold-500" : "bg-gray-200"
+              } ${mailOrderBlocked ? "opacity-40 cursor-not-allowed" : ""}`}
+            >
+              <span
+                className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${
+                  consultEnabled ? "left-6" : "left-0.5"
+                }`}
+              />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              if (!consultEnabled && !hasBankInfo) {
-                setShowBankWarning(true);
-                return;
-              }
-              setConsultEnabled((prev) => !prev);
-            }}
-            className={`shrink-0 w-12 h-6 rounded-full transition-colors relative ${
-              consultEnabled ? "bg-gold-500" : "bg-gray-200"
-            }`}
-          >
-            <span
-              className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${
-                consultEnabled ? "left-6" : "left-0.5"
-              }`}
-            />
-          </button>
+          {mailOrderBlocked && (
+            <p className="text-xs text-red-500 mt-2">
+              통신판매업 미신고 상태로 30개를 판매해 판매 기능이 정지되었습니다.{" "}
+              <button type="button" onClick={onGoToOrderSettings} className="underline text-red-600 hover:text-red-700">판매 신청 탭</button>에서 신고번호를 등록해주세요.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* 통신판매업 미신고 30개 초과 경고 팝업 */}
+      {showMailOrderWarning && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={() => setShowMailOrderWarning(false)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">통신판매업 신고가 필요합니다</p>
+                <p className="text-xs text-gray-400 mt-0.5">신고번호 미등록 상태로 30개를 판매해 판매 기능이 정지되었습니다.</p>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 leading-relaxed">
+              <button type="button" onClick={() => { setShowMailOrderWarning(false); onGoToOrderSettings?.(); }} className="font-medium text-gold-600 underline hover:text-gold-700">판매 신청 탭</button>에서 통신판매업 신고번호를 등록하면 다시 활성화할 수 있습니다.
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowMailOrderWarning(false)}
+              className="w-full bg-gold-500 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-gold-600 transition-colors"
+            >
+              확인
+            </button>
+          </div>
         </div>
       )}
 
@@ -200,7 +247,7 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle, onG
             <div className="space-y-2 text-xs text-gray-500 leading-relaxed">
               <p>
                 맞춤 주문 기능을 활성화하려면<br />
-                <button type="button" onClick={() => { setShowBankWarning(false); onGoToOrderSettings?.(); }} className="font-medium text-gold-600 underline hover:text-gold-700">주문 설정 탭</button>에서<br />
+                <button type="button" onClick={() => { setShowBankWarning(false); onGoToOrderSettings?.(); }} className="font-medium text-gold-600 underline hover:text-gold-700">판매 신청 탭</button>에서<br />
                 매장 주소, 은행, 계좌번호, 예금주를 모두 입력해주세요.
               </p>
             </div>

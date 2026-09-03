@@ -52,7 +52,6 @@ interface DraftData {
   requests: string;
   finalPrice: number;
   privacyAgreed: boolean;
-  kakaoConsent: boolean;
 }
 
 async function geocodeKakao(address: string) {
@@ -101,7 +100,6 @@ export default function CheckoutClient({
   const [requests, setRequests] = useState("");
   const [privacyAgreed, setPrivacyAgreed] = useState(false);
   const [cancellationAgreed, setCancellationAgreed] = useState(false);
-  const [kakaoConsent, setKakaoConsent] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const [fieldErrors, setFieldErrors] = useState<Record<string, boolean>>({});
   const refName = useRef<HTMLDivElement>(null);
@@ -176,7 +174,6 @@ export default function CheckoutClient({
           setAddress(draft.address); setAddressDetail(draft.addressDetail);
           setDesiredTime(draft.desiredTime); setRequests(draft.requests);
           setPrivacyAgreed(draft.privacyAgreed);
-          setKakaoConsent(draft.kakaoConsent ?? false);
         } catch { /* ignore */ }
         sessionStorage.removeItem(`cart_checkout_draft_${slug}`);
       }
@@ -206,7 +203,6 @@ export default function CheckoutClient({
             delivery: draft.deliveryType === "배송" ? { recipientName: draft.recipientName, recipientPhone: draft.recipientPhone, address: draft.address, addressDetail: draft.addressDetail } : null,
             desiredDate: draft.desiredDate, desiredTime: draft.desiredTime,
             requests: draft.requests, finalPrice: draft.finalPrice,
-            kakaoConsent: draft.kakaoConsent,
             paymentKey: initialPaymentKey, paymentOrderId: initialOrderId, paymentAmount: initialAmount,
           }),
         });
@@ -241,7 +237,7 @@ export default function CheckoutClient({
       items: checkedItems, name, phone: parsePhone(phone),
       deliveryType, recipientName, recipientPhone: parsePhone(recipientPhone),
       address, addressDetail, desiredDate, desiredTime, requests,
-      finalPrice, privacyAgreed, kakaoConsent,
+      finalPrice, privacyAgreed,
     };
     sessionStorage.setItem(`cart_checkout_draft_${slug}`, JSON.stringify(draft));
 
@@ -322,6 +318,7 @@ export default function CheckoutClient({
             </div>
             <h2 className="text-lg font-semibold text-gray-900">주문이 완료되었습니다</h2>
             <p className="text-sm text-gray-400">매장에서 확인 후 준비를 시작하겠습니다.</p>
+            <p className="text-xs text-gray-300">예약이 확정되거나 취소되면 카카오톡 알림톡으로 알려드립니다.</p>
           </div>
 
           <div className="bg-white rounded-2xl overflow-hidden">
@@ -429,10 +426,7 @@ export default function CheckoutClient({
         <input type="checkbox" checked={cancellationAgreed} onChange={(e) => { setCancellationAgreed(e.target.checked); if (fieldErrors.cancellation) setFieldErrors(p => ({ ...p, cancellation: false })); }} className="mt-0.5 w-4 h-4 accent-gold-500 shrink-0" />
         <span>제작 착수 후 취소·환불 불가. <Link href="/refund" target="_blank" className="underline text-gold-600">환불 정책</Link> 동의 <span className="text-red-400">*</span></span>
       </label>
-      <label className="flex items-start gap-3 text-sm text-gray-500 cursor-pointer">
-        <input type="checkbox" checked={kakaoConsent} onChange={(e) => setKakaoConsent(e.target.checked)} className="mt-0.5 w-4 h-4 accent-gold-500 shrink-0" />
-        <span>카카오톡 알림 받기 (선택) — 주문 확정·취소 알림</span>
-      </label>
+      <p className="text-xs text-gray-400">주문이 확정되거나 취소되면 입력하신 번호로 카카오톡 알림톡을 보내드립니다.</p>
     </div>
   );
 

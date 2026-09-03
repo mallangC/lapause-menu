@@ -25,6 +25,8 @@ export default function OrderSettingsTab({ companyId, plan: _plan }: Props) {
   const [businessRegImageUrl, setBusinessRegImageUrl] = useState<string | null>(null);
   const [businessRegUploading, setBusinessRegUploading] = useState(false);
   const [businessNumber, setBusinessNumber] = useState("");
+  const [mailOrderNumber, setMailOrderNumber] = useState("");
+  const [soldCount, setSoldCount] = useState(0);
   const [businessVerifiedAt, setBusinessVerifiedAt] = useState<string | null>(null);
   const [businessStatus, setBusinessStatus] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
@@ -45,7 +47,7 @@ export default function OrderSettingsTab({ companyId, plan: _plan }: Props) {
   useEffect(() => {
     supabase
       .from("company_settings")
-      .select("bank_name, bank_account, bank_holder, address, consult_enabled, business_number, business_verified_at, business_status, bank_account_image_url, business_registration_image_url, consult_apply_status, consult_reject_reason")
+      .select("bank_name, bank_account, bank_holder, address, consult_enabled, business_number, mail_order_number, sold_count, business_verified_at, business_status, bank_account_image_url, business_registration_image_url, consult_apply_status, consult_reject_reason")
       .eq("company_id", companyId)
       .single()
       .then(({ data }) => {
@@ -55,6 +57,8 @@ export default function OrderSettingsTab({ companyId, plan: _plan }: Props) {
         if (data.bank_account) setBankAccount(data.bank_account);
         if (data.bank_holder) setBankHolder(data.bank_holder);
         if (data.business_number) setBusinessNumber(data.business_number);
+        if (data.mail_order_number) setMailOrderNumber(data.mail_order_number);
+        setSoldCount(data.sold_count ?? 0);
         if (data.business_verified_at) setBusinessVerifiedAt(data.business_verified_at);
         if (data.business_status) setBusinessStatus(data.business_status);
         if (data.bank_account_image_url) setBankAccountImageUrl(data.bank_account_image_url);
@@ -212,6 +216,7 @@ export default function OrderSettingsTab({ companyId, plan: _plan }: Props) {
         bank_holder: bankHolder || null,
         bank_account_image_url: bankAccountImageUrl || null,
         business_number: businessNumber || null,
+        mail_order_number: mailOrderNumber || null,
         address: address ? (addressDetail ? `${address} ${addressDetail}` : address) : null,
         ...(shouldResetConsult ? { consult_apply_status: null, consult_enabled: false } : {}),
       }).eq("company_id", companyId),
@@ -236,21 +241,35 @@ export default function OrderSettingsTab({ companyId, plan: _plan }: Props) {
 
   return (
     <div className="max-w-md">
-      <h2 className="text-xl font-medium text-gray-900 mb-6">주문 설정</h2>
+      <h2 className="text-xl font-medium text-gray-900 mb-6">판매 신청</h2>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      {!mailOrderNumber && (
+        <div className="mb-5 p-4 rounded-xl bg-red-50 border border-red-200 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-red-700">현재 통신판매업 신고가 되어있지 않습니다</p>
+            <p className="text-xs text-red-500 mt-0.5">
+              {soldCount >= 30
+                ? "판매 수량이 30개를 초과해 판매가 정지되었습니다. 통신판매업 신고번호를 등록해주세요."
+                : "신고번호를 등록하지 않으면 30개 판매 시 판매가 자동으로 정지됩니다."}
+            </p>
+          </div>
+          <span className="shrink-0 text-sm font-bold text-red-600">{Math.min(soldCount, 30)}/30</span>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-5">
         {error && (
           <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
         )}
 
-        <div>
+        <div className="border border-gray-200 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-1">
-            <h3 className="text-sm font-semibold text-gray-700">예약 알림 정보</h3>
+            <h3 className="text-sm font-semibold text-gray-800">예약 알림 정보</h3>
             {consultEnabled && (
               <span className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">맞춤 주문 활성화 중 — 수정 불가</span>
             )}
           </div>
-          <p className="text-xs text-gray-400 mb-3">맞춤 주문 기능 활성화 및 카카오 알림톡 발송에 사용됩니다.<br />모든 항목을 입력해야 맞춤 주문을 활성화할 수 있습니다.</p>
+          <p className="text-xs text-gray-400 mb-3">맞춤 주문 기능 활성화 및 카카오 알림톡 발송에 사용됩니다.</p>
 
           <div className={`space-y-3 ${disabledByConsult ? "opacity-50 pointer-events-none select-none" : ""}`}>
             {/* 전화번호 */}
@@ -355,142 +374,152 @@ export default function OrderSettingsTab({ companyId, plan: _plan }: Props) {
           <p className="text-xs text-gray-400 mt-3">계좌번호를 잘못 적어서 생기는 불이익은 책임지지 않습니다.</p>
         </div>
 
-        {/* 통장사본, 사업자등록증, 사업자 정보, 맞춤 주문 신청 */}
-        <div className="relative">
-          <div>
+        {/* 통장사본 */}
+        <div className={`border border-gray-200 rounded-xl p-4${disabledByConsult ? " opacity-50 pointer-events-none select-none" : ""}`}>
+          <h3 className="text-sm font-semibold text-gray-800 mb-1">통장사본</h3>
+          <p className="text-xs text-gray-400 mb-3">정산 처리를 위해 계좌 확인용으로 사용됩니다.</p>
+          {bankAccountImageUrl ? (
+            <div className="flex items-center gap-3">
+              <button type="button" onClick={handleViewBankDoc} className="text-xs text-blue-500 hover:underline">통장사본 확인</button>
+              <button type="button" onClick={() => setBankAccountImageUrl(null)} className="text-xs text-gray-400 hover:text-red-400">삭제</button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => bankImageInputRef.current?.click()}
+              disabled={bankImageUploading}
+              className="px-4 py-2 border border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-gray-500 hover:text-gray-700 transition-colors disabled:opacity-50"
+            >
+              {bankImageUploading ? "업로드 중..." : "+ 통장사본 업로드"}
+            </button>
+          )}
+          <input ref={bankImageInputRef} type="file" accept="image/*,application/pdf" onChange={handleBankImageUpload} className="hidden" />
+        </div>
 
-            {/* 통장사본 */}
-            <div className={disabledByConsult ? "opacity-50 pointer-events-none select-none" : ""}>
-              <label className="block text-sm font-medium text-gray-700 mb-1">통장사본</label>
-              <p className="text-xs text-gray-400 mb-2">정산 처리를 위해 계좌 확인용으로 사용됩니다.</p>
-              {bankAccountImageUrl ? (
+        {/* 사업자 정보 */}
+        <div className={`border border-gray-200 rounded-xl p-4${disabledByConsult ? " opacity-50 pointer-events-none select-none" : ""}`}>
+          <h3 className="text-sm font-semibold text-gray-800 mb-3">사업자 정보</h3>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">사업자등록번호</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={businessNumber}
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/\D/g, "").slice(0, 10);
+                    const formatted = raw.length <= 3 ? raw : raw.length <= 5 ? `${raw.slice(0, 3)}-${raw.slice(3)}` : `${raw.slice(0, 3)}-${raw.slice(3, 5)}-${raw.slice(5)}`;
+                    setBusinessNumber(formatted);
+                    setBusinessVerifiedAt(null);
+                    setBusinessStatus(null);
+                    setVerifyError(null);
+                  }}
+                  placeholder="000-00-00000"
+                  className="flex-1 border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
+                />
+                <button
+                  type="button"
+                  onClick={handleVerifyBusiness}
+                  disabled={verifying || businessNumber.replace(/\D/g, "").length !== 10}
+                  className="shrink-0 px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-600 hover:border-gray-500 bg-white transition-colors disabled:opacity-40 whitespace-nowrap"
+                >
+                  {verifying ? "조회 중..." : "인증"}
+                </button>
+              </div>
+              {businessVerifiedAt && businessStatus && (
+                <div className="mt-2 flex items-center gap-1.5 text-xs text-green-600">
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                  인증 완료 · {businessStatus} · {new Date(businessVerifiedAt).toLocaleDateString("ko-KR")}
+                </div>
+              )}
+              {verifyError && <p className="mt-2 text-xs text-red-500">{verifyError}</p>}
+            </div>
+
+            {/* 사업자등록증 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">사업자등록증</label>
+              <p className="text-xs text-gray-400 mb-2">본인 명의 사업자 확인용으로 사용됩니다. 사진 또는 PDF로 업로드하세요.</p>
+              {businessRegImageUrl ? (
                 <div className="flex items-center gap-3">
-                  <button type="button" onClick={handleViewBankDoc} className="text-xs text-blue-500 hover:underline">통장사본 확인</button>
-                  <button type="button" onClick={() => setBankAccountImageUrl(null)} className="text-xs text-gray-400 hover:text-red-400">삭제</button>
+                  <button type="button" onClick={handleViewBusinessReg} className="text-xs text-blue-500 hover:underline">사업자등록증 확인</button>
+                  <button type="button" onClick={() => setBusinessRegImageUrl(null)} className="text-xs text-gray-400 hover:text-red-400">삭제</button>
                 </div>
               ) : (
                 <button
                   type="button"
-                  onClick={() => bankImageInputRef.current?.click()}
-                  disabled={bankImageUploading}
+                  onClick={() => businessRegInputRef.current?.click()}
+                  disabled={businessRegUploading}
                   className="px-4 py-2 border border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-gray-500 hover:text-gray-700 transition-colors disabled:opacity-50"
                 >
-                  {bankImageUploading ? "업로드 중..." : "+ 통장사본 업로드"}
+                  {businessRegUploading ? "업로드 중..." : "+ 사업자등록증 업로드"}
                 </button>
               )}
-              <input ref={bankImageInputRef} type="file" accept="image/*,application/pdf" onChange={handleBankImageUpload} className="hidden" />
+              <input ref={businessRegInputRef} type="file" accept="image/*,application/pdf" onChange={handleBusinessRegUpload} className="hidden" />
             </div>
 
-            {/* 사업자 정보 */}
-            <div className={`pt-2${disabledByConsult ? " opacity-50 pointer-events-none select-none" : ""}`}>
-              <h3 className="text-sm font-semibold text-gray-700 mb-1">사업자 정보</h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">사업자등록번호</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={businessNumber}
-                      onChange={(e) => {
-                        const raw = e.target.value.replace(/\D/g, "").slice(0, 10);
-                        const formatted = raw.length <= 3 ? raw : raw.length <= 5 ? `${raw.slice(0, 3)}-${raw.slice(3)}` : `${raw.slice(0, 3)}-${raw.slice(3, 5)}-${raw.slice(5)}`;
-                        setBusinessNumber(formatted);
-                        setBusinessVerifiedAt(null);
-                        setBusinessStatus(null);
-                        setVerifyError(null);
-                      }}
-                      placeholder="000-00-00000"
-                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleVerifyBusiness}
-                      disabled={verifying || businessNumber.replace(/\D/g, "").length !== 10}
-                      className="shrink-0 px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-600 hover:border-gray-500 bg-white transition-colors disabled:opacity-40 whitespace-nowrap"
-                    >
-                      {verifying ? "조회 중..." : "인증"}
-                    </button>
-                  </div>
-                  {businessVerifiedAt && businessStatus && (
-                    <div className="mt-2 flex items-center gap-1.5 text-xs text-green-600">
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                      인증 완료 · {businessStatus} · {new Date(businessVerifiedAt).toLocaleDateString("ko-KR")}
-                    </div>
-                  )}
-                  {verifyError && <p className="mt-2 text-xs text-red-500">{verifyError}</p>}
-                </div>
-
-                {/* 사업자등록증 */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">사업자등록증</label>
-                  <p className="text-xs text-gray-400 mb-2">본인 명의 사업자 확인용으로 사용됩니다. 사진 또는 PDF로 업로드하세요.</p>
-                  {businessRegImageUrl ? (
-                    <div className="flex items-center gap-3">
-                      <button type="button" onClick={handleViewBusinessReg} className="text-xs text-blue-500 hover:underline">사업자등록증 확인</button>
-                      <button type="button" onClick={() => setBusinessRegImageUrl(null)} className="text-xs text-gray-400 hover:text-red-400">삭제</button>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => businessRegInputRef.current?.click()}
-                      disabled={businessRegUploading}
-                      className="px-4 py-2 border border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-gray-500 hover:text-gray-700 transition-colors disabled:opacity-50"
-                    >
-                      {businessRegUploading ? "업로드 중..." : "+ 사업자등록증 업로드"}
-                    </button>
-                  )}
-                  <input ref={businessRegInputRef} type="file" accept="image/*,application/pdf" onChange={handleBusinessRegUpload} className="hidden" />
-                </div>
-              </div>
+            {/* 통신판매업 신고번호 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">통신판매업 신고번호</label>
+              <p className="text-xs text-gray-400 mb-2">
+                상품을 30개 판매하기 전 통신판매업 신고를 해주세요.<br />
+                통신판매업 미신고 상태로 30개 판매 시 판매가 정지됩니다.
+              </p>
+              <input
+                type="text"
+                value={mailOrderNumber}
+                onChange={(e) => setMailOrderNumber(e.target.value)}
+                placeholder="예: 제2024-서울강남-0000호"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
+              />
             </div>
-
-            {/* 맞춤 주문 신청 */}
-            <div className="mt-4">
-              <h3 className="text-sm font-semibold text-gray-700 mb-1">맞춤 주문 신청</h3>
-              {consultApplyStatus === "pending" && (
-                <div className="rounded-lg bg-yellow-50 border border-yellow-100 px-4 py-3 text-sm text-yellow-700">
-                  검토 중입니다. 운영자 확인 후 안내드리겠습니다.
-                </div>
-              )}
-              {consultApplyStatus === "approved" && (
-                <div className="rounded-lg bg-green-50 border border-green-100 px-4 py-3 text-sm text-green-700">
-                  승인되었습니다. 맞춤 주문 탭에서 활성화할 수 있습니다.
-                </div>
-              )}
-              {consultApplyStatus === "rejected" && (
-                <div className="rounded-lg bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-600 space-y-1">
-                  <div className="font-medium">반려되었습니다.</div>
-                  {consultRejectReason && <div className="text-xs">{consultRejectReason}</div>}
-                </div>
-              )}
-              {(!consultApplyStatus || consultApplyStatus === "rejected") && (() => {
-                const canApply = !!businessVerifiedAt && !!bankAccountImageUrl && !!businessRegImageUrl && !!bankName && !!bankAccount && !!bankHolder;
-                return (
-                  <div className="space-y-2 mt-2">
-                    {!canApply && (
-                      <ul className="text-xs text-gray-400 space-y-0.5 list-disc list-inside">
-                        {!businessVerifiedAt && <li>사업자등록번호 인증 필요</li>}
-                        {!bankAccountImageUrl && <li>통장사본 업로드 필요</li>}
-                        {!businessRegImageUrl && <li>사업자등록증 업로드 필요</li>}
-                        {(!bankName || !bankAccount || !bankHolder) && <li>계좌 정보 입력 필요</li>}
-                      </ul>
-                    )}
-                    <button
-                      type="button"
-                      onClick={handleConsultApply}
-                      disabled={!canApply || applying}
-                      className="px-5 py-2.5 bg-gold-500 text-white text-sm rounded-lg hover:bg-gold-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {applying ? "신청 중..." : "맞춤 주문 신청하기"}
-                    </button>
-                  </div>
-                );
-              })()}
-            </div>
-
           </div>
+        </div>
+
+        {/* 판매 신청 */}
+        <div className="border border-gray-200 rounded-xl p-4">
+          <h3 className="text-sm font-semibold text-gray-800 mb-1">판매 신청</h3>
+          <p className="text-xs text-gray-400 mb-3">통신판매업 신고번호를 제외한 모든 항목을 입력·업로드해야 신청할 수 있습니다.</p>
+          {consultApplyStatus === "pending" && (
+            <div className="rounded-lg bg-yellow-50 border border-yellow-100 px-4 py-3 text-sm text-yellow-700">
+              검토 중입니다. 운영자 확인 후 안내드리겠습니다.
+            </div>
+          )}
+          {consultApplyStatus === "approved" && (
+            <div className="rounded-lg bg-green-50 border border-green-100 px-4 py-3 text-sm text-green-700">
+              승인되었습니다. 판매 설정 탭에서 활성화할 수 있습니다.
+            </div>
+          )}
+          {consultApplyStatus === "rejected" && (
+            <div className="rounded-lg bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-600 space-y-1">
+              <div className="font-medium">반려되었습니다.</div>
+              {consultRejectReason && <div className="text-xs">{consultRejectReason}</div>}
+            </div>
+          )}
+          {(!consultApplyStatus || consultApplyStatus === "rejected") && (() => {
+            const canApply = !!businessVerifiedAt && !!bankAccountImageUrl && !!businessRegImageUrl && !!bankName && !!bankAccount && !!bankHolder;
+            return (
+              <div className="space-y-2 mt-2">
+                {!canApply && (
+                  <ul className="text-xs text-gray-400 space-y-0.5 list-disc list-inside">
+                    {!businessVerifiedAt && <li>사업자등록번호 인증 필요</li>}
+                    {!bankAccountImageUrl && <li>통장사본 업로드 필요</li>}
+                    {!businessRegImageUrl && <li>사업자등록증 업로드 필요</li>}
+                    {(!bankName || !bankAccount || !bankHolder) && <li>계좌 정보 입력 필요</li>}
+                  </ul>
+                )}
+                <button
+                  type="button"
+                  onClick={handleConsultApply}
+                  disabled={!canApply || applying}
+                  className="px-5 py-2.5 bg-gold-500 text-white text-sm rounded-lg hover:bg-gold-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  {applying ? "신청 중..." : "맞춤 주문 신청하기"}
+                </button>
+              </div>
+            );
+          })()}
         </div>
 
         <div className="sticky bottom-0 bg-white border-t border-gray-100 -mx-0 pt-4 pb-1 flex items-center gap-3">

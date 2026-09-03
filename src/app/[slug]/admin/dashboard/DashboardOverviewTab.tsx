@@ -23,6 +23,8 @@ interface Settings {
   delivery_enabled: boolean;
   message_card_enabled: boolean;
   shopping_bag_enabled: boolean;
+  mail_order_number: string | null;
+  sold_count: number | null;
 }
 
 interface ReservationCounts {
@@ -94,7 +96,7 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
     const [{ data: s }, { data: company }, { data: reservations }] = await Promise.all([
       supabase
         .from("company_settings")
-        .select("consult_enabled, consult_apply_status, business_verified_at, bank_account_image_url, bank_name, bank_account, bank_holder, address, delivery_enabled, message_card_enabled, shopping_bag_enabled")
+        .select("consult_enabled, consult_apply_status, business_verified_at, bank_account_image_url, bank_name, bank_account, bank_holder, address, delivery_enabled, message_card_enabled, shopping_bag_enabled, mail_order_number, sold_count")
         .eq("company_id", companyId)
         .single(),
       supabase
@@ -148,10 +150,32 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
   const isPro = plan !== "none";
 
   const applyBadge = consultStatus ? consultApplyLabels[consultStatus] : null;
+  const mailOrderNumber = settings?.mail_order_number ?? null;
+  const soldCount = settings?.sold_count ?? 0;
 
   return (
     <div className="space-y-3">
       <h2 className="text-xl font-bold text-gray-900">대시보드</h2>
+
+      {/* 통신판매업 미신고 경고 */}
+      {!mailOrderNumber && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl py-4 px-4 -mx-4 flex items-center justify-between gap-3 md:mx-0">
+          <div>
+            <p className="text-sm font-semibold text-red-700">현재 통신판매업 신고가 되어있지 않습니다</p>
+            <p className="text-xs text-red-500 mt-0.5">
+              {soldCount >= 30
+                ? "판매 수량이 30개를 초과해 판매가 정지되었습니다. 통신판매업 신고번호를 등록해주세요."
+                : "신고번호를 등록하지 않으면 30개 판매 시 판매가 자동으로 정지됩니다."}
+            </p>
+          </div>
+          <button
+            onClick={() => onNavigate("ordersettings")}
+            className="shrink-0 text-sm font-bold text-red-600 hover:text-red-700 transition-colors"
+          >
+            {Math.min(soldCount, 30)}/30 →
+          </button>
+        </div>
+      )}
 
       {/* 메뉴 URL */}
       <div className="bg-white py-4 px-4 -mx-4 flex items-center gap-3 md:mx-0 md:rounded-2xl md:px-5">

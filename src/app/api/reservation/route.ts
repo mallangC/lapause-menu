@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { sendReservationConfirmedOwner } from "@/lib/solapi";
 
 interface ReservationBody {
@@ -42,7 +41,6 @@ interface ReservationBody {
     name: string;
     phone: string;
   };
-  kakaoConsent?: boolean;
   delivery: {
     recipientName: string;
     recipientPhone: string;
@@ -137,7 +135,7 @@ export async function POST(request: NextRequest) {
     // DB에 예약 저장
     let savedReservationId: string | null = null;
     if (companyId) {
-      const { form, product, orderer, delivery, finalPrice, kakaoConsent, source } = body;
+      const { form, product, orderer, delivery, finalPrice, source } = body;
       const { data: insertData, error: insertError } = await supabase.from("reservations").insert({
         company_id: companyId,
         customer_profile_id: customerProfileId,
@@ -179,13 +177,6 @@ export async function POST(request: NextRequest) {
       if (insertError) console.error("[reservation] insert 실패:", insertError.message);
       else {
         savedReservationId = insertData?.[0]?.id ?? null;
-        if (customerProfileId) {
-          const adminClient = createAdminClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.SUPABASE_SERVICE_ROLE_KEY!
-          );
-          await adminClient.from("customer_profiles").update({ kakao_consent: kakaoConsent ?? false }).eq("id", customerProfileId);
-        }
       }
     }
 

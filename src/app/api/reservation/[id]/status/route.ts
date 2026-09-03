@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { sendReservationReceived, sendReservationCancelled } from "@/lib/solapi";
 
 export async function PATCH(
@@ -107,23 +106,6 @@ export async function PATCH(
 
     const companyPhone = company?.phone ?? "";
     const desiredDateTime = `${reservation.desired_date}${reservation.desired_time ? ` ${reservation.desired_time}` : ""}`;
-
-    // kakao_consent 확인 (RLS 우회를 위해 adminClient 사용)
-    let kakaoConsent = false;
-    if (reservation.customer_profile_id) {
-      const adminClient = createAdminClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-      );
-      const { data: profile } = await adminClient
-        .from("customer_profiles")
-        .select("kakao_consent")
-        .eq("id", reservation.customer_profile_id)
-        .single();
-      kakaoConsent = profile?.kakao_consent ?? false;
-    }
-
-    if (!kakaoConsent) return NextResponse.json({ ok: true });
 
     const items = reservation.items as { type?: string }[] | null;
     const productType = items?.[0]?.type ?? "";

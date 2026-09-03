@@ -175,8 +175,8 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
   const settingsTabs: { key: Tab; label: string }[] = [
     { key: "company", label: "매장 정보" },
     { key: "business", label: "영업 설정" },
-    { key: "ordersettings", label: "주문 설정" },
-    { key: "reservation", label: "맞춤 주문" },
+    { key: "ordersettings", label: "판매 신청" },
+    { key: "reservation", label: "판매 설정" },
     { key: "menusettings", label: "메뉴 설정" },
     { key: "settings", label: "디자인" },
     { key: "myinfo", label: "내 정보" },
