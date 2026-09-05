@@ -66,16 +66,26 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const { companyId, reason, refundType } = await req.json();
+  if (!companyId || !reason?.trim()) {
+    return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+  }
+
+  // 운영자이거나, 해당 매장의 소유주 본인이면 허용
   const { data: profile } = await supabase
     .from("profiles")
     .select("role")
     .eq("user_id", user.id)
     .single();
-  if (profile?.role !== "operator") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const { companyId, reason, refundType } = await req.json();
-  if (!companyId || !reason?.trim()) {
-    return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+  if (profile?.role !== "operator") {
+    const { data: company } = await supabase
+      .from("companies")
+      .select("id")
+      .eq("id", companyId)
+      .eq("owner_id", user.id)
+      .single();
+    if (!company) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   // refundType: "full" | "partial" (partial은 연간 부분환불)
@@ -96,19 +106,27 @@ export async function POST(req: NextRequest) {
     ownerEmail = ownerUser?.user?.email ?? null;
   }
 
-  // 가장 최근 빌링 결제 내역 조회 (토스 paymentKey 저장된 경우)
-  const { data: recentLog } = await supabaseAdmin
-    .from("billing_logs")
-    .select("payment_id")
-    .eq("company_id", companyId)
-    .eq("success", true)
-    .neq("type", "refund")
-    .not("payment_id", "is", null)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .single();
+  // 가장 최근 빌링 결제 내역 조회 (이미 환불된 건은 제외)
+  const [{ data: chargeLogs }, { data: refundLogs }] = await Promise.all([
+    supabaseAdmin
+      .from("billing_logs")
+      .select("payment_id, created_at")
+      .eq("company_id", companyId)
+      .eq("success", true)
+      .eq("type", "charge")
+      .not("payment_id", "is", null)
+      .order("created_at", { ascending: false }),
+    supabaseAdmin
+      .from("billing_logs")
+      .select("payment_id")
+      .eq("company_id", companyId)
+      .eq("success", true)
+      .eq("type", "refund")
+      .not("payment_id", "is", null),
+  ]);
 
-  const paymentKey = recentLog?.payment_id ?? null;
+  const refundedPaymentIds = new Set((refundLogs ?? []).map((r) => r.payment_id));
+  const paymentKey = (chargeLogs ?? []).find((c) => !refundedPaymentIds.has(c.payment_id))?.payment_id ?? null;
 
   // 연간 부분환불 처리
   if (isPartial && plan === "annual") {
@@ -147,7 +165,10 @@ export async function POST(req: NextRequest) {
             paymentId: paymentKey, success: false, reason,
             errorMessage: (cancelData as { message?: string }).message ?? "부분환불 실패",
           });
-          return NextResponse.json({ error: "토스 부분환불 실패", detail: cancelData }, { status: 500 });
+          return NextResponse.json(
+            { error: `토스 부분환불 실패: ${(cancelData as { message?: string }).message ?? "알 수 없는 오류"}`, detail: cancelData },
+            { status: 500 }
+          );
         }
         refunded = true;
       } catch (err) {
@@ -218,7 +239,10 @@ export async function POST(req: NextRequest) {
           paymentId: paymentKey, success: false, reason,
           errorMessage: (cancelData as { message?: string }).message ?? "환불 실패",
         });
-        return NextResponse.json({ error: "토스 환불 실패", detail: cancelData }, { status: 500 });
+        return NextResponse.json(
+          { error: `토스 환불 실패: ${(cancelData as { message?: string }).message ?? "알 수 없는 오류"}`, detail: cancelData },
+          { status: 500 }
+        );
       }
 
       refunded = true;

@@ -47,6 +47,17 @@ export async function POST(request: NextRequest) {
   const year_month = period_start.slice(0, 7);
 
   for (const item of items) {
+    // 결제 총액은 클라이언트를 신뢰하지 않고 연결된 예약에서 다시 집계
+    const { data: linkedReservations } = await adminClient
+      .from("reservations")
+      .select("final_price")
+      .in("id", item.reservation_ids);
+
+    const gross_amount = (linkedReservations ?? []).reduce((s, r) => s + (r.final_price || 0), 0);
+    const total_amount = Math.round(gross_amount * 0.98);   // 매장에 실제 이체되는 금액
+    const fee_amount = gross_amount - total_amount;          // 매장에서 차감한 수수료(2%)
+    const margin_amount = Math.round(gross_amount * 0.0035); // Flo.Aide 순마진(0.35%, PG 수수료 1.65% 제외)
+
     // settlement 레코드 생성 (이체 완료 상태로)
     const { data: settlement, error: sErr } = await adminClient
       .from("settlements")
@@ -55,7 +66,10 @@ export async function POST(request: NextRequest) {
         period_start,
         period_end,
         year_month,
-        total_amount: item.total_amount,
+        total_amount,
+        gross_amount,
+        fee_amount,
+        margin_amount,
         status: "completed",
         transferred_at,
         transfer_memo: transfer_memo || null,

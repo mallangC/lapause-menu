@@ -57,7 +57,8 @@ export const PLAN_FEATURES = [
   { text: "전자 메뉴판 운영", highlight: false },
   { text: "나만의 가게 링크 (flo-aide.com/내가게)", highlight: false },
   { text: "맞춤 주문 & 예약 관리", highlight: false },
+  { text: "링크결제 사용 가능", highlight: false },
   { text: "매출·예약 통계", highlight: false },
   { text: "카카오 예약 알림 자동 발송", highlight: false },
-  { text: "결제 수수료 0% (카드 수수료 별도)", highlight: true },
+  { text: "결제 수수료 2% (카드 수수료 포함)", highlight: true },
 ] as const;

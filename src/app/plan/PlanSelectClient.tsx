@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import BillingKeyFlow from "@/components/BillingKeyFlow";
+import { createClient } from "@/lib/supabase/client";
 import { PLAN_PRICES, PLAN_FEATURES } from "@/lib/constants";
 
 interface Props {
@@ -18,6 +19,12 @@ export default function PlanSelectClient({ companyId, slug, customerName, trialE
   const [pricingCycle, setPricingCycle] = useState<"monthly" | "annual">("annual");
   const [withdrawalAgreed, setWithdrawalAgreed] = useState(false);
   const handleSuccess = () => router.push(`/${slug}/admin/onboarding`);
+
+  const handleSignOut = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    window.location.href = "/";
+  };
 
   return (
     <div className="space-y-5 max-w-lg mx-auto w-full">
@@ -108,6 +115,15 @@ export default function PlanSelectClient({ companyId, slug, customerName, trialE
           에 따라 「전자상거래법」 제17조 제2항에 의해 결제 후 청약 철회가 제한될 수 있음을 확인하고 동의합니다. <span className="text-red-400">(필수)</span>
         </span>
       </label>
+
+      <div className="text-center">
+        <button
+          onClick={handleSignOut}
+          className="text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2 transition-colors"
+        >
+          취소하고 로그아웃
+        </button>
+      </div>
     </div>
   );
 }

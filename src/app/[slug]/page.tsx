@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 import ProductsClient from "./products/ProductsClient";
 import ServiceSuspended from "@/components/main/ServiceSuspended";
 import { Product } from "@/types";
@@ -33,8 +34,7 @@ export default async function CompanyMenuPage({ params }: Props) {
         logo_image, theme_bg, theme_accent,
         location_url, kakao_channel_url, instagram_url, youtube_url,
         hidden_product_types, hidden_seasons, consult_enabled
-      ),
-      subscription:company_subscriptions(plan)
+      )
     `)
     .eq("slug", slug)
     .single();
@@ -42,9 +42,19 @@ export default async function CompanyMenuPage({ params }: Props) {
   if (!raw) notFound();
 
   const s = raw.settings as unknown as Record<string, unknown> | null ?? {};
-  const sub = raw.subscription as unknown as Record<string, unknown> | null ?? {};
 
-  if (!sub.plan || sub.plan === "none") {
+  // company_subscriptions는 RLS가 소유주 본인만 읽을 수 있어서, 손님(익명) 조회를 위해 서비스 롤로 plan만 조회
+  const supabaseAdmin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+  const { data: sub } = await supabaseAdmin
+    .from("company_subscriptions")
+    .select("plan")
+    .eq("company_id", raw.id)
+    .single();
+
+  if (!sub?.plan || sub.plan === "none") {
     return <ServiceSuspended companyName={raw.name} />;
   }
 

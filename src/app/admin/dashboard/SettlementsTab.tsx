@@ -17,6 +17,7 @@ interface PendingItem {
   business_number: string | null;
   reservation_count: number;
   total_amount: number;
+  net_amount: number;
   reservation_ids: string[];
 }
 
@@ -32,6 +33,9 @@ interface Settlement {
   period_end: string;
   year_month: string;
   total_amount: number;
+  gross_amount: number;
+  fee_amount: number;
+  margin_amount: number;
   status: "pending" | "completed" | "cancelled";
   transferred_at: string | null;
   transfer_memo: string | null;
@@ -119,7 +123,7 @@ export default function SettlementsTab({ companies }: Props) {
       입금은행: item.bank_name ?? "",
       입금계좌: item.bank_account ?? "",
       고객관리성명: item.bank_holder ?? "",
-      이체금액: item.total_amount,
+      이체금액: item.net_amount,
       출금통장표시내용: "Flo.Aide",
       입금통장표시내용: "라포즈플뢰르정산",
       입금인코드: "",
@@ -156,7 +160,7 @@ export default function SettlementsTab({ companies }: Props) {
       body: JSON.stringify({
         items: pendingItems.map(i => ({
           company_id: i.company_id,
-          total_amount: i.total_amount,
+          total_amount: i.net_amount,
           reservation_ids: i.reservation_ids,
         })),
         period_start: periodStart,
@@ -201,7 +205,8 @@ export default function SettlementsTab({ companies }: Props) {
 
   const fmt = (s: string | null) => s ? s.slice(0, 10) : "—";
   const fmtMoney = (n: number) => n.toLocaleString() + "원";
-  const totalAmount = pendingItems?.reduce((sum, i) => sum + i.total_amount, 0) ?? 0;
+  const totalAmount = pendingItems?.reduce((sum, i) => sum + i.net_amount, 0) ?? 0;
+  const totalGross = pendingItems?.reduce((sum, i) => sum + i.total_amount, 0) ?? 0;
 
   // 월 옵션 (최근 12개월)
   const monthOptions = Array.from({ length: 12 }, (_, i) => {
@@ -298,7 +303,8 @@ export default function SettlementsTab({ companies }: Props) {
                             <th className="text-left px-6 py-3 font-medium">계좌번호</th>
                             <th className="text-left px-6 py-3 font-medium">예금주</th>
                             <th className="text-right px-6 py-3 font-medium">예약 수</th>
-                            <th className="text-right px-6 py-3 font-medium">정산 금액</th>
+                            <th className="text-right px-6 py-3 font-medium">결제 금액</th>
+                            <th className="text-right px-6 py-3 font-medium">정산 금액 <span className="text-gray-300">(수수료 2% 차감)</span></th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
@@ -314,7 +320,8 @@ export default function SettlementsTab({ companies }: Props) {
                               <td className="px-6 py-3.5 font-mono text-gray-700">{item.bank_account ?? <span className="text-gray-300">—</span>}</td>
                               <td className="px-6 py-3.5 text-gray-600">{item.bank_holder ?? <span className="text-gray-300">—</span>}</td>
                               <td className="px-6 py-3.5 text-right text-gray-700">{item.reservation_count}건</td>
-                              <td className="px-6 py-3.5 text-right font-semibold text-gray-900">{fmtMoney(item.total_amount)}</td>
+                              <td className="px-6 py-3.5 text-right text-gray-400">{fmtMoney(item.total_amount)}</td>
+                              <td className="px-6 py-3.5 text-right font-semibold text-gray-900">{fmtMoney(item.net_amount)}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -322,6 +329,9 @@ export default function SettlementsTab({ companies }: Props) {
                           <tr className="border-t-2 border-gray-100 bg-gray-50">
                             <td colSpan={5} className="px-6 py-3 text-sm text-gray-500 font-medium">
                               총 {pendingItems.length}개 매장
+                            </td>
+                            <td className="px-6 py-3 text-right text-sm text-gray-400">
+                              {fmtMoney(totalGross)}
                             </td>
                             <td className="px-6 py-3 text-right text-base font-bold text-gray-900">
                               {fmtMoney(totalAmount)}
@@ -388,6 +398,26 @@ export default function SettlementsTab({ companies }: Props) {
                 {historyMonth}에 정산 내역이 없습니다.
               </div>
             ) : (
+              <>
+                {/* 요약 */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="bg-white border border-gray-200 rounded-2xl p-5">
+                    <p className="text-xs text-gray-400 mb-1">결제 총액</p>
+                    <p className="text-2xl font-semibold text-gray-900">{fmtMoney(history.reduce((s, i) => s + i.gross_amount, 0))}</p>
+                    <p className="text-xs text-gray-400 mt-1">{historyMonth} 기준</p>
+                  </div>
+                  <div className="bg-white border border-gray-200 rounded-2xl p-5">
+                    <p className="text-xs text-gray-400 mb-1">매장 정산액</p>
+                    <p className="text-2xl font-semibold text-gray-900">{fmtMoney(history.reduce((s, i) => s + i.total_amount, 0))}</p>
+                    <p className="text-xs text-gray-400 mt-1">실제 이체된 금액</p>
+                  </div>
+                  <div className="bg-white border border-gray-200 rounded-2xl p-5">
+                    <p className="text-xs text-gray-400 mb-1">Flo.Aide 순마진</p>
+                    <p className="text-2xl font-semibold text-gold-600">{fmtMoney(history.reduce((s, i) => s + i.margin_amount, 0))}</p>
+                    <p className="text-xs text-gray-400 mt-1">수수료 2% 중 PG(1.65%) 제외분</p>
+                  </div>
+                </div>
+
               <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -396,7 +426,9 @@ export default function SettlementsTab({ companies }: Props) {
                         <th className="text-left px-6 py-3 font-medium">매장</th>
                         <th className="text-left px-6 py-3 font-medium">정산 기간</th>
                         <th className="text-right px-6 py-3 font-medium">예약</th>
-                        <th className="text-right px-6 py-3 font-medium">금액</th>
+                        <th className="text-right px-6 py-3 font-medium">결제 총액</th>
+                        <th className="text-right px-6 py-3 font-medium">정산액</th>
+                        <th className="text-right px-6 py-3 font-medium">순마진</th>
                         <th className="text-left px-6 py-3 font-medium">이체일</th>
                         <th className="text-left px-6 py-3 font-medium">세금계산서</th>
                         <th className="text-left px-6 py-3 font-medium"></th>
@@ -413,7 +445,9 @@ export default function SettlementsTab({ companies }: Props) {
                             {fmt(s.period_start)} ~ {fmt(s.period_end)}
                           </td>
                           <td className="px-6 py-3.5 text-right text-gray-700">{s.reservation_count}건</td>
+                          <td className="px-6 py-3.5 text-right text-gray-400 whitespace-nowrap">{fmtMoney(s.gross_amount)}</td>
                           <td className="px-6 py-3.5 text-right font-semibold text-gray-900 whitespace-nowrap">{fmtMoney(s.total_amount)}</td>
+                          <td className="px-6 py-3.5 text-right text-gold-600 whitespace-nowrap">{fmtMoney(s.margin_amount)}</td>
                           <td className="px-6 py-3.5 text-xs text-gray-500">
                             {s.transferred_at ? (
                               <>
@@ -447,6 +481,7 @@ export default function SettlementsTab({ companies }: Props) {
                   </table>
                 </div>
               </div>
+              </>
             )
           )}
         </div>

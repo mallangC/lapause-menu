@@ -2,23 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { activateBillingKey } from "@/lib/billingActivate";
 
+// 토스 SDK requestBillingAuth() 리다이렉트 복귀 후 authKey -> billingKey 교환
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const {
-    companyId,
-    subscriptionPlan,
-    cardNumber,
-    cardExpirationMonth,
-    cardExpirationYear,
-    customerIdentityNumber,
-    cardPassword,
-  } = await req.json();
+  const { companyId, subscriptionPlan, authKey, customerKey } = await req.json();
 
-  if (!companyId || !subscriptionPlan || !cardNumber || !cardExpirationMonth || !cardExpirationYear || !customerIdentityNumber || !cardPassword) {
+  if (!companyId || !subscriptionPlan || !authKey || !customerKey) {
     return NextResponse.json({ error: "필수 항목이 누락되었습니다." }, { status: 400 });
+  }
+  if (customerKey !== companyId) {
+    return NextResponse.json({ error: "잘못된 요청입니다." }, { status: 400 });
   }
 
   // 회사 소유권 확인
@@ -33,26 +29,18 @@ export async function POST(req: NextRequest) {
 
   const encodedKey = Buffer.from(`${process.env.TOSS_BILLING_SECRET_KEY!}:`).toString("base64");
 
-  // 토스 카드 직접 빌링키 발급
-  const tossRes = await fetch("https://api.tosspayments.com/v1/billing/authorizations/card", {
+  const tossRes = await fetch("https://api.tosspayments.com/v1/billing/authorizations/issue", {
     method: "POST",
     headers: {
       Authorization: `Basic ${encodedKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      customerKey: companyId,
-      cardNumber,
-      cardExpirationYear,
-      cardExpirationMonth,
-      customerIdentityNumber,
-      cardPassword,
-    }),
+    body: JSON.stringify({ authKey, customerKey }),
   });
 
   if (!tossRes.ok) {
     const tossError = await tossRes.json().catch(() => ({}));
-    console.error("[billing/issue-key] 토스 빌링키 발급 실패:", tossError);
+    console.error("[billing/confirm-auth] 빌링키 발급 실패:", tossError);
     return NextResponse.json(
       { error: (tossError as { message?: string }).message ?? "카드 등록에 실패했습니다." },
       { status: 400 }

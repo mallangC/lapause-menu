@@ -100,6 +100,8 @@ export async function GET(request: NextRequest) {
       business_number: settings?.business_number ?? null,
       reservation_count: agg.count,
       total_amount: agg.total,
+      // 결제 수수료 2%(PG 1.65% + Flo.Aide 0.35%) 차감 후 실제 이체 금액
+      net_amount: Math.round(agg.total * 0.98),
       reservation_ids: agg.reservationIds,
     };
   });

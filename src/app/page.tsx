@@ -80,6 +80,7 @@ const hero = { tag: "전자 메뉴판 & 예약 관리", headline: "상담 시간
 const capabilities = [
   { title: "전자 메뉴판", desc: "앱 없이 링크만으로 상품 카탈로그를 공유하세요.", img: "/landing/cap-menu.webp", mobileImg: "/landing/cap-menu-m.webp" },
   { title: "맞춤 주문", desc: "고객이 직접 꽃 종류, 예산, 색상을 선택합니다.", img: "/landing/cap-order.webp", mobileImg: "/landing/cap-order-m.webp" },
+  { title: "링크결제", desc: "전화·DM으로 받은 주문도 결제 링크 하나로 카드 결제까지 받으세요.", img: "", mobileImg: "" },
   { title: "예약 관리", desc: "월별로 모든 예약을 한눈에 확인하세요.", img: "/landing/cap-reservation.webp", mobileImg: "/landing/cap-reservation-m.webp" },
   { title: "카카오 알림", desc: "예약 확인, 확정, 취소 알림을 자동으로 발송합니다.", img: "/landing/cap-kakao.webp", mobileImg: "/landing/cap-kakao-m.webp" },
   { title: "매출 분석", desc: "어떤 상품이 잘 팔리는지 데이터로 확인하세요.", img: "/landing/cap-stats.webp", mobileImg: "/landing/cap-stats-m.webp" },
@@ -103,7 +104,7 @@ const faqs = [
   { q: "고객이 예약하면 제가 직접 확정해야 하나요, 아니면 자동으로 되나요?", a: "기본적으로 관리자가 직접 확정하는 방식입니다. 예약 요청이 들어오면 알림을 받고, 관리 페이지에서 판매 가능한 예약건인지 확인 후 확정 또는 취소 처리를 할 수 있습니다." },
   { q: "메뉴에 가격을 표시하지 않을 수 있나요?", a: "네. 상품을 추가할 때 가격을 입력하지 않으면 가격이 표시되지 않습니다." },
   { q: "카카오 알림은 어떻게 작동하나요?", a: "고객이 예약을 완료하면 관리자에게, 관리자가 예약을 확정하거나 취소하면 고객 카카오톡으로 알림이 발송됩니다." },
-  { q: "비용은 얼마인가요?", a: `첫 1개월은 무료 체험입니다. 이후 월간 플랜 월 ${PLAN_PRICES.monthly.toLocaleString()}원, 연간 플랜 월 ${PLAN_PRICES.annual.toLocaleString()}원(연 ${PLAN_PRICES.annualTotal.toLocaleString()}원 일괄 결제)으로 이용하실 수 있습니다. 두 플랜 모두 맞춤 주문·예약·통계·카카오 알림·결제 수수료 0% 등 모든 기능이 포함됩니다.` },
+  { q: "비용은 얼마인가요?", a: `첫 1개월은 무료 체험입니다. 이후 월간 플랜 월 ${PLAN_PRICES.monthly.toLocaleString()}원, 연간 플랜 월 ${PLAN_PRICES.annual.toLocaleString()}원(연 ${PLAN_PRICES.annualTotal.toLocaleString()}원 일괄 결제)으로 이용하실 수 있습니다. 두 플랜 모두 맞춤 주문·예약·통계·카카오 알림 등 모든 기능이 포함되며, 결제 수수료는 2%(카드 수수료 포함)이고 정책에 따라 변경될 수 있습니다.` },
 ];
 
 export default function Landing() {
@@ -226,6 +227,7 @@ export default function Landing() {
 
   return (
     <div className="bg-white" style={{ overflowX: "clip" }}>
+      <link rel="preload" as="image" href="/landing/hero-menu.webp" />
 
       {/* ── NAV ── */}
       <div className="fixed top-4 left-0 right-0 z-50 flex justify-center px-4 transition-all duration-300" style={{ width: "100dvw" }}>
@@ -563,7 +565,7 @@ export default function Landing() {
               꽃 종류, 색상, 포장, 예산, 원하는 분위기까지 — 고객이 단계별로 직접 선택합니다.
             </p>
             <ul className="space-y-2 md:space-y-3">
-              {["꽃·색상·포장·예산·분위기 선택 폼 제공", "주문 접수 즉시 관리자에게 알림", "카드 결제까지 한 번에 — 결제 수수료 0%"].map((item) => (
+              {["꽃·색상·포장·예산·분위기 선택 폼 제공", "주문 접수 즉시 관리자에게 알림"].map((item) => (
                 <li key={item} className="flex items-center gap-3 text-[13px] md:text-[14px] text-neutral-600">
                   <span className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] shrink-0 font-bold" style={{ background: "rgba(201,169,110,0.2)", color: "#c9a96e" }}>✓</span>
                   {item}
@@ -807,11 +809,13 @@ export default function Landing() {
                 style={{ height: "clamp(320px, 60vh, 580px)" }}
               >
                 <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, #f0ebe4 0%, #ddd0c4 100%)" }} />
-                <picture className="absolute inset-0">
-                  <source media="(min-width: 768px)" srcSet={cap.img} />
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={cap.mobileImg} alt={cap.title} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", display: "block" }} />
-                </picture>
+                {cap.img && (
+                  <picture className="absolute inset-0">
+                    <source media="(min-width: 768px)" srcSet={cap.img} />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={cap.mobileImg} alt={cap.title} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", display: "block" }} />
+                  </picture>
+                )}
                 <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(10,7,4,0.75) 0%, rgba(10,7,4,0.2) 40%, transparent 65%)" }} />
                 <div className="absolute bottom-0 left-0 p-8 max-w-lg">
                   <h3 className="text-[clamp(1.3rem,2.8vw,1.8rem)] font-semibold text-white leading-snug mb-3">{cap.title}</h3>
@@ -1014,6 +1018,7 @@ export default function Landing() {
                 >
                   {pricingCycle === "annual" ? "연간 구독 시작하기" : "월간 구독 시작하기"}
                 </a>
+                <p className="text-[11px] text-neutral-400 text-center mt-3">결제 수수료는 정책에 따라 변경될 수 있습니다.</p>
               </div>
             </div>
 

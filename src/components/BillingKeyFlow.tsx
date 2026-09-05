@@ -141,6 +141,8 @@ function VirtualNumpad({
 
 const inputCls = "w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gold-400 bg-white";
 
+const BILLING_AUTH_PENDING_KEY = "flo_aide_billing_auth_pending";
+
 export default function BillingKeyFlow({
   companyId,
   subscriptionPlan,
@@ -154,6 +156,77 @@ export default function BillingKeyFlow({
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState(false);
+
+  // 토스 SDK 빌링 인증창에서 리다이렉트로 돌아왔을 때 authKey를 billingKey로 교환
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const authKey = params.get("authKey");
+    const customerKey = params.get("customerKey");
+    if (!authKey || !customerKey) return;
+
+    // 돌아온 URL의 쿼리는 한 번만 처리하고 바로 정리
+    const cleanUrl = window.location.pathname + window.location.hash;
+    window.history.replaceState({}, "", cleanUrl);
+
+    const pendingRaw = sessionStorage.getItem(BILLING_AUTH_PENDING_KEY);
+    sessionStorage.removeItem(BILLING_AUTH_PENDING_KEY);
+    if (!pendingRaw) return;
+
+    const pending = JSON.parse(pendingRaw) as { companyId: string; subscriptionPlan: "monthly" | "annual" };
+    if (pending.companyId !== customerKey) return;
+
+    setAuthLoading(true);
+    fetch("/api/billing/confirm-auth", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        companyId: pending.companyId,
+        subscriptionPlan: pending.subscriptionPlan,
+        authKey,
+        customerKey,
+      }),
+    })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? "카드 등록에 실패했습니다.");
+        onSuccess();
+      })
+      .catch((err) => {
+        const msg = err instanceof Error ? err.message : "오류가 발생했습니다.";
+        setError(msg);
+        onError?.(msg);
+      })
+      .finally(() => setAuthLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleBillingAuth = async () => {
+    setError(null);
+    setAuthLoading(true);
+    try {
+      sessionStorage.setItem(
+        BILLING_AUTH_PENDING_KEY,
+        JSON.stringify({ companyId, subscriptionPlan })
+      );
+      const { loadTossPayments } = await import("@tosspayments/tosspayments-sdk");
+      const toss = await loadTossPayments(process.env.NEXT_PUBLIC_TOSS_BILLING_CLIENT_KEY!);
+      const payment = toss.payment({ customerKey: companyId });
+      // 탭 상태(activeTab)는 URL이 아니라 클라이언트 state라서, 돌아왔을 때 plan 탭이 다시 열리도록 명시적으로 지정
+      const returnUrl = `${window.location.origin}${window.location.pathname}?tab=plan`;
+      await payment.requestBillingAuth({
+        method: "CARD",
+        successUrl: returnUrl,
+        failUrl: returnUrl,
+      });
+    } catch (err) {
+      sessionStorage.removeItem(BILLING_AUTH_PENDING_KEY);
+      const msg = err instanceof Error ? err.message : "카드 등록 중 오류가 발생했습니다.";
+      setError(msg);
+      onError?.(msg);
+      setAuthLoading(false);
+    }
+  };
 
   const [cardParts, setCardParts] = useState(["", "", "", ""]);
   const [showNumpad, setShowNumpad] = useState(false);

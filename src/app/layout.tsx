@@ -13,6 +13,20 @@ export const metadata: Metadata = {
     siteName: "Flo.Aide",
     locale: "ko_KR",
     type: "website",
+    images: [
+      {
+        url: "/icon.png",
+        width: 137,
+        height: 137,
+        alt: "Flo.Aide",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary",
+    title: "Flo.Aide | 플로에이드",
+    description: "꽃집을 위한 전자 메뉴 및 상담 예약 서비스",
+    images: ["/icon.png"],
   },
   verification: {
     other: {
@@ -28,9 +42,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
-      <head>
-        <link rel="preload" as="image" href="/landing/hero-menu.webp" />
-      </head>
       <body className="antialiased overflow-x-hidden">
         {children}
       </body>

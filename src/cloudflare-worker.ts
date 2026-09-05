@@ -4,11 +4,13 @@ import nextWorker from "../.open-next/worker.js";
 interface Env {
   NEXT_PUBLIC_SUPABASE_URL: string;
   NEXT_PUBLIC_SUPABASE_ANON_KEY: string;
+  INTERNAL_API_SECRET: string;
 }
 
 export default {
   ...nextWorker,
   async scheduled(_event: unknown, env: Env, _ctx: unknown) {
+    // Supabase 슬립 방지용 keep-alive
     await fetch(
       `${env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/companies?select=id&limit=1`,
       {
@@ -18,5 +20,15 @@ export default {
         },
       }
     );
+
+    // 체험 종료·구독 만료된 매장 자동 결제/재시도/강등 처리
+    try {
+      await fetch("https://www.flo-aide.com/api/cron/billing-renew", {
+        method: "POST",
+        headers: { "x-internal-secret": env.INTERNAL_API_SECRET },
+      });
+    } catch (err) {
+      console.error("[scheduled] billing-renew 호출 실패:", err);
+    }
   },
 };
