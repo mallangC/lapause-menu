@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import AgreementCheckbox from "@/components/AgreementCheckbox";
 import { formatDesiredDate } from "../../admin/dashboard/reservations/utils";
 
 interface ReservationInfo {
@@ -322,20 +323,16 @@ export default function PayClient({
         {/* 동의 */}
         <div className="bg-white rounded-2xl shadow-sm px-5 py-4 space-y-2.5">
           <label className={`flex items-start gap-2.5 text-xs cursor-pointer ${agreementError && !privacyAgreed ? "text-red-500" : "text-gray-500"}`}>
-            <input
-              type="checkbox"
+            <AgreementCheckbox
               checked={privacyAgreed}
-              onChange={(e) => { setPrivacyAgreed(e.target.checked); if (agreementError) setAgreementError(false); }}
-              className="mt-0.5 w-4 h-4 accent-gold-500 shrink-0"
+              onChange={(v) => { setPrivacyAgreed(v); if (agreementError) setAgreementError(false); }}
             />
             <span><Link href="/privacy" target="_blank" className="underline text-gold-600">개인정보처리방침</Link>에 동의합니다. <span className="text-red-400">*</span></span>
           </label>
           <label className={`flex items-start gap-2.5 text-xs cursor-pointer ${agreementError && !cancellationAgreed ? "text-red-500" : "text-gray-500"}`}>
-            <input
-              type="checkbox"
+            <AgreementCheckbox
               checked={cancellationAgreed}
-              onChange={(e) => { setCancellationAgreed(e.target.checked); if (agreementError) setAgreementError(false); }}
-              className="mt-0.5 w-4 h-4 accent-gold-500 shrink-0"
+              onChange={(v) => { setCancellationAgreed(v); if (agreementError) setAgreementError(false); }}
             />
             <span>제작 착수 후 취소·환불 불가. <Link href="/refund" target="_blank" className="underline text-gold-600">환불 정책</Link> 동의 <span className="text-red-400">*</span></span>
           </label>

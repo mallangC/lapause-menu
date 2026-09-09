@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
-  PieChart, Pie, Legend,
+  PieChart, Pie, Legend, LineChart, Line,
 } from "recharts";
 
 interface Props {
@@ -20,6 +20,7 @@ interface Reservation {
   items: Array<{ type: string; price: number }> | null;
   delivery_type: string;
   customer_profile_id: string | null;
+  created_at: string;
 }
 
 const GOLD = "#c9a96e";
@@ -44,14 +45,16 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
 export default function StatsTab({ companyId }: Props) {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hourRange, setHourRange] = useState<"all" | "recent">("all");
   const supabase = createClient();
 
   useEffect(() => {
     (async () => {
       const { data } = await supabase
         .from("reservations")
-        .select("status, final_price, delivery_fee, desired_date, channel, items, delivery_type, customer_profile_id")
+        .select("status, final_price, delivery_fee, desired_date, channel, items, delivery_type, customer_profile_id, created_at")
         .eq("company_id", companyId)
+        .eq("paid", true)
         .in("status", ["제작완료", "픽업/배송완료"]);
       setReservations((data as Reservation[]) ?? []);
       setLoading(false);
@@ -131,6 +134,25 @@ export default function StatsTab({ companyId }: Props) {
     return { newCount, returnCount, unknown, total: newCount + returnCount };
   }, [reservations]);
 
+  // 시간대별 주문 비율
+  const hourlyData = useMemo(() => {
+    const cutoff = new Date(thisYear, thisMonth - 3, today.getDate());
+    const rows = hourRange === "recent"
+      ? reservations.filter((r) => r.created_at && new Date(r.created_at) >= cutoff)
+      : reservations;
+    const counts = new Array(24).fill(0);
+    rows.forEach((r) => {
+      if (!r.created_at) return;
+      const hour = new Date(r.created_at).getHours();
+      counts[hour]++;
+    });
+    const total = rows.length;
+    return counts.map((count, hour) => ({
+      hour: `${hour}시`,
+      비율: total > 0 ? Math.round((count / total) * 1000) / 10 : 0,
+    }));
+  }, [reservations, hourRange, thisYear, thisMonth, today]);
+
   // 수령방법 비율
   const deliveryData = useMemo(() => {
     const map: Record<string, number> = {};
@@ -193,6 +215,48 @@ export default function StatsTab({ companyId }: Props) {
                 ))}
               </Bar>
             </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </section>
+
+      {/* 시간대별 주문 비율 */}
+      <section>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">시간대별 주문 비율</h3>
+          <div className="flex rounded-full bg-gray-100 p-0.5 text-xs">
+            {([
+              { key: "all", label: "전체" },
+              { key: "recent", label: "최근 3개월" },
+            ] as const).map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setHourRange(key)}
+                className={`px-3 py-1 rounded-full transition-colors ${
+                  hourRange === key ? "bg-white text-gray-900 shadow-sm font-medium" : "text-gray-400"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={hourlyData}>
+              <XAxis dataKey="hour" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} interval={1} />
+              <YAxis
+                tickFormatter={(v) => `${v}%`}
+                tick={{ fontSize: 11, fill: "#9ca3af" }}
+                axisLine={false}
+                tickLine={false}
+                width={36}
+              />
+              <Tooltip
+                formatter={(value) => [`${value}%`, "비율"]}
+                contentStyle={{ borderRadius: "10px", border: "1px solid #ede8e0", fontSize: 13 }}
+              />
+              <Line type="linear" dataKey="비율" stroke={GOLD} strokeWidth={2} dot={{ r: 2, fill: GOLD }} activeDot={{ r: 4 }} />
+            </LineChart>
           </ResponsiveContainer>
         </div>
       </section>

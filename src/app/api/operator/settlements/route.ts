@@ -96,6 +96,7 @@ export async function POST(request: NextRequest) {
     .eq("company_id", company_id)
     .eq("paid", true)
     .is("settlement_id", null)
+    .is("deleted_at", null)
     .eq("status", "픽업/배송완료")
     .gte("created_at", `${period_start}T00:00:00`)
     .lte("created_at", `${period_end}T23:59:59`);

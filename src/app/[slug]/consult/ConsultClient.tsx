@@ -4,6 +4,7 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { formatPhone, parsePhone } from "@/lib/format";
 import Image from "next/image";
 import Link from "next/link";
+import AgreementCheckbox from "@/components/AgreementCheckbox";
 import DaumPostcodeEmbed from "react-daum-postcode";
 import DatePicker, { registerLocale } from "react-datepicker";
 import { ko } from "date-fns/locale/ko";
@@ -1102,11 +1103,11 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
           const agreementJsx = (
             <div ref={s4RefAgreement} className="space-y-4">
               <label className={`flex items-start gap-3 text-sm cursor-pointer ${s4fe.privacy ? "text-red-500" : "text-gray-500"}`}>
-                <input type="checkbox" checked={privacyAgreed} onChange={(e) => { setPrivacyAgreed(e.target.checked); if (s4fe.privacy) setS4fe(p => ({ ...p, privacy: false })); }} className="mt-0.5 w-4 h-4 accent-gold-500 shrink-0" />
+                <AgreementCheckbox checked={privacyAgreed} onChange={(v) => { setPrivacyAgreed(v); if (s4fe.privacy) setS4fe(p => ({ ...p, privacy: false })); }} />
                 <span><Link href="/privacy" target="_blank" className="underline text-gold-600">개인정보처리방침</Link>에 동의합니다. <span className="text-red-400">*</span></span>
               </label>
               <label className={`flex items-start gap-3 text-sm cursor-pointer ${s4fe.cancellation ? "text-red-500" : "text-gray-500"}`}>
-                <input type="checkbox" checked={cancellationAgreed} onChange={(e) => { setCancellationAgreed(e.target.checked); if (s4fe.cancellation) setS4fe(p => ({ ...p, cancellation: false })); }} className="mt-0.5 w-4 h-4 accent-gold-500 shrink-0" />
+                <AgreementCheckbox checked={cancellationAgreed} onChange={(v) => { setCancellationAgreed(v); if (s4fe.cancellation) setS4fe(p => ({ ...p, cancellation: false })); }} />
                 <span>맞춤 제작 상품으로 제작 착수 후 취소·환불 불가.{" "}<Link href="/refund" target="_blank" className="underline text-gold-600">환불 정책</Link> 동의 <span className="text-red-400">*</span></span>
               </label>
               <p className="text-xs text-gray-400">예약이 확정되거나 취소되면 입력하신 번호로 카카오톡 알림톡을 보내드립니다.</p>
@@ -1118,18 +1119,6 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
 
               {/* ── 왼쪽: 폼 영역 ── */}
               <div className="flex-1 min-w-0 md:max-w-xl space-y-2 -mx-4 md:mx-0">
-
-                {error && (
-                  <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-start gap-3">
-                    <svg className="w-5 h-5 text-red-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                    </svg>
-                    <div>
-                      <p className="text-sm font-medium text-red-700">결제가 완료되지 않았습니다</p>
-                      <p className="text-xs text-red-500 mt-0.5">{error}</p>
-                    </div>
-                  </div>
-                )}
 
                 {consultNotice && (
                   <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
@@ -1589,6 +1578,9 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                 {/* 모바일: 동의 + 버튼 */}
                 <div className="md:hidden bg-white px-4 py-4 space-y-3">
                   {agreementJsx}
+                  {error && (
+                    <p className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
+                  )}
                   <button
                     type="button"
                     onClick={handleConfirm}
@@ -1639,6 +1631,9 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                   {/* 동의 + 버튼 */}
                   <div className="px-5 py-4 space-y-4">
                     {agreementJsx}
+                    {error && (
+                      <p className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
+                    )}
                     <button
                       type="button"
                       onClick={handleConfirm}

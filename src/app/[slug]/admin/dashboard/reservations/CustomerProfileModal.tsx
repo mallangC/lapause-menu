@@ -35,6 +35,7 @@ export default function CustomerProfileModal({ profileId, ordererName, ordererPh
           .from("reservations")
           .select("id, desired_date, desired_time, items, final_price")
           .eq("customer_profile_id", profileId)
+          .is("deleted_at", null)
           .order("created_at", { ascending: false }),
       ]);
 

@@ -94,6 +94,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
       .from("reservations")
       .select("*")
       .eq("company_id", companyId)
+      .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .then(({ data }) => {
         setAllReservations((data as Reservation[]) ?? []);
@@ -108,6 +109,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
       .from("reservations")
       .select("*")
       .eq("company_id", companyId)
+      .is("deleted_at", null)
       .order("created_at", { ascending: false });
     setAllReservations((data as Reservation[]) ?? []);
     setReservationsLoading(false);
@@ -342,8 +344,8 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
             style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
             onClick={(e) => { if (e.target === e.currentTarget) { setShowForm(false); setEditingProduct(null); } }}
           >
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
+            <div className="bg-gray-100 rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between px-5 pt-5 pb-4 bg-white">
                 <h3 className="font-medium text-gray-900">{editingProduct ? "상품 수정" : "새 상품 추가"}</h3>
                 <button
                   onClick={() => { setShowForm(false); setEditingProduct(null); }}
@@ -352,12 +354,10 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
                   ✕
                 </button>
               </div>
-              <div className="p-6">
-                {editingProduct
-                  ? <ProductForm initialData={editingProduct} onSubmit={handleEdit} onCancel={() => setEditingProduct(null)} companyId={companyId} />
-                  : <ProductForm onSubmit={handleAdd} onCancel={() => setShowForm(false)} companyId={companyId} />
-                }
-              </div>
+              {editingProduct
+                ? <ProductForm initialData={editingProduct} onSubmit={handleEdit} onCancel={() => setEditingProduct(null)} companyId={companyId} />
+                : <ProductForm onSubmit={handleAdd} onCancel={() => setShowForm(false)} companyId={companyId} />
+              }
             </div>
           </div>
         )}

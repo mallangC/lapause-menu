@@ -108,6 +108,7 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
         .from("reservations")
         .select("status")
         .eq("company_id", companyId)
+        .is("deleted_at", null)
         .gte("desired_date", monthStart)
         .lte("desired_date", monthEnd),
     ]);

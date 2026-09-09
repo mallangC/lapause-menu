@@ -115,13 +115,13 @@ function ProductStep({
 
   return (
     <div>
-      <div className="text-center mb-6">
+      <div className="bg-white px-5 pt-5 pb-4 text-center">
         <h2 className="text-lg font-medium text-gray-900 mb-1">첫 상품 등록하기</h2>
         <p className="text-sm text-gray-500">메뉴에 표시될 상품을 하나 등록해 보세요.</p>
       </div>
 
       {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+        <div className="mx-5 my-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
           {error}
         </div>
       )}
@@ -132,14 +132,16 @@ function ProductStep({
         companyId={companyId}
       />
 
-      <button
-        type="button"
-        onClick={onSkip}
-        disabled={saving}
-        className="w-full mt-3 py-2.5 rounded-xl text-sm text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50"
-      >
-        {isLastStep ? "나중에 하기" : "건너뛰기"}
-      </button>
+      <div className="bg-white px-5 pb-5 pt-1">
+        <button
+          type="button"
+          onClick={onSkip}
+          disabled={saving}
+          className="w-full py-2.5 rounded-xl text-sm text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50"
+        >
+          {isLastStep ? "나중에 하기" : "건너뛰기"}
+        </button>
+      </div>
     </div>
   );
 }
@@ -171,14 +173,14 @@ export default function OnboardingClient({ slug, companyId, plan: _plan }: Props
 
   if (checking) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="w-8 h-8 rounded-full border-2 border-beige-200 border-t-gold-500 animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12">
+    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-gray-50">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <p className="text-xs font-semibold tracking-[0.2em] uppercase text-gold-500 mb-1">
@@ -192,22 +194,24 @@ export default function OnboardingClient({ slug, companyId, plan: _plan }: Props
 
         <ProgressDots total={steps.length} current={stepIndex} />
 
-        <div className="bg-beige-50 border border-beige-200 rounded-2xl p-8 shadow-sm">
-          {currentStep === "consult" && (
+        {currentStep === "consult" && (
+          <div className="bg-white border border-beige-200 rounded-2xl p-8 shadow-sm">
             <ConsultStep
               onNext={() => finish("company")}
               onSkip={() => finish()}
             />
-          )}
-          {currentStep === "product" && (
+          </div>
+        )}
+        {currentStep === "product" && (
+          <div className="bg-gray-100 rounded-2xl overflow-hidden shadow-sm">
             <ProductStep
               companyId={companyId}
               onDone={isLastStep ? () => finish() : advance}
               onSkip={isLastStep ? () => finish() : advance}
               isLastStep={isLastStep}
             />
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

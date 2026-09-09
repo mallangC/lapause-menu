@@ -14,16 +14,14 @@ interface ProductTableProps {
   companyId: string;
 }
 
-const STATUS_CYCLE: ProductStatus[] = ["active", "inactive", "soldout"];
+const STATUS_CYCLE: ProductStatus[] = ["active", "inactive"];
 const STATUS_LABELS: Record<ProductStatus, string> = { active: "노출", inactive: "숨김", soldout: "품절" };
 
 function StatusToggle({ status, onClick }: { status: ProductStatus; onClick: () => void }) {
   const isActive = status === "active";
-  const isSoldout = status === "soldout";
 
-  const trackColor = isActive ? "bg-emerald-500" : isSoldout ? "bg-amber-400" : "bg-gray-300";
+  const trackColor = isActive ? "bg-emerald-500" : "bg-gray-300";
   const thumbX = isActive ? "translate-x-[18px]" : "translate-x-0.5";
-  const labelColor = isActive ? "text-emerald-600" : isSoldout ? "text-amber-500" : "text-gray-400";
 
   return (
     <button

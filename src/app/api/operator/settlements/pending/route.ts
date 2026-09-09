@@ -62,6 +62,7 @@ export async function GET(request: NextRequest) {
     .eq("paid", true)
     .not("payment_id", "is", null)
     .is("settlement_id", null)
+    .is("deleted_at", null)
     .eq("status", "픽업/배송완료")
     .gte("created_at", `${period_start}T00:00:00`)
     .lte("created_at", `${period_end}T23:59:59`);

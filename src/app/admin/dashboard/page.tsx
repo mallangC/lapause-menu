@@ -28,7 +28,8 @@ export default async function OperatorDashboardPage() {
     supabase
       .from("reservations")
       .select("id, company_id, created_at, desired_date, status, final_price, payment_id")
-      .neq("status", "취소"),
+      .neq("status", "취소")
+      .is("deleted_at", null),
     supabase
       .from("products")
       .select("company_id"),

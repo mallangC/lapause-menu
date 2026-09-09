@@ -45,7 +45,8 @@ export async function DELETE(
     }
   }
 
-  const { error } = await supabase.from("reservations").delete().eq("id", id);
+  // 소프트 딜리트: 판매 수량 집계·정산 로그 무결성을 위해 실제 삭제 대신 deleted_at만 기록
+  const { error } = await supabase.from("reservations").update({ deleted_at: new Date().toISOString() }).eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   return NextResponse.json({ ok: true });

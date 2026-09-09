@@ -12,11 +12,12 @@ registerLocale("ko", ko);
 
 import { PRODUCT_TYPES as DEFAULT_PRODUCT_TYPES } from "@/lib/constants";
 
-function CustomSelect({ value, onChange, options, placeholder }: {
+function CustomSelect({ value, onChange, options, placeholder, error }: {
   value: string;
   onChange: (v: string) => void;
   options: string[];
   placeholder?: string;
+  error?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -30,7 +31,9 @@ function CustomSelect({ value, onChange, options, placeholder }: {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className={`w-full flex items-center justify-between px-3 py-2 border rounded-lg text-sm transition-colors bg-white ${open ? "border-gray-400" : "border-gray-200 hover:border-gray-300"}`}
+        className={`w-full flex items-center justify-between px-3 py-2 border rounded-lg text-sm transition-colors bg-white ${
+          error ? "border-red-400" : open ? "border-gray-400" : "border-gray-200 hover:border-gray-300"
+        }`}
       >
         <span className={value ? "text-gray-800" : "text-gray-300"}>{value || placeholder || "선택"}</span>
         <svg className={`w-4 h-4 text-gray-400 transition-transform shrink-0 ${open ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -284,7 +287,13 @@ export default function AddReservationModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<string[]>([]);
+  const nameFieldRef = useRef<HTMLDivElement>(null);
+  const phoneFieldRef = useRef<HTMLDivElement>(null);
+  const channelFieldRef = useRef<HTMLDivElement>(null);
+  const itemTypeFieldRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const dateFieldRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
+  const clearFieldError = (label: string) => setFieldErrors((prev) => prev.filter((f) => f !== label));
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -367,6 +376,13 @@ export default function AddReservationModal({
     if (items.some((item) => !item.type)) missing.push("상품 유형");
     if (missing.length > 0) {
       setFieldErrors(missing);
+      let target: HTMLElement | null = null;
+      if (!ordererName) target = nameFieldRef.current;
+      else if (!ordererPhone) target = phoneFieldRef.current;
+      else if (!channel) target = channelFieldRef.current;
+      else if (items.some((item) => !item.type)) target = itemTypeFieldRefs.current[items.findIndex((item) => !item.type)] ?? null;
+      else if (!selectedDate) target = dateFieldRef.current;
+      target?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
     setFieldErrors([]);
@@ -571,20 +587,30 @@ export default function AddReservationModal({
             <p className={sectionLabelCls}>예약자 정보</p>
           </div>
           <div className="px-5 py-4 space-y-3">
-            <div>
-              <label className={fieldLabelCls}>이름 <span className="text-red-500">*</span></label>
-              <input className={inputCls} value={ordererName} onChange={(e) => setOrdererName(e.target.value)} placeholder="홍길동" />
+            <div ref={nameFieldRef}>
+              <label className={fieldErrors.includes("예약자 이름") ? "block text-xs text-red-500 mb-1" : fieldLabelCls}>이름 <span className="text-red-500">*</span></label>
+              <input
+                className={fieldErrors.includes("예약자 이름") ? `${inputCls} border-red-400 focus:border-red-500` : inputCls}
+                value={ordererName}
+                onChange={(e) => { setOrdererName(e.target.value); clearFieldError("예약자 이름"); }}
+                placeholder="홍길동"
+              />
             </div>
-            <div>
-              <label className={fieldLabelCls}>연락처 <span className="text-red-500">*</span></label>
-              <input className={inputCls} type="tel" value={ordererPhone}
-                onChange={(e) => setOrdererPhone(formatPhone(e.target.value))} placeholder="010-1234-5678" />
+            <div ref={phoneFieldRef}>
+              <label className={fieldErrors.includes("전화번호") ? "block text-xs text-red-500 mb-1" : fieldLabelCls}>연락처 <span className="text-red-500">*</span></label>
+              <input
+                className={fieldErrors.includes("전화번호") ? `${inputCls} border-red-400 focus:border-red-500` : inputCls}
+                type="tel"
+                value={ordererPhone}
+                onChange={(e) => { setOrdererPhone(formatPhone(e.target.value)); clearFieldError("전화번호"); }}
+                placeholder="010-1234-5678"
+              />
             </div>
-            <div>
-              <label className={fieldLabelCls}>채널 <span className="text-red-500">*</span></label>
-              <div className="flex p-1 bg-gray-100 rounded-xl">
+            <div ref={channelFieldRef}>
+              <label className={fieldErrors.includes("채널") ? "block text-xs text-red-500 mb-1" : fieldLabelCls}>채널 <span className="text-red-500">*</span></label>
+              <div className={`flex p-1 rounded-xl ${fieldErrors.includes("채널") ? "bg-red-50 border border-red-300" : "bg-gray-100"}`}>
                 {CHANNELS.map((c) => (
-                  <button key={c} type="button" onClick={() => setChannel(channel === c ? null : c)}
+                  <button key={c} type="button" onClick={() => { setChannel(channel === c ? null : c); clearFieldError("채널"); }}
                     className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all ${
                       channel === c ? "bg-gold-500 text-white shadow-sm" : "text-gray-400 hover:text-gray-500"
                     }`}>
@@ -613,13 +639,14 @@ export default function AddReservationModal({
                     </button>
                   )}
                 </div>
-                <div>
-                  <label className={fieldLabelCls}>상품 유형 <span className="text-red-500">*</span></label>
+                <div ref={(el) => { itemTypeFieldRefs.current[idx] = el; }}>
+                  <label className={fieldErrors.includes("상품 유형") && !item.type ? "block text-xs text-red-500 mb-1" : fieldLabelCls}>상품 유형 <span className="text-red-500">*</span></label>
                   <CustomSelect
                     value={item.type}
-                    onChange={(v) => updateItem(idx, "type", v)}
+                    onChange={(v) => { updateItem(idx, "type", v); if (!items.some((it, i) => i !== idx && !it.type)) clearFieldError("상품 유형"); }}
                     options={allProductTypes}
                     placeholder="유형 선택"
+                    error={fieldErrors.includes("상품 유형") && !item.type}
                   />
                 </div>
                 <div>
@@ -714,12 +741,12 @@ export default function AddReservationModal({
                 ))}
               </div>
             </div>
-            <div>
-              <label className={fieldLabelCls}>수령 희망 일시 <span className="text-red-500">*</span></label>
+            <div ref={dateFieldRef}>
+              <label className={fieldErrors.includes("예약 일시") ? "block text-xs text-red-500 mb-1" : fieldLabelCls}>수령 희망 일시 <span className="text-red-500">*</span></label>
               <DatePicker
                 locale="ko"
                 selected={selectedDate}
-                onChange={(date: Date | null) => setSelectedDate(date)}
+                onChange={(date: Date | null) => { setSelectedDate(date); clearFieldError("예약 일시"); }}
                 showTimeSelect
                 timeFormat="HH:mm"
                 timeIntervals={30}
@@ -740,7 +767,9 @@ export default function AddReservationModal({
                   }, 50);
                 }}
                 placeholderText="날짜와 시간을 선택해주세요"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-gold-400 bg-white cursor-pointer"
+                className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none bg-white cursor-pointer ${
+                  fieldErrors.includes("예약 일시") ? "border-red-400 focus:border-red-500" : "border-gray-200 focus:border-gold-400"
+                }`}
                 wrapperClassName="w-full"
                 calendarClassName="!font-sans !text-sm !border-gray-200 !rounded-xl !shadow-lg admin-modal-datepicker admin-modal-datepicker-wide"
                 filterDate={(date) => {
@@ -904,16 +933,6 @@ export default function AddReservationModal({
 
         {/* 하단 버튼 */}
         <div className="bg-white px-5 py-4 space-y-3">
-          {fieldErrors.length > 0 && (
-            <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3">
-              <p className="text-xs font-medium text-red-600 mb-1">아래 항목을 입력해주세요.</p>
-              <ul className="list-disc list-inside space-y-0.5">
-                {fieldErrors.map((f) => (
-                  <li key={f} className="text-xs text-red-500">{f}</li>
-                ))}
-              </ul>
-            </div>
-          )}
           {error && <p className="text-sm text-red-500">{error}</p>}
           <div className="flex gap-3">
             <button type="button" onClick={onClose}
