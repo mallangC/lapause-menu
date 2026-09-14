@@ -50,6 +50,12 @@ interface Props {
 
 type InnerTab = "target" | "history";
 
+// "2026-02-22" -> "26-0222"
+const shortDate = (dateStr: string) => {
+  if (!dateStr || dateStr.length < 10) return dateStr;
+  return `${dateStr.slice(2, 4)}-${dateStr.slice(5, 7)}${dateStr.slice(8, 10)}`;
+};
+
 export default function SettlementsTab({ companies }: Props) {
   const [innerTab, setInnerTab] = useState<InnerTab>("target");
 
@@ -127,7 +133,7 @@ export default function SettlementsTab({ companies }: Props) {
       출금통장표시내용: "Flo.Aide",
       입금통장표시내용: "라포즈플뢰르정산",
       입금인코드: "",
-      비고: `${periodStart}~${periodEnd} 정산`,
+      비고: `${shortDate(periodStart)}~${shortDate(periodEnd)} 정산`,
       업체사용key: item.company_id,
     }));
 
@@ -511,7 +517,7 @@ export default function SettlementsTab({ companies }: Props) {
                   type="text"
                   value={transferMemo}
                   onChange={e => setTransferMemo(e.target.value)}
-                  placeholder={`${periodStart}~${periodEnd} 정산`}
+                  placeholder={`${shortDate(periodStart)}~${shortDate(periodEnd)} 정산`}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
                 />
               </div>

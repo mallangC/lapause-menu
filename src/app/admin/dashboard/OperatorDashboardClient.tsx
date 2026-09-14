@@ -56,6 +56,7 @@ export default function OperatorDashboardClient({ companies, reservations, produ
   const router = useRouter();
   const supabase = createClient();
   const [activeTab, setActiveTab] = useState<"overview" | "stores" | "billing" | "settlements" | "verification">("overview");
+  const [gmvRange, setGmvRange] = useState<"month" | "6m" | "1y">("month");
 
   const now = new Date();
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -127,13 +128,39 @@ export default function OperatorDashboardClient({ companies, reservations, produ
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companies, reservations, revenueReservations, cardReservations]);
 
-  // 최근 6개월 월별 GMV
+  // 거래액 현황 - 선택 기간(월별/6개월/1년) 집계
+  const periodStats = useMemo(() => {
+    let cutoff: Date;
+    let label: string;
+    if (gmvRange === "month") {
+      cutoff = new Date(now.getFullYear(), now.getMonth(), 1);
+      label = "이번 달";
+    } else if (gmvRange === "6m") {
+      cutoff = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+      label = "최근 6개월";
+    } else {
+      cutoff = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+      label = "최근 1년";
+    }
+    const inRange = (r: Reservation) => r.desired_date && new Date(r.desired_date) >= cutoff;
+
+    const allGMV = revenueReservations.filter(inRange).reduce((sum, r) => sum + (r.final_price || 0), 0);
+    const cardGMV = cardReservations.filter(inRange).reduce((sum, r) => sum + (r.final_price || 0), 0);
+    const manualGMV = allGMV - cardGMV;
+    const cardRate = allGMV > 0 ? Math.round((cardGMV / allGMV) * 100) : 0;
+
+    return { label, allGMV, cardGMV, manualGMV, cardRate };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gmvRange, revenueReservations, cardReservations]);
+
+  // 월별 GMV 추이 (기간 선택: 6개월/1년)
+  const [trendRange, setTrendRange] = useState<6 | 12>(6);
   const monthlyGMV = useMemo(() => {
     const months: { label: string; key: string; gmv: number }[] = [];
-    for (let i = 5; i >= 0; i--) {
+    for (let i = trendRange - 1; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      months.push({ label: `${d.getMonth() + 1}월`, key, gmv: 0 });
+      months.push({ label: trendRange === 12 ? `${d.getFullYear() % 100}.${d.getMonth() + 1}` : `${d.getMonth() + 1}월`, key, gmv: 0 });
     }
     for (const r of cardReservations) {
       const key = r.desired_date?.slice(0, 7);
@@ -142,7 +169,7 @@ export default function OperatorDashboardClient({ companies, reservations, produ
     }
     return months;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cardReservations]);
+  }, [cardReservations, trendRange]);
 
   // 매장별 현황
   const companyRows = useMemo(() => {
@@ -313,25 +340,66 @@ export default function OperatorDashboardClient({ companies, reservations, produ
               <p className="text-xs text-gray-400 mt-1">전체 대비</p>
             </div>
           </div>
-          <div className="border-t border-gray-100 pt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <p className="text-xs text-gray-400 mb-1">이번 달 전체</p>
-              <p className="text-lg font-semibold text-gray-900">{formatMoney(stats.thisMonthAllGMV)}원</p>
+          <div className="border-t border-gray-100 pt-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs text-gray-400">{periodStats.label} 거래액</p>
+              <div className="flex bg-gray-100 rounded-lg p-1">
+                {([
+                  { key: "month", label: "월별" },
+                  { key: "6m", label: "6개월" },
+                  { key: "1y", label: "1년" },
+                ] as const).map(({ key, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => setGmvRange(key)}
+                    className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                      gmvRange === key ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div>
-              <p className="text-xs text-gray-400 mb-1">이번 달 사이트</p>
-              <p className="text-lg font-semibold text-blue-600">{formatMoney(stats.thisMonthCardGMV)}원</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400 mb-1">이번 달 직접 추가</p>
-              <p className="text-lg font-semibold text-gray-600">{formatMoney(stats.thisMonthManualGMV)}원</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <p className="text-xs text-gray-400 mb-1">전체</p>
+                <p className="text-lg font-semibold text-gray-900">{formatMoney(periodStats.allGMV)}원</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 mb-1">사이트 결제</p>
+                <p className="text-lg font-semibold text-blue-600">{formatMoney(periodStats.cardGMV)}원</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 mb-1">직접 추가</p>
+                <p className="text-lg font-semibold text-gray-600">{formatMoney(periodStats.manualGMV)}원</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 mb-1">사이트 결제 비율</p>
+                <p className="text-lg font-semibold text-gold-600">{periodStats.cardRate}%</p>
+              </div>
             </div>
           </div>
         </div>
 
         {/* 월별 거래액 추이 */}
         <div className="bg-white border border-gray-200 rounded-2xl p-6">
-          <h2 className="text-sm font-medium text-gray-900 mb-6">월별 거래액 추이 (최근 6개월)</h2>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-sm font-medium text-gray-900">월별 거래액 추이</h2>
+            <div className="flex bg-gray-100 rounded-lg p-1">
+              {([6, 12] as const).map((r) => (
+                <button
+                  key={r}
+                  onClick={() => setTrendRange(r)}
+                  className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                    trendRange === r ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  {r === 6 ? "6개월" : "1년"}
+                </button>
+              ))}
+            </div>
+          </div>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={monthlyGMV} barSize={32}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />

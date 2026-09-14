@@ -343,17 +343,19 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
             <label className={fieldLabelCls}>이미지</label>
 
             {data.image_url ? (
-              <div className="relative w-24 h-24 rounded-xl overflow-hidden border border-gray-200">
-                <Image
-                  src={data.image_url}
-                  alt="상품 이미지"
-                  fill
-                  className="object-cover"
-                />
+              <div className="relative w-24 h-24">
+                <div className="w-24 h-24 rounded-xl overflow-hidden border border-gray-200">
+                  <Image
+                    src={data.image_url}
+                    alt="상품 이미지"
+                    fill
+                    className="object-cover"
+                  />
+                </div>
                 <button
                   type="button"
                   onClick={handleRemoveImage}
-                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-700 text-white rounded-full flex items-center justify-center text-xs hover:bg-gray-900 transition-colors"
+                  className="absolute -top-2 -right-2 w-6 h-6 bg-gray-700 text-white rounded-full flex items-center justify-center text-xs shadow-md hover:bg-gray-900 transition-colors"
                 >
                   ✕
                 </button>

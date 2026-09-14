@@ -76,7 +76,7 @@ export default function StoreHeader({
           {consultEnabled ? (
             <Link
               href={`/${slug}/consult`}
-              className="px-4 py-1.5 rounded-full bg-gold-500 text-white text-xs md:text-sm font-medium hover:bg-gold-600 transition-colors whitespace-nowrap"
+              className="hidden md:inline-flex px-4 py-1.5 rounded-full bg-gold-500 text-white text-xs md:text-sm font-medium hover:bg-gold-600 transition-colors whitespace-nowrap"
             >
               맞춤주문
             </Link>
