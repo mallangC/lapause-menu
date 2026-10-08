@@ -222,11 +222,13 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle, onG
         <p className="text-xs text-gray-400 -mt-1">고객이 예약을 완료하기 직전 확인 화면 상단에 표시됩니다.</p>
         <textarea
           value={consultNotice}
-          onChange={(e) => setConsultNotice(e.target.value)}
+          onChange={(e) => setConsultNotice(e.target.value.slice(0, 500))}
           placeholder={"예) 주문 후 입금 완료 시 예약이 확정됩니다.\n당일 취소는 불가하오니 신중히 주문해주세요."}
-          rows={3}
-          className="block w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gray-400 resize-none bg-white"
+          rows={6}
+          maxLength={500}
+          className="block w-full border border-gray-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-gray-400 resize-none bg-white"
         />
+        <p className="text-xs text-gray-400 text-right">{consultNotice.length}/500</p>
       </div>
 
       {/* 계좌 정보 미입력 경고 팝업 */}

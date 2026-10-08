@@ -11,6 +11,7 @@ import "react-datepicker/dist/react-datepicker.css";
 registerLocale("ko", ko);
 
 import { PRODUCT_TYPES as DEFAULT_PRODUCT_TYPES } from "@/lib/constants";
+import { resolveDayHours, type DateOverrides } from "@/lib/businessHours";
 
 function CustomSelect({ value, onChange, options, placeholder, error }: {
   value: string;
@@ -98,6 +99,7 @@ interface Props {
   customProductTypes?: string[];
   businessHours?: Record<string, DayHours>;
   closedDates?: string[];
+  dateOverrides?: DateOverrides;
   initialData?: Reservation;
   reservationId?: string;
 }
@@ -204,6 +206,7 @@ export default function AddReservationModal({
   customProductTypes = [],
   businessHours = {},
   closedDates = [],
+  dateOverrides = {},
   initialData, reservationId,
 }: Props) {
   const allProductTypes = [...DEFAULT_PRODUCT_TYPES, ...customProductTypes];
@@ -787,8 +790,7 @@ export default function AddReservationModal({
                 }}
                 filterTime={(time) => {
                   if (Object.keys(businessHours).length === 0) return true;
-                  const dayKey = String(time.getDay());
-                  const h = businessHours[dayKey];
+                  const h = resolveDayHours(time, businessHours, dateOverrides);
                   if (!h) return true;
                   if (h.closed) return false;
                   const [openH, openM] = h.open.split(":").map(Number);

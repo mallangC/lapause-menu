@@ -12,7 +12,7 @@ interface ProductCardProps {
   slug?: string;
 }
 
-export default function ProductCard({ product, slug }: ProductCardProps) {
+export default function ProductCard({ product, consultEnabled, slug }: ProductCardProps) {
   const router = useRouter();
   const { addItem, removeItem, items } = useCart(slug ?? "");
   const inCart = items.some((i) => i.productId === product.id);
@@ -71,7 +71,7 @@ export default function ProductCard({ product, slug }: ProductCardProps) {
         </div>
 
         {/* 담기 버튼 */}
-        {product.price > 0 && (
+        {consultEnabled && product.price > 0 && (
           <button
             onClick={handleToggleCart}
             className={`absolute bottom-2 right-2 w-8 h-8 rounded-full flex items-center justify-center shadow-md transition-colors ${

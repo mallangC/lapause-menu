@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import AgreementCheckbox from "@/components/AgreementCheckbox";
+import TossPaymentWidget, { TossPaymentWidgetHandle } from "@/components/TossPaymentWidget";
 import { formatDesiredDate } from "../../admin/dashboard/reservations/utils";
 
 interface ReservationInfo {
@@ -65,6 +66,10 @@ export default function PayClient({
   const [privacyAgreed, setPrivacyAgreed] = useState(false);
   const [cancellationAgreed, setCancellationAgreed] = useState(false);
   const [agreementError, setAgreementError] = useState(false);
+  const [widgetReady, setWidgetReady] = useState(false);
+  const [opening, setOpening] = useState(false);
+  const widgetRef = useRef<TossPaymentWidgetHandle>(null);
+  const [orderId] = useState(() => `pay-${token.slice(0, 8)}-${Date.now()}`);
 
   useEffect(() => {
     fetch(`/api/pay-link/${token}`)
@@ -114,21 +119,15 @@ export default function PayClient({
       setAgreementError(true);
       return;
     }
-    setPaying(true);
+    setOpening(true);
     setPayError(null);
 
     try {
-      const orderId = `pay-${token.slice(0, 8)}-${Date.now()}`;
       const orderName = info.items.length === 1
         ? (info.items[0].name || info.items[0].type || "상품")
         : `${info.items[0]?.name || info.items[0]?.type || "상품"} 외 ${info.items.length - 1}건`;
 
-      const { loadTossPayments } = await import("@tosspayments/tosspayments-sdk");
-      const toss = await loadTossPayments(process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY!);
-      const payment = toss.payment({ customerKey: orderId });
-      await payment.requestPayment({
-        method: "CARD",
-        amount: { currency: "KRW", value: info.finalPrice },
+      await widgetRef.current?.requestPayment({
         orderId,
         orderName,
         customerName: info.ordererName,
@@ -137,7 +136,7 @@ export default function PayClient({
       });
     } catch (err) {
       setPayError(err instanceof Error ? err.message : "결제 중 오류가 발생했습니다.");
-      setPaying(false);
+      setOpening(false);
     }
   };
 
@@ -338,6 +337,15 @@ export default function PayClient({
           </label>
         </div>
 
+        {/* 결제 위젯 */}
+        <TossPaymentWidget
+          ref={widgetRef}
+          customerKey={orderId}
+          amount={info.finalPrice}
+          onReadyChange={setWidgetReady}
+          onCancel={() => setOpening(false)}
+        />
+
         {payError && (
           <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-500">
             {payError}
@@ -347,14 +355,14 @@ export default function PayClient({
         <button
           type="button"
           onClick={handlePay}
-          disabled={paying}
+          disabled={opening || !widgetReady}
           className="w-full bg-gold-500 hover:bg-gold-600 disabled:opacity-50 text-white font-semibold py-3.5 rounded-2xl text-sm transition-colors shadow-sm"
         >
-          {info.finalPrice.toLocaleString()}원 결제하기
+          {opening ? "결제창 여는 중..." : `${info.finalPrice.toLocaleString()}원 결제하기`}
         </button>
 
         <p className="text-center text-xs text-gray-300">
-          카드 결제 · Toss Payments
+          Toss Payments
         </p>
       </div>
     </div>

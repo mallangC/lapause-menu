@@ -8,6 +8,7 @@ import { STATUS_ROW_BG, STATUS_LEGEND, PAGE_SIZE } from "./reservations/constant
 import ReservationDetail from "./reservations/ReservationDetail";
 import CustomerProfileModal from "./reservations/CustomerProfileModal";
 import { formatDateHeader, formatTimeOnly } from "./reservations/utils";
+import type { DateOverrides } from "@/lib/businessHours";
 
 const ACTION_WIDTH = 116;
 
@@ -117,6 +118,7 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
   const [customProductTypes, setCustomProductTypes] = useState<string[]>([]);
   const [businessHours, setBusinessHours] = useState<Record<string, { closed: boolean; open: string; close: string }>>({});
   const [closedDates, setClosedDates] = useState<string[]>([]);
+  const [dateOverrides, setDateOverrides] = useState<DateOverrides>({});
 
   const supabase = createClient();
 
@@ -128,7 +130,7 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
   useEffect(() => {
     supabase
       .from("company_settings")
-      .select("message_card_enabled, message_card_price, shopping_bag_enabled, shopping_bag_price, business_hours, closed_dates")
+      .select("message_card_enabled, message_card_price, shopping_bag_enabled, shopping_bag_price, business_hours, closed_dates, date_overrides")
       .eq("company_id", companyId)
       .single()
       .then(({ data }) => {
@@ -139,6 +141,7 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
         setShoppingBagPrice(data.shopping_bag_price ?? 0);
         if (data.business_hours) setBusinessHours(data.business_hours as Record<string, { closed: boolean; open: string; close: string }>);
         if (data.closed_dates) setClosedDates(data.closed_dates as string[]);
+        if (data.date_overrides) setDateOverrides(data.date_overrides as DateOverrides);
       });
     supabase
       .from("company_categories")
@@ -322,6 +325,7 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
           customProductTypes={customProductTypes}
           businessHours={businessHours}
           closedDates={closedDates}
+          dateOverrides={dateOverrides}
         />
       )}
 
@@ -375,6 +379,7 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
           customProductTypes={customProductTypes}
           businessHours={businessHours}
           closedDates={closedDates}
+          dateOverrides={dateOverrides}
         />
       )}
 

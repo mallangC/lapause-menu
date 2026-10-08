@@ -61,6 +61,24 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createClient();
 
+    // 휴무일 검증 (결제 승인 전에 막아 불필요한 결제를 방지)
+    const { data: companyId } = await supabase
+      .rpc("get_company_id_by_slug", { p_slug: slug });
+    if (companyId && body.form?.desiredDate) {
+      const { data: settingsRow } = await supabase
+        .from("company_settings")
+        .select("closed_dates, business_hours")
+        .eq("company_id", companyId)
+        .single();
+      const closedDates = (settingsRow?.closed_dates as string[] | null) ?? [];
+      const businessHours = (settingsRow?.business_hours as Record<string, { closed: boolean }> | null) ?? {};
+      const desiredDow = new Date(`${body.form.desiredDate}T00:00:00`).getDay();
+      const isClosedDay = businessHours[String(desiredDow)]?.closed;
+      if (isClosedDay || closedDates.includes(body.form.desiredDate)) {
+        return NextResponse.json({ error: "선택하신 날짜는 휴무일입니다. 다른 날짜를 선택해주세요." }, { status: 400 });
+      }
+    }
+
     // 토스 결제 승인 및 검증
     if (paymentKey) {
       const { data: dbProduct } = await supabase
@@ -73,7 +91,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "상품 정보를 찾을 수 없습니다." }, { status: 400 });
       }
 
-      const encodedKey = Buffer.from(`${process.env.TOSS_SECRET_KEY!}:`).toString("base64");
+      const encodedKey = Buffer.from(`${process.env.TOSS_WIDGET_SECRET_KEY!}:`).toString("base64");
       const tossRes = await fetch("https://api.tosspayments.com/v1/payments/confirm", {
         method: "POST",
         headers: {
@@ -98,9 +116,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "결제 금액이 상품 가격보다 작습니다." }, { status: 400 });
       }
     }
-    const { data: companyId, error: companyError } = await supabase
-      .rpc("get_company_id_by_slug", { p_slug: slug });
-    if (companyError) console.error("[reservation] company 조회 실패:", companyError.message);
     if (!companyId) {
       return NextResponse.json({ success: true });
     }

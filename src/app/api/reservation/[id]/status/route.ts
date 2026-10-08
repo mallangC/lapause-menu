@@ -2,6 +2,29 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { sendReservationReceived, sendReservationCancelled } from "@/lib/solapi";
 
+// 결제 시점에 따라 승인에 쓰인 시크릿 키가 다를 수 있어(위젯 전환 이전/이후), 위젯 키로 먼저 시도하고
+// 키 인증 오류(401)일 때만 구버전 API 개별 연동 키로 재시도한다.
+async function tossCancelPayment(paymentId: string, cancelReason: string) {
+  const keys = [process.env.TOSS_WIDGET_SECRET_KEY, process.env.TOSS_SECRET_KEY].filter(
+    (k): k is string => !!k
+  );
+  let lastData: unknown = null;
+  for (const key of keys) {
+    const encodedKey = Buffer.from(`${key}:`).toString("base64");
+    const res = await fetch(`https://api.tosspayments.com/v1/payments/${paymentId}/cancel`, {
+      method: "POST",
+      headers: { Authorization: `Basic ${encodedKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ cancelReason }),
+    });
+    if (res.ok) return { ok: true as const };
+    const data = await res.json().catch(() => ({}));
+    if ((data as { code?: string })?.code === "ALREADY_CANCELED") return { ok: true as const };
+    lastData = data;
+    if (res.status !== 401) return { ok: false as const, data };
+  }
+  return { ok: false as const, data: lastData };
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -38,27 +61,13 @@ export async function PATCH(
     if (reservation?.payment_id) {
       // 토스 카드 결제 → 환불 시도, 실패 시 상태 변경 차단
       try {
-        const encodedKey = Buffer.from(`${process.env.TOSS_SECRET_KEY!}:`).toString("base64");
-        const refundRes = await fetch(`https://api.tosspayments.com/v1/payments/${reservation.payment_id}/cancel`, {
-          method: "POST",
-          headers: {
-            Authorization: `Basic ${encodedKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ cancelReason: cancelReason ?? "관리자 취소" }),
-        });
-        if (!refundRes.ok) {
-          const refundData = await refundRes.json().catch(() => ({}));
-          // ALREADY_CANCELED: 이미 취소된 결제 → 무시하고 상태만 변경
-          if ((refundData as { code?: string })?.code === "ALREADY_CANCELED") {
-            console.warn("[status] 이미 취소된 결제, 상태만 변경:", reservation.payment_id);
-          } else {
-            console.error("[status] 환불 실패:", refundData);
-            return NextResponse.json(
-              { error: `환불 실패: ${(refundData as { message?: string })?.message ?? JSON.stringify(refundData)}` },
-              { status: 500 }
-            );
-          }
+        const refundResult = await tossCancelPayment(reservation.payment_id, cancelReason ?? "관리자 취소");
+        if (!refundResult.ok) {
+          console.error("[status] 환불 실패:", refundResult.data);
+          return NextResponse.json(
+            { error: `환불 실패: ${(refundResult.data as { message?: string })?.message ?? JSON.stringify(refundResult.data)}` },
+            { status: 500 }
+          );
         }
       } catch (err) {
         console.error("[status] 환불 요청 오류:", err);

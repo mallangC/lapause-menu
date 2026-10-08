@@ -18,7 +18,7 @@ export default async function ConsultPage({ params, searchParams }: Props) {
     .select(`
       id, name,
       settings:company_settings(
-        logo_image, business_hours, closed_dates, notification_email, min_lead_times,
+        logo_image, business_hours, closed_dates, date_overrides, notification_email, min_lead_times,
         consult_notice, address, delivery_enabled, delivery_fees, consult_enabled,
         message_card_enabled, message_card_price, shopping_bag_enabled, shopping_bag_price,
         hidden_product_types, hidden_seasons
@@ -70,6 +70,7 @@ export default async function ConsultPage({ params, searchParams }: Props) {
       products={allProducts}
       businessHours={(s.business_hours as Record<string, { closed: boolean; open: string; close: string }>) ?? {}}
       closedDates={(s.closed_dates as string[]) ?? []}
+      dateOverrides={(s.date_overrides as Record<string, { open: string; close: string }>) ?? {}}
       minLeadTimes={(s.min_lead_times as Record<string, number>) ?? {}}
       consultNotice={(s.consult_notice as string | null) ?? null}
       storeAddress={(s.address as string | null) ?? null}

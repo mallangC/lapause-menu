@@ -9,8 +9,10 @@ import "react-datepicker/dist/react-datepicker.css";
 import DaumPostcodeEmbed from "react-daum-postcode";
 import StoreHeader from "@/components/main/StoreHeader";
 import AgreementCheckbox from "@/components/AgreementCheckbox";
+import TossPaymentWidget, { TossPaymentWidgetHandle } from "@/components/TossPaymentWidget";
 import { useCart, CartItem } from "@/hooks/useCart";
 import { formatPhone, parsePhone } from "@/lib/format";
+import { resolveDayHours, type DateOverrides } from "@/lib/businessHours";
 
 registerLocale("ko", ko);
 
@@ -27,6 +29,7 @@ interface CheckoutClientProps {
   deliveryFees: Record<string, number>;
   businessHours: Record<string, DayHours>;
   closedDates: string[];
+  dateOverrides?: DateOverrides;
   shoppingBagEnabled: boolean;
   shoppingBagPrice: number;
   messageCardEnabled: boolean;
@@ -81,7 +84,7 @@ function getDeliveryFee(km: number, fees: Record<string, number>): number | null
 export default function CheckoutClient({
   slug, companyName, logoImage, themeVars, consultEnabled,
   storeAddress, deliveryEnabled, deliveryFees,
-  businessHours, closedDates,
+  businessHours, closedDates, dateOverrides = {},
   shoppingBagEnabled, shoppingBagPrice, messageCardEnabled, messageCardPrice,
   notificationEmail,
   initialPaymentKey, initialOrderId, initialAmount, failCode, failMessage,
@@ -119,6 +122,9 @@ export default function CheckoutClient({
   const [deliveryDistance, setDeliveryDistance] = useState<number | null>(null);
   const [distanceLoading, setDistanceLoading] = useState(false);
   const [isProcessingRedirect, setIsProcessingRedirect] = useState(!!(initialPaymentKey || (initialOrderId && !failCode)));
+  const [widgetReady, setWidgetReady] = useState(false);
+  const widgetRef = useRef<TossPaymentWidgetHandle>(null);
+  const [paymentOrderId] = useState(() => `cart-${slug}-${Date.now()}`);
 
   const checkedItems = cartItems.filter((i) => i.checked);
 
@@ -135,9 +141,7 @@ export default function CheckoutClient({
   const finalPrice = itemsTotal + (deliveryType === "배송" && deliveryFee !== null ? deliveryFee : 0);
 
   const isDateDisabled = (date: Date) => {
-    const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
-    const dayKey = dayNames[date.getDay()];
-    const hours = businessHours[dayKey];
+    const hours = businessHours[String(date.getDay())];
     if (hours?.closed) return true;
     const formatted = date.toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" }).replace(/\. /g, "-").replace(".", "").trim();
     if (closedDates.includes(formatted)) return true;
@@ -243,14 +247,8 @@ export default function CheckoutClient({
     sessionStorage.setItem(`cart_checkout_draft_${slug}`, JSON.stringify(draft));
 
     try {
-      const orderId = `cart-${slug}-${Date.now()}`;
-      const { loadTossPayments } = await import("@tosspayments/tosspayments-sdk");
-      const toss = await loadTossPayments(process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY!);
-      const payment = toss.payment({ customerKey: orderId });
-      await payment.requestPayment({
-        method: "CARD",
-        amount: { currency: "KRW", value: finalPrice },
-        orderId,
+      await widgetRef.current?.requestPayment({
+        orderId: paymentOrderId,
         orderName: checkedItems.length === 1 ? checkedItems[0].name : `${checkedItems[0].name} 외 ${checkedItems.length - 1}건`,
         customerName: name,
         successUrl: `${window.location.origin}/${slug}/cart/checkout`,
@@ -396,7 +394,7 @@ export default function CheckoutClient({
   }
 
   const now = new Date();
-  const dayInfo = selectedDate ? businessHours[String(selectedDate.getDay())] : null;
+  const dayInfo = selectedDate ? resolveDayHours(selectedDate, businessHours, dateOverrides) : null;
   const isToday = selectedDate
     ? selectedDate.getFullYear() === now.getFullYear() && selectedDate.getMonth() === now.getMonth() && selectedDate.getDate() === now.getDate()
     : false;
@@ -434,6 +432,13 @@ export default function CheckoutClient({
   return (
     <div className="min-h-screen bg-gray-100" style={themeVars}>
       <StoreHeader slug={slug} companyName={companyName} logoImage={logoImage} productTypeList={[]} seasonList={[]} consultEnabled={consultEnabled} />
+      <TossPaymentWidget
+        ref={widgetRef}
+        customerKey={paymentOrderId}
+        amount={finalPrice}
+        onReadyChange={setWidgetReady}
+        onCancel={() => setSubmitting(false)}
+      />
 
       <div className="max-w-5xl mx-auto px-4 py-5">
         <div className="flex flex-col md:flex-row md:gap-5">
@@ -617,7 +622,7 @@ export default function CheckoutClient({
               {error && (
                 <p className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
               )}
-              <button onClick={handleConfirm} disabled={submitting} className="w-full bg-gold-500 text-white py-3.5 rounded-xl font-medium hover:bg-gold-600 disabled:opacity-50 transition-colors">
+              <button onClick={handleConfirm} disabled={submitting || !widgetReady} className="w-full bg-gold-500 text-white py-3.5 rounded-xl font-medium hover:bg-gold-600 disabled:opacity-50 transition-colors">
                 {submitting ? "결제 중..." : `${finalPrice.toLocaleString()}원 결제하기`}
               </button>
             </div>
@@ -651,7 +656,7 @@ export default function CheckoutClient({
                 {error && (
                   <p className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
                 )}
-                <button onClick={handleConfirm} disabled={submitting} className="w-full bg-gold-500 text-white py-3.5 rounded-xl font-medium hover:bg-gold-600 disabled:opacity-50 transition-colors">
+                <button onClick={handleConfirm} disabled={submitting || !widgetReady} className="w-full bg-gold-500 text-white py-3.5 rounded-xl font-medium hover:bg-gold-600 disabled:opacity-50 transition-colors">
                   {submitting ? "결제 중..." : `${finalPrice.toLocaleString()}원 결제하기`}
                 </button>
               </div>

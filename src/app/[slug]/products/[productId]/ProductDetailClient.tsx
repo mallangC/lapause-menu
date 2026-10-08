@@ -186,6 +186,7 @@ export default function ProductDetailClient({
             {/* 수량 + 버튼 */}
             <div className="mt-6 md:mt-10 space-y-4">
               {/* 수량 선택 */}
+              {consultEnabled && (
               <div className="flex items-center gap-4">
                 <span className="text-sm text-gray-500">수량</span>
                 <div className="flex items-center gap-3">
@@ -213,19 +214,22 @@ export default function ProductDetailClient({
                   </span>
                 )}
               </div>
+              )}
 
               {/* 버튼 */}
               <div className="flex gap-3">
-                <button
-                  onClick={handleAddToCart}
-                  className={`flex-1 py-4 rounded-2xl border text-sm font-medium transition-colors ${
-                    added
-                      ? "border-gold-500 bg-gold-50 text-gold-600"
-                      : "border-gray-200 text-gray-700 hover:border-gold-400 hover:text-gold-500"
-                  }`}
-                >
-                  {added ? "담겼습니다 ✓" : "장바구니"}
-                </button>
+                {consultEnabled && (
+                  <button
+                    onClick={handleAddToCart}
+                    className={`flex-1 py-4 rounded-2xl border text-sm font-medium transition-colors ${
+                      added
+                        ? "border-gold-500 bg-gold-50 text-gold-600"
+                        : "border-gray-200 text-gray-700 hover:border-gold-400 hover:text-gold-500"
+                    }`}
+                  >
+                    {added ? "담겼습니다 ✓" : "장바구니"}
+                  </button>
+                )}
                 {consultEnabled && (
                   <button
                     onClick={() => setNoticeOpen(true)}

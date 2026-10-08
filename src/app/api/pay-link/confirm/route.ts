@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 토스 결제 승인
-    const encodedKey = Buffer.from(`${process.env.TOSS_SECRET_KEY!}:`).toString("base64");
+    const encodedKey = Buffer.from(`${process.env.TOSS_WIDGET_SECRET_KEY!}:`).toString("base64");
     const tossRes = await fetch("https://api.tosspayments.com/v1/payments/confirm", {
       method: "POST",
       headers: {
@@ -65,7 +65,12 @@ export async function POST(request: NextRequest) {
     // 예약 결제 완료 처리
     await adminClient
       .from("reservations")
-      .update({ paid: true, payment_id: paymentKey, payment_token: null, payment_link_expires_at: null })
+      .update({
+        paid: true,
+        payment_id: paymentKey,
+        payment_token: null,
+        payment_link_expires_at: null,
+      })
       .eq("id", reservation.id);
 
     // 사장님 알림톡

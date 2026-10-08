@@ -5,12 +5,14 @@ import { formatPhone, parsePhone } from "@/lib/format";
 import Image from "next/image";
 import Link from "next/link";
 import AgreementCheckbox from "@/components/AgreementCheckbox";
+import TossPaymentWidget, { TossPaymentWidgetHandle } from "@/components/TossPaymentWidget";
 import DaumPostcodeEmbed from "react-daum-postcode";
 import DatePicker, { registerLocale } from "react-datepicker";
 import { ko } from "date-fns/locale/ko";
 import "react-datepicker/dist/react-datepicker.css";
 import { Product } from "@/types";
 import { FLOWER_COLOR_MAP } from "@/lib/constants";
+import { resolveDayHours, type DateOverrides } from "@/lib/businessHours";
 import FlowerNoticeModal from "@/components/FlowerNoticeModal";
 import StoreHeader from "@/components/main/StoreHeader";
 
@@ -69,6 +71,7 @@ interface DraftData {
   addressDetail: string;
   privacyAgreed: boolean;
   cancellationAgreed: boolean;
+  noticeAgreed: boolean;
   finalPrice: number;
   source?: string | null;
   quantity?: number;
@@ -95,6 +98,7 @@ interface Props {
   products: Product[];
   businessHours: BusinessHours;
   closedDates: string[];
+  dateOverrides?: DateOverrides;
   minLeadTimes?: Record<string, number>;
   consultNotice?: string | null;
   storeAddress?: string | null;
@@ -241,7 +245,7 @@ function scoreProducts(products: Product[], form: ConsultForm): Product[] {
   return result;
 }
 
-export default function ConsultClient({ slug, companyName, logoImage = null, productTypeList = [], seasonList = [], notificationEmail, products, businessHours, closedDates, minLeadTimes = {}, consultNotice, storeAddress = null, deliveryEnabled = false, deliveryFees = {}, messageCardEnabled = false, messageCardPrice = 2000, shoppingBagEnabled = false, shoppingBagPrice = 2000, preselectedProduct = null, initialQuantity = 1, initialPaymentId = null }: Props) {
+export default function ConsultClient({ slug, companyName, logoImage = null, productTypeList = [], seasonList = [], notificationEmail, products, businessHours, closedDates, dateOverrides = {}, minLeadTimes = {}, consultNotice, storeAddress = null, deliveryEnabled = false, deliveryFees = {}, messageCardEnabled = false, messageCardPrice = 2000, shoppingBagEnabled = false, shoppingBagPrice = 2000, preselectedProduct = null, initialQuantity = 1, initialPaymentId = null }: Props) {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [form, setForm] = useState<ConsultForm>(EMPTY_FORM);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(preselectedProduct);
@@ -257,6 +261,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
   const [submitting, setSubmitting] = useState(false);
   const [privacyAgreed, setPrivacyAgreed] = useState(false);
   const [cancellationAgreed, setCancellationAgreed] = useState(false);
+  const [noticeAgreed, setNoticeAgreed] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [reservationId, setReservationId] = useState<string | null>(null);
   const [bankInfo, setBankInfo] = useState<{ bankName: string | null; bankAccount: string | null; bankHolder: string | null } | null>(null);
@@ -266,6 +271,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
   const [error, setError] = useState<string | null>(null);
   const [step2FieldErrors, setStep2FieldErrors] = useState<string[]>([]);
   const [s4fe, setS4fe] = useState<Record<string, boolean>>({});
+  const s4RefNotice = useRef<HTMLDivElement>(null);
   const s4RefName = useRef<HTMLDivElement>(null);
   const s4RefPhone = useRef<HTMLDivElement>(null);
   const s4RefDeliveryType = useRef<HTMLDivElement>(null);
@@ -285,6 +291,9 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
   const [shoppingBagCount, setShoppingBagCount] = useState(0);
   const [messageCardContents, setMessageCardContents] = useState<string[]>([]);
   const sourceRef = useRef<string | null>(null);
+  const [widgetReady, setWidgetReady] = useState(false);
+  const widgetRef = useRef<TossPaymentWidgetHandle>(null);
+  const [paymentOrderId] = useState(() => `order${Date.now()}`);
 
   useEffect(() => {
     const stored = sessionStorage.getItem(`consult_source_${slug}`);
@@ -331,6 +340,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
           setAddressDetail(draft.addressDetail);
           setPrivacyAgreed(draft.privacyAgreed);
           setCancellationAgreed(draft.cancellationAgreed);
+          setNoticeAgreed(draft.noticeAgreed);
           if (draft.messageCardCount !== undefined) setMessageCardCount(draft.messageCardCount);
           if (draft.shoppingBagCount !== undefined) setShoppingBagCount(draft.shoppingBagCount);
           if (draft.messageCardContents !== undefined) setMessageCardContents(draft.messageCardContents);
@@ -464,8 +474,6 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
       (form.deliveryType === "배송" && deliveryFee !== null ? deliveryFee : 0);
 
     try {
-      const orderId = `order${Date.now()}`;
-
       // 리다이렉트 복귀 대비 폼 데이터 임시 저장
       sessionStorage.setItem(`consult_draft_${slug}`, JSON.stringify({
         form: submittedForm,
@@ -489,17 +497,13 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
         addressDetail,
         privacyAgreed,
         cancellationAgreed,
+        noticeAgreed,
         finalPrice,
         source: sourceRef.current,
       } satisfies DraftData));
 
-      const { loadTossPayments } = await import("@tosspayments/tosspayments-sdk");
-      const toss = await loadTossPayments(process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY!);
-      const payment = toss.payment({ customerKey: orderId });
-      await payment.requestPayment({
-        method: "CARD",
-        amount: { currency: "KRW", value: finalPrice },
-        orderId,
+      await widgetRef.current?.requestPayment({
+        orderId: paymentOrderId,
         orderName: `${companyName} 맞춤 주문`,
         successUrl: `${window.location.origin}/${slug}/consult`,
         failUrl: `${window.location.origin}/${slug}/consult`,
@@ -1081,6 +1085,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
 
           const handleConfirm = () => {
             const fe: Record<string, boolean> = {};
+            if (consultNotice && !noticeAgreed) fe.notice = true;
             if (!name) fe.name = true;
             if (parsePhone(phone).length < 10 || parsePhone(phone).length > 11) fe.phone = true;
             if (!form.deliveryType) fe.deliveryType = true;
@@ -1092,7 +1097,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
 
             if (Object.keys(fe).length > 0) {
               setS4fe(fe);
-              const firstRef = fe.name ? s4RefName : fe.phone ? s4RefPhone : fe.deliveryType ? s4RefDeliveryType : fe.deliveryInfo ? s4RefDeliveryInfo : fe.date ? s4RefDate : fe.time ? s4RefTime : s4RefAgreement;
+              const firstRef = fe.notice ? s4RefNotice : fe.name ? s4RefName : fe.phone ? s4RefPhone : fe.deliveryType ? s4RefDeliveryType : fe.deliveryInfo ? s4RefDeliveryInfo : fe.date ? s4RefDate : fe.time ? s4RefTime : s4RefAgreement;
               firstRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
               return;
             }
@@ -1116,13 +1121,24 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
 
           return (
             <div className="flex flex-col md:flex-row md:gap-5">
+              <TossPaymentWidget
+                ref={widgetRef}
+                customerKey={paymentOrderId}
+                amount={finalPrice}
+                onReadyChange={setWidgetReady}
+                onCancel={() => setSubmitting(false)}
+              />
 
               {/* ── 왼쪽: 폼 영역 ── */}
               <div className="flex-1 min-w-0 md:max-w-xl space-y-2 -mx-4 md:mx-0">
 
                 {consultNotice && (
-                  <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-                    <p className="text-sm text-amber-800 whitespace-pre-wrap leading-relaxed">{consultNotice}</p>
+                  <div ref={s4RefNotice} className={`rounded-xl px-4 py-3 border ${s4fe.notice ? "border-red-300 bg-red-50" : "bg-amber-50 border-amber-200"}`}>
+                    <p className={`text-sm whitespace-pre-wrap leading-relaxed ${s4fe.notice ? "text-red-700" : "text-amber-800"}`}>{consultNotice}</p>
+                    <label className={`flex items-center gap-2 mt-3 text-sm cursor-pointer ${s4fe.notice ? "text-red-500 font-medium" : "text-amber-700"}`}>
+                      <AgreementCheckbox checked={noticeAgreed} onChange={(v) => { setNoticeAgreed(v); if (s4fe.notice) setS4fe(p => ({ ...p, notice: false })); }} />
+                      <span>안내 사항을 확인했습니다. <span className="text-red-400">*</span></span>
+                    </label>
                   </div>
                 )}
 
@@ -1307,7 +1323,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
 
                 {/* 수령 희망 시간 */}
                 {(() => {
-                  const day = selectedDate ? businessHours[String(selectedDate.getDay())] : null;
+                  const day = selectedDate ? resolveDayHours(selectedDate, businessHours, dateOverrides) : null;
                   const now = new Date();
                   const isToday = selectedDate
                     ? selectedDate.getFullYear() === now.getFullYear() && selectedDate.getMonth() === now.getMonth() && selectedDate.getDate() === now.getDate()
@@ -1347,7 +1363,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                     <div ref={s4RefTime} className="bg-white px-4 py-4 space-y-3">
                       <h3 className={`text-sm font-medium flex items-center gap-2 pb-3 border-b ${s4fe.time ? "text-red-500 border-red-200" : "text-gray-700 border-gray-100"}`}>
                         수령 희망 시간 <span className="text-red-400">*</span>
-                        {day && <span className="text-xs font-normal text-gray-400">영업시간 · {day.open}~{day.close}</span>}
+                        {day && <span className="text-xs font-normal text-gray-400">예약 가능 시간 · {day.open}~{day.close}</span>}
                         {s4fe.time && <span className="text-xs font-normal">— 시간을 선택해주세요</span>}
                       </h3>
                       {!selectedDate ? (
@@ -1584,7 +1600,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                   <button
                     type="button"
                     onClick={handleConfirm}
-                    disabled={submitting}
+                    disabled={submitting || !widgetReady}
                     className="w-full bg-gold-500 text-white py-3.5 rounded-xl font-medium hover:bg-gold-600 disabled:opacity-50 transition-colors"
                   >
                     {submitting ? "결제 중..." : "결제하기"}
@@ -1637,7 +1653,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                     <button
                       type="button"
                       onClick={handleConfirm}
-                      disabled={submitting}
+                      disabled={submitting || !widgetReady}
                       className="w-full bg-gold-500 text-white py-3.5 rounded-xl font-medium hover:bg-gold-600 disabled:opacity-50 transition-colors"
                     >
                       {submitting ? "결제 중..." : "결제하기"}
