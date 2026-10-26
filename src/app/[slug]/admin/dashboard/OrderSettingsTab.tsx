@@ -5,6 +5,7 @@ import imageCompression from "browser-image-compression";
 import DaumPostcodeEmbed from "react-daum-postcode";
 import { createClient } from "@/lib/supabase/client";
 import { formatPhone, parsePhone } from "@/lib/format";
+import SaveButton, { SaveButtonHandle } from "@/components/admin/SaveButton";
 
 interface Props {
   companyId: string;
@@ -31,17 +32,21 @@ export default function OrderSettingsTab({ companyId, plan: _plan }: Props) {
   const [businessStatus, setBusinessStatus] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
   const [verifyError, setVerifyError] = useState<string | null>(null);
+  const [residentNumberMasked, setResidentNumberMasked] = useState<string | null>(null);
+  const [editingResident, setEditingResident] = useState(false);
+  const [residentFront, setResidentFront] = useState("");
+  const [residentBack, setResidentBack] = useState("");
+  const [residentError, setResidentError] = useState<string | null>(null);
   const [consultApplyStatus, setConsultApplyStatus] = useState<"pending" | "approved" | "rejected" | null>(null);
   const [consultRejectReason, setConsultRejectReason] = useState<string | null>(null);
   const [applying, setApplying] = useState(false);
   const [consultEnabled, setConsultEnabled] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const initialConsultFields = useRef({ bankName: "", bankAccount: "", bankHolder: "", businessNumber: "" });
   const bankImageInputRef = useRef<HTMLInputElement>(null);
   const businessRegInputRef = useRef<HTMLInputElement>(null);
+  const saveBtnRef = useRef<SaveButtonHandle>(null);
   const supabase = createClient();
 
   useEffect(() => {
@@ -81,6 +86,9 @@ export default function OrderSettingsTab({ companyId, plan: _plan }: Props) {
       .then(({ data }) => {
         if (data?.phone) setPhone(formatPhone(data.phone));
       });
+    fetch(`/api/company/resident-number?company_id=${companyId}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => { if (data?.masked) setResidentNumberMasked(data.masked); });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId]);
 
@@ -195,11 +203,16 @@ export default function OrderSettingsTab({ companyId, plan: _plan }: Props) {
     setApplying(false);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSave = async () => {
     setError(null);
-    setSuccess(false);
-    setLoading(true);
+    setResidentError(null);
+
+    // 주민등록번호를 새로 입력 중인 경우, 둘 다 채워졌는지 먼저 확인
+    const residentTouched = editingResident || (!residentNumberMasked && (residentFront || residentBack));
+    if (residentTouched && (residentFront.length !== 6 || residentBack.length !== 7)) {
+      setResidentError("대표자 주민등록번호를 모두 입력해주세요.");
+      return false;
+    }
 
     const consultFieldsChanged =
       bankName !== initialConsultFields.current.bankName ||
@@ -208,7 +221,7 @@ export default function OrderSettingsTab({ companyId, plan: _plan }: Props) {
       businessNumber !== initialConsultFields.current.businessNumber;
     const shouldResetConsult = consultFieldsChanged && consultApplyStatus !== null;
 
-    const [{ error: companiesError }, { error: settingsError }] = await Promise.all([
+    const [{ error: companiesError }, { error: settingsError }, residentResult] = await Promise.all([
       supabase.from("companies").update({ phone: parsePhone(phone) || null }).eq("id", companyId),
       supabase.from("company_settings").update({
         bank_name: bankName || null,
@@ -220,21 +233,31 @@ export default function OrderSettingsTab({ companyId, plan: _plan }: Props) {
         address: address ? (addressDetail ? `${address} ${addressDetail}` : address) : null,
         ...(shouldResetConsult ? { consult_apply_status: null, consult_enabled: false } : {}),
       }).eq("company_id", companyId),
+      residentTouched
+        ? fetch("/api/company/resident-number", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ company_id: companyId, front: residentFront, back: residentBack }),
+          }).then((res) => res.json().then((data) => ({ ok: res.ok, data })))
+        : Promise.resolve(null),
     ]);
 
-    const combinedError = companiesError || settingsError;
+    const combinedError = companiesError || settingsError || (residentResult && !residentResult.ok ? new Error(residentResult.data?.error ?? "주민등록번호 저장에 실패했습니다.") : null);
     if (combinedError) {
       setError(combinedError.message);
-    } else {
-      if (shouldResetConsult) {
-        setConsultApplyStatus(null);
-        setConsultEnabled(false);
-        initialConsultFields.current = { bankName, bankAccount, bankHolder, businessNumber };
-      }
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
+      return false;
     }
-    setLoading(false);
+    if (shouldResetConsult) {
+      setConsultApplyStatus(null);
+      setConsultEnabled(false);
+      initialConsultFields.current = { bankName, bankAccount, bankHolder, businessNumber };
+    }
+    if (residentResult?.ok) {
+      setResidentNumberMasked(residentResult.data.masked);
+      setEditingResident(false);
+      setResidentFront("");
+      setResidentBack("");
+    }
   };
 
   const disabledByConsult = consultEnabled;
@@ -244,20 +267,24 @@ export default function OrderSettingsTab({ companyId, plan: _plan }: Props) {
       <h2 className="text-xl font-medium text-gray-900 mb-6">판매 신청</h2>
 
       {!mailOrderNumber && (
-        <div className="mb-5 p-4 rounded-xl bg-red-50 border border-red-200 flex items-center justify-between gap-3">
+        <div className={`mb-5 p-4 rounded-xl border flex items-center justify-between gap-3 ${
+          soldCount >= 31 ? "bg-red-50 border-red-200" : "bg-yellow-50 border-yellow-200"
+        }`}>
           <div>
-            <p className="text-sm font-semibold text-red-700">현재 통신판매업 신고가 되어있지 않습니다</p>
-            <p className="text-xs text-red-500 mt-0.5">
-              {soldCount >= 30
-                ? "판매 수량이 30개를 초과해 판매가 정지되었습니다. 통신판매업 신고번호를 등록해주세요."
-                : "신고번호를 등록하지 않으면 30개 판매 시 판매가 자동으로 정지됩니다."}
+            <p className={`text-sm font-semibold ${soldCount >= 31 ? "text-red-700" : "text-yellow-700"}`}>현재 통신판매업 신고가 되어있지 않습니다</p>
+            <p className={`text-xs mt-0.5 ${soldCount >= 31 ? "text-red-500" : "text-yellow-600"}`}>
+              {soldCount >= 50
+                ? "판매 수량이 50개를 초과해 판매가 정지되었습니다. 통신판매업 신고번호를 등록해주세요."
+                : soldCount >= 31
+                ? "판매 수량이 31개를 넘었습니다. 50개 판매 시 자동으로 판매가 정지됩니다. 통신판매업 신고번호를 등록해주세요."
+                : "신고번호를 등록하지 않으면 50개 판매 시 판매가 자동으로 정지됩니다."}
             </p>
           </div>
-          <span className="shrink-0 text-sm font-bold text-red-600">{Math.min(soldCount, 30)}/30</span>
+          <span className={`shrink-0 text-sm font-bold ${soldCount >= 31 ? "text-red-600" : "text-yellow-700"}`}>{Math.min(soldCount, 50)}/50</span>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={(e) => { e.preventDefault(); saveBtnRef.current?.trigger(); }} className="space-y-5">
         {error && (
           <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
         )}
@@ -437,6 +464,60 @@ export default function OrderSettingsTab({ companyId, plan: _plan }: Props) {
               {verifyError && <p className="mt-2 text-xs text-red-500">{verifyError}</p>}
             </div>
 
+            {/* 대표자 주민등록번호 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">대표자 주민등록번호</label>
+              <p className="text-xs text-gray-400 mb-2">세금계산서 발행 등 세무 처리를 위해 필요하며, 암호화되어 저장됩니다. 저장 후에는 일부만 마스킹되어 표시됩니다.</p>
+
+              {residentNumberMasked && !editingResident ? (
+                <div className="flex items-center gap-3">
+                  <span className="font-mono text-sm text-gray-700">{residentNumberMasked}</span>
+                  <button
+                    type="button"
+                    onClick={() => setEditingResident(true)}
+                    className="text-xs text-gray-400 hover:text-gray-700 underline"
+                  >
+                    수정
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={residentFront}
+                    onChange={(e) => setResidentFront(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    placeholder="앞 6자리"
+                    maxLength={6}
+                    className="w-24 border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500 text-center"
+                  />
+                  <span className="text-gray-400">-</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={residentBack}
+                    onChange={(e) => setResidentBack(e.target.value.replace(/\D/g, "").slice(0, 7))}
+                    placeholder="뒤 7자리"
+                    maxLength={7}
+                    className="w-28 border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500 text-center"
+                  />
+                  {residentNumberMasked && (
+                    <button
+                      type="button"
+                      onClick={() => { setEditingResident(false); setResidentFront(""); setResidentBack(""); setResidentError(null); }}
+                      className="text-xs text-gray-400 hover:text-gray-700"
+                    >
+                      취소
+                    </button>
+                  )}
+                </div>
+              )}
+              {(editingResident || (!residentNumberMasked && (residentFront || residentBack))) && !residentError && (
+                <p className="mt-2 text-xs text-gray-400">아래 &lsquo;저장&rsquo; 버튼을 눌러야 함께 저장됩니다.</p>
+              )}
+              {residentError && <p className="mt-2 text-xs text-red-500">{residentError}</p>}
+            </div>
+
             {/* 사업자등록증 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">사업자등록증</label>
@@ -463,8 +544,8 @@ export default function OrderSettingsTab({ companyId, plan: _plan }: Props) {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">통신판매업 신고번호</label>
               <p className="text-xs text-gray-400 mb-2">
-                상품을 30개 판매하기 전 통신판매업 신고를 해주세요.<br />
-                통신판매업 미신고 상태로 30개 판매 시 판매가 정지됩니다.
+                상품을 50개 판매하기 전 통신판매업 신고를 해주세요.<br />
+                통신판매업 미신고 상태로 50개 판매 시 판매가 정지됩니다.
               </p>
               <input
                 type="text"
@@ -522,20 +603,12 @@ export default function OrderSettingsTab({ companyId, plan: _plan }: Props) {
           })()}
         </div>
 
-        <div className="sticky bottom-0 bg-white border-t border-gray-100 -mx-0 pt-4 pb-1 flex items-center gap-3">
-          <button
-            type="submit"
-            disabled={loading}
-            className="bg-gold-500 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-gold-600 disabled:opacity-50 transition-colors"
-          >
-            {loading ? "저장 중..." : "저장"}
-          </button>
-          {success && (
-            <span className="text-sm text-green-600 flex items-center gap-1">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-              저장되었습니다.
-            </span>
-          )}
+        <div className="sticky bottom-0 bg-white border-t border-gray-100 -mx-0 pt-4 pb-1 md:pb-6 flex items-center gap-3">
+          <SaveButton
+            ref={saveBtnRef}
+            onSave={handleSave}
+            className="text-sm font-medium text-white bg-gold-500 hover:bg-gold-600"
+          />
         </div>
       </form>
     </div>

@@ -12,6 +12,7 @@ interface Application {
   bank_holder: string | null;
   bank_account_image_url: string | null;
   business_registration_image_url: string | null;
+  resident_number_masked: string | null;
   consult_apply_status: "pending" | "approved" | "rejected";
   consult_reject_reason: string | null;
   companies: { name: string; created_at: string } | null;
@@ -132,6 +133,7 @@ export default function VerificationTab() {
               <tr className="border-b border-gray-100 text-xs text-gray-400">
                 <th className="text-left px-6 py-3 font-medium">매장</th>
                 <th className="text-left px-6 py-3 font-medium">사업자번호</th>
+                <th className="text-left px-6 py-3 font-medium">대표자 주민번호</th>
                 <th className="text-left px-6 py-3 font-medium">인증</th>
                 <th className="text-left px-6 py-3 font-medium">계좌 정보</th>
                 <th className="text-left px-6 py-3 font-medium">통장사본</th>
@@ -142,9 +144,9 @@ export default function VerificationTab() {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {loading ? (
-                <tr><td colSpan={8} className="px-6 py-10 text-center text-gray-300 text-sm">불러오는 중...</td></tr>
+                <tr><td colSpan={9} className="px-6 py-10 text-center text-gray-300 text-sm">불러오는 중...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={8} className="px-6 py-10 text-center text-gray-300 text-sm">신청 내역이 없습니다.</td></tr>
+                <tr><td colSpan={9} className="px-6 py-10 text-center text-gray-300 text-sm">신청 내역이 없습니다.</td></tr>
               ) : filtered.map(app => (
                 <tr key={app.company_id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-3.5">
@@ -155,6 +157,9 @@ export default function VerificationTab() {
                   </td>
                   <td className="px-6 py-3.5 text-xs text-gray-700">
                     {app.business_number ?? <span className="text-gray-300">—</span>}
+                  </td>
+                  <td className="px-6 py-3.5 text-xs text-gray-700 font-mono whitespace-nowrap">
+                    {app.resident_number_masked ?? <span className="text-gray-300 font-sans">—</span>}
                   </td>
                   <td className="px-6 py-3.5">
                     {app.business_verified_at ? (
