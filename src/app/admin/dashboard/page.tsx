@@ -20,14 +20,14 @@ export default async function OperatorDashboardPage() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  const [{ data: companies }, { data: reservations }, { data: products }, { data: profiles }, { data: billingLogs }] = await Promise.all([
+  const [{ data: companies }, { data: reservations }, { data: products }, { data: profiles }, { data: billingLogs }, { data: reservationLogs }] = await Promise.all([
     supabase
       .from("companies")
-      .select("id, name, slug, created_at, owner_id, settings:company_settings(consult_enabled), subscription:company_subscriptions(plan, billing_key, plan_expires_at, trial_ends_at, subscription_plan)")
+      .select("id, name, slug, created_at, owner_id, operator_memo, is_demo, settings:company_settings(consult_enabled), subscription:company_subscriptions(plan, billing_key, plan_expires_at, trial_ends_at, subscription_plan)")
       .order("created_at", { ascending: false }),
     supabase
       .from("reservations")
-      .select("id, company_id, created_at, desired_date, status, final_price, payment_id")
+      .select("id, company_id, created_at, desired_date, status, final_price, payment_id, order_type")
       .neq("status", "취소")
       .is("deleted_at", null),
     supabase
@@ -41,10 +41,20 @@ export default async function OperatorDashboardPage() {
       .select("id, created_at, company_id, operator_id, type, plan, amount, success, reason, error_message")
       .order("created_at", { ascending: false })
       .limit(500),
+    supabaseAdmin
+      .from("reservation_logs")
+      .select("id, created_at, reservation_id, company_id, actor_user_id, action, field, old_value, new_value, reason")
+      .order("created_at", { ascending: false })
+      .limit(500),
   ]);
 
   const profileMap = Object.fromEntries((profiles ?? []).map(p => [p.user_id, p]));
   const companyNameMap = Object.fromEntries((companies ?? []).map(c => [c.id, c.name]));
+
+  // 데모 매장 데이터는 거래액/통계/정산 등 실제 집계에서 전부 제외한다.
+  const demoCompanyIds = new Set((companies ?? []).filter(c => c.is_demo).map(c => c.id));
+  const realReservations = (reservations ?? []).filter(r => !demoCompanyIds.has(r.company_id));
+  const realProducts = (products ?? []).filter(p => !demoCompanyIds.has(p.company_id));
 
   const mappedCompanies = (companies ?? []).map((c) => ({
     ...c,
@@ -57,17 +67,28 @@ export default async function OperatorDashboardPage() {
     subscription: Array.isArray(c.subscription) ? (c.subscription[0] ?? null) : c.subscription,
   }));
 
-  const mappedBillingLogs = (billingLogs ?? []).map(log => ({
-    ...log,
-    company_name: companyNameMap[log.company_id] ?? null,
-  }));
+  const mappedBillingLogs = (billingLogs ?? [])
+    .filter(log => !demoCompanyIds.has(log.company_id))
+    .map(log => ({
+      ...log,
+      company_name: companyNameMap[log.company_id] ?? null,
+    }));
+
+  const mappedReservationLogs = (reservationLogs ?? [])
+    .filter(log => !demoCompanyIds.has(log.company_id))
+    .map(log => ({
+      ...log,
+      company_name: companyNameMap[log.company_id] ?? null,
+      actor_name: log.actor_user_id ? (profileMap[log.actor_user_id]?.name ?? null) : null,
+    }));
 
   return (
     <OperatorDashboardClient
       companies={mappedCompanies}
-      reservations={reservations ?? []}
-      products={products ?? []}
+      reservations={realReservations}
+      products={realProducts}
       billingLogs={mappedBillingLogs}
+      reservationLogs={mappedReservationLogs}
     />
   );
 }

@@ -11,6 +11,7 @@ interface StoreRow {
   ownerUserId: string | null;
   isSuspended: boolean;
   suspendReason: string | null;
+  operatorMemo: string | null;
   plan: string | null;
   billingKey: string | null;
   planExpiresAt: string | null;
@@ -37,6 +38,17 @@ export default function StoreManagementTab({ stores }: Props) {
   const [suspendError, setSuspendError] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [localStores, setLocalStores] = useState<StoreRow[]>(stores);
+  const [freePlanTarget, setFreePlanTarget] = useState<StoreRow | null>(null);
+  const [settingFreePlan, setSettingFreePlan] = useState(false);
+  const [freePlanError, setFreePlanError] = useState<string | null>(null);
+  const [resetPlanTarget, setResetPlanTarget] = useState<StoreRow | null>(null);
+  const [resettingPlan, setResettingPlan] = useState(false);
+  const [resetPlanError, setResetPlanError] = useState<string | null>(null);
+  const [extendingPlanId, setExtendingPlanId] = useState<string | null>(null);
+  const [memoTarget, setMemoTarget] = useState<StoreRow | null>(null);
+  const [memoDraft, setMemoDraft] = useState("");
+  const [savingMemo, setSavingMemo] = useState(false);
+  const [memoError, setMemoError] = useState<string | null>(null);
 
   const filtered = search.trim()
     ? localStores.filter(s =>
@@ -101,6 +113,125 @@ export default function StoreManagementTab({ stores }: Props) {
       setRefundError("네트워크 오류가 발생했습니다.");
     } finally {
       setRefunding(false);
+    }
+  };
+
+  const handleSetFreePlan = async () => {
+    if (!freePlanTarget) return;
+    setSettingFreePlan(true);
+    setFreePlanError(null);
+
+    try {
+      const res = await fetch("/api/operator/set-free-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId: freePlanTarget.id }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setFreePlanError(data.error ?? "처리 중 오류가 발생했습니다.");
+      } else {
+        setLocalStores(prev =>
+          prev.map(s =>
+            s.id === freePlanTarget.id
+              ? { ...s, plan: "free", billingKey: null, planExpiresAt: null, subscriptionPlan: null }
+              : s
+          )
+        );
+        setFreePlanTarget(null);
+      }
+    } catch {
+      setFreePlanError("네트워크 오류가 발생했습니다.");
+    } finally {
+      setSettingFreePlan(false);
+    }
+  };
+
+  const handleResetPlan = async () => {
+    if (!resetPlanTarget) return;
+    setResettingPlan(true);
+    setResetPlanError(null);
+
+    try {
+      const res = await fetch("/api/operator/reset-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId: resetPlanTarget.id }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setResetPlanError(data.error ?? "처리 중 오류가 발생했습니다.");
+      } else {
+        setLocalStores(prev =>
+          prev.map(s =>
+            s.id === resetPlanTarget.id
+              ? { ...s, plan: "none", billingKey: null, planExpiresAt: null, subscriptionPlan: null }
+              : s
+          )
+        );
+        setResetPlanTarget(null);
+      }
+    } catch {
+      setResetPlanError("네트워크 오류가 발생했습니다.");
+    } finally {
+      setResettingPlan(false);
+    }
+  };
+
+  const handleExtendPlan = async (store: StoreRow) => {
+    setOpenMenuId(null);
+    setExtendingPlanId(store.id);
+
+    try {
+      const res = await fetch("/api/operator/extend-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId: store.id }),
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        setLocalStores(prev =>
+          prev.map(s => s.id === store.id ? { ...s, planExpiresAt: data.planExpiresAt } : s)
+        );
+      } else {
+        alert(data.error ?? "처리 중 오류가 발생했습니다.");
+      }
+    } catch {
+      alert("네트워크 오류가 발생했습니다.");
+    } finally {
+      setExtendingPlanId(null);
+    }
+  };
+
+  const handleSaveMemo = async () => {
+    if (!memoTarget) return;
+    setSavingMemo(true);
+    setMemoError(null);
+
+    try {
+      const res = await fetch("/api/operator/memo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId: memoTarget.id, memo: memoDraft }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setMemoError(data.error ?? "처리 중 오류가 발생했습니다.");
+      } else {
+        const saved = memoDraft.trim() || null;
+        setLocalStores(prev =>
+          prev.map(s => s.id === memoTarget.id ? { ...s, operatorMemo: saved } : s)
+        );
+        setMemoTarget(null);
+      }
+    } catch {
+      setMemoError("네트워크 오류가 발생했습니다.");
+    } finally {
+      setSavingMemo(false);
     }
   };
 
@@ -245,7 +376,36 @@ export default function StoreManagementTab({ stores }: Props) {
                       {openMenuId === store.id && (
                         <>
                           <div className="fixed inset-0 z-10" onClick={() => setOpenMenuId(null)} />
-                          <div className="absolute right-4 top-10 z-20 w-32 bg-white border border-gray-100 rounded-xl shadow-lg py-1 overflow-hidden">
+                          <div className="absolute right-4 top-10 z-20 w-40 bg-white border border-gray-100 rounded-xl shadow-lg py-1 overflow-hidden">
+                            <button
+                              onClick={() => handleExtendPlan(store)}
+                              disabled={extendingPlanId === store.id}
+                              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                            >
+                              {extendingPlanId === store.id ? "처리 중…" : "+30일 연장"}
+                            </button>
+                            {store.plan !== "free" && (
+                              <button
+                                onClick={() => { setOpenMenuId(null); setFreePlanTarget(store); setFreePlanError(null); }}
+                                className="w-full text-left px-4 py-2 text-sm text-green-600 hover:bg-green-50 transition-colors"
+                              >
+                                Free 플랜으로 변경
+                              </button>
+                            )}
+                            {store.plan !== "none" && store.plan !== null && (
+                              <button
+                                onClick={() => { setOpenMenuId(null); setResetPlanTarget(store); setResetPlanError(null); }}
+                                className="w-full text-left px-4 py-2 text-sm text-gray-500 hover:bg-gray-50 transition-colors"
+                              >
+                                플랜 초기화
+                              </button>
+                            )}
+                            <button
+                              onClick={() => { setOpenMenuId(null); setMemoTarget(store); setMemoDraft(store.operatorMemo ?? ""); setMemoError(null); }}
+                              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                            >
+                              메모 {store.operatorMemo && <span className="text-gold-500">●</span>}
+                            </button>
                             {store.billingKey && (
                               <button
                                 onClick={() => { setOpenMenuId(null); setRefundTarget(store); }}
@@ -279,6 +439,116 @@ export default function StoreManagementTab({ stores }: Props) {
           </table>
         </div>
       </div>
+
+      {/* Free 플랜 전환 모달 */}
+      {freePlanTarget && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 space-y-4 shadow-xl">
+            <div>
+              <h3 className="text-base font-semibold text-gray-900">Free 플랜으로 변경</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                <span className="font-medium text-gray-700">{freePlanTarget.name}</span>의 구독을 Free 플랜으로 전환합니다. 빌링키가 제거되어 이후 자동 결제가 중단되고, 만료일 없이 무기한 이용할 수 있습니다.
+              </p>
+            </div>
+
+            {freePlanError && (
+              <p className="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2">{freePlanError}</p>
+            )}
+
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => setFreePlanTarget(null)}
+                className="flex-1 text-sm px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleSetFreePlan}
+                disabled={settingFreePlan}
+                className="flex-1 text-sm px-4 py-2.5 rounded-xl bg-green-600 text-white font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {settingFreePlan ? "처리 중…" : "변경 확인"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 플랜 초기화 모달 */}
+      {resetPlanTarget && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 space-y-4 shadow-xl">
+            <div>
+              <h3 className="text-base font-semibold text-gray-900">플랜 초기화</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                <span className="font-medium text-gray-700">{resetPlanTarget.name}</span>의 구독 상태를 플랜 없음으로 초기화합니다. 환불은 처리되지 않으며 구독 정보만 초기화됩니다.
+              </p>
+            </div>
+
+            {resetPlanError && (
+              <p className="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2">{resetPlanError}</p>
+            )}
+
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => setResetPlanTarget(null)}
+                className="flex-1 text-sm px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleResetPlan}
+                disabled={resettingPlan}
+                className="flex-1 text-sm px-4 py-2.5 rounded-xl bg-gray-700 text-white font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {resettingPlan ? "처리 중…" : "초기화 확인"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 메모 모달 */}
+      {memoTarget && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 space-y-4 shadow-xl">
+            <div>
+              <h3 className="text-base font-semibold text-gray-900">매장 메모</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                <span className="font-medium text-gray-700">{memoTarget.name}</span>에 대한 운영자 메모입니다. 손님·매장 담당자에게는 보이지 않습니다.
+              </p>
+            </div>
+
+            <textarea
+              value={memoDraft}
+              onChange={e => setMemoDraft(e.target.value)}
+              placeholder="메모를 입력하세요"
+              rows={5}
+              className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-gray-400 resize-none placeholder-gray-300"
+            />
+
+            {memoError && (
+              <p className="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2">{memoError}</p>
+            )}
+
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => setMemoTarget(null)}
+                className="flex-1 text-sm px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleSaveMemo}
+                disabled={savingMemo}
+                className="flex-1 text-sm px-4 py-2.5 rounded-xl bg-gray-900 text-white font-medium hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {savingMemo ? "저장 중…" : "저장"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 정지 모달 */}
       {suspendTarget && (

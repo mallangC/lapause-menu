@@ -4,11 +4,12 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, Legend } from "recharts";
 import SettlementsTab from "./SettlementsTab";
 import VerificationTab from "./VerificationTab";
 import StoreManagementTab from "./StoreManagementTab";
 import BillingLogsTab, { BillingLog } from "./BillingLogsTab";
+import ReservationLogsTab, { ReservationLog } from "./ReservationLogsTab";
 
 interface Company {
   id: string;
@@ -16,6 +17,7 @@ interface Company {
   slug: string;
   created_at: string;
   owner_id: string | null;
+  operator_memo: string | null;
   ownerName: string | null;
   ownerPhone: string | null;
   ownerUserId: string | null;
@@ -39,6 +41,7 @@ interface Reservation {
   status: string;
   final_price: number;
   payment_id: string | null;
+  order_type: string | null;
 }
 
 interface Product {
@@ -50,12 +53,20 @@ interface Props {
   reservations: Reservation[];
   products: Product[];
   billingLogs: BillingLog[];
+  reservationLogs: ReservationLog[];
 }
 
-export default function OperatorDashboardClient({ companies, reservations, products, billingLogs }: Props) {
+const ORDER_TYPE_COLORS: Record<string, string> = {
+  "상품 선택 결제": "#60a5fa",
+  "맞춤주문": "#c9a96e",
+  "링크결제": "#34d399",
+};
+const PIE_COLORS = ["#c9a96e", "#60a5fa", "#34d399", "#a87c4a"];
+
+export default function OperatorDashboardClient({ companies, reservations, products, billingLogs, reservationLogs }: Props) {
   const router = useRouter();
   const supabase = createClient();
-  const [activeTab, setActiveTab] = useState<"overview" | "stores" | "billing" | "settlements" | "verification">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "stores" | "billing" | "settlements" | "verification" | "reservationLogs">("overview");
   const [gmvRange, setGmvRange] = useState<"month" | "6m" | "1y">("month");
 
   const now = new Date();
@@ -152,6 +163,20 @@ export default function OperatorDashboardClient({ companies, reservations, produ
     return { label, allGMV, cardGMV, manualGMV, cardRate };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gmvRange, revenueReservations, cardReservations]);
+
+  // 결제 경로별 비율 (상품 선택 결제 / 맞춤주문 / 링크결제) — order_type이 찍힌 건만 집계
+  // (order_type이 없는 건 = 관리자가 직접 추가한 예약 등, 이 통계 대상이 아님)
+  const orderTypeData = useMemo(() => {
+    const LABELS: Record<string, string> = { product: "상품 선택 결제", consult: "맞춤주문", link: "링크결제" };
+    const map: Record<string, number> = {};
+    for (const r of cardReservations) {
+      if (!r.order_type || !LABELS[r.order_type]) continue;
+      const name = LABELS[r.order_type];
+      map[name] = (map[name] ?? 0) + 1;
+    }
+    return Object.entries(map).map(([name, value]) => ({ name, value }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cardReservations]);
 
   // 월별 GMV 추이 (기간 선택: 6개월/1년)
   const [trendRange, setTrendRange] = useState<6 | 12>(6);
@@ -255,6 +280,7 @@ export default function OperatorDashboardClient({ companies, reservations, produ
             { key: "billing", label: "결제 이력" },
             { key: "settlements", label: "정산 관리" },
             { key: "verification", label: "검증 관리" },
+            { key: "reservationLogs", label: "예약 로그" },
           ] as const).map(tab => (
             <button
               key={tab.key}
@@ -268,6 +294,14 @@ export default function OperatorDashboardClient({ companies, reservations, produ
               {tab.label}
             </button>
           ))}
+          <a
+            href="/announcements"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px border-transparent text-gray-400 hover:text-gray-600 flex items-center gap-1"
+          >
+            공지사항 <span className="text-xs">↗</span>
+          </a>
         </div>
 
         {activeTab === "stores" && (
@@ -281,6 +315,7 @@ export default function OperatorDashboardClient({ companies, reservations, produ
               ownerUserId: c.ownerUserId,
               isSuspended: c.isSuspended,
               suspendReason: c.suspendReason,
+              operatorMemo: c.operator_memo,
               plan: c.subscription?.plan ?? null,
               billingKey: c.subscription?.billing_key ?? null,
               planExpiresAt: c.subscription?.plan_expires_at ?? null,
@@ -300,6 +335,10 @@ export default function OperatorDashboardClient({ companies, reservations, produ
 
         {activeTab === "verification" && (
           <VerificationTab />
+        )}
+
+        {activeTab === "reservationLogs" && (
+          <ReservationLogsTab logs={reservationLogs} />
         )}
 
         {activeTab === "overview" && (<>
@@ -380,6 +419,42 @@ export default function OperatorDashboardClient({ companies, reservations, produ
               </div>
             </div>
           </div>
+        </div>
+
+        {/* 결제 경로별 비율 */}
+        <div className="bg-white border border-gray-200 rounded-2xl p-6">
+          <h2 className="text-sm font-medium text-gray-900 mb-1">결제 경로별 비율</h2>
+          <p className="text-xs text-gray-400 mb-4">사이트 결제(카드) 건 기준 — 관리자가 직접 추가한 예약은 제외</p>
+          {orderTypeData.length === 0 ? (
+            <p className="text-sm text-gray-300 text-center py-8">데이터 없음</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart>
+                <Pie
+                  data={orderTypeData}
+                  cx="50%"
+                  cy="45%"
+                  innerRadius={55}
+                  outerRadius={85}
+                  paddingAngle={3}
+                  dataKey="value"
+                >
+                  {orderTypeData.map((entry, i) => (
+                    <Cell key={i} fill={ORDER_TYPE_COLORS[entry.name] ?? PIE_COLORS[i % PIE_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  formatter={(v) => {
+                    const total = orderTypeData.reduce((s, d) => s + d.value, 0);
+                    const pct = total > 0 ? ((Number(v) / total) * 100).toFixed(0) : 0;
+                    return [`${Number(v)}건 (${pct}%)`];
+                  }}
+                  contentStyle={{ borderRadius: 8, border: "1px solid #e5e7eb", fontSize: 12 }}
+                />
+                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, paddingTop: 4 }} formatter={(value) => <span style={{ color: "#555" }}>{value}</span>} />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
         </div>
 
         {/* 월별 거래액 추이 */}
