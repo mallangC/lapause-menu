@@ -18,10 +18,11 @@ import BusinessSettingsTab from "./BusinessSettingsTab";
 import OrderSettingsTab from "./OrderSettingsTab";
 import ReservationsTab from "./ReservationsTab";
 import StatsTab from "./StatsTab";
+import SettlementTab from "./SettlementTab";
 import PlanTab from "./PlanTab";
 import DashboardOverviewTab from "./DashboardOverviewTab";
 
-type Tab = "dashboard" | "reservations" | "products" | "stats" | "company" | "ordersettings" | "business" | "reservation" | "menusettings" | "settings" | "plan" | "myinfo";
+type Tab = "dashboard" | "reservations" | "products" | "stats" | "settlement" | "company" | "ordersettings" | "business" | "reservation" | "menusettings" | "settings" | "plan" | "myinfo";
 
 interface Props {
   slug: string;
@@ -30,16 +31,13 @@ interface Props {
   isOAuth: boolean;
   profileName: string;
   profilePhone: string;
+  twoFactorEnabled: boolean;
   companyId: string;
   companyName: string;
   logoImage: string | null;
   themeBg: string;
   themeAccent: string;
   initialProducts: Product[];
-  homeFeaturedImage: string | null;
-  homeAllImage: string | null;
-  homeSeasonImage: string | null;
-  homeConsultImage: string | null;
   locationUrl: string | null;
   kakaoChannelUrl: string | null;
   instagramUrl: string | null;
@@ -57,7 +55,7 @@ interface Props {
 }
 
 
-export default function DashboardClient({ slug, userId, userEmail, isOAuth, profileName, profilePhone, companyId, companyName, logoImage, themeBg, themeAccent, initialProducts, homeFeaturedImage, homeAllImage, homeSeasonImage, homeConsultImage, locationUrl, kakaoChannelUrl, instagramUrl, youtubeUrl, companyPhone, hiddenProductTypes, hiddenSeasons, consultEnabled, plan, subscriptionPlan, cancelAtPeriodEnd, trialEndsAt, planExpiresAt, hasBillingKey }: Props) {
+export default function DashboardClient({ slug, userId, userEmail, isOAuth, profileName, profilePhone, twoFactorEnabled, companyId, companyName, logoImage, themeBg, themeAccent, initialProducts, locationUrl, kakaoChannelUrl, instagramUrl, youtubeUrl, companyPhone, hiddenProductTypes, hiddenSeasons, consultEnabled, plan, subscriptionPlan, cancelAtPeriodEnd, trialEndsAt, planExpiresAt, hasBillingKey }: Props) {
   const searchParams = useSearchParams();
   const initialTab = (searchParams.get("tab") as Tab | null) ?? "dashboard";
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
@@ -163,7 +161,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
 
   const handleConsultToggle = (enabled: boolean) => {
     setCurrentConsultEnabled(enabled);
-    if (!enabled && activeTab === "stats") setActiveTab("reservations");
+    if (!enabled && (activeTab === "stats" || activeTab === "settlement")) setActiveTab("reservations");
   };
 
   const mainTabs: { key: Tab; label: string; statsOnly?: boolean }[] = [
@@ -171,6 +169,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
     { key: "reservations", label: "예약 관리" },
     { key: "products", label: "상품 관리" },
     { key: "stats", label: "통계", statsOnly: true },
+    { key: "settlement", label: "정산", statsOnly: true },
     { key: "plan", label: "요금제" },
   ];
 
@@ -245,6 +244,20 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
                 {tab.label}
               </button>
             ))}
+            <Link
+              href="/notice"
+              target="_blank"
+              className="px-4 py-2.5 text-xs font-medium whitespace-nowrap border-b-2 border-transparent text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              사용법 →
+            </Link>
+            <Link
+              href="/announcements"
+              target="_blank"
+              className="px-4 py-2.5 text-xs font-medium whitespace-nowrap border-b-2 border-transparent text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              공지사항 →
+            </Link>
           </div>
         </div>
       </div>
@@ -305,6 +318,16 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
                 className="flex items-center justify-between px-4 py-2.5 rounded-lg text-sm text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors"
               >
                 사용법
+                <span className="text-sm font-semibold">→</span>
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/announcements"
+                target="_blank"
+                className="flex items-center justify-between px-4 py-2.5 rounded-lg text-sm text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                공지사항
                 <span className="text-sm font-semibold">→</span>
               </Link>
             </li>
@@ -376,17 +399,15 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
           )}
 
           {activeTab === "reservations" && (
-            <div className="bg-white border border-gray-200 rounded-xl p-6">
-              <ReservationsTab
-                companyId={companyId}
-                allReservations={allReservations}
-                setAllReservations={setAllReservations}
-                loading={reservationsLoading}
-                onRefresh={fetchReservations}
-                initialStatusFilter={reservationStatusFilter}
-                onClearStatusFilter={() => setReservationStatusFilter(undefined)}
-              />
-            </div>
+            <ReservationsTab
+              companyId={companyId}
+              allReservations={allReservations}
+              setAllReservations={setAllReservations}
+              loading={reservationsLoading}
+              onRefresh={fetchReservations}
+              initialStatusFilter={reservationStatusFilter}
+              onClearStatusFilter={() => setReservationStatusFilter(undefined)}
+            />
           )}
 
           {/* 상품관리: 항상 마운트, 비활성 시 hidden으로 숨김 (캐싱) */}
@@ -415,8 +436,12 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
           </div>
 
           {activeTab === "stats" && (
+            <StatsTab companyId={companyId} />
+          )}
+
+          {activeTab === "settlement" && (
             <div className="bg-white border border-gray-200 rounded-xl p-6">
-              <StatsTab companyId={companyId} />
+              <SettlementTab companyId={companyId} />
             </div>
           )}
 
@@ -487,11 +512,6 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
                 companyId={companyId}
                 initialBg={themeBg}
                 initialAccent={themeAccent}
-                initialFeaturedImage={homeFeaturedImage}
-                initialAllImage={homeAllImage}
-                initialSeasonImage={homeSeasonImage}
-                initialConsultImage={homeConsultImage}
-                consultEnabled={consultEnabled}
                 onThemeChange={(bg, accent) => setThemeVars(generateThemeVars(bg, accent))}
               />
             </div>
@@ -520,6 +540,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
                 isOAuth={isOAuth}
                 profileName={profileName}
                 profilePhone={profilePhone}
+                initialTwoFactorEnabled={twoFactorEnabled}
               />
             </div>
           )}

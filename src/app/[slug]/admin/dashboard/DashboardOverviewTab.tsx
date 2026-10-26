@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import QRCode from "qrcode";
 import { createClient } from "@/lib/supabase/client";
 
 interface Props {
@@ -23,6 +24,7 @@ interface Settings {
   delivery_enabled: boolean;
   message_card_enabled: boolean;
   shopping_bag_enabled: boolean;
+  preservative_enabled: boolean;
   mail_order_number: string | null;
   sold_count: number | null;
 }
@@ -33,6 +35,14 @@ interface ReservationCounts {
   완료: number;
   취소: number;
   total: number;
+}
+
+interface TodayItem {
+  id: string;
+  orderer_name: string;
+  desired_time: string | null;
+  status: string;
+  delivery_type: string;
 }
 
 const consultApplyLabels: Record<string, { label: string; color: string }> = {
@@ -81,8 +91,11 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
   const [settings, setSettings] = useState<Settings | null>(null);
   const [companyPhone, setCompanyPhone] = useState<string | null>(null);
   const [reservationCounts, setReservationCounts] = useState<ReservationCounts>({ 미확인: 0, 준비중: 0, 완료: 0, 취소: 0, total: 0 });
+  const [todayItems, setTodayItems] = useState<TodayItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const supabase = createClient();
 
   const load = useCallback(async () => {
@@ -92,11 +105,12 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
     const monthStart = `${y}-${String(m).padStart(2, "0")}-01`;
     const lastDay = new Date(y, m, 0).getDate();
     const monthEnd = `${y}-${String(m).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+    const todayStr = `${y}-${String(m).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
-    const [{ data: s }, { data: company }, { data: reservations }] = await Promise.all([
+    const [{ data: s }, { data: company }, { data: reservations }, { data: today }] = await Promise.all([
       supabase
         .from("company_settings")
-        .select("consult_enabled, consult_apply_status, business_verified_at, bank_account_image_url, bank_name, bank_account, bank_holder, address, delivery_enabled, message_card_enabled, shopping_bag_enabled, mail_order_number, sold_count")
+        .select("consult_enabled, consult_apply_status, business_verified_at, bank_account_image_url, bank_name, bank_account, bank_holder, address, delivery_enabled, message_card_enabled, shopping_bag_enabled, preservative_enabled, mail_order_number, sold_count")
         .eq("company_id", companyId)
         .single(),
       supabase
@@ -111,6 +125,13 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
         .is("deleted_at", null)
         .gte("desired_date", monthStart)
         .lte("desired_date", monthEnd),
+      supabase
+        .from("reservations")
+        .select("id, orderer_name, desired_time, status, delivery_type")
+        .eq("company_id", companyId)
+        .is("deleted_at", null)
+        .eq("desired_date", todayStr)
+        .order("desired_time", { ascending: true }),
     ]);
 
     if (s) setSettings(s);
@@ -125,6 +146,7 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
       }
       setReservationCounts(counts);
     }
+    if (today) setTodayItems(today as TodayItem[]);
     setLoading(false);
   }, [companyId]);
 
@@ -136,6 +158,12 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
     navigator.clipboard.writeText(menuUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleShowQr = async () => {
+    const url = await QRCode.toDataURL(menuUrl, { width: 512, margin: 2 });
+    setQrDataUrl(url);
+    setShowQrModal(true);
   };
 
   if (loading) return <div className="py-16 text-center text-sm text-gray-300">불러오는 중...</div>;
@@ -160,20 +188,26 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
 
       {/* 통신판매업 미신고 경고 */}
       {!mailOrderNumber && (
-        <div className="bg-red-50 border border-red-200 rounded-2xl py-4 px-4 -mx-4 flex items-center justify-between gap-3 md:mx-0">
+        <div className={`rounded-2xl py-4 px-4 -mx-4 flex items-center justify-between gap-3 md:mx-0 border ${
+          soldCount >= 31 ? "bg-red-50 border-red-200" : "bg-yellow-50 border-yellow-200"
+        }`}>
           <div>
-            <p className="text-sm font-semibold text-red-700">현재 통신판매업 신고가 되어있지 않습니다</p>
-            <p className="text-xs text-red-500 mt-0.5">
-              {soldCount >= 30
-                ? "판매 수량이 30개를 초과해 판매가 정지되었습니다. 통신판매업 신고번호를 등록해주세요."
-                : "신고번호를 등록하지 않으면 30개 판매 시 판매가 자동으로 정지됩니다."}
+            <p className={`text-sm font-semibold ${soldCount >= 31 ? "text-red-700" : "text-yellow-700"}`}>현재 통신판매업 신고가 되어있지 않습니다</p>
+            <p className={`text-xs mt-0.5 ${soldCount >= 31 ? "text-red-500" : "text-yellow-600"}`}>
+              {soldCount >= 50
+                ? "판매 수량이 50개를 초과해 판매가 정지되었습니다. 통신판매업 신고번호를 등록해주세요."
+                : soldCount >= 31
+                ? "판매 수량이 31개를 넘었습니다. 50개 판매 시 자동으로 판매가 정지됩니다. 통신판매업 신고번호를 등록해주세요."
+                : "신고번호를 등록하지 않으면 50개 판매 시 판매가 자동으로 정지됩니다."}
             </p>
           </div>
           <button
             onClick={() => onNavigate("ordersettings")}
-            className="shrink-0 text-sm font-bold text-red-600 hover:text-red-700 transition-colors"
+            className={`shrink-0 text-sm font-bold transition-colors ${
+              soldCount >= 31 ? "text-red-600 hover:text-red-700" : "text-yellow-700 hover:text-yellow-800"
+            }`}
           >
-            {Math.min(soldCount, 30)}/30 →
+            {Math.min(soldCount, 50)}/50 →
           </button>
         </div>
       )}
@@ -186,6 +220,12 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button
+            onClick={handleShowQr}
+            className="px-3 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-600 hover:bg-gray-50 transition-colors"
+          >
+            QR 코드
+          </button>
+          <button
             onClick={handleCopy}
             className="px-3 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-600 hover:bg-gray-50 transition-colors"
           >
@@ -194,7 +234,88 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
         </div>
       </div>
 
+      {showQrModal && qrDataUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setShowQrModal(false)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-xs p-6 space-y-4 text-center" onClick={(e) => e.stopPropagation()}>
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900">매장 QR 코드</h3>
+              <p className="text-xs text-gray-400 mt-1 break-all font-mono">{menuUrl}</p>
+            </div>
+            <img src={qrDataUrl} alt="매장 QR 코드" className="w-full rounded-xl border border-gray-100" />
+            <div className="flex gap-2">
+              <a
+                href={qrDataUrl}
+                download={`${slug}-qr.png`}
+                className="flex-1 bg-gold-500 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-gold-600 transition-colors"
+              >
+                이미지 저장
+              </a>
+              <button
+                type="button"
+                onClick={() => setShowQrModal(false)}
+                className="flex-1 border border-gray-200 text-gray-500 py-2.5 rounded-xl text-sm hover:border-gray-400 transition-colors"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-transparent -mx-4 md:gap-4 md:mx-0">
+
+        {/* 오늘 처리할 예약 */}
+        <div className="bg-white py-4 px-4 md:rounded-2xl md:px-5 md:col-span-2">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700">오늘 처리할 예약</h3>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {todayItems.length === 0
+                  ? "오늘 예정된 예약이 없습니다"
+                  : `총 ${todayItems.length}건 · 대기 ${todayItems.filter((i) => i.status === "미확인" || i.status === "준비중").length}건`}
+              </p>
+            </div>
+            <button
+              onClick={() => onNavigate("reservations")}
+              className="text-xs text-gray-400 hover:text-gold-500 transition-colors shrink-0"
+            >
+              전체보기 →
+            </button>
+          </div>
+          {todayItems.length > 0 && (
+            <div className="space-y-1.5">
+              {todayItems.slice(0, 4).map((item) => {
+                const statusStyle =
+                  item.status === "미확인" ? "bg-red-50 text-red-500"
+                  : item.status === "준비중" ? "bg-blue-50 text-blue-500"
+                  : item.status === "픽업/배송완료" ? "bg-green-50 text-green-600"
+                  : "bg-gray-100 text-gray-400";
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => onNavigate("reservations", item.status)}
+                    className="w-full flex items-center gap-2.5 bg-gray-50 rounded-xl py-2.5 px-3 hover:bg-gray-100 transition-colors text-left"
+                  >
+                    <span className="text-xs text-gray-400 w-11 shrink-0">{item.desired_time?.slice(0, 5) ?? "--:--"}</span>
+                    <span className="text-sm text-gray-700 flex-1 min-w-0 truncate">{item.orderer_name}</span>
+                    <span className="text-xs text-gray-400 shrink-0">{item.delivery_type}</span>
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${statusStyle}`}>
+                      {item.status === "픽업/배송완료" ? "완료" : item.status}
+                    </span>
+                  </button>
+                );
+              })}
+              {todayItems.length > 4 && (
+                <button
+                  onClick={() => onNavigate("reservations")}
+                  className="w-full text-center text-xs text-gray-400 hover:text-gold-500 transition-colors py-1.5"
+                >
+                  +{todayItems.length - 4}건 더보기
+                </button>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* 예약 현황 (오늘~30일) */}
         <div className="bg-white py-4 px-4 md:rounded-2xl md:px-5">
@@ -244,6 +365,7 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
           <StatusBadge on={settings?.delivery_enabled ?? false} label="배송" />
           <StatusBadge on={settings?.message_card_enabled ?? false} label="메시지 카드" />
           <StatusBadge on={settings?.shopping_bag_enabled ?? false} label="쇼핑백" />
+          <StatusBadge on={settings?.preservative_enabled ?? false} label="생화 수명연장제" />
         </div>
 
         {/* 맞춤 주문 신청 상태 */}
