@@ -7,9 +7,13 @@ interface Env {
   INTERNAL_API_SECRET: string;
 }
 
+interface ScheduledEvent {
+  cron: string;
+}
+
 export default {
   ...nextWorker,
-  async scheduled(_event: unknown, env: Env, _ctx: unknown) {
+  async scheduled(event: ScheduledEvent, env: Env, _ctx: unknown) {
     // Supabase 슬립 방지용 keep-alive
     await fetch(
       `${env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/companies?select=id&limit=1`,
@@ -21,14 +25,28 @@ export default {
       }
     );
 
-    // 체험 종료·구독 만료된 매장 자동 결제/재시도/강등 처리
-    try {
-      await fetch("https://www.flo-aide.com/api/cron/billing-renew", {
-        method: "POST",
-        headers: { "x-internal-secret": env.INTERNAL_API_SECRET },
-      });
-    } catch (err) {
-      console.error("[scheduled] billing-renew 호출 실패:", err);
+    // 매일 18:00 UTC(KST 03:00) — 체험 종료·구독 만료된 매장 자동 결제/재시도/강등 처리
+    if (event.cron === "0 18 * * *") {
+      try {
+        await fetch("https://www.flo-aide.com/api/cron/billing-renew", {
+          method: "POST",
+          headers: { "x-internal-secret": env.INTERNAL_API_SECRET },
+        });
+      } catch (err) {
+        console.error("[scheduled] billing-renew 호출 실패:", err);
+      }
+    }
+
+    // 매일 16:00 UTC(KST 01:00) — 예약일이 지났는데 미확정 상태인 예약 자동 완료 처리
+    if (event.cron === "0 16 * * *") {
+      try {
+        await fetch("https://www.flo-aide.com/api/cron/auto-complete-reservations", {
+          method: "POST",
+          headers: { "x-internal-secret": env.INTERNAL_API_SECRET },
+        });
+      } catch (err) {
+        console.error("[scheduled] auto-complete-reservations 호출 실패:", err);
+      }
     }
   },
 };

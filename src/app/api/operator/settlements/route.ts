@@ -90,6 +90,11 @@ export async function POST(request: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
+  const { data: companyRow } = await adminClient.from("companies").select("is_demo").eq("id", company_id).single();
+  if (companyRow?.is_demo) {
+    return NextResponse.json({ error: "데모 매장은 정산 대상이 아닙니다." }, { status: 400 });
+  }
+
   const { data: reservations, error: rErr } = await adminClient
     .from("reservations")
     .select("id, final_price")

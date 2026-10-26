@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createServerAuthClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
+import { subtractBusinessDays } from "@/lib/businessDays";
+import { PLATFORM_FEE_RATE } from "@/lib/constants";
 
 async function verifyOperator() {
   const supabase = await createServerAuthClient();
@@ -26,7 +28,7 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url);
   let period_start = searchParams.get("period_start");
-  const period_end = searchParams.get("period_end");
+  let period_end = searchParams.get("period_end");
 
   // 마지막 정산 완료일 조회 (자동 시작일용)
   const { data: lastSettlement } = await adminClient
@@ -39,7 +41,8 @@ export async function GET(request: NextRequest) {
 
   const lastSettledDate = lastSettlement?.period_end?.slice(0, 10) ?? null;
 
-  // 시작일 미지정 시 마지막 정산일 다음 날 자동 설정
+  // 시작일은 안내용(배너 표시)으로만 사용 — 실제 조회 필터에는 하한선을 걸지 않습니다.
+  // (결제일이 오래됐어도 settlement_id가 비어있는 건은 항상 다시 잡혀야 장기 예약 건이 누락되지 않습니다.)
   if (!period_start) {
     if (lastSettledDate) {
       const next = new Date(lastSettledDate);
@@ -50,29 +53,51 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // 토스 정산(영업일 기준 4일) 전에 미리 지급하지 않도록 권장 종료일 계산
+  const recommendedEnd = subtractBusinessDays(new Date(), 4).toISOString().slice(0, 10);
+
   // 종료일만 입력하는 경우 허용 (시작일은 자동)
   if (!period_end) {
-    return NextResponse.json({ lastSettledDate, autoStart: period_start });
+    return NextResponse.json({ lastSettledDate, autoStart: period_start, recommendedEnd });
   }
 
-  // 미정산 결제 완료 예약 조회
+  // 토스 정산 전에 선지급되지 않도록, 종료일이 권장일(영업일 4일 전)보다 늦으면 강제로 당겨서 조회
+  let clamped = false;
+  if (period_end > recommendedEnd) {
+    period_end = recommendedEnd;
+    clamped = true;
+  }
+
+  // 미정산 결제 완료 예약 조회 (하한선 없이, 결제 승인일 기준 종료일까지의 모든 미정산 건)
+  // 링크결제는 예약 row 생성(created_at)과 실제 결제 승인 시점이 다를 수 있어 paid_at을 우선 사용하고,
+  // paid_at이 없는 과거 데이터(컬럼 추가 이전 결제 건)만 created_at으로 대체합니다.
   const { data: reservations, error } = await adminClient
     .from("reservations")
-    .select("id, company_id, final_price")
+    .select("id, company_id, final_price, paid_at, created_at")
     .eq("paid", true)
     .not("payment_id", "is", null)
     .is("settlement_id", null)
     .is("deleted_at", null)
-    .eq("status", "픽업/배송완료")
-    .gte("created_at", `${period_start}T00:00:00`)
-    .lte("created_at", `${period_end}T23:59:59`);
+    .eq("status", "픽업/배송완료");
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  if (!reservations?.length) return NextResponse.json([]);
+
+  // 데모 매장은 실제 돈이 오가지 않으므로 정산 대상에서 완전히 제외
+  const { data: demoCompanies } = await adminClient.from("companies").select("id").eq("is_demo", true);
+  const demoCompanyIds = new Set((demoCompanies ?? []).map((c) => c.id));
+
+  const cutoff = new Date(`${period_end}T23:59:59`).getTime();
+  const eligible = (reservations ?? []).filter((r) => {
+    if (demoCompanyIds.has(r.company_id)) return false;
+    const effective = new Date(r.paid_at ?? r.created_at).getTime();
+    return effective <= cutoff;
+  });
+
+  if (!eligible.length) return NextResponse.json([]);
 
   // company_id별 집계
   const companyMap = new Map<string, { count: number; total: number; reservationIds: string[] }>();
-  for (const r of reservations) {
+  for (const r of eligible) {
     const existing = companyMap.get(r.company_id) ?? { count: 0, total: 0, reservationIds: [] };
     existing.count += 1;
     existing.total += r.final_price || 0;
@@ -101,8 +126,8 @@ export async function GET(request: NextRequest) {
       business_number: settings?.business_number ?? null,
       reservation_count: agg.count,
       total_amount: agg.total,
-      // 결제 수수료 2%(PG 1.65% + Flo.Aide 0.35%) 차감 후 실제 이체 금액
-      net_amount: Math.round(agg.total * 0.98),
+      // 결제 수수료(PG사 수수료 + Flo.Aide 마진) 차감 후 실제 이체 금액
+      net_amount: Math.round(agg.total * (1 - PLATFORM_FEE_RATE)),
       reservation_ids: agg.reservationIds,
     };
   });

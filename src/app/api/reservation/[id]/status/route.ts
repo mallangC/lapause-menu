@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { sendReservationReceived, sendReservationCancelled } from "@/lib/solapi";
+import { logReservationChange } from "@/lib/reservationLog";
 
 // 결제 시점에 따라 승인에 쓰인 시크릿 키가 다를 수 있어(위젯 전환 이전/이후), 위젯 키로 먼저 시도하고
 // 키 인증 오류(401)일 때만 구버전 API 개별 연동 키로 재시도한다.
@@ -25,6 +26,17 @@ async function tossCancelPayment(paymentId: string, cancelReason: string) {
   return { ok: false as const, data: lastData };
 }
 
+// 허용된 상태 전이만 통과시킨다. 미확인 → 준비중 확인 단계를 건너뛰고 바로 제작완료/픽업완료로
+// 점프시키는 것(정산 자격을 실제 처리 전에 얻는 수단으로 악용 가능)을 막기 위함.
+// 준비중 → 픽업/배송완료는 제작완료 단계를 생략해도 되는 정상 플로우라 허용한다.
+const ALLOWED_TRANSITIONS: Record<string, string[]> = {
+  "미확인": ["준비중", "취소"],
+  "준비중": ["제작완료", "픽업/배송완료", "취소"],
+  "제작완료": ["픽업/배송완료", "취소"],
+  "픽업/배송완료": ["취소"],
+  "취소": [],
+};
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -40,7 +52,7 @@ export async function PATCH(
 
   // 소유권 확인
   const { data: resCheck } = await supabase
-    .from("reservations").select("company_id").eq("id", id).single();
+    .from("reservations").select("company_id, status").eq("id", id).single();
   if (!resCheck) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const { data: profile } = await supabase.from("profiles").select("role").eq("user_id", user.id).single();
@@ -50,15 +62,28 @@ export async function PATCH(
     if (!company) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  // 상태 전이 유효성 검증 (클라이언트가 보낸 previousStatus가 아니라 DB의 실제 현재 상태 기준)
+  const currentStatus = resCheck.status;
+  if (status !== currentStatus) {
+    const allowedNext = ALLOWED_TRANSITIONS[currentStatus] ?? [];
+    if (!allowedNext.includes(status)) {
+      return NextResponse.json(
+        { error: `'${currentStatus}' 상태에서 '${status}'(으)로 바로 변경할 수 없습니다.` },
+        { status: 400 }
+      );
+    }
+  }
+
   // 취소 시 결제 방식에 따라 환불 처리
   if (status === "취소") {
     const { data: reservation } = await supabase
       .from("reservations")
-      .select("payment_id, paid")
+      .select("payment_id, paid, settlement_id")
       .eq("id", id)
       .single();
 
-    if (reservation?.payment_id) {
+    // 이미 정산(매장에 지급 완료)된 예약은 자동 환불하지 않는다 — 운영자가 직접 처리
+    if (reservation?.payment_id && !reservation.settlement_id) {
       // 토스 카드 결제 → 환불 시도, 실패 시 상태 변경 차단
       try {
         const refundResult = await tossCancelPayment(reservation.payment_id, cancelReason ?? "관리자 취소");
@@ -77,7 +102,7 @@ export async function PATCH(
         );
       }
     }
-    // payment_id 없는 경우 (계좌이체, 매장 결제, 직접 추가 등) → 환불 처리 없이 상태만 변경
+    // payment_id 없는 경우(계좌이체, 매장 결제, 직접 추가 등)나 이미 정산된 경우 → 환불 처리 없이 상태만 변경
   }
 
   // 상태 업데이트
@@ -86,6 +111,19 @@ export async function PATCH(
 
   const { error } = await supabase.from("reservations").update(update).eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  if (status !== currentStatus) {
+    await logReservationChange({
+      reservationId: id,
+      companyId: resCheck.company_id,
+      actorUserId: user.id,
+      action: "status_change",
+      field: "status",
+      oldValue: currentStatus,
+      newValue: status,
+      reason: status === "취소" ? (cancelReason ?? null) : null,
+    });
+  }
 
   // 준비중 알림은 미확인에서 변경 시에만, 취소 알림은 어떤 상태에서든 발송
   if (previousStatus !== "미확인" && status !== "취소") {
@@ -104,9 +142,13 @@ export async function PATCH(
 
     const { data: companyRaw } = await supabase
       .from("companies")
-      .select("name, phone, settings:company_settings(address)")
+      .select("name, phone, is_demo, settings:company_settings(address)")
       .eq("id", reservation.company_id)
       .single();
+
+    // 데모 매장은 고객/사장님 모두에게 알림톡을 보내지 않는다.
+    if (companyRaw?.is_demo) return NextResponse.json({ ok: true });
+
     const company = companyRaw ? {
       name: companyRaw.name,
       phone: companyRaw.phone,
