@@ -12,13 +12,15 @@ interface Props {
   slug: string;
   customerName: string;
   trialEligible: boolean;
+  isNewSignup: boolean;
 }
 
-export default function PlanSelectClient({ companyId, slug, customerName, trialEligible }: Props) {
+export default function PlanSelectClient({ companyId, slug, customerName, trialEligible, isNewSignup }: Props) {
   const router = useRouter();
   const [pricingCycle, setPricingCycle] = useState<"monthly" | "annual">("annual");
   const [withdrawalAgreed, setWithdrawalAgreed] = useState(false);
-  const handleSuccess = () => router.push(`/${slug}/admin/onboarding`);
+  // 신규 가입자는 결제 완료 후 매장 정보(이름·URL)를 입력받는다. 기존 매장의 재구독은 바로 온보딩으로.
+  const handleSuccess = () => router.push(isNewSignup ? "/setup" : `/${slug}/admin/onboarding`);
 
   const handleSignOut = async () => {
     const supabase = createClient();
@@ -56,7 +58,7 @@ export default function PlanSelectClient({ companyId, slug, customerName, trialE
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-1" style={{ visibility: pricingCycle === "annual" ? "visible" : "hidden" }}>
             <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(201,169,110,0.15)", color: "#9a7a3a" }}>
-              연 ₩60,000 절약
+              30% 할인 · 연 ₩{(PLAN_PRICES.monthly * 12 - PLAN_PRICES.annualTotal).toLocaleString()} 절약
             </span>
           </div>
           <div className="flex items-end justify-center gap-1.5">

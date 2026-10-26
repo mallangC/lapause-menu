@@ -15,9 +15,11 @@ export default async function SetupPage() {
     .eq("owner_id", user.id)
     .single();
 
+  const isPendingSlug = companyRaw?.slug?.startsWith("pending-") ?? false;
+
   const company = companyRaw ? {
-    slug: companyRaw.slug,
-    name: companyRaw.name,
+    slug: isPendingSlug ? "" : companyRaw.slug,
+    name: isPendingSlug ? "" : companyRaw.name,
     logo_image: (companyRaw.settings as { logo_image?: string | null } | null)?.logo_image ?? null,
   } : null;
 

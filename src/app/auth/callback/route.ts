@@ -34,7 +34,8 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      return NextResponse.redirect(`${origin}/setup`);
+      // 매장이 아직 없는 신규 가입자 — 구독 결제 페이지로(결제 완료 후 매장 정보 입력)
+      return NextResponse.redirect(`${origin}/plan`);
     }
   }
 

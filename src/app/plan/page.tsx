@@ -13,12 +13,33 @@ export default async function PlanPage() {
     supabase.from("profiles").select("name").eq("user_id", user.id).single(),
   ]);
 
-  if (!companyRaw) redirect("/setup");
+  let companyId: string;
+  let companySlug: string;
+  let sub: { plan?: string; trial_ends_at?: string | null } | null;
 
-  const sub = companyRaw.subscription as { plan?: string; trial_ends_at?: string | null } | null;
+  // 아직 매장을 만들지 않은 신규 유저 — 구독 결제를 먼저 받기 위해 임시(placeholder) 매장을 생성.
+  // 실제 매장이름·URL은 결제 완료 후 /setup에서 입력받아 이 레코드를 업데이트한다.
+  if (!companyRaw) {
+    const placeholderSlug = `pending-${user.id.slice(0, 8)}-${Date.now().toString(36)}`;
+    const { data: created } = await supabase
+      .from("companies")
+      .insert({ name: "", slug: placeholderSlug, owner_id: user.id })
+      .select("id, slug")
+      .single();
+    if (!created) redirect("/login");
+    companyId = created.id;
+    companySlug = created.slug;
+    sub = null;
+  } else {
+    companyId = companyRaw.id;
+    companySlug = companyRaw.slug;
+    sub = companyRaw.subscription as { plan?: string; trial_ends_at?: string | null } | null;
+  }
+
   const plan = sub?.plan ?? "none";
-  const company = { id: companyRaw.id, slug: companyRaw.slug };
+  const company = { id: companyId, slug: companySlug };
   const trialEligible = !sub?.trial_ends_at;
+  const isNewSignup = company.slug.startsWith("pending-");
 
   if (plan && plan !== "none") {
     redirect(`/${company.slug}/admin/dashboard`);
@@ -34,7 +55,7 @@ export default async function PlanPage() {
             <p className="text-xs text-gold-500 mt-1 font-medium">첫 30일은 무료로 이용할 수 있습니다</p>
           )}
         </div>
-        <PlanSelectClient companyId={company.id} slug={company.slug} customerName={profile?.name ?? ""} trialEligible={trialEligible} />
+        <PlanSelectClient companyId={company.id} slug={company.slug} customerName={profile?.name ?? ""} trialEligible={trialEligible} isNewSignup={isNewSignup} />
       </div>
     </div>
   );
