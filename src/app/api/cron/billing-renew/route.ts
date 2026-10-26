@@ -4,8 +4,8 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 export const dynamic = "force-dynamic";
 
 const PLAN_AMOUNT: Record<string, number> = {
-  monthly: 14900,
-  annual: 118800,
+  monthly: 18900,
+  annual: 159000,
 };
 
 const MAX_RETRIES = 3;

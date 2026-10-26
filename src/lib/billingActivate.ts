@@ -62,8 +62,8 @@ export async function activateBillingKey(
   }
 
   // 재구독: 즉시 결제
-  const planAmount: Record<string, number> = { monthly: 14900, annual: 118800 };
-  const amount = planAmount[subscriptionPlan] ?? 14900;
+  const planAmount: Record<string, number> = { monthly: 18900, annual: 159000 };
+  const amount = planAmount[subscriptionPlan] ?? 18900;
   const planLabel = subscriptionPlan === "annual" ? "연간" : "월간";
   const orderId = `r${companyId.replace(/-/g, "").slice(0, 20)}${Date.now().toString().slice(-8)}`;
 

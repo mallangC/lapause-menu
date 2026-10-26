@@ -5,8 +5,8 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 export const dynamic = "force-dynamic";
 
 const PLAN_AMOUNT: Record<string, number> = {
-  monthly: 14900,
-  annual: 118800,
+  monthly: 18900,
+  annual: 159000,
 };
 
 async function sendRefundEmail(to: string, companyName: string, plan: string | null, amount: number | null, reason: string) {
@@ -142,8 +142,8 @@ export async function POST(req: NextRequest) {
     const now = new Date();
     const usedDays = Math.floor((now.getTime() - paymentDate.getTime()) / 86400000);
     const usedMonths = Math.ceil(usedDays / 30);
-    const deduction = usedMonths * 14900;
-    const refundAmount = Math.max(0, 118800 - deduction);
+    const deduction = usedMonths * 18900;
+    const refundAmount = Math.max(0, 159000 - deduction);
 
     let refunded = false;
     if (refundAmount > 0) {

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import { PLAN_PRICES, PLAN_FEATURES } from "@/lib/constants";
+import { PLAN_PRICES, PLAN_FEATURES, PLATFORM_FEE_PERCENT_LABEL } from "@/lib/constants";
 
 // ────────────────────────────────────────────────
 // Scroll animation
@@ -80,7 +80,7 @@ const hero = { tag: "전자 메뉴판 & 예약 관리", headline: "상담 시간
 const capabilities = [
   { title: "전자 메뉴판", desc: "앱 없이 링크만으로 상품 카탈로그를 공유하세요.", img: "/landing/cap-menu.webp", mobileImg: "/landing/cap-menu-m.webp" },
   { title: "맞춤 주문", desc: "고객이 직접 꽃 종류, 예산, 색상을 선택합니다.", img: "/landing/cap-order.webp", mobileImg: "/landing/cap-order-m.webp" },
-  { title: "링크결제", desc: "전화·DM으로 받은 주문도 결제 링크 하나로 카드 결제까지 받으세요.", img: "", mobileImg: "" },
+  { title: "링크결제", desc: "전화·DM으로 받은 주문도 결제 링크 하나로 카드 결제까지 받으세요.", img: "/landing/cap-paylink.webp", mobileImg: "/landing/cap-paylink-m.webp" },
   { title: "예약 관리", desc: "월별로 모든 예약을 한눈에 확인하세요.", img: "/landing/cap-reservation.webp", mobileImg: "/landing/cap-reservation-m.webp" },
   { title: "카카오 알림", desc: "예약 확인, 확정, 취소 알림을 자동으로 발송합니다.", img: "/landing/cap-kakao.webp", mobileImg: "/landing/cap-kakao-m.webp" },
   { title: "매출 분석", desc: "어떤 상품이 잘 팔리는지 데이터로 확인하세요.", img: "/landing/cap-stats.webp", mobileImg: "/landing/cap-stats-m.webp" },
@@ -104,7 +104,7 @@ const faqs = [
   { q: "고객이 예약하면 제가 직접 확정해야 하나요, 아니면 자동으로 되나요?", a: "기본적으로 관리자가 직접 확정하는 방식입니다. 예약 요청이 들어오면 알림을 받고, 관리 페이지에서 판매 가능한 예약건인지 확인 후 확정 또는 취소 처리를 할 수 있습니다." },
   { q: "메뉴에 가격을 표시하지 않을 수 있나요?", a: "네. 상품을 추가할 때 가격을 입력하지 않으면 가격이 표시되지 않습니다." },
   { q: "카카오 알림은 어떻게 작동하나요?", a: "고객이 예약을 완료하면 관리자에게, 관리자가 예약을 확정하거나 취소하면 고객 카카오톡으로 알림이 발송됩니다." },
-  { q: "비용은 얼마인가요?", a: `첫 1개월은 무료 체험입니다. 이후 월간 플랜 월 ${PLAN_PRICES.monthly.toLocaleString()}원, 연간 플랜 월 ${PLAN_PRICES.annual.toLocaleString()}원(연 ${PLAN_PRICES.annualTotal.toLocaleString()}원 일괄 결제)으로 이용하실 수 있습니다. 두 플랜 모두 맞춤 주문·예약·통계·카카오 알림 등 모든 기능이 포함되며, 결제 수수료는 2%(카드 수수료 포함)이고 정책에 따라 변경될 수 있습니다.` },
+  { q: "비용은 얼마인가요?", a: `첫 1개월은 무료 체험입니다. 이후 월간 플랜 월 ${PLAN_PRICES.monthly.toLocaleString()}원, 연간 플랜 월 ${PLAN_PRICES.annual.toLocaleString()}원(연 ${PLAN_PRICES.annualTotal.toLocaleString()}원 일괄 결제, 월간 대비 약 30% 할인)으로 이용하실 수 있습니다. 두 플랜 모두 맞춤 주문·예약·통계·카카오 알림 등 모든 기능이 포함되며, 결제 수수료는 ${PLATFORM_FEE_PERCENT_LABEL}(카드 수수료, 부가세 포함)이고 정책에 따라 변경될 수 있습니다.` },
 ];
 
 export default function Landing() {
@@ -523,11 +523,11 @@ export default function Landing() {
                         <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                           {[
                             { label: "핑크색", hex: "#f472b6", active: true },
-                            { label: "하얀색", hex: "#f5f5f5", active: false },
+                            { label: "흰색", hex: "#ffffff", active: false },
                             { label: "보라색", hex: "#a855f7", active: false },
                           ].map((c) => (
                             <div key={c.label} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 999, fontSize: 12, border: `1px solid ${c.active ? "#b8934a" : "#e5e7eb"}`, background: c.active ? "#b8934a" : "transparent", color: c.active ? "white" : "#4b5563" }}>
-                              <span style={{ width: 10, height: 10, borderRadius: 999, background: c.hex, border: "1px solid rgba(255,255,255,0.4)", flexShrink: 0, display: "inline-block" }} />
+                              <span style={{ width: 10, height: 10, borderRadius: 999, background: c.hex, border: c.hex === "#ffffff" ? "1px solid #e5e7eb" : "1px solid rgba(255,255,255,0.4)", flexShrink: 0, display: "inline-block" }} />
                               {c.label}
                             </div>
                           ))}
@@ -690,7 +690,7 @@ export default function Landing() {
               <p className="text-[11px] md:text-[12px] tracking-[0.3em] uppercase mb-3 md:mb-5 font-medium" style={{ color: "#c9a96e" }}>예약 관리</p>
               <h2 className="font-semibold text-white leading-[1.15] mb-3 md:mb-5" style={{ fontSize: "clamp(1.5rem,4.5vw,3.4rem)", whiteSpace: "pre-line" }}>{"모든 예약을\n한눈에 관리하세요"}</h2>
               <p className="text-[13px] md:text-[15px] leading-relaxed mb-4 md:mb-6" style={{ color: "rgba(255,255,255,0.45)" }}>
-                언제 예약이 몰리는지 파악하고, 예약 확정·취소를 버튼 하나로 처리합니다. 확정하면 고객 카카오톡으로 알림이 자동 발송됩니다.
+                언제 예약이 몰리는지 파악하고 예약 확정·취소를 버튼 하나로 처리합니다. 확정하면 고객 카카오톡으로 알림이 자동 발송됩니다.
               </p>
               <ul className="space-y-2 md:space-y-3">
                 {["월별로 예약 현황 한눈에 파악", "예약 확정 시 카카오 알림 자동 발송", "인기 상품·매출 통계 분석"].map((item) => (
@@ -985,7 +985,7 @@ export default function Landing() {
                 <div className="text-center mb-8">
                   <div className="flex items-center justify-center mb-1" style={{ visibility: pricingCycle === "annual" ? "visible" : "hidden" }}>
                     <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(201,169,110,0.15)", color: "#9a7a3a" }}>
-                      연 ₩60,000 절약
+                      30% 할인 · 연 ₩{(PLAN_PRICES.monthly * 12 - PLAN_PRICES.annualTotal).toLocaleString()} 절약
                     </span>
                   </div>
                   <div className="flex items-end justify-center gap-1.5">

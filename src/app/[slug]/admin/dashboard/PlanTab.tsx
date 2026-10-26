@@ -422,7 +422,7 @@ export default function PlanTab({ companyId, customerName, plan, subscriptionPla
             {refundType === "partial" && (
               <p className="text-xs text-gray-500 bg-beige-50 rounded-xl p-3">
                 사용일수를 기준으로 월 단위로 공제 후 남은 금액이 환불됩니다.<br />
-                (공제: 사용 개월수 × ₩14,900)
+                (공제: 사용 개월수 × ₩{PLAN_PRICES.monthly.toLocaleString()})
               </p>
             )}
             <div>
@@ -504,7 +504,7 @@ function PlanCard({
       <div className="text-center mb-6">
         <div className="flex items-center justify-center mb-1" style={{ visibility: selectedCycle === "annual" ? "visible" : "hidden" }}>
           <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(201,169,110,0.15)", color: "#9a7a3a" }}>
-            연 ₩60,000 절약
+            30% 할인 · 연 ₩{(PLAN_PRICES.monthly * 12 - PLAN_PRICES.annualTotal).toLocaleString()} 절약
           </span>
         </div>
         <div className="flex items-end justify-center gap-1.5">

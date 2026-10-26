@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import * as XLSX from "xlsx";
+import { PLATFORM_FEE_PERCENT_LABEL, PG_FEE_PERCENT_LABEL } from "@/lib/constants";
 
 interface Company {
   id: string;
@@ -62,10 +63,10 @@ export default function SettlementsTab({ companies }: Props) {
   // 정산 대상 탭
   const now = new Date();
   const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  const threeDaysAgo = new Date(now); threeDaysAgo.setDate(now.getDate() - 3);
   const [periodStart, setPeriodStart] = useState("");
   const [periodEnd, setPeriodEnd] = useState("");
   const [lastSettledDate, setLastSettledDate] = useState<string | null>(null);
+  const [recommendedEnd, setRecommendedEnd] = useState<string | null>(null);
   const [initLoading, setInitLoading] = useState(true);
   const [pendingItems, setPendingItems] = useState<PendingItem[] | null>(null);
   const [pendingLoading, setPendingLoading] = useState(false);
@@ -96,6 +97,10 @@ export default function SettlementsTab({ companies }: Props) {
         const data = await res.json();
         setLastSettledDate(data.lastSettledDate ?? null);
         if (data.autoStart) setPeriodStart(data.autoStart);
+        if (data.recommendedEnd) {
+          setRecommendedEnd(data.recommendedEnd);
+          setPeriodEnd(data.recommendedEnd);
+        }
       }
       setInitLoading(false);
     })();
@@ -209,6 +214,67 @@ export default function SettlementsTab({ companies }: Props) {
     setTaxLoading(false);
   };
 
+  const handleDownloadTaxExcel = () => {
+    if (!history?.length) return;
+
+    const toSupply = (amountIncludingVat: number) => Math.round(amountIncludingVat / 1.1);
+
+    const rows = history.map((s) => {
+      const feeAmount = s.gross_amount - s.total_amount; // 수수료 합계 (2%, 부가세 포함)
+      const pgFee = feeAmount - s.margin_amount; // 토스 PG 수수료 (1.65%, 부가세 포함)
+      const feeSupply = toSupply(feeAmount);
+      const pgSupply = toSupply(pgFee);
+      const marginSupply = toSupply(s.margin_amount);
+      return {
+        매장명: s.company_name,
+        사업자번호: s.business_number ?? "",
+        정산기간: `${fmt(s.period_start)}~${fmt(s.period_end)}`,
+        결제총액: s.gross_amount,
+        수수료합계_2퍼센트: feeAmount,
+        수수료_공급가액: feeSupply,
+        수수료_부가세: feeAmount - feeSupply,
+        PG수수료_1_65퍼센트: pgFee,
+        PG수수료_공급가액: pgSupply,
+        PG수수료_부가세: pgFee - pgSupply,
+        순마진_0_35퍼센트: s.margin_amount,
+        순마진_공급가액: marginSupply,
+        순마진_부가세: s.margin_amount - marginSupply,
+        정산액: s.total_amount,
+        이체일: fmt(s.transferred_at),
+        세금계산서번호: s.tax_invoice_number ?? "",
+      };
+    });
+
+    const totalRow = {
+      매장명: "합계",
+      사업자번호: "",
+      정산기간: "",
+      결제총액: history.reduce((sum, s) => sum + s.gross_amount, 0),
+      수수료합계_2퍼센트: history.reduce((sum, s) => sum + (s.gross_amount - s.total_amount), 0),
+      수수료_공급가액: rows.reduce((sum, r) => sum + r.수수료_공급가액, 0),
+      수수료_부가세: rows.reduce((sum, r) => sum + r.수수료_부가세, 0),
+      PG수수료_1_65퍼센트: rows.reduce((sum, r) => sum + r.PG수수료_1_65퍼센트, 0),
+      PG수수료_공급가액: rows.reduce((sum, r) => sum + r.PG수수료_공급가액, 0),
+      PG수수료_부가세: rows.reduce((sum, r) => sum + r.PG수수료_부가세, 0),
+      순마진_0_35퍼센트: history.reduce((sum, s) => sum + s.margin_amount, 0),
+      순마진_공급가액: rows.reduce((sum, r) => sum + r.순마진_공급가액, 0),
+      순마진_부가세: rows.reduce((sum, r) => sum + r.순마진_부가세, 0),
+      정산액: history.reduce((sum, s) => sum + s.total_amount, 0),
+      이체일: "",
+      세금계산서번호: "",
+    };
+
+    const ws = XLSX.utils.json_to_sheet([...rows, totalRow]);
+    ws["!cols"] = [
+      { wch: 16 }, { wch: 14 }, { wch: 18 }, { wch: 12 }, { wch: 14 }, { wch: 12 }, { wch: 10 },
+      { wch: 14 }, { wch: 12 }, { wch: 10 }, { wch: 14 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 10 }, { wch: 16 },
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "세금계산");
+    XLSX.writeFile(wb, `세금계산_${historyMonth}.xlsx`);
+  };
+
   const fmt = (s: string | null) => s ? s.slice(0, 10) : "—";
   const fmtMoney = (n: number) => n.toLocaleString() + "원";
   const totalAmount = pendingItems?.reduce((sum, i) => sum + i.net_amount, 0) ?? 0;
@@ -251,16 +317,17 @@ export default function SettlementsTab({ companies }: Props) {
               <span className="text-blue-400 mt-px">ℹ</span>
               <div className="text-blue-700">
                 {lastSettledDate
-                  ? <>마지막 정산 완료일: <strong>{lastSettledDate}</strong> · 시작일이 자동 설정되었습니다.</>
-                  : <>이전 정산 내역이 없습니다. 시작일이 <strong>2024-01-01</strong>로 설정되었습니다.</>
+                  ? <>마지막 정산 완료일: <strong>{lastSettledDate}</strong></>
+                  : <>이전 정산 내역이 없습니다.</>
                 }
+                {" "}· 결제일이 오래된 건이라도 아직 정산하지 않은 건은 종료일 안에 있으면 항상 다시 조회됩니다.
               </div>
             </div>
           )}
 
           <div className="flex items-end gap-3 flex-wrap">
             <div>
-              <label className="block text-xs text-gray-400 mb-1">시작일 (자동)</label>
+              <label className="block text-xs text-gray-400 mb-1">시작일 (참고용, 조회에 영향 없음)</label>
               <input
                 type="date"
                 value={periodStart}
@@ -271,13 +338,12 @@ export default function SettlementsTab({ companies }: Props) {
             <span className="text-gray-400 pb-2">~</span>
             <div>
               <label className="block text-xs text-gray-400 mb-1">
-                종료일 <span className="text-orange-400">(PG 정산 기준: 3일 전까지 권장)</span>
+                종료일 <span className="text-orange-400">(토스 정산 기준: 영업일 4일 전까지 권장)</span>
               </label>
               <input
                 type="date"
                 value={periodEnd}
-                min={periodStart}
-                max={threeDaysAgo.toISOString().slice(0, 10)}
+                max={recommendedEnd ?? undefined}
                 onChange={e => { setPeriodEnd(e.target.value); setPendingItems(null); }}
                 className="border border-gray-200 rounded-lg px-3 py-2 text-sm"
               />
@@ -310,7 +376,7 @@ export default function SettlementsTab({ companies }: Props) {
                             <th className="text-left px-6 py-3 font-medium">예금주</th>
                             <th className="text-right px-6 py-3 font-medium">예약 수</th>
                             <th className="text-right px-6 py-3 font-medium">결제 금액</th>
-                            <th className="text-right px-6 py-3 font-medium">정산 금액 <span className="text-gray-300">(수수료 2% 차감)</span></th>
+                            <th className="text-right px-6 py-3 font-medium">정산 금액 <span className="text-gray-300">(수수료 {PLATFORM_FEE_PERCENT_LABEL} 차감)</span></th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
@@ -420,8 +486,18 @@ export default function SettlementsTab({ companies }: Props) {
                   <div className="bg-white border border-gray-200 rounded-2xl p-5">
                     <p className="text-xs text-gray-400 mb-1">Flo.Aide 순마진</p>
                     <p className="text-2xl font-semibold text-gold-600">{fmtMoney(history.reduce((s, i) => s + i.margin_amount, 0))}</p>
-                    <p className="text-xs text-gray-400 mt-1">수수료 2% 중 PG(1.65%) 제외분</p>
+                    <p className="text-xs text-gray-400 mt-1">수수료 {PLATFORM_FEE_PERCENT_LABEL} 중 PG({PG_FEE_PERCENT_LABEL}) 제외분</p>
                   </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <button
+                    onClick={handleDownloadTaxExcel}
+                    className="px-5 py-2.5 border border-gray-200 text-sm text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
+                  >
+                    <span>세금계산 엑셀 다운로드</span>
+                    <span className="text-xs text-gray-400">({historyMonth})</span>
+                  </button>
                 </div>
 
               <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
