@@ -8,7 +8,7 @@ export const FLOWER_COLORS = [
   "초록색",
   "파란색",
   "보라색",
-  "하얀색",
+  "흰색",
   "검은색",
 ] as const;
 
@@ -24,7 +24,7 @@ export const FLOWER_COLOR_MAP: Record<string, string> = {
   초록색: "#22c55e",
   파란색: "#3b82f6",
   보라색: "#a855f7",
-  하얀색: "#f5f5f5",
+  흰색: "#ffffff",
   검은색: "#1c1917",
 };
 

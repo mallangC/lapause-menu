@@ -106,7 +106,7 @@ function MultiSelectDropdown({ value, options, onToggle, placeholder, colorMap, 
               >
                 <span className="flex items-center gap-2">
                   {colorMap && (
-                    <span className="w-3.5 h-3.5 rounded-full shrink-0 border border-black/10" style={{ backgroundColor: colorMap[opt] ?? "#a8a29e" }} />
+                    <span className={`w-3.5 h-3.5 rounded-full shrink-0 border ${colorMap[opt] === "#ffffff" ? "border-gray-300 shadow-sm" : "border-black/10"}`} style={{ backgroundColor: colorMap[opt] ?? "#a8a29e" }} />
                   )}
                   {opt}
                 </span>

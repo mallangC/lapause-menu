@@ -79,7 +79,7 @@ export default function MobileFilter({ filter, setFilter, isOpen, onClose, hasFi
                   }`}
                 >
                   <span
-                    className="w-3 h-3 rounded-full shrink-0 border border-white/40"
+                    className={`w-3 h-3 rounded-full shrink-0 border ${color === "흰색" ? "border-gray-300 shadow-sm" : "border-white/40"}`}
                     style={{ backgroundColor: FLOWER_COLOR_MAP[color] }}
                   />
                   {color}

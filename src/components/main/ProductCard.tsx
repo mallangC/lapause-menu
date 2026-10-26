@@ -97,7 +97,7 @@ export default function ProductCard({ product, consultEnabled, slug }: ProductCa
               {product.flower_colors.map((color) => (
                 <span
                   key={color}
-                  className="w-3 h-3 rounded-full border border-gray-200 inline-block shrink-0"
+                  className={`w-3 h-3 rounded-full inline-block shrink-0 border ${color === "흰색" ? "border-gray-300 shadow-sm" : "border-gray-200"}`}
                   style={{ backgroundColor: FLOWER_COLOR_MAP[color] ?? "#a8a29e" }}
                   title={color}
                 />
