@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
+import SaveButton, { SaveButtonHandle } from "@/components/admin/SaveButton";
 
 interface Props {
   companyId: string;
@@ -26,10 +27,9 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
   const [instagramUrl, setInstagramUrl] = useState(initialInstagramUrl ?? "");
   const [youtubeUrl, setYoutubeUrl] = useState(initialYoutubeUrl ?? "");
   const [uploading, setUploading] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const saveBtnRef = useRef<SaveButtonHandle>(null);
   const supabase = createClient();
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -54,11 +54,8 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
     setUploading(false);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSave = async () => {
     setError(null);
-    setSuccess(false);
-    setLoading(true);
 
     const [{ error: updateError }, { error: settingsError }] = await Promise.all([
       supabase.from("companies").update({ name }).eq("id", companyId),
@@ -74,19 +71,16 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
     const combinedError = updateError || settingsError;
     if (combinedError) {
       setError(combinedError.message);
-    } else {
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
-      onSave(name, logoUrl, locationUrl || null, kakaoChannelUrl || null, instagramUrl || null, youtubeUrl || null);
+      return false;
     }
-    setLoading(false);
+    onSave(name, logoUrl, locationUrl || null, kakaoChannelUrl || null, instagramUrl || null, youtubeUrl || null);
   };
 
   return (
     <div className="max-w-md">
       <h2 className="text-xl font-medium text-gray-900 mb-6">매장 정보</h2>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={(e) => { e.preventDefault(); saveBtnRef.current?.trigger(); }} className="space-y-4">
         {error && (
           <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
         )}
@@ -196,19 +190,12 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
         </div>
 
         <div className="sticky bottom-0 bg-white border-t border-gray-100 -mx-0 pt-4 pb-1 flex items-center gap-3">
-          <button
-            type="submit"
-            disabled={loading || uploading}
-            className="bg-gold-500 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-gold-600 disabled:opacity-50 transition-colors"
-          >
-            {loading ? "저장 중..." : "저장"}
-          </button>
-          {success && (
-            <span className="text-sm text-green-600 flex items-center gap-1">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-              저장되었습니다.
-            </span>
-          )}
+          <SaveButton
+            ref={saveBtnRef}
+            onSave={handleSave}
+            disabled={uploading}
+            className="text-sm font-medium text-white bg-gold-500 hover:bg-gold-600"
+          />
         </div>
       </form>
     </div>

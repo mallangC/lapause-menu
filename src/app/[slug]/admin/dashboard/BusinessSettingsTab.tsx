@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { DayHours, BusinessHours, DateOverrides } from "@/lib/businessHours";
+import SaveButton from "@/components/admin/SaveButton";
 import DatePicker, { registerLocale } from "react-datepicker";
 import { ko } from "date-fns/locale";
 import "react-datepicker/dist/react-datepicker.css";
@@ -95,9 +96,7 @@ export default function BusinessSettingsTab({ companyId }: Props) {
   const [overrideDate, setOverrideDate] = useState<Date | null>(null);
   const [overrideOpen, setOverrideOpen] = useState("09:00");
   const [overrideClose, setOverrideClose] = useState("18:00");
-  const [minLeadTimes, setMinLeadTimes] = useState<Record<string, number>>({});
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [minLeadTimes, setMinLeadTimes] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
 
   const supabase = createClient();
@@ -116,7 +115,11 @@ export default function BusinessSettingsTab({ companyId }: Props) {
         if (data.date_overrides && typeof data.date_overrides === "object")
           setDateOverrides(pruneOverrides(data.date_overrides as DateOverrides));
         if (data.min_lead_times && typeof data.min_lead_times === "object")
-          setMinLeadTimes(data.min_lead_times as Record<string, number>);
+          setMinLeadTimes(
+            Object.fromEntries(
+              Object.entries(data.min_lead_times as Record<string, number>).map(([k, v]) => [k, String(v)])
+            )
+          );
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId]);
@@ -168,9 +171,7 @@ export default function BusinessSettingsTab({ companyId }: Props) {
   };
 
   const handleSave = async () => {
-    setLoading(true);
     setError(null);
-    setSuccess(false);
     const prunedOverrides = pruneOverrides(dateOverrides);
     setDateOverrides(prunedOverrides);
     const { error: err } = await supabase
@@ -179,15 +180,15 @@ export default function BusinessSettingsTab({ companyId }: Props) {
         business_hours: businessHours,
         closed_dates: closedDates,
         date_overrides: prunedOverrides,
-        min_lead_times: minLeadTimes,
+        min_lead_times: Object.fromEntries(
+          Object.entries(minLeadTimes).map(([k, v]) => [k, Number(v) || 0])
+        ),
       })
       .eq("company_id", companyId);
-    if (err) setError(err.message);
-    else {
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
+    if (err) {
+      setError(err.message);
+      return false;
     }
-    setLoading(false);
   };
 
   const formatDate = (dateStr: string) => {
@@ -207,7 +208,7 @@ export default function BusinessSettingsTab({ companyId }: Props) {
       <div className="space-y-3">
         <div>
           <h3 className="text-sm font-medium text-gray-700">당일 예약 시간 설정</h3>
-          <p className="text-xs text-gray-400 mt-0.5">현재 시각 기준 몇 시간 이후부터 예약 가능한지 설정합니다. (기본값: 2시간)</p>
+          <p className="text-xs text-gray-400 mt-0.5">유형별로 제작에 최소 몇 시간이 필요한지 입력하세요. (기본값: 2시간)</p>
         </div>
         <div className="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
           {["꽃다발", "꽃바구니", "센터피스", "화병꽂이", "기타"].map((type) => (
@@ -215,12 +216,20 @@ export default function BusinessSettingsTab({ companyId }: Props) {
               <span className="text-sm text-gray-700">{type}</span>
               <div className="flex items-center gap-1.5">
                 <input
-                  type="number"
-                  min={0}
-                  max={72}
-                  value={minLeadTimes[type] ?? 2}
-                  onChange={(e) => setMinLeadTimes((prev) => ({ ...prev, [type]: Number(e.target.value) }))}
-                  className="w-16 border border-gray-200 rounded-lg px-2 py-1 text-sm text-center focus:outline-none focus:border-gray-400 bg-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  type="text"
+                  inputMode="numeric"
+                  value={minLeadTimes[type] ?? "2"}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/\D/g, "").slice(0, 2);
+                    const clamped = digits === "" ? "" : String(Math.min(72, Number(digits)));
+                    setMinLeadTimes((prev) => ({ ...prev, [type]: clamped }));
+                  }}
+                  onBlur={() => {
+                    if ((minLeadTimes[type] ?? "") === "") {
+                      setMinLeadTimes((prev) => ({ ...prev, [type]: "0" }));
+                    }
+                  }}
+                  className="w-16 border border-gray-200 rounded-lg px-2 py-1 text-sm text-center focus:outline-none focus:border-gray-400 bg-white"
                 />
                 <span className="text-xs text-gray-400">시간</span>
               </div>
@@ -352,20 +361,10 @@ export default function BusinessSettingsTab({ companyId }: Props) {
       </div>
 
       <div className="sticky bottom-0 bg-white border-t border-gray-100 -mx-0 pt-4 pb-1 flex items-center gap-3">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={loading}
-          className="bg-gold-500 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-gold-600 disabled:opacity-50 transition-colors"
-        >
-          {loading ? "저장 중..." : "저장"}
-        </button>
-        {success && (
-          <span className="text-sm text-green-600 flex items-center gap-1">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-            저장되었습니다.
-          </span>
-        )}
+        <SaveButton
+          onSave={handleSave}
+          className="text-sm font-medium text-white bg-gold-500 hover:bg-gold-600"
+        />
       </div>
     </div>
   );

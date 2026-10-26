@@ -306,3 +306,13 @@ body {
   line-height: 1.8rem !important;
   margin: 0.1rem !important;
 }
+
+/* 저장 버튼 성공 체크마크 팝 애니메이션 */
+@keyframes check-pop {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.animate-check-pop {
+  animation: check-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}

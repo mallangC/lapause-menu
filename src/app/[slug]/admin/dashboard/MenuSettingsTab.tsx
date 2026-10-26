@@ -13,6 +13,9 @@ interface Props {
 
 type CustomCategory = { id: string; category_type: "product_type" | "season"; name: string; hidden: boolean };
 
+const MAX_PRODUCT_TYPES = 10;
+const MAX_SEASONS = 5;
+
 export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, initialHiddenSeasons, onSave }: Props) {
   const [hiddenProductTypes, setHiddenProductTypes] = useState<string[]>(initialHiddenProductTypes);
   const [hiddenSeasons, setHiddenSeasons] = useState<string[]>(initialHiddenSeasons);
@@ -52,8 +55,9 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
     const trimmed = name.trim();
     if (!trimmed) return;
     const builtins = type === "product_type" ? (PRODUCT_TYPES as readonly string[]) : (SEASONS as readonly string[]);
+    const hiddenBuiltins = type === "product_type" ? hiddenProductTypes : hiddenSeasons;
     const isDuplicate =
-      builtins.includes(trimmed) ||
+      (builtins.includes(trimmed) && !hiddenBuiltins.includes(trimmed)) ||
       customCategories.some((c) => c.category_type === type && c.name === trimmed);
     if (isDuplicate) { setDuplicateError(type); return; }
     setDuplicateError(null);
@@ -81,38 +85,43 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
     setCustomCategories((prev) => prev.filter((c) => c.id !== id));
   };
 
+  const activeProductTypeCount =
+    PRODUCT_TYPES.filter((type) => !hiddenProductTypes.includes(type)).length +
+    customCategories.filter((c) => c.category_type === "product_type" && !c.hidden).length;
+  const activeSeasonCount =
+    SEASONS.filter((season) => !hiddenSeasons.includes(season)).length +
+    customCategories.filter((c) => c.category_type === "season" && !c.hidden).length;
+
   return (
     <div className="space-y-8">
       <div>
         <h2 className="text-xl font-medium text-gray-900 mb-1">메뉴 설정</h2>
-        <p className="text-xs text-gray-400">클릭하면 고객 필터에서 숨깁니다. 직접 추가, 삭제도 가능합니다.</p>
+        <p className="text-xs text-gray-400">직접 추가, 삭제가 가능합니다. 기본 제공 항목도 삭제할 수 있습니다.</p>
       </div>
 
       {/* 상품 유형 */}
       <div>
-        <p className="text-sm font-medium text-gray-700 mb-2">상품 유형</p>
-        <div className="grid grid-cols-3 gap-2">
-          {PRODUCT_TYPES.map((type) => {
-            const isHidden = hiddenProductTypes.includes(type);
-            return (
+        <p className="text-sm font-medium text-gray-700 mb-2">
+          상품 유형 <span className="text-gray-400 font-normal">({activeProductTypeCount}/{MAX_PRODUCT_TYPES})</span>
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+          {PRODUCT_TYPES.filter((type) => !hiddenProductTypes.includes(type)).map((type) => (
+            <div key={type} className="relative flex items-center justify-center py-2 px-3 pr-7 rounded-lg border border-gray-200 text-sm text-gray-700">
+              <span className="truncate">{type}</span>
               <button
-                key={type}
                 onClick={() => toggleProductType(type)}
-                className={`py-2 px-3 rounded-lg border text-sm transition-colors ${
-                  isHidden
-                    ? "border-red-300 bg-red-50 text-red-500 font-medium"
-                    : "border-gray-200 text-gray-700 hover:border-gray-300"
-                }`}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors text-base leading-none"
+                title="삭제"
               >
-                {isHidden ? `${type} (숨김)` : type}
+                ×
               </button>
-            );
-          })}
+            </div>
+          ))}
           {customCategories.filter((c) => c.category_type === "product_type").map((cat) => (
             <div key={cat.id} className="relative">
               <button
                 onClick={() => toggleCustomHidden(cat.id)}
-                className={`w-full py-2 px-3 pr-7 rounded-lg border text-sm transition-colors ${
+                className={`w-full py-2 px-3 pr-7 rounded-lg border text-sm text-center truncate transition-colors ${
                   cat.hidden
                     ? "border-red-300 bg-red-50 text-red-500 font-medium"
                     : "border-gray-200 text-gray-700 hover:border-gray-300"
@@ -145,42 +154,40 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
               />
               {duplicateError === "product_type" && <p className="text-xs text-red-500 leading-tight">중복된 이름</p>}
             </div>
-          ) : (
+          ) : activeProductTypeCount < MAX_PRODUCT_TYPES ? (
             <button
               onClick={() => setShowProductTypeForm(true)}
               className="py-2 px-3 rounded-lg border border-dashed border-gray-300 text-gray-400 text-sm hover:border-gold-400 hover:text-gold-500 transition-colors"
             >
               +
             </button>
-          )}
+          ) : null}
         </div>
       </div>
 
       {/* 시즌 */}
       <div>
-        <p className="text-sm font-medium text-gray-700 mb-2">시즌</p>
-        <div className="grid grid-cols-3 gap-2">
-          {SEASONS.map((season) => {
-            const isHidden = hiddenSeasons.includes(season);
-            return (
+        <p className="text-sm font-medium text-gray-700 mb-2">
+          시즌 <span className="text-gray-400 font-normal">({activeSeasonCount}/{MAX_SEASONS})</span>
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+          {SEASONS.filter((season) => !hiddenSeasons.includes(season)).map((season) => (
+            <div key={season} className="relative flex items-center justify-center py-2 px-3 pr-7 rounded-lg border border-gray-200 text-sm text-gray-700">
+              <span className="truncate">{season}</span>
               <button
-                key={season}
                 onClick={() => toggleSeason(season)}
-                className={`py-2 px-3 rounded-lg border text-sm transition-colors ${
-                  isHidden
-                    ? "border-red-300 bg-red-50 text-red-500 font-medium"
-                    : "border-gray-200 text-gray-700 hover:border-gray-300"
-                }`}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors text-base leading-none"
+                title="삭제"
               >
-                {isHidden ? `${season} (숨김)` : season}
+                ×
               </button>
-            );
-          })}
+            </div>
+          ))}
           {customCategories.filter((c) => c.category_type === "season").map((cat) => (
             <div key={cat.id} className="relative">
               <button
                 onClick={() => toggleCustomHidden(cat.id)}
-                className={`w-full py-2 px-3 pr-7 rounded-lg border text-sm transition-colors ${
+                className={`w-full py-2 px-3 pr-7 rounded-lg border text-sm text-center truncate transition-colors ${
                   cat.hidden
                     ? "border-red-300 bg-red-50 text-red-500 font-medium"
                     : "border-gray-200 text-gray-700 hover:border-gray-300"
@@ -213,14 +220,14 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
               />
               {duplicateError === "season" && <p className="text-xs text-red-500 leading-tight">중복된 이름</p>}
             </div>
-          ) : (
+          ) : activeSeasonCount < MAX_SEASONS ? (
             <button
               onClick={() => setShowSeasonForm(true)}
               className="py-2 px-3 rounded-lg border border-dashed border-gray-300 text-gray-400 text-sm hover:border-gold-400 hover:text-gold-500 transition-colors"
             >
               +
             </button>
-          )}
+          ) : null}
         </div>
       </div>
     </div>
