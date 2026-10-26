@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
-  // 자사 도메인 요청만 허용
+  // 자사 도메인 요청만 허용 (로컬 개발 환경은 예외)
   const origin = req.headers.get("origin") ?? req.headers.get("referer") ?? "";
   const allowed = process.env.NEXT_PUBLIC_SITE_URL ?? "";
-  if (allowed && !origin.startsWith(allowed)) {
+  const isLocalDev = origin.startsWith("http://localhost") || origin.startsWith("http://127.0.0.1");
+  if (allowed && !origin.startsWith(allowed) && !isLocalDev) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

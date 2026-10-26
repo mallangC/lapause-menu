@@ -2,6 +2,15 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function updateSession(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // /:slug/admin 라우트가 아니면 로그인 여부와 무관한 공개 페이지/API이므로
+  // Supabase 세션 조회(네트워크 왕복)를 아예 생략한다 — Workers CPU 시간 절약
+  const slugMatch = pathname.match(/^\/([^/]+)\/admin(\/.*)?$/);
+  if (!slugMatch) {
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -29,28 +38,20 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { pathname } = request.nextUrl;
+  const slug = slugMatch[1];
+  const isLoginPage = pathname === `/${slug}/admin`;
 
-  // /:slug/admin 라우트 처리
-  const slugMatch = pathname.match(/^\/([^/]+)\/admin(\/.*)?$/);
-  if (slugMatch) {
-    const slug = slugMatch[1];
-    const isLoginPage = pathname === `/${slug}/admin`;
-
-    if (!isLoginPage && !user) {
-      // 미인증 사용자가 보호된 페이지 접근 → 로그인으로
-      const redirectUrl = request.nextUrl.clone();
-      redirectUrl.pathname = `/${slug}/admin`;
-      return NextResponse.redirect(redirectUrl);
-    }
-    if (isLoginPage && user) {
-      // 이미 로그인된 사용자가 로그인 페이지 접근 → 대시보드로
-      const redirectUrl = request.nextUrl.clone();
-      redirectUrl.pathname = `/${slug}/admin/dashboard`;
-      return NextResponse.redirect(redirectUrl);
-    }
-    return supabaseResponse;
+  if (!isLoginPage && !user) {
+    // 미인증 사용자가 보호된 페이지 접근 → 로그인으로
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = `/${slug}/admin`;
+    return NextResponse.redirect(redirectUrl);
   }
-
+  if (isLoginPage && user) {
+    // 이미 로그인된 사용자가 로그인 페이지 접근 → 대시보드로
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = `/${slug}/admin/dashboard`;
+    return NextResponse.redirect(redirectUrl);
+  }
   return supabaseResponse;
 }
