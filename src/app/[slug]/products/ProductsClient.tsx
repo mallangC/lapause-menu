@@ -9,7 +9,7 @@ import { SEASONS, PRODUCT_TYPES, FLOWER_COLORS, FLOWER_COLOR_MAP, WRAPPING_COLOR
 import MobileFilter from "@/components/main/MobileFilter";
 import ProductGrid from "@/components/main/ProductGrid";
 import StoreHeader from "@/components/main/StoreHeader";
-import FloAideFooter from "@/components/FloAideFooter";
+import BusinessInfoFooter from "@/components/BusinessInfoFooter";
 
 interface ProductsClientProps {
   slug: string;
@@ -26,6 +26,11 @@ interface ProductsClientProps {
   kakaoChannelUrl?: string | null;
   instagramUrl?: string | null;
   youtubeUrl?: string | null;
+  phone?: string | null;
+  representativeName?: string | null;
+  businessNumber?: string | null;
+  mailOrderNumber?: string | null;
+  address?: string | null;
 }
 
 type FilterKey = "flowerColors" | "wrappingColors" | "moods";
@@ -51,6 +56,11 @@ export default function ProductsClient({
   kakaoChannelUrl,
   instagramUrl,
   youtubeUrl,
+  phone,
+  representativeName,
+  businessNumber,
+  mailOrderNumber,
+  address,
 }: ProductsClientProps) {
   const searchParams = useSearchParams();
   const tab = searchParams.get("tab") as "featured" | "season" | null;
@@ -127,7 +137,7 @@ export default function ProductsClient({
           <div className="flex items-center gap-1.5 flex-1 flex-wrap">
             {filter.flowerColors.map((c) => (
               <span key={c} className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-gold-50 text-gold-700 text-xs font-medium">
-                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: FLOWER_COLOR_MAP[c] }} />
+                <span className={`w-2.5 h-2.5 rounded-full shrink-0 border ${c === "흰색" ? "border-gray-300 shadow-sm" : "border-gray-200"}`} style={{ backgroundColor: FLOWER_COLOR_MAP[c] }} />
                 {c}
                 <button onClick={() => toggleFilter("flowerColors", c)} className="ml-0.5 opacity-50 hover:opacity-100">✕</button>
               </span>
@@ -188,7 +198,7 @@ export default function ProductsClient({
                             active ? "border-gold-500 bg-gold-500 text-white font-medium" : "border-gray-200 text-gray-600 hover:bg-gray-50"
                           }`}
                         >
-                          <span className="w-3.5 h-3.5 rounded-full border border-gray-200 shrink-0" style={{ backgroundColor: FLOWER_COLOR_MAP[color] }} />
+                          <span className={`w-3.5 h-3.5 rounded-full shrink-0 border ${color === "흰색" ? "border-gray-300 shadow-sm" : "border-gray-200"}`} style={{ backgroundColor: FLOWER_COLOR_MAP[color] }} />
                           {color}
                         </button>
                       );
@@ -339,7 +349,16 @@ export default function ProductsClient({
                 </span>
               ))}
             </div>
-            <FloAideFooter />
+            <BusinessInfoFooter
+              store={{
+                name: companyName,
+                representativeName,
+                businessNumber,
+                mailOrderNumber,
+                address,
+                phone,
+              }}
+            />
           </div>
         </div>
       </div>

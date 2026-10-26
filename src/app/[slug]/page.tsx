@@ -6,6 +6,7 @@ import ProductsClient from "./products/ProductsClient";
 import ServiceSuspended from "@/components/main/ServiceSuspended";
 import { Product } from "@/types";
 import { generateThemeVars, DEFAULT_THEME_BG, DEFAULT_THEME_ACCENT } from "@/lib/theme";
+import { formatPhone } from "@/lib/format";
 import type { Metadata } from "next";
 
 interface Props {
@@ -30,10 +31,13 @@ export default async function CompanyMenuPage({ params }: Props) {
     .select(`
       id,
       name,
+      phone,
+      owner_id,
       settings:company_settings(
         logo_image, theme_bg, theme_accent,
         location_url, kakao_channel_url, instagram_url, youtube_url,
-        hidden_product_types, hidden_seasons, consult_enabled
+        hidden_product_types, hidden_seasons, consult_enabled,
+        business_number, mail_order_number, address
       )
     `)
     .eq("slug", slug)
@@ -48,11 +52,10 @@ export default async function CompanyMenuPage({ params }: Props) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
-  const { data: sub } = await supabaseAdmin
-    .from("company_subscriptions")
-    .select("plan")
-    .eq("company_id", raw.id)
-    .single();
+  const [{ data: sub }, { data: ownerProfile }] = await Promise.all([
+    supabaseAdmin.from("company_subscriptions").select("plan").eq("company_id", raw.id).single(),
+    supabaseAdmin.from("profiles").select("name").eq("user_id", raw.owner_id).single(),
+  ]);
 
   if (!sub?.plan || sub.plan === "none") {
     return <ServiceSuspended companyName={raw.name} />;
@@ -106,6 +109,11 @@ export default async function CompanyMenuPage({ params }: Props) {
         kakaoChannelUrl={(s.kakao_channel_url as string | null) ?? null}
         instagramUrl={(s.instagram_url as string | null) ?? null}
         youtubeUrl={(s.youtube_url as string | null) ?? null}
+        phone={raw.phone ? formatPhone(raw.phone) : null}
+        representativeName={ownerProfile?.name ?? null}
+        businessNumber={(s.business_number as string | null) ?? null}
+        mailOrderNumber={(s.mail_order_number as string | null) ?? null}
+        address={(s.address as string | null) ?? null}
       />
     </Suspense>
   );
