@@ -4,7 +4,7 @@ import Image from "next/image";
 
 export default function GuidePage() {
   return (
-    <div className="min-h-screen bg-beige-100">
+    <div className="min-h-screen bg-gray-100">
       <header className="border-b border-beige-200 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-5 py-4 flex items-center justify-between">
           <Image src="/logo-light.png" alt="Flo.Aide" width={80} height={28} className="object-contain" />
@@ -21,9 +21,9 @@ export default function GuidePage() {
           <p className="text-sm text-gray-400">Flo.Aide를 통해 꽃 주문·예약을 이용하는 방법을 안내합니다.</p>
         </div>
 
-        <div className="space-y-4 text-sm text-gray-600 leading-relaxed">
+        <div className="bg-white border-t border-b border-beige-200 text-sm text-gray-600 leading-relaxed">
 
-          <section className="bg-white rounded-2xl border border-beige-200 p-6 space-y-3">
+          <section className="p-6 border-b border-beige-100 space-y-3">
             <div className="flex items-center gap-3">
               <span className="w-7 h-7 rounded-full bg-beige-200 text-gray-700 text-xs font-bold flex items-center justify-center shrink-0">1</span>
               <h2 className="font-semibold text-gray-900 text-base">상품 둘러보기</h2>
@@ -31,7 +31,7 @@ export default function GuidePage() {
             <p>홈 화면에서 <strong className="text-gray-800">추천/인기</strong>, <strong className="text-gray-800">모든 상품</strong>, <strong className="text-gray-800">시즌</strong> 카테고리를 눌러 매장의 상품을 확인할 수 있습니다. <br/>상품을 누르면 상세 정보(가격, 이미지 등)를 볼 수 있고 해당 상품을 바로 예약할 수 있습니다.</p>
           </section>
 
-          <section className="bg-white rounded-2xl border border-beige-200 p-6 space-y-3">
+          <section className="p-6 border-b border-beige-100 space-y-3">
             <div className="flex items-center gap-3">
               <span className="w-7 h-7 rounded-full bg-beige-200 text-gray-700 text-xs font-bold flex items-center justify-center shrink-0">2</span>
               <h2 className="font-semibold text-gray-900 text-base">맞춤 주문 신청</h2>
@@ -46,7 +46,7 @@ export default function GuidePage() {
             </ul>
           </section>
 
-          <section className="bg-white rounded-2xl border border-beige-200 p-6 space-y-3">
+          <section className="p-6 border-b border-beige-100 space-y-3">
             <div className="flex items-center gap-3">
               <span className="w-7 h-7 rounded-full bg-beige-200 text-gray-700 text-xs font-bold flex items-center justify-center shrink-0">3</span>
               <h2 className="font-semibold text-gray-900 text-base">매장 확인 및 예약 확정</h2>
@@ -55,7 +55,7 @@ export default function GuidePage() {
             <p className="text-gray-400 text-xs">※ 매장 운영 시간에 따라 확인까지 시간이 소요될 수 있습니다.</p>
           </section>
 
-          <section className="bg-white rounded-2xl border border-beige-200 p-6 space-y-3">
+          <section className="p-6 border-b border-beige-100 space-y-3">
             <div className="flex items-center gap-3">
               <span className="w-7 h-7 rounded-full bg-beige-200 text-gray-700 text-xs font-bold flex items-center justify-center shrink-0">4</span>
               <h2 className="font-semibold text-gray-900 text-base">결제</h2>
@@ -68,7 +68,7 @@ export default function GuidePage() {
             </ul>
           </section>
 
-          <section className="bg-white rounded-2xl border border-beige-200 p-6 space-y-3">
+          <section className="p-6 border-b border-beige-100 space-y-3">
             <div className="flex items-center gap-3">
               <span className="w-7 h-7 rounded-full bg-beige-200 text-gray-700 text-xs font-bold flex items-center justify-center shrink-0">5</span>
               <h2 className="font-semibold text-gray-900 text-base">픽업 또는 배송</h2>
@@ -77,7 +77,7 @@ export default function GuidePage() {
             <p className="text-gray-400 text-xs">※ 배송 가능 여부 및 배송비는 매장 정책에 따라 다를 수 있습니다.</p>
           </section>
 
-          <section className="bg-white rounded-2xl border border-beige-200 p-6 space-y-3 text-sm text-gray-600">
+          <section className="p-6 space-y-3 text-sm text-gray-600">
             <h2 className="font-semibold text-gray-900 text-base">문의</h2>
             <p>이용 중 문의사항은 아래로 접수해 주세요.</p>
             <ul className="space-y-1">

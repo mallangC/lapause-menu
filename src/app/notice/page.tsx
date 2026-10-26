@@ -38,6 +38,7 @@ const NAV: NavGroup[] = [
     group: "관리자 기능",
     items: [
       { id: "admin-reservations", label: "예약 관리" },
+      { id: "admin-payment-flow", label: "결제 처리 흐름" },
       { id: "admin-products", label: "상품 관리" },
       { id: "admin-stats", label: "통계" },
       { id: "admin-company", label: "매장 정보" },
@@ -98,12 +99,45 @@ function FieldList({ items }: { items: [string, string][] }) {
   );
 }
 
-function Callout({ tone, title, children }: { tone: "amber" | "red"; title: string; children: React.ReactNode }) {
+interface FlowStepData {
+  title: string;
+  color: string; // 관리자 화면 상태 뱃지와 동일한 색
+  detail: string;
+  note?: string; // 카카오 알림톡 등 분기 이벤트
+}
+
+function FlowDiagram({ steps }: { steps: FlowStepData[] }) {
+  return (
+    <div>
+      {steps.map((s, i) => (
+        <div key={i} className="flex gap-3">
+          <div className="flex flex-col items-center">
+            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-[11px] font-semibold shrink-0 ${s.color}`}>
+              {i + 1}
+            </span>
+            {i < steps.length - 1 && <span className="w-px flex-1 bg-beige-300 my-1" />}
+          </div>
+          <div className={`flex-1 min-w-0 ${i < steps.length - 1 ? "pb-4" : ""}`}>
+            <p className="text-sm font-medium text-gray-900">{s.title}</p>
+            <p className="text-xs text-gray-500 mt-1 leading-relaxed">{s.detail}</p>
+            {s.note && (
+              <div className="mt-2 inline-flex items-center gap-1.5 text-xs text-gold-700 bg-gold-50 border border-dashed border-gold-300 rounded-full px-2.5 py-1">
+                💬 {s.note}
+              </div>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Callout({ tone, title, children, className }: { tone: "amber" | "red"; title: string; children: React.ReactNode; className?: string }) {
   const styles = tone === "amber"
     ? "bg-amber-50 border-amber-200 text-amber-800"
     : "bg-red-50 border-red-200 text-red-700";
   return (
-    <div className={`rounded-xl border p-4 text-sm ${styles}`}>
+    <div className={`rounded-xl border p-4 text-sm ${styles} ${className ?? ""}`}>
       <p className="font-semibold mb-1">{title}</p>
       <div className="text-xs leading-relaxed opacity-90 space-y-1">{children}</div>
     </div>
@@ -112,6 +146,7 @@ function Callout({ tone, title, children }: { tone: "amber" | "red"; title: stri
 
 export default function NoticePage() {
   const [activeId, setActiveId] = useState(ALL_IDS[0]);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const clickScrollRef = useRef(false);
 
   useEffect(() => {
@@ -135,6 +170,7 @@ export default function NoticePage() {
 
   const handleNavClick = (id: string) => {
     setActiveId(id);
+    setMobileMenuOpen(false);
     clickScrollRef.current = true;
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
     window.setTimeout(() => { clickScrollRef.current = false; }, 700);
@@ -147,37 +183,75 @@ export default function NoticePage() {
       <header className="border-b border-beige-200 bg-white/80 backdrop-blur-sm sticky top-0 z-30">
         <div className="max-w-6xl mx-auto px-5 py-4 flex items-center justify-between">
           <Image src="/logo-light.png" alt="Flo.Aide" width={80} height={28} className="object-contain" />
-          <Link href="/login" className="text-xs text-gray-400 hover:text-gray-700 transition-colors">
+          <Link href="/login" className="hidden md:inline-flex text-xs text-gray-400 hover:text-gray-700 transition-colors">
             ← 로그인
           </Link>
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(true)}
+            className="md:hidden w-8 h-8 flex items-center justify-center text-gray-500 hover:text-gray-800 transition-colors"
+            aria-label="메뉴 열기"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5" />
+            </svg>
+          </button>
         </div>
       </header>
 
-      {/* 모바일 탭 네비게이션 */}
-      <div className="md:hidden sticky top-[57px] z-20 bg-white/95 backdrop-blur-sm border-b border-beige-200 overflow-x-auto">
-        <div className="flex gap-1.5 px-4 py-2.5 whitespace-nowrap">
-          {ALL_IDS.map((id) => {
-            const item = NAV.flatMap((g) => g.items).find((i) => i.id === id)!;
-            return (
-              <button
-                key={id}
-                onClick={() => handleNavClick(id)}
-                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                  activeId === id ? "bg-gold-500 text-white" : "bg-beige-100 text-gray-500 border border-beige-200"
-                }`}
-              >
-                {item.label}
-              </button>
-            );
-          })}
+      {/* ── 모바일 메뉴 딤 ── */}
+      <div
+        className={`md:hidden fixed inset-0 z-40 bg-black/40 transition-opacity duration-300 ${mobileMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
+        onClick={() => setMobileMenuOpen(false)}
+      />
+
+      {/* ── 모바일 메뉴 드로어 (오른쪽에서 슬라이드) ── */}
+      <div
+        className={`md:hidden fixed top-0 right-0 h-full w-full bg-white z-50 flex flex-col transition-transform duration-300 ease-in-out ${mobileMenuOpen ? "translate-x-0" : "translate-x-full"}`}
+      >
+        <div className="flex items-center justify-between px-5 h-14 border-b border-beige-200 shrink-0">
+          <Image src="/logo-light.png" alt="Flo.Aide" width={80} height={28} className="object-contain" />
+          <button onClick={() => setMobileMenuOpen(false)} className="p-2 -mr-2 text-gray-400 hover:text-gray-700 transition-colors" aria-label="메뉴 닫기">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
+        <nav className="flex-1 overflow-y-auto px-3 py-4">
+          {NAV.map((g, gi) => (
+            <div key={gi} className="mb-2">
+              {g.group && (
+                <p className="text-[11px] font-semibold tracking-widest text-gray-400 uppercase px-4 pt-3 pb-1">{g.group}</p>
+              )}
+              {g.items.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => handleNavClick(item.id)}
+                  className={`block w-full text-left px-4 py-3 rounded-xl text-base font-medium transition-colors ${
+                    activeId === item.id ? "bg-gold-50 text-gold-600" : "text-gray-700 hover:bg-beige-50"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          ))}
+          <div className="mx-4 my-2 border-t border-beige-100" />
+          <Link
+            href="/login"
+            className="block px-4 py-3 rounded-xl text-base font-medium text-gray-400 hover:bg-beige-50 transition-colors"
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            ← 로그인
+          </Link>
+        </nav>
       </div>
 
       <div className="max-w-6xl mx-auto px-5 py-10 flex gap-10">
 
         {/* 좌측 사이드 네비게이션 */}
         <aside className="hidden md:block w-52 shrink-0 pr-6 border-r border-beige-200">
-          <nav className="sticky top-24 space-y-6">
+          <nav className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto space-y-6">
             {NAV.map((g, gi) => (
               <div key={gi}>
                 {g.group && (
@@ -213,11 +287,11 @@ export default function NoticePage() {
               <h2 className="text-xl font-medium text-gray-900">서비스 소개</h2>
             </div>
             <p className="text-sm text-gray-500 leading-relaxed">
-              Flo.Aide는 꽃집 사장님이 손님에게는 예쁜 전자 메뉴판을, 매장 안에서는 예약·주문·매출을 관리하는 도구를 제공하는 서비스입니다.
-              손님은 앱 설치 없이 매장 링크(<code className="bg-beige-200 px-1.5 py-0.5 rounded text-xs text-gray-700">flo-aide.com/매장주소</code>) 하나로 상품을 둘러보고 맞춤 주문을 신청할 수 있고,
+              Flo.Aide는 꽃집 사장님이 링크 하나로 공유할 수 있는 예쁜 전자 메뉴판을 만들어, 매장을 홍보하고 바로 판매까지 이어갈 수 있게 해주는 서비스입니다.
+              손님은 앱 설치 없이 매장 링크(<code className="bg-beige-200 px-1.5 py-0.5 rounded text-xs text-gray-700">flo-aide.com/매장주소</code>) 하나로 상품을 둘러보고 맞춤 주문을 신청할 수 있습니다.
               사장님은 관리자 페이지에서 상품·예약·정산까지 한 곳에서 처리할 수 있습니다.
             </p>
-            <Fig src="/landing/screen-menu1.webp" alt="전자 메뉴판 화면" />
+            <Fig src="/notice/intro.jpg" alt="전자 메뉴판 화면" />
           </section>
 
           {/* 처음 시작하는 방법 */}
@@ -255,7 +329,7 @@ export default function NoticePage() {
           <section id="customer-filter" className="scroll-mt-24 space-y-4">
             <h2 className="text-xl font-medium text-gray-900">상품 필터</h2>
             <p className="text-sm text-gray-500 leading-relaxed">
-              상품 유형, 색상, 포장지 색상으로 원하는 상품을 빠르게 찾을 수 있습니다. PC에서는 호버 드롭다운, 모바일에서는 하단 필터 패널로 동작합니다.
+              상품 유형, 색상, 포장지 색상으로 원하는 상품을 빠르게 찾을 수 있습니다. PC는 호버 드롭다운으로 동작하고 모바일은 하단 필터 패널로 동작합니다.
             </p>
           </section>
 
@@ -265,7 +339,7 @@ export default function NoticePage() {
             <p className="text-sm text-gray-500 leading-relaxed">
               판매 기능이 활성화된 경우 메뉴 상단에 &lsquo;맞춤 주문하기&rsquo; 버튼이 노출됩니다. 손님이 직접 예약 폼을 작성해 제출하면 관리자에게 알림이 전송됩니다.
             </p>
-            <Fig src="/landing/screen-consult.webp" alt="맞춤 주문 화면" />
+            <Fig src="/notice/consult.jpg" alt="맞춤 주문 화면" />
           </section>
 
           {/* 손님 화면 - 채널 연결 */}
@@ -282,7 +356,7 @@ export default function NoticePage() {
               <p className="text-xs font-semibold tracking-widest text-gold-500 uppercase mb-2">Start Selling</p>
               <h2 className="text-xl font-medium text-gray-900">1. 판매 신청</h2>
               <p className="text-sm text-gray-500 leading-relaxed mt-2">
-                맞춤 주문(판매) 기능은 승인이 필요한 Pro 플랜 기능입니다. 관리자 페이지 <span className="text-gray-700 font-medium">판매 신청</span> 탭에서
+                맞춤 주문(판매) 기능은 승인이 필요한 기능입니다. 관리자 페이지 <span className="text-gray-700 font-medium">판매 신청</span> 탭에서
                 아래 정보를 모두 입력·업로드해야 신청할 수 있습니다.
               </p>
             </div>
@@ -300,7 +374,7 @@ export default function NoticePage() {
                 <p>사업자 본인 확인을 위해 사진 또는 PDF로 업로드합니다.</p>
               </Step>
               <Step n={5} title="통신판매업 신고번호 (선택)">
-                <p>온라인으로 상품을 판매하는 경우 신고가 필요합니다. 없어도 신청은 가능하지만, 미신고 상태로 상품 30개를 판매하면 판매가 자동 정지됩니다. 자세한 내용은 아래 <button onClick={() => handleNavClick("sales-mailorder")} className="text-gold-600 underline hover:text-gold-700">통신판매업 신고 안내</button>를 참고하세요.</p>
+                <p>온라인으로 상품을 판매하는 경우 신고가 필요합니다. 없어도 신청은 가능하지만 미신고 상태로 상품 50개를 판매하면 판매가 자동 정지됩니다. 자세한 내용은 아래 <button onClick={() => handleNavClick("sales-mailorder")} className="text-gold-600 underline hover:text-gold-700">통신판매업 신고 안내</button>를 참고하세요.</p>
               </Step>
             </div>
             <p className="text-sm text-gray-500">위 항목을 모두 채우면 <span className="text-gray-700 font-medium">&lsquo;맞춤 주문 신청하기&rsquo;</span> 버튼이 활성화됩니다.</p>
@@ -311,7 +385,7 @@ export default function NoticePage() {
             <h2 className="text-xl font-medium text-gray-900">2. 운영자 검토</h2>
             <p className="text-sm text-gray-500 leading-relaxed">
               신청하면 상태가 <span className="text-yellow-600 font-medium">검토 중</span>으로 바뀝니다. 운영자가 제출된 사업자등록증·통장사본·인증 정보를 직접 확인한 뒤 승인 또는 반려 처리합니다.
-              반려된 경우 사유가 함께 표시되며, 판매 신청 탭에서 내용을 보완해 다시 신청할 수 있습니다.
+              반려된 경우 사유가 함께 표시되며 판매 신청 탭에서 내용을 보완해 다시 신청할 수 있습니다.
             </p>
           </section>
 
@@ -319,7 +393,7 @@ export default function NoticePage() {
           <section id="sales-activate" className="scroll-mt-24 space-y-5">
             <h2 className="text-xl font-medium text-gray-900">3. 판매 설정 활성화</h2>
             <p className="text-sm text-gray-500 leading-relaxed">
-              승인이 완료되면 <span className="text-gray-700 font-medium">판매 설정</span> 탭에서 판매 기능을 켤 수 있습니다. 토글을 켜는 순간 손님 화면에 &lsquo;맞춤 주문하기&rsquo; 버튼이 노출되고, 통계 탭이 활성화됩니다.
+              승인이 완료되면 <span className="text-gray-700 font-medium">판매 설정</span> 탭에서 판매 기능을 켤 수 있습니다. 토글을 켜는 순간 손님 화면에 &lsquo;맞춤 주문하기&rsquo; 버튼이 노출되고 상품을 선택해 예약이 가능해지며 통계 탭이 활성화됩니다.
             </p>
             <FieldList
               items={[
@@ -327,22 +401,55 @@ export default function NoticePage() {
                 ["메시지 카드", "활성화하면 주문 폼에 메시지 카드 옵션이 표시됩니다. 추가 금액을 설정하면 최종 가격에 반영됩니다."],
                 ["쇼핑백", "활성화하면 주문 폼에 쇼핑백 옵션이 표시됩니다. 추가 금액을 설정할 수 있습니다."],
                 ["배송 기능", "1km 이내 배송비를 먼저 설정해야 활성화할 수 있습니다. 배송은 당일 예약이 불가합니다."],
-                ["배송비 설정", "거리별 배송비를 6구간(1km 이내 / 1~3km / 3~5km / 5~10km / 10~15km / 15~20km)으로 설정합니다. 1km 이내는 필수이며, 나머지 구간을 비워두면 해당 거리는 '매장 문의'로 안내됩니다."],
-                ["예약 확인 문구", "고객이 예약을 완료하기 직전 확인 화면 상단에 표시할 안내 문구를 입력합니다."],
+                ["배송비 설정", "거리별 배송비를 6구간(1km 이내 / 1~3km / 3~5km / 5~10km / 10~15km / 15~20km)으로 설정합니다. 1km 이내는 필수이며 나머지 구간을 비워두면 해당 거리는 '매장 문의'로 안내됩니다."],
+                ["예약 확인 문구", "고객이 예약을 완료하기 직전 확인 화면 상단에 표시할 안내 문구를 입력합니다. 손님이 이 문구를 필수로 확인하도록 동의 체크박스에 체크해야만 주문이 가능하게 되어 있습니다."],
               ]}
             />
             <Fig src="/info.png" alt="안내 문구 표시 위치 예시" />
+            <p className="text-sm text-gray-500 leading-relaxed">
+              손님이 맞춤 주문이나 상품 상세에서 배송을 선택하면, 매장 주소와 배송받을 주소 사이의 거리를 자동으로 계산해 그 거리가 속한 구간의 배송비(판매 설정에서 입력한 금액)를 최종 가격에 반영합니다. 거리 계산은 실시간 퀵서비스 요금 조회가 아니라, 사장님이 미리 설정해둔 6개 구간별 고정 금액 중 해당 구간 값을 그대로 적용하는 방식입니다.
+            </p>
+            <Callout tone="amber" title="배송비 책정 팁">
+              <p>카카오퀵 등 퀵서비스 앱에서 매장 주소를 기준으로 구간별(1~3km, 3~5km 등) 예상 요금을 미리 조회해보고, 그 구간에서 나올 수 있는 최대 금액으로 설정해두는 걸 추천합니다. 이 시스템은 퀵서비스 API와 실시간으로 연동되는 게 아니라 설정해둔 고정 금액을 그대로 적용하기 때문에, 최대 금액 기준으로 설정해두면 실제 배송 비용이 예상보다 높게 나와도 손해를 보지 않습니다.</p>
+            </Callout>
           </section>
 
           {/* 판매 시작하기 - 통신판매업 신고 안내 */}
           <section id="sales-mailorder" className="scroll-mt-24 space-y-4">
             <h2 className="text-xl font-medium text-gray-900">통신판매업 신고 안내</h2>
             <p className="text-sm text-gray-500 leading-relaxed">
-              온라인으로 상품을 30개 이상 판매하려면 관할 구청에 통신판매업 신고가 필요합니다. 판매 신청 탭에서 신고번호를 입력해두면 이 제한 없이 계속 판매할 수 있습니다.
+              온라인으로 상품을 50개 이상 판매하려면 관할 구청에 통신판매업 신고가 필요합니다. 판매 신청 탭에서 신고번호를 입력해두면 이 제한 없이 계속 판매할 수 있습니다.
             </p>
-            <Callout tone="red" title="통신판매업 미신고 시 30개 판매 제한">
-              <p>신고번호를 등록하지 않은 매장은 결제완료 건 기준 누적 판매 수량이 30개에 도달하면 판매 기능이 자동으로 꺼집니다.</p>
-              <p>판매 신청 탭과 대시보드 상단에서 현재 판매 수량을 &lsquo;n/30&rsquo; 형태로 확인할 수 있으며, 정지된 이후에는 신고번호를 등록해야 다시 판매를 켤 수 있습니다.</p>
+            <Callout tone="red" title="통신판매업 미신고 시 50개 판매 제한">
+              <p>신고번호를 등록하지 않은 매장은 결제완료 건 기준 누적 판매 수량이 50개에 도달하면 판매 기능이 자동으로 꺼집니다. 판매 신청 탭과 대시보드 상단에서 현재 판매 수량을 &lsquo;n/50&rsquo; 형태로 확인할 수 있으며 정지된 이후에는 신고번호를 등록해야 다시 판매를 켤 수 있습니다.</p>
+            </Callout>
+            <Callout tone="amber" title="신고 절차 (구매안전서비스 이용확인증 발급 후 신청)">
+              <p>통신판매업 신고에는 &lsquo;구매안전서비스 이용확인증&rsquo;이 필요합니다. 아래 순서로 발급받아 신청하세요.</p>
+              <ol className="list-decimal list-inside space-y-1 mt-2">
+                <li>
+                  <a
+                    href="https://obiz.kbstar.com/quics?page=obiz&QViewPC=Y#loading"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-gold-600 underline hover:text-gold-700"
+                  >
+                    국민은행 기업인터넷뱅킹
+                  </a>
+                  에서 사업자로 가입 후 로그인
+                </li>
+                <li>에스크로이체 판매자 신청 진행</li>
+                <li>신청 완료 후 &lsquo;구매안전서비스 이용확인증&rsquo; 발급</li>
+                <li>발급받은 확인증으로{" "}
+                  <a
+                    href="https://www.gov.kr/mw/AA020InfoCappView.do?CappBizCD=11300000006"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-gold-600 underline hover:text-gold-700"
+                  >
+                    정부24
+                  </a>
+                  {" "}에서 통신판매업 신고</li>
+              </ol>
             </Callout>
           </section>
 
@@ -355,33 +462,138 @@ export default function NoticePage() {
             <Fig src="/landing/cap-reservation.webp" mobileSrc="/landing/cap-reservation-m.webp" alt="예약 관리 화면" />
             <FieldList
               items={[
-                ["달력 뷰", "월별 달력으로 날짜별 예약 건수를 한눈에 확인할 수 있습니다. 날짜를 클릭하면 해당 일의 예약만 필터링됩니다. 미확인 예약이 있는 날짜에는 빨간 점이 표시됩니다."],
-                ["미확인 상태", "고객이 직접 신청한 예약은 '미확인' 상태로 접수됩니다. 확인 후 '준비중'으로 변경하면 점이 사라집니다. 관리자가 직접 추가한 예약은 바로 '준비중'으로 등록됩니다."],
-                ["상태 변경 알림", "미확인 → 준비중으로 변경 시 고객에게 카카오 예약 확정 알림이 발송됩니다. 미확인 → 취소 시 취소 알림이 발송됩니다."],
+                ["월별 보기", "상단 ‹ › 버튼으로 월을 이동하며 해당 월의 예약만 모아 볼 수 있습니다. 이번 달을 보는 중에는 '지난 예약 보기' 토글로 이미 지난 날짜의 예약도 확인할 수 있습니다."],
+                ["미확인 상태", "고객이 직접 신청한 예약은 '미확인' 상태로 접수됩니다. 확인 후 '준비중'으로 변경해야 하며 관리자가 직접 추가한 예약은 바로 '준비중'으로 등록됩니다."],
+                ["상태 변경 알림", "미확인 → 준비중으로 변경 시 고객에게 카카오 예약 확정 알림이 발송됩니다. 미확인 → 취소 시에도 예약 취소 알림이 발송됩니다."],
                 ["예약 직접 추가", "네이버 예약 텍스트를 붙여넣으면 정보를 자동으로 파싱합니다. 상품 추가 버튼으로 여러 상품을 한 예약에 묶을 수 있습니다."],
                 ["상태 관리", "미확인, 준비중, 제작완료, 픽업배송완료, 취소 다섯 단계로 관리합니다. 복수 상품 예약은 상품별로 개별 상태 관리가 가능합니다."],
                 ["채널 표시", "네이버, 카카오, 워크인 채널을 색상 뱃지로 구분해 표시합니다."],
                 ["배송비 관리", "배송 주문의 경우 배송비를 입력하면 최종 가격에 자동 반영됩니다."],
                 ["결제 상태", "미결제 / 결제완료를 클릭 한 번으로 전환할 수 있습니다."],
+                ["모바일 사용법", "카드를 왼쪽으로 스와이프하면 수정·삭제 버튼이 나타납니다. 카드를 탭하면 하단에 상세 정보 시트가 열립니다."],
               ]}
             />
 
-            <Callout tone="amber" title="예약을 확인했다면 꼭 '준비중'으로 변경해주세요">
-              <p>&lsquo;준비중&rsquo; 상태는 곧 예약 확정을 의미합니다. 미확인 → 준비중으로 상태를 바꿔야 고객에게 카카오 예약 확정 알림톡이 발송됩니다.</p>
-              <p>상태를 변경하지 않으면 고객은 예약이 확정됐는지 알 수 없으니, 예약을 확인한 즉시 준비중으로 변경해주세요.</p>
+            <Callout tone="amber" title="예약을 확인했다면 꼭 '준비중' 또는 '취소'로 변경해주세요">
+              <p>&lsquo;준비중&rsquo; 상태는 예약 확정을 의미하고 &rsquo;취소&rsquo; 상태는 예약 취소를 의미합니다. 미확인 → 준비중 또는 취소로 상태를 바꿔야 고객에게 카카오 예약 확정 또는 취소 알림톡이 발송됩니다. 상태를 변경하지 않으면 고객은 예약 상태를 알 수 없으니 예약을 확인한 즉시 상태를 변경해주세요.</p>
             </Callout>
 
             <div className="pt-2 space-y-4">
               <h3 className="font-medium text-gray-900 text-sm">링크결제 보내기</h3>
               <p className="text-sm text-gray-500 leading-relaxed">
-                예약을 미결제 상태로 등록한 경우, 예약 상세 페이지에서 결제 링크를 생성해 고객에게 보낼 수 있습니다.
+                예약을 미결제 상태로 등록한 경우 예약 상세 페이지에서 결제 링크를 생성해 고객에게 보낼 수 있습니다.
               </p>
               <div className="space-y-5">
-                <Step n={1} title="미결제 예약 등록">예약을 직접 추가할 때 결제 상태를 &lsquo;미결제&rsquo;로 등록합니다.</Step>
-                <Step n={2} title="결제 링크 생성">예약 상세 페이지 하단의 &lsquo;결제 링크&rsquo; 버튼을 누르고, 원하는 만료 시간을 선택해 생성합니다.</Step>
+                <Step n={1} title="미결제 예약 등록">링크 결제는 예약 관리 탭에서 예약을 직접 추가해야 하며 결제 상태를 &lsquo;미결제&rsquo;로 등록합니다.</Step>
+                <Step n={2} title="결제 링크 생성">예약 상세 페이지 미결제 옆 &lsquo;결제 링크&rsquo; 버튼을 누르고 원하는 만료 시간을 선택해 생성합니다.</Step>
                 <Step n={3} title="고객에게 링크 전달">생성된 링크를 문자, 카카오톡 등으로 고객에게 보내면 고객이 직접 접속해 카드 결제를 진행할 수 있습니다.</Step>
-                <Step n={4} title="만료 시간 연장">기존 링크가 만료되었거나 시간을 늘리고 싶다면, 예약 상세 페이지에서 다시 만료 시간을 설정해 연장할 수 있습니다.</Step>
+                <Step n={4} title="만료 시간 연장">기존 링크가 만료되었거나 시간을 늘리고 싶다면 예약 상세 페이지에서 다시 만료 시간을 설정해 연장할 수 있습니다.</Step>
               </div>
+            </div>
+          </section>
+
+          {/* 관리자 기능 - 결제 처리 흐름 */}
+          <section id="admin-payment-flow" className="scroll-mt-24 space-y-8">
+            <div>
+              <h2 className="text-xl font-medium text-gray-900">결제 처리 흐름</h2>
+              <p className="text-sm text-gray-500 leading-relaxed mt-2">
+                결제 상태를 어떻게 바꾸느냐에 따라 손님에게 어떤 카카오 알림톡이 가는지와 환불은 언제 자동으로 처리되는지를 정리했습니다.
+                💬 표시는 그 단계에서 알림톡이 발송된다는 뜻입니다.
+              </p>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700 mb-4">일반 결제 — 예약을 받는 경우</h3>
+              <div className="bg-white border border-beige-200 rounded-2xl p-5">
+                <FlowDiagram
+                  steps={[
+                    {
+                      title: "구매자 결제",
+                      color: "bg-gold-500",
+                      detail: "맞춤 주문 또는 상품을 선택해 예약 결제를 진행합니다.",
+                      note: "매장에 새 예약 알림톡 발송",
+                    },
+                    {
+                      title: "미확인 → 준비중",
+                      color: "bg-gray-400",
+                      detail: "알림톡을 확인한 관리자가 예약 내역을 확인한 뒤 상태를 '준비중'으로 변경합니다.",
+                      note: "구매자에게 예약 확정 알림톡 발송",
+                    },
+                    {
+                      title: "제작완료",
+                      color: "bg-yellow-400",
+                      detail: "상품 준비를 마치면 상태를 '제작완료'로 변경합니다. 준비중 · 제작완료 · 픽업완료를 구분하기 위한 단계이며 '준비중'에서 바로 '픽업/배송완료'로 변경해도 무방합니다.",
+                    },
+                    {
+                      title: "픽업/배송완료",
+                      color: "bg-blue-400",
+                      detail: "상품을 픽업 또는 배송 완료하면 상태를 '픽업/배송완료'로 변경합니다.",
+                    },
+                  ]}
+                />
+              </div>
+              <p className="text-xs text-gray-400 mt-3">
+                '준비중' 이후 단계에서도 언제든 상태를 '취소'로 변경할 수 있습니다. 정산 전이라면 결제 금액이 자동으로 환불되며, 이미 정산된 예약이라면 아래 &lsquo;예약을 받지 않는 경우&rsquo;의 안내와 동일하게 자동 환불되지 않습니다.
+              </p>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700 mb-4">일반 결제 — 예약을 받지 않는 경우</h3>
+              <div className="bg-white border border-beige-200 rounded-2xl p-5">
+                <FlowDiagram
+                  steps={[
+                    {
+                      title: "구매자 결제",
+                      color: "bg-gold-500",
+                      detail: "맞춤 주문 또는 상품을 선택해 예약 결제를 진행합니다.",
+                      note: "매장에 새 예약 알림톡 발송",
+                    },
+                    {
+                      title: "미확인 → 취소",
+                      color: "bg-gray-500",
+                      detail: "알림톡을 확인한 관리자가 예약 내역을 확인한 뒤 상태를 '취소'로 변경하고 취소 사유를 작성합니다.",
+                      note: "구매자에게 예약 취소 알림톡 발송 + 결제 금액 자동 환불",
+                    },
+                  ]}
+                />
+              </div>
+              <Callout tone="amber" title="이미 정산된 예약은 자동 환불되지 않습니다" className="mt-3">
+                <p>매장에 정산 지급이 끝난 예약을 취소하면 결제 금액이 자동으로 환불되지 않고 직접 환불 처리가 필요합니다. 취소 전 확인 창에서 안내됩니다.</p>
+              </Callout>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700 mb-4">링크결제 — 다른 채널로 상담 후 결제가 필요한 경우</h3>
+              <div className="bg-white border border-beige-200 rounded-2xl p-5">
+                <FlowDiagram
+                  steps={[
+                    {
+                      title: "미결제 상태로 예약 추가",
+                      color: "bg-gray-400",
+                      detail: "전화, DM 등 다른 채널로 상담한 내용을 토대로 예약 관리 탭에서 결제 상태 '미결제'로 예약을 추가합니다.",
+                    },
+                    {
+                      title: "결제 링크 생성",
+                      color: "bg-gray-400",
+                      detail: "추가된 예약을 클릭해 상세 내용을 확인하고 결제 상태 옆 '결제 링크' 버튼을 눌러 만료 시간을 정한 뒤 생성합니다.",
+                    },
+                    {
+                      title: "구매자에게 링크 전달",
+                      color: "bg-gray-400",
+                      detail: "생성된 링크를 문자, 카카오톡 등으로 구매자에게 전송합니다.",
+                    },
+                    {
+                      title: "구매자 결제",
+                      color: "bg-gold-500",
+                      detail: "구매자가 링크로 들어가 결제를 진행합니다.",
+                      note: "매장에 새 예약 알림톡 발송",
+                    },
+                  ]}
+                />
+              </div>
+              <p className="text-xs text-gray-400 mt-3">
+                이후는 위의 <button onClick={() => handleNavClick("admin-payment-flow")} className="text-gold-600 underline hover:text-gold-700">일반 결제 흐름</button>과 동일하게 '미확인' 상태에서부터 진행됩니다.
+              </p>
             </div>
           </section>
 
@@ -394,7 +606,8 @@ export default function NoticePage() {
                 ["분위기", "깔끔한 화이트&그린, 화사한 파스텔톤, 선명한 비비드톤, 차분한 딥컬러 중 선택할 수 있습니다."],
                 ["상태 변경", "상태 뱃지를 클릭하면 활성 → 비활성 → 품절 순으로 전환됩니다. 비활성·품절 상품은 손님 화면에 표시되지 않습니다."],
                 ["뱃지", "인기 또는 추천 뱃지를 지정하면 손님 화면의 추천/인기 탭에 모아서 표시됩니다."],
-                ["시즌 상품", "시즌을 지정한 상품은 시즌 탭에만 표시되며, 모든 상품 탭에는 나오지 않습니다."],
+                ["시즌 상품", "시즌을 지정한 상품은 시즌 탭에만 표시되며 모든 상품 탭에는 나오지 않습니다."],
+                ["모바일 사용법", "카드를 왼쪽으로 스와이프하면 수정·삭제 버튼이 나타납니다."],
               ]}
             />
           </section>
