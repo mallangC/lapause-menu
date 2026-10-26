@@ -16,12 +16,13 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
   const { data: raw } = await supabase
     .from("companies")
     .select(`
-      id, name,
+      id, name, is_demo,
       settings:company_settings(
         logo_image, theme_bg, theme_accent, consult_enabled,
         address, delivery_enabled, delivery_fees,
         business_hours, closed_dates, date_overrides,
         shopping_bag_enabled, shopping_bag_price,
+        preservative_enabled, preservative_price,
         message_card_enabled, message_card_price,
         notification_email
       ),
@@ -56,9 +57,12 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
       dateOverrides={(s.date_overrides as Record<string, { open: string; close: string }>) ?? {}}
       shoppingBagEnabled={(s.shopping_bag_enabled as boolean) ?? false}
       shoppingBagPrice={(s.shopping_bag_price as number) ?? 2000}
+      preservativeEnabled={(s.preservative_enabled as boolean) ?? false}
+      preservativePrice={(s.preservative_price as number) ?? 500}
       messageCardEnabled={(s.message_card_enabled as boolean) ?? false}
       messageCardPrice={(s.message_card_price as number) ?? 2000}
       notificationEmail={(s.notification_email as string | null) ?? null}
+      isDemo={raw.is_demo ?? false}
       initialPaymentKey={sp.paymentKey ?? null}
       initialOrderId={sp.orderId ?? null}
       initialAmount={sp.amount ? Number(sp.amount) : null}

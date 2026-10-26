@@ -23,6 +23,7 @@ interface ReservationBody {
     messageCard: string;
     messageCardContent: string;
     shoppingBag: string;
+    preservative: string;
     deliveryType: string;
     desiredDate: string;
     desiredTime: string;
@@ -64,6 +65,14 @@ export async function POST(request: NextRequest) {
     // 휴무일 검증 (결제 승인 전에 막아 불필요한 결제를 방지)
     const { data: companyId } = await supabase
       .rpc("get_company_id_by_slug", { p_slug: slug });
+
+    // 데모 매장 여부 확인 (클라이언트가 보낸 값이 아니라 서버에서 직접 조회)
+    let isDemoCompany = false;
+    if (companyId) {
+      const { data: companyRow } = await supabase.from("companies").select("is_demo").eq("id", companyId).single();
+      isDemoCompany = companyRow?.is_demo ?? false;
+    }
+
     if (companyId && body.form?.desiredDate) {
       const { data: settingsRow } = await supabase
         .from("company_settings")
@@ -79,8 +88,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 토스 결제 승인 및 검증
-    if (paymentKey) {
+    // 토스 결제 승인 및 검증 (데모 매장은 실제 결제가 없으므로 건너뛴다)
+    if (paymentKey && !isDemoCompany) {
       const { data: dbProduct } = await supabase
         .from("products")
         .select("price")
@@ -166,11 +175,14 @@ export async function POST(request: NextRequest) {
           message_card: form.messageCard,
           message_card_content: form.messageCardContent || null,
           shopping_bag: product.bag_included ? "서비스" : form.shoppingBag,
+          preservative: form.preservative,
           memo: null,
         }],
         quantity: 1,
         paid: !!paymentKey,
-        payment_id: paymentKey ?? null,
+        paid_at: paymentKey ? new Date().toISOString() : null,
+        // 데모 매장은 실제 결제가 아니므로 payment_id를 비워서 정산/통신판매업 판매수량 집계 등 "실결제" 신호로 쓰이는 곳에서 자동 제외되게 한다
+        payment_id: isDemoCompany ? null : (paymentKey ?? null),
         final_price: paymentKey ? (finalPrice ?? product.price) : (product.price ?? finalPrice),
         purpose: form.purpose === "기타" ? form.purposeCustom : form.purpose,
         recipient_gender: form.recipientGender,
@@ -187,6 +199,7 @@ export async function POST(request: NextRequest) {
         address: delivery?.address || null,
         address_detail: delivery?.addressDetail || null,
         source: source || null,
+        order_type: "consult",
       }).select("id");
 
       if (insertError) console.error("[reservation] insert 실패:", insertError.message);
@@ -195,9 +208,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 사장님에게 카카오 알림 발송
+    // 사장님에게 카카오 알림 발송 (데모 매장은 발송하지 않음)
     try {
-      const { data: ownerPhone } = await supabase.rpc("get_owner_phone_by_slug", { p_slug: slug });
+      const { data: ownerPhone } = isDemoCompany ? { data: null } : await supabase.rpc("get_owner_phone_by_slug", { p_slug: slug });
       if (ownerPhone) {
         const { form, product, orderer, finalPrice } = body;
         const desiredDateTime = `${form.desiredDate}${form.desiredTime ? ` ${form.desiredTime}` : ""}`;

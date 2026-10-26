@@ -16,11 +16,11 @@ export default async function ConsultPage({ params, searchParams }: Props) {
   const { data: raw } = await supabase
     .from("companies")
     .select(`
-      id, name,
+      id, name, is_demo,
       settings:company_settings(
         logo_image, business_hours, closed_dates, date_overrides, notification_email, min_lead_times,
         consult_notice, address, delivery_enabled, delivery_fees, consult_enabled,
-        message_card_enabled, message_card_price, shopping_bag_enabled, shopping_bag_price,
+        message_card_enabled, message_card_price, shopping_bag_enabled, shopping_bag_price, preservative_enabled, preservative_price,
         hidden_product_types, hidden_seasons
       )
     `)
@@ -80,6 +80,9 @@ export default async function ConsultPage({ params, searchParams }: Props) {
       messageCardPrice={(s.message_card_price as number) ?? 2000}
       shoppingBagEnabled={(s.shopping_bag_enabled as boolean) ?? false}
       shoppingBagPrice={(s.shopping_bag_price as number) ?? 2000}
+      preservativeEnabled={(s.preservative_enabled as boolean) ?? false}
+      preservativePrice={(s.preservative_price as number) ?? 500}
+      isDemo={raw.is_demo ?? false}
       preselectedProduct={preselectedProduct}
       initialQuantity={quantity ? Math.max(1, parseInt(quantity)) : 1}
       initialPaymentId={paymentKey ?? orderId ?? null}

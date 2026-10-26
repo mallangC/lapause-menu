@@ -115,6 +115,8 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
   const [messageCardPrice, setMessageCardPrice] = useState(0);
   const [shoppingBagEnabled, setShoppingBagEnabled] = useState(false);
   const [shoppingBagPrice, setShoppingBagPrice] = useState(0);
+  const [preservativeEnabled, setPreservativeEnabled] = useState(false);
+  const [preservativePrice, setPreservativePrice] = useState(0);
   const [customProductTypes, setCustomProductTypes] = useState<string[]>([]);
   const [businessHours, setBusinessHours] = useState<Record<string, { closed: boolean; open: string; close: string }>>({});
   const [closedDates, setClosedDates] = useState<string[]>([]);
@@ -130,7 +132,7 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
   useEffect(() => {
     supabase
       .from("company_settings")
-      .select("message_card_enabled, message_card_price, shopping_bag_enabled, shopping_bag_price, business_hours, closed_dates, date_overrides")
+      .select("message_card_enabled, message_card_price, shopping_bag_enabled, shopping_bag_price, preservative_enabled, preservative_price, business_hours, closed_dates, date_overrides")
       .eq("company_id", companyId)
       .single()
       .then(({ data }) => {
@@ -139,6 +141,8 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
         setMessageCardPrice(data.message_card_price ?? 0);
         setShoppingBagEnabled(data.shopping_bag_enabled ?? false);
         setShoppingBagPrice(data.shopping_bag_price ?? 0);
+        setPreservativeEnabled(data.preservative_enabled ?? false);
+        setPreservativePrice(data.preservative_price ?? 0);
         if (data.business_hours) setBusinessHours(data.business_hours as Record<string, { closed: boolean; open: string; close: string }>);
         if (data.closed_dates) setClosedDates(data.closed_dates as string[]);
         if (data.date_overrides) setDateOverrides(data.date_overrides as DateOverrides);
@@ -156,26 +160,33 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
 
   const updateStatus = async (id: string, status: string, cancelReason?: string) => {
     const previousStatus = allReservations.find((r) => r.id === id)?.status ?? "";
-    await fetch(`/api/reservation/${id}/status`, {
+    const res = await fetch(`/api/reservation/${id}/status`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status, previousStatus, cancelReason }),
     });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      alert(data.error ?? "상태 변경에 실패했습니다.");
+      return;
+    }
     setAllReservations((prev) => prev.map((r) =>
       r.id === id ? { ...r, status: status as Reservation["status"], ...(cancelReason ? { cancel_reason: cancelReason } : {}) } : r
     ));
   };
 
-  const togglePaid = async (id: string, paid: boolean) => {
-    await supabase.from("reservations").update({ paid }).eq("id", id);
-    setAllReservations((prev) => prev.map((r) => r.id === id ? { ...r, paid } : r));
-  };
+  const patchReservation = (id: string, body: Record<string, unknown>) =>
+    fetch(`/api/reservation/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
 
   const saveDeliveryFee = async (r: Reservation, feeInput: string) => {
     const newFee = Number(feeInput) || 0;
     const oldFee = r.delivery_fee ?? 0;
     const newFinalPrice = (r.final_price ?? 0) - oldFee + newFee;
-    await supabase.from("reservations").update({ delivery_fee: newFee, final_price: newFinalPrice }).eq("id", r.id);
+    await patchReservation(r.id, { delivery_fee: newFee, final_price: newFinalPrice });
     setAllReservations((prev) => prev.map((item) =>
       item.id === r.id ? { ...item, delivery_fee: newFee, final_price: newFinalPrice } : item
     ));
@@ -183,7 +194,7 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
 
   const saveMemo = async (id: string, memo: string) => {
     const trimmed = memo.trim() || null;
-    await supabase.from("reservations").update({ admin_memo: trimmed }).eq("id", id);
+    await patchReservation(id, { admin_memo: trimmed });
     setAllReservations((prev) => prev.map((r) => r.id === id ? { ...r, admin_memo: trimmed } : r));
   };
 
@@ -191,7 +202,7 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
     const r = allReservations.find((r) => r.id === reservationId);
     if (!r) return;
     const newItems = r.items.map((item, i) => i === itemIdx ? { ...item, status } : item);
-    await supabase.from("reservations").update({ items: newItems }).eq("id", reservationId);
+    await patchReservation(reservationId, { items: newItems });
     setAllReservations((prev) => prev.map((r) => r.id === reservationId ? { ...r, items: newItems } : r));
     setItemStatusPopover(null);
   };
@@ -322,6 +333,8 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
           messageCardPrice={messageCardPrice}
           shoppingBagEnabled={shoppingBagEnabled}
           shoppingBagPrice={shoppingBagPrice}
+          preservativeEnabled={preservativeEnabled}
+          preservativePrice={preservativePrice}
           customProductTypes={customProductTypes}
           businessHours={businessHours}
           closedDates={closedDates}
@@ -353,11 +366,11 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
                 onUpdateStatus={updateStatus}
                 onOpenLightbox={setLightboxUrl}
                 onSaveDeliveryFee={saveDeliveryFee}
-                onTogglePaid={togglePaid}
                 onEdit={(r) => { setMobileDetailId(null); setEditingReservation(r); }}
                 onDelete={(id) => { setMobileDetailId(null); handleDeleteReservation(id); }}
                 messageCardPrice={messageCardPrice}
                 shoppingBagPrice={shoppingBagPrice}
+                preservativePrice={preservativePrice}
               />
             </div>
           </div>
@@ -376,6 +389,8 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
           messageCardPrice={messageCardPrice}
           shoppingBagEnabled={shoppingBagEnabled}
           shoppingBagPrice={shoppingBagPrice}
+          preservativeEnabled={preservativeEnabled}
+          preservativePrice={preservativePrice}
           customProductTypes={customProductTypes}
           businessHours={businessHours}
           closedDates={closedDates}
@@ -407,6 +422,7 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
           </div>
         </div>
 
+        <div className="bg-white -mx-4 md:mx-0 py-4 px-4 md:rounded-2xl md:px-5 space-y-4">
         {/* 상태 필터 배지 */}
         {statusFilter && (
           <div className="flex items-center gap-2">
@@ -464,11 +480,11 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
               )}
             </div>
           </div>
-          <div className="flex items-center gap-3 justify-end">
+          <div className="flex items-center flex-nowrap gap-2 sm:gap-3 justify-center sm:justify-end overflow-x-auto no-scrollbar">
             {STATUS_LEGEND.map(({ label, color }) => (
-              <div key={label} className="flex items-center gap-1.5">
-                <span className={`w-2.5 h-2.5 rounded-full ${color}`} />
-                <span className="text-xs text-gray-500">{label}</span>
+              <div key={label} className="flex items-center gap-1.5 shrink-0">
+                <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${color}`} />
+                <span className="text-xs text-gray-500 whitespace-nowrap">{label}</span>
               </div>
             ))}
           </div>
@@ -689,11 +705,11 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
                               onUpdateStatus={updateStatus}
                               onOpenLightbox={setLightboxUrl}
                               onSaveDeliveryFee={saveDeliveryFee}
-                              onTogglePaid={togglePaid}
                               onEdit={setEditingReservation}
                               onDelete={handleDeleteReservation}
                               messageCardPrice={messageCardPrice}
                               shoppingBagPrice={shoppingBagPrice}
+                              preservativePrice={preservativePrice}
                             />
                           </td>
                         </tr>
@@ -721,6 +737,7 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
             ))}
           </div>
         )}
+        </div>
       </div>
     </>
   );

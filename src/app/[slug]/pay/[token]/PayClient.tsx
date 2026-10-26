@@ -17,6 +17,7 @@ interface ReservationInfo {
     price: number;
     quantity: number;
     shopping_bag?: string | null;
+    preservative?: string | null;
     message_card?: string | null;
     message_card_content?: string | null;
   }>;
@@ -29,6 +30,8 @@ interface ReservationInfo {
   logoImage: string | null;
   messageCardPrice: number;
   shoppingBagPrice: number;
+  preservativePrice: number;
+  isDemo: boolean;
 }
 
 function addonCount(value?: string | null) {
@@ -173,8 +176,10 @@ export default function PayClient({
               </div>
               {info.items.map((item, i) => {
                 const bagAddon = info.shoppingBagPrice * addonCount(item.shopping_bag);
+                const preservativeAddon = info.preservativePrice * addonCount(item.preservative);
                 const cardAddon = info.messageCardPrice * addonCount(item.message_card);
                 const hasBag = item.shopping_bag && item.shopping_bag !== "없음" && item.shopping_bag !== "미포함";
+                const hasPreservative = item.preservative && item.preservative !== "없음" && item.preservative !== "미포함";
                 const hasCard = item.message_card && item.message_card !== "없음" && item.message_card !== "미포함";
                 return (
                   <div key={i}>
@@ -186,6 +191,12 @@ export default function PayClient({
                       <div className="flex justify-between">
                         <span className="text-xs text-gray-400">쇼핑백 {item.shopping_bag}</span>
                         {bagAddon > 0 && <span className="text-xs text-gray-400">+{bagAddon.toLocaleString()}원</span>}
+                      </div>
+                    )}
+                    {hasPreservative && (
+                      <div className="flex justify-between">
+                        <span className="text-xs text-gray-400">생화 수명연장제 {item.preservative}</span>
+                        {preservativeAddon > 0 && <span className="text-xs text-gray-400">+{preservativeAddon.toLocaleString()}원</span>}
                       </div>
                     )}
                     {hasCard && (
@@ -283,8 +294,10 @@ export default function PayClient({
           </div>
           {info.items.map((item, i) => {
             const bagAddon = info.shoppingBagPrice * addonCount(item.shopping_bag);
+            const preservativeAddon = info.preservativePrice * addonCount(item.preservative);
             const cardAddon = info.messageCardPrice * addonCount(item.message_card);
             const hasBag = item.shopping_bag && item.shopping_bag !== "없음" && item.shopping_bag !== "미포함";
+            const hasPreservative = item.preservative && item.preservative !== "없음" && item.preservative !== "미포함";
             const hasCard = item.message_card && item.message_card !== "없음" && item.message_card !== "미포함";
             return (
               <div key={i} className="text-sm">
@@ -296,6 +309,12 @@ export default function PayClient({
                   <div className="flex justify-between mt-0.5">
                     <span className="text-xs text-gray-400">쇼핑백 {item.shopping_bag}</span>
                     {bagAddon > 0 && <span className="text-xs text-gray-400">+{bagAddon.toLocaleString()}원</span>}
+                  </div>
+                )}
+                {hasPreservative && (
+                  <div className="flex justify-between mt-0.5">
+                    <span className="text-xs text-gray-400">생화 수명연장제 {item.preservative}</span>
+                    {preservativeAddon > 0 && <span className="text-xs text-gray-400">+{preservativeAddon.toLocaleString()}원</span>}
                   </div>
                 )}
                 {hasCard && (
@@ -344,6 +363,7 @@ export default function PayClient({
           amount={info.finalPrice}
           onReadyChange={setWidgetReady}
           onCancel={() => setOpening(false)}
+          isDemo={info.isDemo}
         />
 
         {payError && (

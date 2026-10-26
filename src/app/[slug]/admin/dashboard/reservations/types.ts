@@ -5,6 +5,7 @@ export interface ReservationItem {
   message_card: string;
   message_card_content: string | null;
   shopping_bag: string;
+  preservative?: string;
   memo: string | null;
   status?: string;
   product_id?: string | null;
@@ -44,6 +45,7 @@ export interface Reservation {
   payment_token: string | null;
   payment_link_expires_at: string | null;
   payment_id: string | null;
+  settlement_id: string | null;
 }
 
 export type SortKey = "desired_date";

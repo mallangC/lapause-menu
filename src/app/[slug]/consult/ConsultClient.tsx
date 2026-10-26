@@ -33,6 +33,7 @@ interface ConsultForm {
   messageCard: string;
   messageCardContent: string;
   shoppingBag: string;
+  preservative: string;
   deliveryType: string;
   desiredDate: string;
   desiredTime: string;
@@ -54,6 +55,7 @@ const EMPTY_FORM: ConsultForm = {
   messageCard: "",
   messageCardContent: "",
   shoppingBag: "",
+  preservative: "",
   deliveryType: "",
   desiredDate: "",
   desiredTime: "",
@@ -77,6 +79,7 @@ interface DraftData {
   quantity?: number;
   messageCardCount?: number;
   shoppingBagCount?: number;
+  preservativeCount?: number;
   messageCardContents?: string[];
 }
 
@@ -108,6 +111,9 @@ interface Props {
   messageCardPrice?: number;
   shoppingBagEnabled?: boolean;
   shoppingBagPrice?: number;
+  preservativeEnabled?: boolean;
+  preservativePrice?: number;
+  isDemo?: boolean;
   preselectedProduct?: Product | null;
   initialQuantity?: number;
   initialPaymentId?: string | null;
@@ -245,7 +251,7 @@ function scoreProducts(products: Product[], form: ConsultForm): Product[] {
   return result;
 }
 
-export default function ConsultClient({ slug, companyName, logoImage = null, productTypeList = [], seasonList = [], notificationEmail, products, businessHours, closedDates, dateOverrides = {}, minLeadTimes = {}, consultNotice, storeAddress = null, deliveryEnabled = false, deliveryFees = {}, messageCardEnabled = false, messageCardPrice = 2000, shoppingBagEnabled = false, shoppingBagPrice = 2000, preselectedProduct = null, initialQuantity = 1, initialPaymentId = null }: Props) {
+export default function ConsultClient({ slug, companyName, logoImage = null, productTypeList = [], seasonList = [], notificationEmail, products, businessHours, closedDates, dateOverrides = {}, minLeadTimes = {}, consultNotice, storeAddress = null, deliveryEnabled = false, deliveryFees = {}, messageCardEnabled = false, messageCardPrice = 2000, shoppingBagEnabled = false, shoppingBagPrice = 2000, preservativeEnabled = false, preservativePrice = 500, isDemo = false, preselectedProduct = null, initialQuantity = 1, initialPaymentId = null }: Props) {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [form, setForm] = useState<ConsultForm>(EMPTY_FORM);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(preselectedProduct);
@@ -289,11 +295,17 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
   const [quantity] = useState(initialQuantity);
   const [messageCardCount, setMessageCardCount] = useState(0);
   const [shoppingBagCount, setShoppingBagCount] = useState(0);
+  const [preservativeCount, setPreservativeCount] = useState(0);
   const [messageCardContents, setMessageCardContents] = useState<string[]>([]);
   const sourceRef = useRef<string | null>(null);
   const [widgetReady, setWidgetReady] = useState(false);
   const widgetRef = useRef<TossPaymentWidgetHandle>(null);
   const [paymentOrderId] = useState(() => `order${Date.now()}`);
+
+  // 단계 전환 시 이전 단계에서의 스크롤 위치가 남아있지 않도록 맨 위로 이동
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [step]);
 
   useEffect(() => {
     const stored = sessionStorage.getItem(`consult_source_${slug}`);
@@ -343,6 +355,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
           setNoticeAgreed(draft.noticeAgreed);
           if (draft.messageCardCount !== undefined) setMessageCardCount(draft.messageCardCount);
           if (draft.shoppingBagCount !== undefined) setShoppingBagCount(draft.shoppingBagCount);
+          if (draft.preservativeCount !== undefined) setPreservativeCount(draft.preservativeCount);
           if (draft.messageCardContents !== undefined) setMessageCardContents(draft.messageCardContents);
           setStep(4);
         } catch { /* 파싱 실패 시 step 1 유지 */ }
@@ -414,6 +427,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
         setAddressDetail(draft.addressDetail);
         if (draft.messageCardCount !== undefined) setMessageCardCount(draft.messageCardCount);
         if (draft.shoppingBagCount !== undefined) setShoppingBagCount(draft.shoppingBagCount);
+          if (draft.preservativeCount !== undefined) setPreservativeCount(draft.preservativeCount);
         if (draft.messageCardContents !== undefined) setMessageCardContents(draft.messageCardContents);
         setSubmitted(true);
         setPaidConfirmed(true);
@@ -461,16 +475,19 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
 
     const effectiveMsgCardCount = quantity >= 2 ? messageCardCount : (form.messageCard === "추가" ? 1 : 0);
     const effectiveBagCount = quantity >= 2 ? shoppingBagCount : (form.shoppingBag === "추가" ? 1 : 0);
+    const effectivePreservativeCount = quantity >= 2 ? preservativeCount : (form.preservative === "추가" ? 1 : 0);
     const submittedForm: ConsultForm = {
       ...form,
       messageCard: effectiveMsgCardCount > 0 ? "추가" : "없음",
       messageCardContent: messageCardContents.filter(Boolean).join("\n[카드 구분]\n") || form.messageCardContent,
       shoppingBag: effectiveBagCount > 0 ? "추가" : "없음",
+      preservative: effectivePreservativeCount > 0 ? "추가" : "없음",
     };
 
     const finalPrice = selectedProduct.price +
       (messageCardEnabled ? effectiveMsgCardCount * messageCardPrice : 0) +
       (shoppingBagEnabled && !selectedProduct.bag_included ? effectiveBagCount * shoppingBagPrice : 0) +
+      (preservativeEnabled ? effectivePreservativeCount * preservativePrice : 0) +
       (form.deliveryType === "배송" && deliveryFee !== null ? deliveryFee : 0);
 
     try {
@@ -480,6 +497,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
         quantity,
         messageCardCount: effectiveMsgCardCount,
         shoppingBagCount: effectiveBagCount,
+        preservativeCount: effectivePreservativeCount,
         messageCardContents,
         product: {
           id: selectedProduct.id,
@@ -544,10 +562,12 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
   if (submitted) {
     const restoredMsgCount = messageCardCount > 0 ? messageCardCount : (messageCardEnabled && form.messageCard === "추가" ? 1 : 0);
     const restoredBagCount = shoppingBagCount > 0 ? shoppingBagCount : (shoppingBagEnabled && form.shoppingBag === "추가" ? 1 : 0);
+    const restoredPreservativeCount = preservativeCount > 0 ? preservativeCount : (preservativeEnabled && form.preservative === "추가" ? 1 : 0);
     const msgCardAmt  = messageCardEnabled ? restoredMsgCount * messageCardPrice : 0;
     const bagAmt      = shoppingBagEnabled && !selectedProduct?.bag_included ? restoredBagCount * shoppingBagPrice : 0;
+    const preservativeAmt = preservativeEnabled ? restoredPreservativeCount * preservativePrice : 0;
     const deliveryAmt = form.deliveryType === "배송" && deliveryFee !== null ? deliveryFee : 0;
-    const hasExtras   = msgCardAmt > 0 || bagAmt > 0 || deliveryAmt > 0;
+    const hasExtras   = msgCardAmt > 0 || bagAmt > 0 || preservativeAmt > 0 || deliveryAmt > 0;
 
     const Row = ({ label, value }: { label: string; value: string }) => (
       <div className="flex px-4 py-3.5 gap-4 border-t border-gray-50">
@@ -607,6 +627,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
               <Row label="카드 내용" value={form.messageCardContent} />
             )}
             {bagAmt > 0 && <Row label="쇼핑백" value="추가" />}
+            {preservativeAmt > 0 && <Row label="생화 수명연장제" value="추가" />}
             {form.requests && <Row label="요청 사항" value={form.requests} />}
           </div>
 
@@ -630,6 +651,12 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                     <div className="flex justify-between text-sm text-gray-600">
                       <span>쇼핑백</span>
                       <span>+{bagAmt.toLocaleString()}원</span>
+                    </div>
+                  )}
+                  {preservativeAmt > 0 && (
+                    <div className="flex justify-between text-sm text-gray-600">
+                      <span>생화 수명연장제</span>
+                      <span>+{preservativeAmt.toLocaleString()}원</span>
                     </div>
                   )}
                   {deliveryAmt > 0 && (
@@ -669,7 +696,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
       />
 
       {/* Step indicator */}
-      <div className="border-b border-gray-100 bg-white">
+      <div className="sticky top-14 md:top-20 z-30 border-b border-gray-100 bg-white">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-center gap-2">
           {(preselectedProduct
             ? [{ num: 1 as const, label: "선물 정보" }, { num: 4 as const, label: "예약 확인" }]
@@ -760,7 +787,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
             return (
               <div className="space-y-2.5">
                 <div className="bg-white -mx-4 px-5 py-3.5 md:mx-0 md:rounded-xl">
-                  <p className="text-sm text-gray-600 text-center">선물 목적과 받는 분 정보를 알려주시면 더 잘 어울리는 꽃을 준비해드릴 수 있어요.</p>
+                  <p className="text-sm text-gray-600 text-center">선물 목적과 받는 분 정보를 알려주시면<br/>더 잘 어울리는 꽃을 준비해드릴 수 있어요.</p>
                 </div>
                 <div className="bg-white -mx-4 md:mx-0 md:rounded-xl overflow-hidden divide-y divide-gray-200">
                 {sections.map((section, idx) => {
@@ -980,7 +1007,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
             <div>
               <h2 className="text-lg font-medium text-gray-900 mb-1">추천 상품</h2>
               <p className="text-sm text-gray-500">
-                선택하신 옵션에 맞는 상품을 추천드립니다. 원하시는 상품을 하나 선택해주세요.
+                선택하신 옵션에 맞는 상품을 추천드립니다.<br/>원하시는 상품을 하나 선택해주세요.
               </p>
             </div>
 
@@ -1034,7 +1061,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                               {product.flower_colors.map((color) => (
                                 <span
                                   key={color}
-                                  className="w-3.5 h-3.5 rounded-full border border-gray-200 inline-block shrink-0"
+                                  className={`w-3.5 h-3.5 rounded-full inline-block shrink-0 border ${color === "흰색" ? "border-gray-300 shadow-sm" : "border-gray-200"}`}
                                   style={{ backgroundColor: FLOWER_COLOR_MAP[color] ?? "#a8a29e" }}
                                   title={color}
                                 />
@@ -1076,10 +1103,12 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
         {step === 4 && (() => {
           const effectiveMsgCardCount4 = quantity >= 2 ? messageCardCount : (form.messageCard === "추가" ? 1 : 0);
           const effectiveBagCount4 = quantity >= 2 ? shoppingBagCount : (form.shoppingBag === "추가" ? 1 : 0);
+          const effectivePreservativeCount4 = quantity >= 2 ? preservativeCount : (form.preservative === "추가" ? 1 : 0);
           const finalPrice = selectedProduct
             ? selectedProduct.price +
               (messageCardEnabled ? effectiveMsgCardCount4 * messageCardPrice : 0) +
               (shoppingBagEnabled && !selectedProduct.bag_included ? effectiveBagCount4 * shoppingBagPrice : 0) +
+              (preservativeEnabled ? effectivePreservativeCount4 * preservativePrice : 0) +
               (form.deliveryType === "배송" && deliveryFee !== null ? deliveryFee : 0)
             : 0;
 
@@ -1127,6 +1156,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                 amount={finalPrice}
                 onReadyChange={setWidgetReady}
                 onCancel={() => setSubmitting(false)}
+                isDemo={isDemo}
               />
 
               {/* ── 왼쪽: 폼 영역 ── */}
@@ -1216,40 +1246,16 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                           <label className={`block text-xs mb-1 ${s4fe.deliveryInfo && !recipientPhone ? "text-red-500 font-medium" : "text-gray-600"}`}>받는 분 전화번호</label>
                           <input type="tel" placeholder="010-1234-5678" value={recipientPhone} onChange={(e) => { setRecipientPhone(formatPhone(e.target.value)); if (s4fe.deliveryInfo) setS4fe(p => ({ ...p, deliveryInfo: false })); }} className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none bg-gray-50 placeholder:text-gray-300 ${s4fe.deliveryInfo && !recipientPhone ? "border-red-400 focus:border-red-400" : "border-gray-200 focus:border-gray-400"}`} />
                         </div>
-                        <div>
-                          <label className={`block text-xs mb-1 ${s4fe.deliveryInfo && !address ? "text-red-500 font-medium" : "text-gray-600"}`}>주소</label>
-                          <div className="flex gap-2">
-                            <input type="text" placeholder="주소 검색" value={address} readOnly onClick={() => setShowPostcode(true)} className={`flex-1 min-w-0 border rounded-lg px-3 py-2.5 text-sm focus:outline-none bg-gray-50 cursor-pointer placeholder:text-gray-300 ${s4fe.deliveryInfo && !address ? "border-red-400" : "border-gray-200 focus:border-gray-400"}`} />
-                            <button type="button" onClick={() => setShowPostcode(true)} className="shrink-0 px-3 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-600 hover:border-gray-400 bg-gray-50 transition-colors whitespace-nowrap">찾기</button>
-                          </div>
-                        </div>
-                        <div>
-                          <label className="block text-xs text-gray-600 mb-1">상세주소</label>
-                          <input type="text" placeholder="동/호수 등" value={addressDetail} onChange={(e) => setAddressDetail(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-gray-400 bg-gray-50 placeholder:text-gray-300" />
+                      </div>
+                      <div className="mt-3">
+                        <label className={`block text-xs mb-1 ${s4fe.deliveryInfo && !address ? "text-red-500 font-medium" : "text-gray-600"}`}>주소</label>
+                        <div className="flex gap-2">
+                          <input type="text" placeholder="주소 검색" value={address} readOnly onClick={() => setShowPostcode(true)} className={`flex-1 min-w-0 border rounded-lg px-3 py-2.5 text-sm focus:outline-none bg-gray-50 cursor-pointer placeholder:text-gray-300 ${s4fe.deliveryInfo && !address ? "border-red-400" : "border-gray-200 focus:border-gray-400"}`} />
+                          <button type="button" onClick={() => setShowPostcode(true)} className="shrink-0 px-3 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-600 hover:border-gray-400 bg-gray-50 transition-colors whitespace-nowrap">찾기</button>
                         </div>
                       </div>
-                      {address && (
-                        <div className="text-xs px-1">
-                          {!storeAddress ? (
-                            <span className="text-gray-400">매장 주소가 등록되지 않아 거리를 계산할 수 없습니다.</span>
-                          ) : distanceLoading ? (
-                            <span className="text-gray-400">거리 계산 중...</span>
-                          ) : deliveryDistance !== null ? (
-                            <span className="text-gray-500">
-                              📍 매장까지 직선거리 <span className="font-semibold text-gray-800">약 {deliveryDistance}km</span>
-                              {deliveryFee !== null
-                                ? <span className="ml-1 text-gold-600 font-semibold"> · 배송비 {deliveryFee.toLocaleString()}원</span>
-                                : <span className="ml-1 text-amber-500"> · 매장에 문의 바랍니다</span>
-                              }
-                              <span className="text-gray-400 ml-1">(직선거리 기준)</span>
-                            </span>
-                          ) : (
-                            <span className="text-gray-400">거리를 계산할 수 없습니다.</span>
-                          )}
-                        </div>
-                      )}
                       {showPostcode && (
-                        <div className="border border-gray-200 rounded-xl overflow-hidden">
+                        <div className="mt-2 border border-gray-200 rounded-xl overflow-hidden">
                           <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-200">
                             <span className="text-xs text-gray-500">주소 검색</span>
                             <button type="button" onClick={() => setShowPostcode(false)} className="text-gray-400 hover:text-gray-600 text-sm">✕</button>
@@ -1275,6 +1281,30 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                             }}
                             style={{ height: 400 }}
                           />
+                        </div>
+                      )}
+                      <div className="mt-3">
+                        <label className="block text-xs text-gray-600 mb-1">상세주소</label>
+                        <input type="text" placeholder="동/호수 등" value={addressDetail} onChange={(e) => setAddressDetail(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-gray-400 bg-gray-50 placeholder:text-gray-300" />
+                      </div>
+                      {address && (
+                        <div className="text-xs px-1">
+                          {!storeAddress ? (
+                            <span className="text-gray-400">매장 주소가 등록되지 않아 거리를 계산할 수 없습니다.</span>
+                          ) : distanceLoading ? (
+                            <span className="text-gray-400">거리 계산 중...</span>
+                          ) : deliveryDistance !== null ? (
+                            <span className="text-gray-500">
+                              📍 매장까지 직선거리 <span className="font-semibold text-gray-800">약 {deliveryDistance}km</span>
+                              {deliveryFee !== null
+                                ? <span className="ml-1 text-gold-600 font-semibold"> · 배송비 {deliveryFee.toLocaleString()}원</span>
+                                : <span className="ml-1 text-amber-500"> · 매장에 문의 바랍니다</span>
+                              }
+                              <span className="text-gray-400 ml-1">(직선거리 기준)</span>
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">거리를 계산할 수 없습니다.</span>
+                          )}
                         </div>
                       )}
                         </div>
@@ -1395,7 +1425,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                 })()}
 
                 {/* 추가 옵션 */}
-                {(messageCardEnabled || shoppingBagEnabled) && (
+                {(messageCardEnabled || shoppingBagEnabled || preservativeEnabled) && (
                   <div className="bg-white overflow-hidden">
                     <div className="px-4 pt-4 pb-3 border-b border-gray-100">
                       <h3 className="text-sm font-medium text-gray-700">추가 옵션</h3>
@@ -1558,6 +1588,55 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                           </button>
                         )
                       )}
+                      {preservativeEnabled && (
+                        quantity >= 2 ? (
+                          /* 수량 2개 이상: 카운터 UI */
+                          <div className="flex items-center justify-between px-4 py-3.5">
+                            <div>
+                              <span className="text-sm text-gray-800">생화 수명연장제</span>
+                              <span className="ml-2 text-xs text-gold-500">+{preservativePrice.toLocaleString()}원 / 개</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setPreservativeCount((c) => Math.max(0, c - 1))}
+                                disabled={preservativeCount === 0}
+                                className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-gray-400 transition-colors disabled:opacity-30"
+                              >
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" /></svg>
+                              </button>
+                              <span className="text-sm font-medium w-5 text-center">{preservativeCount}</span>
+                              <button
+                                type="button"
+                                onClick={() => setPreservativeCount((c) => Math.min(quantity, c + 1))}
+                                disabled={preservativeCount >= quantity}
+                                className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-gray-400 transition-colors disabled:opacity-30"
+                              >
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m-7-7h14" /></svg>
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          /* 수량 1개: 기존 토글 UI */
+                          <button
+                            type="button"
+                            onClick={() => set("preservative", form.preservative === "추가" ? "없음" : "추가")}
+                            className={`w-full flex items-center justify-between px-4 py-3.5 text-left transition-colors ${form.preservative === "추가" ? "bg-beige-50" : "hover:bg-gray-50"}`}
+                          >
+                            <div>
+                              <span className={`text-sm ${form.preservative === "추가" ? "text-gold-600 font-medium" : "text-gray-800"}`}>생화 수명연장제</span>
+                              <span className="ml-2 text-xs text-gold-500">+{preservativePrice.toLocaleString()}원</span>
+                            </div>
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${form.preservative === "추가" ? "border-gold-500 bg-gold-500" : "border-gray-300"}`}>
+                              {form.preservative === "추가" && (
+                                <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                                </svg>
+                              )}
+                            </div>
+                          </button>
+                        )
+                      )}
                     </div>
                   </div>
                 )}
@@ -1629,6 +1708,12 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                         <div className="flex justify-between text-sm text-gray-700">
                           <span>쇼핑백</span>
                           <span>+{shoppingBagPrice.toLocaleString()}원</span>
+                        </div>
+                      )}
+                      {preservativeEnabled && form.preservative === "추가" && (
+                        <div className="flex justify-between text-sm text-gray-700">
+                          <span>생화 수명연장제</span>
+                          <span>+{preservativePrice.toLocaleString()}원</span>
                         </div>
                       )}
                       {form.deliveryType === "배송" && deliveryFee !== null && (

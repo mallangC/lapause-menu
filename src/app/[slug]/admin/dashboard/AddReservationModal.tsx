@@ -73,7 +73,9 @@ interface ItemForm {
   message_card: string;
   message_card_content: string;
   shopping_bag: string;
+  preservative: string;
   memo: string;
+  product_id: string | null;
 }
 
 const emptyItem = (): ItemForm => ({
@@ -83,7 +85,9 @@ const emptyItem = (): ItemForm => ({
   message_card: "없음",
   message_card_content: "",
   shopping_bag: "없음",
+  preservative: "없음",
   memo: "",
+  product_id: null,
 });
 
 interface DayHours { closed: boolean; open: string; close: string; }
@@ -96,6 +100,8 @@ interface Props {
   messageCardPrice?: number;
   shoppingBagEnabled?: boolean;
   shoppingBagPrice?: number;
+  preservativeEnabled?: boolean;
+  preservativePrice?: number;
   customProductTypes?: string[];
   businessHours?: Record<string, DayHours>;
   closedDates?: string[];
@@ -173,6 +179,7 @@ function parseNaverText(text: string) {
     else if (optText.includes("화병")) r.productType = "화병꽂이";
     if (optText.includes("쇼핑백")) r.shoppingBag = "추가";
     if (optText.includes("메시지카드") || optText.includes("메시지 카드")) r.messageCard = "추가";
+    if (optText.includes("수명연장제")) r.preservative = "추가";
     if (optLines.length > 0) extras.push(`[옵션] ${optLines.join(", ")}`);
   }
 
@@ -181,6 +188,7 @@ function parseNaverText(text: string) {
     const reqText = reqSection[1];
     if (reqText.includes("쇼핑백")) r.shoppingBag = "추가";
     if (reqText.includes("메시지카드") || reqText.includes("메시지 카드")) r.messageCard = "추가";
+    if (reqText.includes("수명연장제")) r.preservative = "추가";
   }
 
   const infoSection = text.match(/예약자입력정보\s*([\s\S]+?)(?=결제정보|$)/);
@@ -203,6 +211,7 @@ export default function AddReservationModal({
   companyId, onClose, onSaved,
   messageCardEnabled = false, messageCardPrice = 0,
   shoppingBagEnabled = false, shoppingBagPrice = 0,
+  preservativeEnabled = false, preservativePrice = 0,
   customProductTypes = [],
   businessHours = {},
   closedDates = [],
@@ -235,7 +244,9 @@ export default function AddReservationModal({
         message_card: item.message_card,
         message_card_content: item.message_card_content ?? "",
         shopping_bag: item.shopping_bag,
+        preservative: item.preservative ?? "없음",
         memo: item.memo ?? "",
+        product_id: item.product_id ?? null,
       }));
     }
     if (reservationId) return [emptyItem()];
@@ -308,10 +319,11 @@ export default function AddReservationModal({
       return sum
         + (Number(item.price) || 0)
         + (messageCardEnabled && item.message_card === "추가" ? messageCardPrice : 0)
-        + (shoppingBagEnabled && item.shopping_bag === "추가" ? shoppingBagPrice : 0);
+        + (shoppingBagEnabled && item.shopping_bag === "추가" ? shoppingBagPrice : 0)
+        + (preservativeEnabled && item.preservative === "추가" ? preservativePrice : 0);
     }, 0);
     return itemsTotal + (deliveryType === "배송" ? (Number(deliveryFee) || 0) : 0);
-  }, [items, messageCardEnabled, messageCardPrice, shoppingBagEnabled, shoppingBagPrice, deliveryType, deliveryFee]);
+  }, [items, messageCardEnabled, messageCardPrice, shoppingBagEnabled, shoppingBagPrice, preservativeEnabled, preservativePrice, deliveryType, deliveryFee]);
 
   const handleRefImageAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -356,10 +368,12 @@ export default function AddReservationModal({
       type: item.type,
       name: item.name,
       price: Number(item.price) || 0,
+      product_id: item.product_id ?? null,
       message_card: item.message_card,
       message_card_content:
         (item.message_card === "추가" || item.message_card === "서비스") ? item.message_card_content || null : null,
       shopping_bag: item.shopping_bag,
+      preservative: item.preservative,
       memo: item.memo || null,
     }));
 
@@ -396,30 +410,39 @@ export default function AddReservationModal({
     const itemsPayload = buildItemsPayload();
 
     if (reservationId) {
-      const { error: updateError } = await supabase.from("reservations").update({
-        channel,
-        orderer_name: ordererName,
-        orderer_phone: parsePhone(ordererPhone),
-        items: itemsPayload,
-        purpose: purpose === "기타" ? purposeCustom : purpose,
-        paid,
-        final_price: finalPrice,
-        recipient_gender: recipientGender,
-        recipient_age: recipientAge,
-        relationship,
-        mood,
-        delivery_type: deliveryType,
-        delivery_fee: deliveryType === "배송" && deliveryFee ? Number(deliveryFee) : null,
-        desired_date: desiredDate,
-        desired_time: desiredTime,
-        requests: requests || null,
-        recipient_name: deliveryType === "배송" ? recipientName || null : null,
-        recipient_phone: deliveryType === "배송" ? parsePhone(recipientPhone) || null : null,
-        address: deliveryType === "배송" ? address || null : null,
-        address_detail: deliveryType === "배송" ? addressDetail || null : null,
-        reference_images: uploadedImages.length > 0 ? uploadedImages : null,
-      }).eq("id", reservationId);
-      if (updateError) { setError(updateError.message); setSaving(false); return; }
+      const res = await fetch(`/api/reservation/${reservationId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          channel,
+          orderer_name: ordererName,
+          orderer_phone: parsePhone(ordererPhone),
+          items: itemsPayload,
+          purpose: purpose === "기타" ? purposeCustom : purpose,
+          paid,
+          final_price: finalPrice,
+          recipient_gender: recipientGender,
+          recipient_age: recipientAge,
+          relationship,
+          mood,
+          delivery_type: deliveryType,
+          delivery_fee: deliveryType === "배송" && deliveryFee ? Number(deliveryFee) : null,
+          desired_date: desiredDate,
+          desired_time: desiredTime,
+          requests: requests || null,
+          recipient_name: deliveryType === "배송" ? recipientName || null : null,
+          recipient_phone: deliveryType === "배송" ? parsePhone(recipientPhone) || null : null,
+          address: deliveryType === "배송" ? address || null : null,
+          address_detail: deliveryType === "배송" ? addressDetail || null : null,
+          reference_images: uploadedImages.length > 0 ? uploadedImages : null,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "수정 중 오류가 발생했습니다.");
+        setSaving(false);
+        return;
+      }
       onSaved();
       return;
     }
@@ -537,10 +560,12 @@ export default function AddReservationModal({
                           let price = Number(parsed.productPrice);
                           if (shoppingBagEnabled && parsed.shoppingBag === "추가") price -= shoppingBagPrice;
                           if (messageCardEnabled && parsed.messageCard === "추가") price -= messageCardPrice;
+                          if (preservativeEnabled && parsed.preservative === "추가") price -= preservativePrice;
                           first.price = String(Math.max(0, price));
                         }
                         if (messageCardEnabled && parsed.messageCard) first.message_card = parsed.messageCard as string;
                         if (shoppingBagEnabled && parsed.shoppingBag) first.shopping_bag = parsed.shoppingBag as string;
+                        if (preservativeEnabled && parsed.preservative) first.preservative = parsed.preservative as string;
                         return [first, ...prev.slice(1)];
                       });
                       setShowPaste(false);
@@ -670,7 +695,7 @@ export default function AddReservationModal({
                     <span className="text-sm text-gray-500 shrink-0">원</span>
                   </div>
                 </div>
-                {(messageCardEnabled || shoppingBagEnabled) && (
+                {(messageCardEnabled || shoppingBagEnabled || preservativeEnabled) && (
                   <div className="space-y-3">
                     {messageCardEnabled && (
                       <div>
@@ -701,6 +726,21 @@ export default function AddReservationModal({
                             <button key={opt} type="button" onClick={() => updateItem(idx, "shopping_bag", opt)}
                               className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all ${
                                 item.shopping_bag === opt ? "bg-gold-500 text-white shadow-sm" : "text-gray-400 hover:text-gray-500"
+                              }`}>
+                              {opt}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {preservativeEnabled && (
+                      <div>
+                        <label className={fieldLabelCls}>생화 수명연장제{preservativePrice > 0 && <span className="text-gray-400 font-normal ml-1">(+{preservativePrice.toLocaleString()}원)</span>}</label>
+                        <div className="flex p-1 bg-gray-100 rounded-xl">
+                          {["추가", "서비스", "없음"].map((opt) => (
+                            <button key={opt} type="button" onClick={() => updateItem(idx, "preservative", opt)}
+                              className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                                item.preservative === opt ? "bg-gold-500 text-white shadow-sm" : "text-gray-400 hover:text-gray-500"
                               }`}>
                               {opt}
                             </button>

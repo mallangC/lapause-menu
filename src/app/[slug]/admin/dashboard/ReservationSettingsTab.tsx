@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { formatMoney, parseMoney } from "@/lib/format";
+import SaveButton from "@/components/admin/SaveButton";
 
 interface Props {
   companyId: string;
@@ -17,15 +18,16 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle, onG
   const [messageCardPrice, setMessageCardPrice] = useState("");
   const [shoppingBagEnabled, setShoppingBagEnabled] = useState(false);
   const [shoppingBagPrice, setShoppingBagPrice] = useState("");
+  const [preservativeEnabled, setPreservativeEnabled] = useState(false);
+  const [preservativePrice, setPreservativePrice] = useState("");
   const [consultNotice, setConsultNotice] = useState("");
   const [deliveryEnabled, setDeliveryEnabled] = useState(false);
   const [showDeliveryFeeWarning, setShowDeliveryFeeWarning] = useState(false);
   const [deliveryFees, setDeliveryFees] = useState<Record<string, string>>({
     "0-1": "", "1-3": "", "3-5": "", "5-10": "", "10-15": "", "15-20": "",
   });
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showDeliveryFeeTip, setShowDeliveryFeeTip] = useState(false);
   const [hasBankInfo, setHasBankInfo] = useState(false);
   const [showBankWarning, setShowBankWarning] = useState(false);
   const [mailOrderNumber, setMailOrderNumber] = useState("");
@@ -34,12 +36,12 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle, onG
   const [showNoticeInfo, setShowNoticeInfo] = useState(false);
 
   const supabase = createClient();
-  const mailOrderBlocked = !mailOrderNumber && soldCount >= 30;
+  const mailOrderBlocked = !mailOrderNumber && soldCount >= 50;
 
   useEffect(() => {
     supabase
       .from("company_settings")
-      .select("consult_enabled, consult_apply_status, message_card_enabled, message_card_price, shopping_bag_enabled, shopping_bag_price, bank_name, bank_account, bank_holder, address, consult_notice, delivery_fees, delivery_enabled, mail_order_number, sold_count")
+      .select("consult_enabled, consult_apply_status, message_card_enabled, message_card_price, shopping_bag_enabled, shopping_bag_price, preservative_enabled, preservative_price, bank_name, bank_account, bank_holder, address, consult_notice, delivery_fees, delivery_enabled, mail_order_number, sold_count")
       .eq("company_id", companyId)
       .single()
       .then(({ data }) => {
@@ -50,6 +52,8 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle, onG
         setMessageCardPrice(data.message_card_price ? formatMoney(String(data.message_card_price)) : "");
         setShoppingBagEnabled(data.shopping_bag_enabled ?? false);
         setShoppingBagPrice(data.shopping_bag_price ? formatMoney(String(data.shopping_bag_price)) : "");
+        setPreservativeEnabled(data.preservative_enabled ?? false);
+        setPreservativePrice(data.preservative_price ? formatMoney(String(data.preservative_price)) : "");
         setHasBankInfo(!!(data.address && data.bank_name && data.bank_account && data.bank_holder));
         setMailOrderNumber(data.mail_order_number ?? "");
         setSoldCount(data.sold_count ?? 0);
@@ -71,9 +75,7 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle, onG
   }, [companyId]);
 
   const handleSave = async () => {
-    setLoading(true);
     setError(null);
-    setSuccess(false);
     const { error: err } = await supabase
       .from("company_settings")
       .update({
@@ -82,6 +84,8 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle, onG
         message_card_price: messageCardEnabled ? parseMoney(messageCardPrice) : 0,
         shopping_bag_enabled: shoppingBagEnabled,
         shopping_bag_price: shoppingBagEnabled ? parseMoney(shoppingBagPrice) : 0,
+        preservative_enabled: preservativeEnabled,
+        preservative_price: preservativeEnabled ? parseMoney(preservativePrice) : 0,
         consult_notice: consultNotice || null,
         delivery_enabled: deliveryEnabled,
         delivery_fees: Object.fromEntries(
@@ -89,13 +93,11 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle, onG
         ),
       })
       .eq("company_id", companyId);
-    if (err) setError(err.message);
-    else {
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
-      onConsultToggle?.(consultEnabled);
+    if (err) {
+      setError(err.message);
+      return false;
     }
-    setLoading(false);
+    onConsultToggle?.(consultEnabled);
   };
 
   return (
@@ -173,7 +175,7 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle, onG
           </div>
           {mailOrderBlocked && (
             <p className="text-xs text-red-500 mt-2">
-              통신판매업 미신고 상태로 30개를 판매해 판매 기능이 정지되었습니다.{" "}
+              통신판매업 미신고 상태로 50개를 판매해 판매 기능이 정지되었습니다.{" "}
               <button type="button" onClick={onGoToOrderSettings} className="underline text-red-600 hover:text-red-700">판매 신청 탭</button>에서 신고번호를 등록해주세요.
             </p>
           )}
@@ -192,7 +194,7 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle, onG
               </div>
               <div>
                 <p className="text-sm font-semibold text-gray-900">통신판매업 신고가 필요합니다</p>
-                <p className="text-xs text-gray-400 mt-0.5">신고번호 미등록 상태로 30개를 판매해 판매 기능이 정지되었습니다.</p>
+                <p className="text-xs text-gray-400 mt-0.5">신고번호 미등록 상태로 50개를 판매해 판매 기능이 정지되었습니다.</p>
               </div>
             </div>
             <p className="text-xs text-gray-500 leading-relaxed">
@@ -324,6 +326,36 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle, onG
         </div>
       </div>
 
+      {/* 생화 수명연장제 */}
+      <div className="flex items-center justify-between p-4 border border-gray-200 rounded-xl bg-white">
+        <div>
+          <p className="text-sm font-medium text-gray-800">생화 수명연장제</p>
+          <p className="text-xs text-gray-400 mt-0.5">예약 추가 시 생화 수명연장제 옵션을 표시합니다.</p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {preservativeEnabled && (
+            <div className="flex items-center gap-1">
+              <input
+                type="text"
+                inputMode="numeric"
+                value={preservativePrice}
+                onChange={(e) => setPreservativePrice(formatMoney(e.target.value))}
+                placeholder="0"
+                className="w-20 border border-gray-200 rounded-lg px-2 py-1 text-sm text-right focus:outline-none focus:border-gray-400 bg-white"
+              />
+              <span className="text-xs text-gray-400">원</span>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => setPreservativeEnabled((prev) => !prev)}
+            className={`w-12 h-6 rounded-full transition-colors relative ${preservativeEnabled ? "bg-gold-500" : "bg-gray-200"}`}
+          >
+            <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${preservativeEnabled ? "left-6" : "left-0.5"}`} />
+          </button>
+        </div>
+      </div>
+
       {/* 배송 기능 */}
       <div className="flex items-center justify-between p-4 border border-gray-200 rounded-xl bg-white">
         <div>
@@ -376,7 +408,14 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle, onG
       {/* 배송비 설정 */}
       <div className="space-y-3">
         <div>
-          <h3 className="text-sm font-medium text-gray-700">배송비 설정</h3>
+          <div className="flex items-center gap-1.5">
+            <h3 className="text-sm font-medium text-gray-700">배송비 설정</h3>
+            <button type="button" onClick={() => setShowDeliveryFeeTip(true)}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600 transition-colors" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
+              </svg>
+            </button>
+          </div>
           <p className="text-xs text-gray-400 mt-0.5">거리별 배송비를 설정합니다. 비워두면 해당 구간은 표시되지 않습니다.</p>
         </div>
         <div className="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
@@ -407,21 +446,33 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle, onG
       </div>
 
       <div className="sticky bottom-0 bg-white border-t border-gray-100 -mx-0 pt-4 pb-1 flex items-center gap-3">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={loading}
-          className="bg-gold-500 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-gold-600 disabled:opacity-50 transition-colors"
-        >
-          {loading ? "저장 중..." : "저장"}
-        </button>
-        {success && (
-          <span className="text-sm text-green-600 flex items-center gap-1">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-            저장되었습니다.
-          </span>
-        )}
+        <SaveButton
+          onSave={handleSave}
+          className="text-sm font-medium text-white bg-gold-500 hover:bg-gold-600"
+        />
       </div>
+
+      {/* 배송비 참고 이미지 모달 */}
+      {showDeliveryFeeTip && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4" onClick={() => setShowDeliveryFeeTip(false)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm md:max-w-lg flex flex-col max-h-[85vh]" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
+              <h3 className="text-sm font-semibold text-gray-900">배송비 설정 참고</h3>
+              <button type="button" onClick={() => setShowDeliveryFeeTip(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-5 overflow-y-auto">
+              <p className="text-xs text-gray-500 mb-3 leading-relaxed">
+                고객이 배송 주소를 입력하면 매장 주소와의 거리가 자동으로 측정되고, 그 거리 구간에 맞춰 여기서 설정한 배송비가 최종 금액에 자동으로 추가됩니다.
+              </p>
+              <img src="/delivery-fee-tip.png" alt="배송비 설정 참고 이미지" className="w-full rounded-xl border border-gray-100" />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
     </>
   );

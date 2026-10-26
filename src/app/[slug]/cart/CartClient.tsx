@@ -15,6 +15,8 @@ interface CartClientProps {
   consultEnabled: boolean;
   shoppingBagEnabled: boolean;
   shoppingBagPrice: number;
+  preservativeEnabled: boolean;
+  preservativePrice: number;
   messageCardEnabled: boolean;
   messageCardPrice: number;
 }
@@ -27,6 +29,8 @@ export default function CartClient({
   consultEnabled,
   shoppingBagEnabled,
   shoppingBagPrice,
+  preservativeEnabled,
+  preservativePrice,
   messageCardEnabled,
   messageCardPrice,
 }: CartClientProps) {
@@ -37,6 +41,7 @@ export default function CartClient({
   const totalPrice = checkedItems.reduce((sum, item) => {
     let price = item.price * item.quantity;
     if (!item.bag_included) price += shoppingBagPrice * (item.shoppingBagCount ?? 0);
+    price += preservativePrice * (item.preservativeCount ?? 0);
     price += messageCardPrice * (item.messageCardCount ?? 0);
     return sum + price;
   }, 0);
@@ -73,6 +78,7 @@ export default function CartClient({
             const isExpanded = expandedCard === item.productId;
             const itemTotal = item.price * item.quantity
               + (!item.bag_included ? shoppingBagPrice * (item.shoppingBagCount ?? 0) : 0)
+              + preservativePrice * (item.preservativeCount ?? 0)
               + messageCardPrice * (item.messageCardCount ?? 0);
 
             return (
@@ -117,6 +123,7 @@ export default function CartClient({
                             updateItem(item.productId, {
                               quantity: newQty,
                               shoppingBagCount: Math.min(item.shoppingBagCount ?? 0, newQty),
+                              preservativeCount: Math.min(item.preservativeCount ?? 0, newQty),
                               messageCardCount: newCardCount,
                               messageCardContents: (item.messageCardContents ?? []).slice(0, newCardCount),
                             });
@@ -139,8 +146,8 @@ export default function CartClient({
                   </div>
                 </div>
 
-                {/* 옵션 (쇼핑백, 메시지카드) */}
-                {(shoppingBagEnabled || messageCardEnabled || item.bag_included) && (
+                {/* 옵션 (쇼핑백, 수명연장제, 메시지카드) */}
+                {(shoppingBagEnabled || preservativeEnabled || messageCardEnabled || item.bag_included) && (
                   <>
                     <button
                       onClick={() => setExpandedCard(isExpanded ? null : item.productId)}
@@ -176,6 +183,33 @@ export default function CartClient({
                                 onClick={() => updateItem(item.productId, { shoppingBagCount: Math.min(item.quantity, (item.shoppingBagCount ?? 0) + 1) })}
                                 className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-gray-400 transition-colors disabled:opacity-30"
                                 disabled={item.bag_included || (item.shoppingBagCount ?? 0) >= item.quantity}
+                              >
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m-7-7h14" /></svg>
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 생화 수명연장제 */}
+                        {preservativeEnabled && (
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-gray-700">생화 수명연장제</p>
+                              <p className="text-xs text-gray-400">+{preservativePrice.toLocaleString()}원 / 개</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => updateItem(item.productId, { preservativeCount: Math.max(0, (item.preservativeCount ?? 0) - 1) })}
+                                className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-gray-400 transition-colors disabled:opacity-30"
+                                disabled={(item.preservativeCount ?? 0) === 0}
+                              >
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" /></svg>
+                              </button>
+                              <span className="text-sm font-medium w-4 text-center">{item.preservativeCount ?? 0}</span>
+                              <button
+                                onClick={() => updateItem(item.productId, { preservativeCount: Math.min(item.quantity, (item.preservativeCount ?? 0) + 1) })}
+                                className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-gray-400 transition-colors disabled:opacity-30"
+                                disabled={(item.preservativeCount ?? 0) >= item.quantity}
                               >
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m-7-7h14" /></svg>
                               </button>

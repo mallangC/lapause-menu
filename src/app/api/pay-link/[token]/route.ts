@@ -34,10 +34,10 @@ export async function GET(
 
     const { data: company } = await adminClient
       .from("companies")
-      .select("name, slug, settings:company_settings(logo_image, message_card_price, shopping_bag_price)")
+      .select("name, slug, is_demo, settings:company_settings(logo_image, message_card_price, shopping_bag_price, preservative_price)")
       .eq("id", data.company_id)
       .single();
-    const settings = company?.settings as { logo_image?: string | null; message_card_price?: number | null; shopping_bag_price?: number | null } | null;
+    const settings = company?.settings as { logo_image?: string | null; message_card_price?: number | null; shopping_bag_price?: number | null; preservative_price?: number | null } | null;
 
     return NextResponse.json({
       reservationId: data.id,
@@ -54,6 +54,8 @@ export async function GET(
       logoImage: settings?.logo_image ?? null,
       messageCardPrice: settings?.message_card_price ?? 0,
       shoppingBagPrice: settings?.shopping_bag_price ?? 0,
+      preservativePrice: settings?.preservative_price ?? 0,
+      isDemo: company?.is_demo ?? false,
     });
   } catch (err) {
     console.error("[pay-link/token] 오류:", err);

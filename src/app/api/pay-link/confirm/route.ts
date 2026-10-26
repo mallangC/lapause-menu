@@ -38,28 +38,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "결제 금액이 주문 금액보다 작습니다." }, { status: 400 });
     }
 
-    // 토스 결제 승인
-    const encodedKey = Buffer.from(`${process.env.TOSS_WIDGET_SECRET_KEY!}:`).toString("base64");
-    const tossRes = await fetch("https://api.tosspayments.com/v1/payments/confirm", {
-      method: "POST",
-      headers: {
-        Authorization: `Basic ${encodedKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ paymentKey, orderId, amount }),
-    });
+    // 데모 매장 여부 확인 (클라이언트가 보낸 값이 아니라 서버에서 직접 조회)
+    const { data: companyRow } = await adminClient.from("companies").select("is_demo").eq("id", reservation.company_id).single();
+    const isDemoCompany = companyRow?.is_demo ?? false;
 
-    if (!tossRes.ok) {
-      const tossError = await tossRes.json().catch(() => ({}));
-      return NextResponse.json(
-        { error: (tossError as { message?: string }).message ?? "결제 확인에 실패했습니다." },
-        { status: 400 }
-      );
-    }
+    // 토스 결제 승인 (데모 매장은 실제 결제가 없으므로 건너뛴다)
+    if (!isDemoCompany) {
+      const encodedKey = Buffer.from(`${process.env.TOSS_WIDGET_SECRET_KEY!}:`).toString("base64");
+      const tossRes = await fetch("https://api.tosspayments.com/v1/payments/confirm", {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${encodedKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ paymentKey, orderId, amount }),
+      });
 
-    const tossData = await tossRes.json();
-    if (tossData.status !== "DONE") {
-      return NextResponse.json({ error: "결제가 완료되지 않았습니다." }, { status: 400 });
+      if (!tossRes.ok) {
+        const tossError = await tossRes.json().catch(() => ({}));
+        return NextResponse.json(
+          { error: (tossError as { message?: string }).message ?? "결제 확인에 실패했습니다." },
+          { status: 400 }
+        );
+      }
+
+      const tossData = await tossRes.json();
+      if (tossData.status !== "DONE") {
+        return NextResponse.json({ error: "결제가 완료되지 않았습니다." }, { status: 400 });
+      }
     }
 
     // 예약 결제 완료 처리
@@ -67,7 +73,10 @@ export async function POST(request: NextRequest) {
       .from("reservations")
       .update({
         paid: true,
-        payment_id: paymentKey,
+        paid_at: new Date().toISOString(),
+        // 데모 매장은 실제 결제가 아니므로 payment_id를 비워서 정산/통신판매업 판매수량 집계 등 "실결제" 신호로 쓰이는 곳에서 자동 제외되게 한다
+        payment_id: isDemoCompany ? null : paymentKey,
+        order_type: "link",
         payment_token: null,
         payment_link_expires_at: null,
       })
@@ -81,7 +90,7 @@ export async function POST(request: NextRequest) {
         .eq("id", reservation.company_id)
         .single();
 
-      const ownerPhone = company?.slug
+      const ownerPhone = company?.slug && !isDemoCompany
         ? (await adminClient.rpc("get_owner_phone_by_slug", { p_slug: company.slug })).data
         : null;
 

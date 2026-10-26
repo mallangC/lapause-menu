@@ -19,6 +19,7 @@ export default async function CartPage({ params }: Props) {
       settings:company_settings(
         logo_image, theme_bg, theme_accent, consult_enabled,
         shopping_bag_enabled, shopping_bag_price,
+        preservative_enabled, preservative_price,
         message_card_enabled, message_card_price
       ),
       subscription:company_subscriptions(plan)
@@ -47,6 +48,8 @@ export default async function CartPage({ params }: Props) {
         consultEnabled={(s.consult_enabled as boolean) ?? false}
         shoppingBagEnabled={(s.shopping_bag_enabled as boolean) ?? false}
         shoppingBagPrice={(s.shopping_bag_price as number) ?? 2000}
+        preservativeEnabled={(s.preservative_enabled as boolean) ?? false}
+        preservativePrice={(s.preservative_price as number) ?? 500}
         messageCardEnabled={(s.message_card_enabled as boolean) ?? false}
         messageCardPrice={(s.message_card_price as number) ?? 2000}
       />

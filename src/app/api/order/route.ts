@@ -11,6 +11,7 @@ interface CartItemPayload {
   bag_included: boolean;
   quantity: number;
   shoppingBagCount: number;
+  preservativeCount: number;
   messageCardCount: number;
   messageCardContents: string[];
 }
@@ -46,6 +47,14 @@ export async function POST(request: NextRequest) {
     // 휴무일 검증 (결제 승인 전에 막아 불필요한 결제를 방지)
     const { data: companyId } = await supabase
       .rpc("get_company_id_by_slug", { p_slug: slug });
+
+    // 데모 매장 여부 확인 (클라이언트가 보낸 값이 아니라 서버에서 직접 조회)
+    let isDemoCompany = false;
+    if (companyId) {
+      const { data: companyRow } = await supabase.from("companies").select("is_demo").eq("id", companyId).single();
+      isDemoCompany = companyRow?.is_demo ?? false;
+    }
+
     if (companyId && body.desiredDate) {
       const { data: settingsRow } = await supabase
         .from("company_settings")
@@ -61,8 +70,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 토스 결제 승인 및 검증
-    if (paymentKey) {
+    // 토스 결제 승인 및 검증 (데모 매장은 실제 결제가 없으므로 건너뛴다)
+    if (paymentKey && !isDemoCompany) {
       const encodedKey = Buffer.from(`${process.env.TOSS_WIDGET_SECRET_KEY!}:`).toString("base64");
       const tossRes = await fetch("https://api.tosspayments.com/v1/payments/confirm", {
         method: "POST",
@@ -112,6 +121,7 @@ export async function POST(request: NextRequest) {
       quantity: item.quantity,
       product_id: item.productId,
       shopping_bag: item.bag_included ? "서비스" : (item.shoppingBagCount > 0 ? `${item.shoppingBagCount}개` : "미포함"),
+      preservative: item.preservativeCount > 0 ? `${item.preservativeCount}개` : "미포함",
       message_card: item.messageCardCount > 0 ? `${item.messageCardCount}장` : "미포함",
       message_card_content: item.messageCardCount > 0 && item.messageCardContents?.length
         ? item.messageCardContents.map((c, i) => item.messageCardContents.length > 1 ? `[${i + 1}] ${c}` : c).filter(Boolean).join("\n") || null
@@ -137,7 +147,9 @@ export async function POST(request: NextRequest) {
       items: dbItems,
       quantity: items.reduce((s, i) => s + i.quantity, 0),
       paid: !!paymentKey,
-      payment_id: paymentKey ?? null,
+      paid_at: paymentKey ? new Date().toISOString() : null,
+      // 데모 매장은 실제 결제가 아니므로 payment_id를 비워서 정산/통신판매업 판매수량 집계 등 "실결제" 신호로 쓰이는 곳에서 자동 제외되게 한다
+      payment_id: isDemoCompany ? null : (paymentKey ?? null),
       final_price: finalPrice,
       delivery_type: deliveryType,
       desired_date: desiredDate,
@@ -148,14 +160,15 @@ export async function POST(request: NextRequest) {
       address: delivery?.address || null,
       address_detail: delivery?.addressDetail || null,
       source: "cart",
+      order_type: "product",
     }).select("id");
 
     if (insertError) console.error("[order] insert 실패:", insertError.message);
     else savedReservationId = insertData?.[0]?.id ?? null;
 
-    // 사장님 알림톡
+    // 사장님 알림톡 (데모 매장은 발송하지 않음)
     try {
-      const { data: ownerPhone } = await supabase.rpc("get_owner_phone_by_slug", { p_slug: slug });
+      const { data: ownerPhone } = isDemoCompany ? { data: null } : await supabase.rpc("get_owner_phone_by_slug", { p_slug: slug });
       if (ownerPhone) {
         const desiredDateTime = `${desiredDate}${desiredTime ? ` ${desiredTime}` : ""}`;
         await sendReservationConfirmedOwner({

@@ -11,6 +11,7 @@ export interface CartItem {
   bag_included: boolean;
   quantity: number;
   shoppingBagCount: number;
+  preservativeCount: number;
   messageCardCount: number;
   messageCardContents: string[];
   checked: boolean;
@@ -50,14 +51,14 @@ export function useCart(slug: string) {
   }, [slug]);
 
   const addItem = useCallback((
-    product: Omit<CartItem, "quantity" | "shoppingBagCount" | "messageCardCount" | "messageCardContents" | "checked">,
+    product: Omit<CartItem, "quantity" | "shoppingBagCount" | "preservativeCount" | "messageCardCount" | "messageCardContents" | "checked">,
     quantity = 1,
   ) => {
     const current = load(slug);
     const existing = current.find((i) => i.productId === product.productId);
     const next = existing
       ? current.map((i) => i.productId === product.productId ? { ...i, quantity: i.quantity + quantity } : i)
-      : [...current, { ...product, quantity, shoppingBagCount: 0, messageCardCount: 0, messageCardContents: [], checked: true }];
+      : [...current, { ...product, quantity, shoppingBagCount: 0, preservativeCount: 0, messageCardCount: 0, messageCardContents: [], checked: true }];
     save(slug, next);
     setItems(next);
   }, [slug]);

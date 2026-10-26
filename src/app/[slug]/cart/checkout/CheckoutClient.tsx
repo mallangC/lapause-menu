@@ -32,9 +32,12 @@ interface CheckoutClientProps {
   dateOverrides?: DateOverrides;
   shoppingBagEnabled: boolean;
   shoppingBagPrice: number;
+  preservativeEnabled: boolean;
+  preservativePrice: number;
   messageCardEnabled: boolean;
   messageCardPrice: number;
   notificationEmail: string | null;
+  isDemo: boolean;
   initialPaymentKey: string | null;
   initialOrderId: string | null;
   initialAmount: number | null;
@@ -85,8 +88,8 @@ export default function CheckoutClient({
   slug, companyName, logoImage, themeVars, consultEnabled,
   storeAddress, deliveryEnabled, deliveryFees,
   businessHours, closedDates, dateOverrides = {},
-  shoppingBagEnabled, shoppingBagPrice, messageCardEnabled, messageCardPrice,
-  notificationEmail,
+  shoppingBagEnabled, shoppingBagPrice, preservativeEnabled, preservativePrice, messageCardEnabled, messageCardPrice,
+  notificationEmail, isDemo,
   initialPaymentKey, initialOrderId, initialAmount, failCode, failMessage,
 }: CheckoutClientProps) {
   const { items: cartItems, clearCart } = useCart(slug);
@@ -135,6 +138,7 @@ export default function CheckoutClient({
   const itemsTotal = checkedItems.reduce((sum, i) => {
     let p = i.price * i.quantity;
     if (!i.bag_included) p += shoppingBagPrice * (i.shoppingBagCount ?? 0);
+    p += preservativePrice * (i.preservativeCount ?? 0);
     p += messageCardPrice * (i.messageCardCount ?? 0);
     return sum + p;
   }, 0);
@@ -330,11 +334,12 @@ export default function CheckoutClient({
                   <p className="text-xs text-gray-400 mt-0.5">
                     {item.quantity}개
                     {item.bag_included ? " · 쇼핑백 포함 제품" : (item.shoppingBagCount ?? 0) > 0 ? ` · 쇼핑백 ${item.shoppingBagCount}개` : ""}
+                    {(item.preservativeCount ?? 0) > 0 && ` · 수명연장제 ${item.preservativeCount}개`}
                     {(item.messageCardCount ?? 0) > 0 && ` · 메시지카드 ${item.messageCardCount}장`}
                   </p>
                 </div>
                 <p className="text-sm font-semibold text-gray-900 shrink-0">
-                  {(item.price * item.quantity + (!item.bag_included ? shoppingBagPrice * (item.shoppingBagCount ?? 0) : 0) + messageCardPrice * (item.messageCardCount ?? 0)).toLocaleString()}원
+                  {(item.price * item.quantity + (!item.bag_included ? shoppingBagPrice * (item.shoppingBagCount ?? 0) : 0) + preservativePrice * (item.preservativeCount ?? 0) + messageCardPrice * (item.messageCardCount ?? 0)).toLocaleString()}원
                 </p>
               </div>
             ))}
@@ -438,6 +443,7 @@ export default function CheckoutClient({
         amount={finalPrice}
         onReadyChange={setWidgetReady}
         onCancel={() => setSubmitting(false)}
+        isDemo={isDemo}
       />
 
       <div className="max-w-5xl mx-auto px-4 py-5">
@@ -458,11 +464,12 @@ export default function CheckoutClient({
                     <p className="text-xs text-gray-400 mt-0.5">
                       {item.quantity}개
                       {item.bag_included ? " · 쇼핑백 포함 제품" : ((item.shoppingBagCount ?? 0) > 0 && shoppingBagEnabled ? ` · 쇼핑백 ${item.shoppingBagCount}개` : "")}
+                      {(item.preservativeCount ?? 0) > 0 && preservativeEnabled && ` · 수명연장제 ${item.preservativeCount}개`}
                       {(item.messageCardCount ?? 0) > 0 && messageCardEnabled && ` · 메시지카드 ${item.messageCardCount}장`}
                     </p>
                   </div>
                   <p className="text-sm font-semibold text-gray-900 shrink-0">
-                    {(item.price * item.quantity + (!item.bag_included ? shoppingBagPrice * (item.shoppingBagCount ?? 0) : 0) + messageCardPrice * (item.messageCardCount ?? 0)).toLocaleString()}원
+                    {(item.price * item.quantity + (!item.bag_included ? shoppingBagPrice * (item.shoppingBagCount ?? 0) : 0) + preservativePrice * (item.preservativeCount ?? 0) + messageCardPrice * (item.messageCardCount ?? 0)).toLocaleString()}원
                   </p>
                 </div>
               ))}
@@ -523,6 +530,15 @@ export default function CheckoutClient({
                               <button onClick={() => setShowPostcode(true)} className="shrink-0 px-3 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-600 hover:border-gray-400 bg-gray-50 transition-colors">찾기</button>
                             </div>
                           </div>
+                          {showPostcode && (
+                            <div className="md:col-span-2 border border-gray-200 rounded-xl overflow-hidden">
+                              <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-200">
+                                <span className="text-xs text-gray-500">주소 검색</span>
+                                <button onClick={() => setShowPostcode(false)} className="text-gray-400 hover:text-gray-600 text-sm">✕</button>
+                              </div>
+                              <DaumPostcodeEmbed onComplete={(data) => { setAddress(data.address); setShowPostcode(false); }} style={{ height: 400 }} />
+                            </div>
+                          )}
                           {address && (
                             <div className="md:col-span-2">
                               <label className="block text-xs text-gray-500 mb-1">상세 주소</label>
@@ -530,15 +546,6 @@ export default function CheckoutClient({
                             </div>
                           )}
                         </div>
-                        {showPostcode && (
-                          <div className="border border-gray-200 rounded-xl overflow-hidden">
-                            <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-200">
-                              <span className="text-xs text-gray-500">주소 검색</span>
-                              <button onClick={() => setShowPostcode(false)} className="text-gray-400 hover:text-gray-600 text-sm">✕</button>
-                            </div>
-                            <DaumPostcodeEmbed onComplete={(data) => { setAddress(data.address); setShowPostcode(false); }} style={{ height: 400 }} />
-                          </div>
-                        )}
                         <div className="text-xs px-1">
                           {distanceLoading && <span className="text-gray-400">배송 가능 여부 확인 중...</span>}
                           {!distanceLoading && deliveryDistance !== null && deliveryFee !== null && (
