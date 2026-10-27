@@ -41,7 +41,7 @@ export default async function SetupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-beige-100 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4">
       <div className="w-full max-w-md bg-beige-50 border border-beige-200 rounded-2xl p-8 shadow-sm">
         <div className="text-center mb-8">
           <h1 className="text-xl font-light tracking-widest text-black mb-1">

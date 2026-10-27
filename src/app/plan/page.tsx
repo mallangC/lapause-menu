@@ -26,10 +26,20 @@ export default async function PlanPage() {
       .insert({ name: "", slug: placeholderSlug, owner_id: user.id })
       .select("id, slug")
       .single();
-    if (!created) redirect("/login");
-    companyId = created.id;
-    companySlug = created.slug;
-    sub = null;
+
+    // 이 페이지가 거의 동시에 두 번 렌더링되면 양쪽 다 매장이 없다고 보고 insert를 시도한다.
+    // owner_id unique 제약으로 늦은 쪽은 실패하므로, 먼저 만들어진 매장을 다시 읽어서 사용한다.
+    const company = created ?? (await supabase
+      .from("companies")
+      .select("id, slug, subscription:company_subscriptions(plan, trial_ends_at)")
+      .eq("owner_id", user.id)
+      .maybeSingle()).data;
+    if (!company) redirect("/login");
+    companyId = company.id;
+    companySlug = company.slug;
+    sub = "subscription" in company
+      ? company.subscription as { plan?: string; trial_ends_at?: string | null } | null
+      : null;
   } else {
     companyId = companyRaw.id;
     companySlug = companyRaw.slug;
