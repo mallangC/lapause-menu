@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { setOAuthIntent } from "@/lib/oauthIntent";
 import FloAideFooter from "@/components/FloAideFooter";
 
 export default function RootLoginForm() {
@@ -19,6 +20,7 @@ export default function RootLoginForm() {
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
     setError(null);
+    setOAuthIntent({ mode: "login", provider: "google", from: "/login" });
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
@@ -31,6 +33,7 @@ export default function RootLoginForm() {
   const handleKakaoLogin = async () => {
     setKakaoLoading(true);
     setError(null);
+    setOAuthIntent({ mode: "login", provider: "kakao", from: "/login" });
     await supabase.auth.signInWithOAuth({
       provider: "kakao",
       options: {

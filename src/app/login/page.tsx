@@ -2,8 +2,14 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import RootLoginForm from "../RootLoginForm";
 import Image from "next/image";
+import AccountExistsModal from "@/components/AccountExistsModal";
 
-export default async function LoginPage() {
+interface Props {
+  searchParams: Promise<{ account_exists?: string; attempted?: string }>;
+}
+
+export default async function LoginPage({ searchParams }: Props) {
+  const { account_exists, attempted } = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -34,6 +40,7 @@ export default async function LoginPage() {
         </div>
         <RootLoginForm />
       </div>
+      {account_exists && attempted && <AccountExistsModal existing={account_exists} attempted={attempted} />}
     </div>
   );
 }

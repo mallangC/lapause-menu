@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { setOAuthIntent } from "@/lib/oauthIntent";
 import type { UserIdentity } from "@supabase/supabase-js";
 
 const SOCIAL_PROVIDERS = [
@@ -47,6 +48,7 @@ export default function MyInfoTab({ slug, email, isOAuth, profileName, profilePh
   const handleLinkIdentity = async (provider: "google" | "kakao") => {
     setLinkingProvider(provider);
     setLinkError(null);
+    setOAuthIntent({ mode: "link", provider, from: `/${slug}/admin` });
     const { error } = await supabase.auth.linkIdentity({
       provider,
       options: { redirectTo: `${window.location.origin}/auth/callback` },

@@ -2,13 +2,16 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import LoginForm from "./LoginForm";
 import Image from "next/image";
+import AccountExistsModal from "@/components/AccountExistsModal";
 
 interface Props {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ account_exists?: string; attempted?: string }>;
 }
 
-export default async function AdminLoginPage({ params }: Props) {
+export default async function AdminLoginPage({ params, searchParams }: Props) {
   const { slug } = await params;
+  const { account_exists, attempted } = await searchParams;
   const supabase = await createClient();
 
   const { data: company } = await supabase
@@ -31,6 +34,7 @@ export default async function AdminLoginPage({ params }: Props) {
         </div>
         <LoginForm slug={slug} />
       </div>
+      {account_exists && attempted && <AccountExistsModal existing={account_exists} attempted={attempted} />}
     </div>
   );
 }
