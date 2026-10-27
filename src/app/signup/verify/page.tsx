@@ -35,7 +35,7 @@ export default async function VerifyPage({ searchParams }: Props) {
         </div>
 
         <Link
-          href="/admin"
+          href="/login"
           className="text-sm text-gray-400 hover:text-gray-700 underline underline-offset-2 transition-colors"
         >
           로그인 화면으로 돌아가기

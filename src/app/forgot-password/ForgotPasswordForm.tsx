@@ -44,7 +44,7 @@ export default function ForgotPasswordForm() {
           <span className="font-medium text-gray-600">{email}</span>으로<br />
           비밀번호 재설정 링크를 발송했습니다.
         </p>
-        <Link href="/admin" className="block text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2 mt-4">
+        <Link href="/login" className="block text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2 mt-4">
           로그인으로 돌아가기
         </Link>
         <FloAideFooter />
@@ -81,7 +81,7 @@ export default function ForgotPasswordForm() {
       </button>
 
       <p className="text-center text-xs text-gray-400">
-        <Link href="/admin" className="text-gray-600 hover:text-gray-900 underline underline-offset-2">
+        <Link href="/login" className="text-gray-600 hover:text-gray-900 underline underline-offset-2">
           로그인으로 돌아가기
         </Link>
       </p>

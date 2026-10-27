@@ -30,7 +30,7 @@ export default function ResetPasswordForm() {
       return;
     }
 
-    router.push("/admin");
+    router.push("/login");
   };
 
   return (
