@@ -1,7 +1,12 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import FloAideFooter from "@/components/FloAideFooter";
 import Image from "next/image";
 import { PLATFORM_FEE_PERCENT_LABEL } from "@/lib/constants";
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/terms" },
+};
 
 export default function TermsPage() {
   return (

@@ -4,6 +4,18 @@ import { NextResponse, type NextRequest } from "next/server";
 export async function updateSession(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // 대표 주소(https://www.flo-aide.com)로 통일 — 루트 도메인/http 접속이 200으로 응답하면
+  // 구글이 같은 페이지를 중복으로 판단해 색인에서 제외하므로 301로 넘긴다
+  const host = request.headers.get("host") ?? "";
+  const isHttp = request.headers.get("x-forwarded-proto") === "http";
+  if (host === "flo-aide.com" || (host === "www.flo-aide.com" && isHttp)) {
+    const url = request.nextUrl.clone();
+    url.protocol = "https:";
+    url.host = "www.flo-aide.com";
+    url.port = "";
+    return NextResponse.redirect(url, 301);
+  }
+
   // /:slug/admin 라우트가 아니면 로그인 여부와 무관한 공개 페이지/API이므로
   // Supabase 세션 조회(네트워크 왕복)를 아예 생략한다 — Workers CPU 시간 절약
   const slugMatch = pathname.match(/^\/([^/]+)\/admin(\/.*)?$/);

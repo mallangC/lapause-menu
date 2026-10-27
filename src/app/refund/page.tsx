@@ -1,6 +1,11 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import FloAideFooter from "@/components/FloAideFooter";
 import Image from "next/image";
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/refund" },
+};
 
 export default function RefundPage() {
   return (
