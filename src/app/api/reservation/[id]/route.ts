@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { logReservationChange } from "@/lib/reservationLog";
 
 // 클라이언트에서 직접 건드리면 안 되는 정산/결제 관련 필드 — 여기 포함된 키는 요청 본문에 와도 무시한다.
 // payment_id/settlement_id/paid_at/order_type/deleted_at/status는 각각 결제 승인 콜백, 정산 배치, 상태변경 API에서만 세팅됨.
@@ -52,21 +53,22 @@ export async function PATCH(
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   // 결제/금액 관련 필드 변경만 로그로 남긴다 (메모, 상품 내역 등 일반 수정은 제외)
-  const logs: Record<string, unknown>[] = [];
+  // reservation_logs는 RLS로 잠겨 있어 사용자 권한으로는 insert가 막히므로 서비스 롤 헬퍼로 기록한다
+  const changes: { field: string; oldValue: string; newValue: string }[] = [];
   if ("paid" in update && update.paid !== reservation.paid) {
-    logs.push({ field: "paid", old_value: String(reservation.paid), new_value: String(update.paid) });
+    changes.push({ field: "paid", oldValue: String(reservation.paid), newValue: String(update.paid) });
   }
   if ("final_price" in update && update.final_price !== reservation.final_price) {
-    logs.push({ field: "final_price", old_value: String(reservation.final_price), new_value: String(update.final_price) });
+    changes.push({ field: "final_price", oldValue: String(reservation.final_price), newValue: String(update.final_price) });
   }
-  if (logs.length > 0) {
-    await supabase.from("reservation_logs").insert(
-      logs.map((l) => ({
-        reservation_id: id,
-        company_id: reservation.company_id,
-        actor_user_id: user.id,
-        action: "field_update",
-        ...l,
+  if (changes.length > 0) {
+    await logReservationChange(
+      changes.map((c) => ({
+        reservationId: id,
+        companyId: reservation.company_id,
+        actorUserId: user.id,
+        action: "field_update" as const,
+        ...c,
       }))
     );
   }
@@ -122,14 +124,14 @@ export async function DELETE(
   const { error } = await supabase.from("reservations").update({ deleted_at: new Date().toISOString() }).eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  await supabase.from("reservation_logs").insert({
-    reservation_id: id,
-    company_id: reservation.company_id,
-    actor_user_id: user.id,
+  await logReservationChange({
+    reservationId: id,
+    companyId: reservation.company_id,
+    actorUserId: user.id,
     action: "delete",
     field: "deleted_at",
-    old_value: null,
-    new_value: new Date().toISOString(),
+    oldValue: null,
+    newValue: new Date().toISOString(),
     reason: reservation.payment_id ? `결제 상태: ${reservation.status}, 금액: ${reservation.final_price}` : null,
   });
 
