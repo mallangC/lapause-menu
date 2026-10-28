@@ -6,6 +6,12 @@ main = "src/cloudflare-worker.ts"
 [triggers]
 crons = ["0 18 * * *", "0 16 * * *"]
 
+# 정기결제 자동 갱신 — 구독 1건당 인스턴스 1개 (src/workflows/billingRenew.ts)
+[[workflows]]
+name = "flo-aide-billing-renew"
+binding = "BILLING_RENEW"
+class_name = "BillingRenewWorkflow"
+
 [vars]
 NEXT_PUBLIC_SUPABASE_URL = "https://yywoqaydqjcgpwxyantp.supabase.co"
 NEXT_PUBLIC_SUPABASE_ANON_KEY = "sb_publishable_e5Pbv68IVRK6G6NQtkPmvg_kFEMfU9h"

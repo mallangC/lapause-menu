@@ -43,3 +43,5 @@ next-env.d.ts
 .open-next/
 task.md
 supabase
+# wrangler dev 로컬 비밀 값
+.dev.vars*
