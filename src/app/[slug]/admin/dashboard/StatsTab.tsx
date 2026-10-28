@@ -9,31 +9,39 @@ import {
 
 interface Props {
   companyId: string;
+  /** 예약이 바뀔 때마다 증가 — 탭을 다시 열 때는 재조회하지 않고 바뀌었을 때만 다시 집계 */
+  refreshKey: number;
 }
 
-interface Reservation {
-  status: string;
-  final_price: number | null;
-  delivery_fee: number | null;
-  desired_date: string;
-  channel: string | null;
-  items: Array<{
-    type: string;
-    name?: string;
-    price: number;
-    product_id?: string | null;
-    shopping_bag?: string | null;
-    message_card?: string | null;
-    preservative?: string | null;
-  }> | null;
-  delivery_type: string;
-  customer_profile_id: string | null;
-  created_at: string;
-  purpose: string | null;
-  budget: string | null;
-  orderer_name: string | null;
-  orderer_phone: string | null;
+// get_company_stats RPC 결과 (supabase/migrations/20261028_get_company_stats.sql)
+interface CompanyStats {
+  monthly: { ym: string; revenue: number; count: number }[];
+  channels: { name: string; value: number }[];
+  types: { name: string; value: number }[];
+  deliveries: { name: string; value: number }[];
+  visits: { uniqueCustomers: number; withProfile: number; unknown: number };
+  hourly: { all: number[]; recent: number[] };
+  weekday: { all: number[]; recent: number[] };
+  timeTotals: { all: number; recent: number };
+  bestSellers: { name: string; count: number; revenue: number; productId: string | null; imageUrl: string | null }[];
+  topCustomers: { name: string; phone: string; total: number; count: number }[];
+  purposes: { name: string; value: number }[];
+  options: { total: number; bag: number; card: number; preservative: number };
+  budgets: Record<string, number>;
 }
+
+const EMPTY_STATS: CompanyStats = {
+  monthly: [], channels: [], types: [], deliveries: [],
+  visits: { uniqueCustomers: 0, withProfile: 0, unknown: 0 },
+  hourly: { all: new Array(24).fill(0), recent: new Array(24).fill(0) },
+  weekday: { all: new Array(7).fill(0), recent: new Array(7).fill(0) },
+  timeTotals: { all: 0, recent: 0 },
+  bestSellers: [], topCustomers: [], purposes: [],
+  options: { total: 0, bag: 0, card: 0, preservative: 0 },
+  budgets: {},
+};
+
+const BUDGET_LABELS = ["1~5만원", "6~10만원", "11~15만원", "16~20만원", "21~25만원", "26~30만원", "31만원 이상", "기타"];
 
 const GOLD = "#c9a96e";
 const COLORS = ["#c9a96e", "#a87c4a", "#e8c99a", "#8b6035", "#f0ddb8", "#7a4f28"];
@@ -80,310 +88,129 @@ function StatCard({ label, value, sub, tone, trend }: { label: string; value: st
   );
 }
 
-export default function StatsTab({ companyId }: Props) {
-  const [reservations, setReservations] = useState<Reservation[]>([]);
+export default function StatsTab({ companyId, refreshKey }: Props) {
+  const [stats, setStats] = useState<CompanyStats>(EMPTY_STATS);
   const [loading, setLoading] = useState(true);
   const [hourRange, setHourRange] = useState<"all" | "recent">("all");
   const [timeDimension, setTimeDimension] = useState<"hour" | "weekday">("hour");
   const supabase = createClient();
 
+  // 결제 완료 예약 전체를 내려받던 것을 DB 집계(RPC)로 대체 — 결과만 받아온다
   useEffect(() => {
     (async () => {
-      const { data } = await supabase
-        .from("reservations")
-        .select("status, final_price, delivery_fee, desired_date, channel, items, delivery_type, customer_profile_id, created_at, purpose, budget, orderer_name, orderer_phone")
-        .eq("company_id", companyId)
-        .eq("paid", true)
-        .in("status", ["제작완료", "픽업/배송완료"]);
-      setReservations((data as Reservation[]) ?? []);
+      const { data, error } = await supabase.rpc("get_company_stats", { p_company_id: companyId });
+      if (error) console.error("[StatsTab] 통계 집계 실패:", error.message);
+      setStats({ ...EMPTY_STATS, ...((data as Partial<CompanyStats> | null) ?? {}) });
       setLoading(false);
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [companyId]);
+  }, [companyId, refreshKey]);
 
   const today = new Date();
   const thisYear = today.getFullYear();
   const thisMonth = today.getMonth();
 
-  // 이번 달 예약
-  const thisMonthKey = `${thisYear}-${String(thisMonth + 1).padStart(2, "0")}`;
-  const thisMonthData = useMemo(
-    () => reservations.filter((r) => r.desired_date?.startsWith(thisMonthKey)),
-    [reservations, thisMonthKey]
-  );
-
-  const totalRevenue = useMemo(
-    () => thisMonthData.reduce((s, r) => s + (r.final_price ?? 0) - (r.delivery_fee ?? 0), 0),
-    [thisMonthData]
-  );
-
-  // 전월 매출 (증감률 비교용)
-  const lastMonthKey = useMemo(() => {
-    const d = new Date(thisYear, thisMonth - 1, 1);
+  const monthKey = (year: number, month0: number) => {
+    const d = new Date(year, month0, 1);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-  }, [thisYear, thisMonth]);
-  const lastMonthRevenue = useMemo(
-    () => reservations
-      .filter((r) => r.desired_date?.startsWith(lastMonthKey))
-      .reduce((s, r) => s + (r.final_price ?? 0) - (r.delivery_fee ?? 0), 0),
-    [reservations, lastMonthKey]
-  );
-  const revenueGrowth = useMemo(() => {
+  };
+  const byMonth = useMemo(() => new Map(stats.monthly.map((m) => [m.ym, m])), [stats.monthly]);
+  const revenueOf = (key: string) => byMonth.get(key)?.revenue ?? 0;
+  const countOf = (key: string) => byMonth.get(key)?.count ?? 0;
+
+  // 이번 달 요약
+  const thisMonthKey = monthKey(thisYear, thisMonth);
+  const lastMonthKey = monthKey(thisYear, thisMonth - 1);
+  const totalRevenue = revenueOf(thisMonthKey);
+  const thisMonthCount = countOf(thisMonthKey);
+  const lastMonthRevenue = revenueOf(lastMonthKey);
+  const lastMonthCount = countOf(lastMonthKey);
+  const revenueGrowth = (() => {
     if (lastMonthRevenue > 0) return Math.round(((totalRevenue - lastMonthRevenue) / lastMonthRevenue) * 100);
     if (totalRevenue > 0) return null; // 전월 매출 0원 → 비율로 표현 불가, "신규"로 표시
     return 0;
-  }, [totalRevenue, lastMonthRevenue]);
-
-  // 전월 예약 건수 (증감 비교용)
-  const lastMonthCount = useMemo(
-    () => reservations.filter((r) => r.desired_date?.startsWith(lastMonthKey)).length,
-    [reservations, lastMonthKey]
-  );
-  const countDiff = thisMonthData.length - lastMonthCount;
+  })();
+  const countDiff = thisMonthCount - lastMonthCount;
 
   // 최근 6개월 월별 매출
   const monthlyData = useMemo(() => {
     const result: { month: string; 매출: number; 건수: number }[] = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date(thisYear, thisMonth - i, 1);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      const label = `${d.getMonth() + 1}월`;
-      const rows = reservations.filter((r) => r.desired_date?.startsWith(key));
-      const revenue = rows.reduce((s, r) => s + (r.final_price ?? 0) - (r.delivery_fee ?? 0), 0);
-      result.push({ month: label, 매출: revenue, 건수: rows.length });
+      const key = monthKey(thisYear, thisMonth - i);
+      result.push({ month: `${d.getMonth() + 1}월`, 매출: revenueOf(key), 건수: countOf(key) });
     }
     return result;
-  }, [reservations, thisYear, thisMonth]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [byMonth, thisYear, thisMonth]);
 
   // 전년 대비 월별 매출 비교 (12개월 전체, 다가올 달의 작년 실적을 미리 확인하기 위함)
   const yearlyComparisonData = useMemo(() => {
-    const lastYear = thisYear - 1;
-    const revenueOf = (year: number, month: number) => {
-      const key = `${year}-${String(month).padStart(2, "0")}`;
-      return reservations
-        .filter((r) => r.desired_date?.startsWith(key))
-        .reduce((s, r) => s + (r.final_price ?? 0) - (r.delivery_fee ?? 0), 0);
-    };
     const result: { month: string; 올해: number; 작년: number; growth: number | null }[] = [];
     for (let m = 1; m <= 12; m++) {
-      const thisYearRevenue = revenueOf(thisYear, m);
-      const lastYearRevenue = revenueOf(lastYear, m);
+      const thisYearRevenue = revenueOf(monthKey(thisYear, m - 1));
+      const lastYearRevenue = revenueOf(monthKey(thisYear - 1, m - 1));
       const growth = lastYearRevenue > 0 ? Math.round(((thisYearRevenue - lastYearRevenue) / lastYearRevenue) * 100) : null;
       result.push({ month: `${m}월`, 올해: thisYearRevenue, 작년: lastYearRevenue, growth });
     }
     return result;
-  }, [reservations, thisYear]);
-
-  // 채널별 건수
-  const channelData = useMemo(() => {
-    const map: Record<string, number> = {};
-    reservations.forEach((r) => {
-      const key = r.channel ?? "기타";
-      map[key] = (map[key] ?? 0) + 1;
-    });
-    return Object.entries(map).map(([name, value]) => ({ name, value }));
-  }, [reservations]);
-
-  // 상품 유형별 건수 (items에서 집계)
-  const typeData = useMemo(() => {
-    const map: Record<string, number> = {};
-    reservations.forEach((r) => {
-      (r.items ?? []).forEach((item) => {
-        const key = item.type || "미지정";
-        map[key] = (map[key] ?? 0) + 1;
-      });
-    });
-    return Object.entries(map)
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value);
-  }, [reservations]);
-
-  // 신규 / 재방문 비율 (예약 건수 기준)
-  const visitData = useMemo(() => {
-    const countMap: Record<string, number> = {};
-    reservations.forEach((r) => {
-      if (r.customer_profile_id) {
-        countMap[r.customer_profile_id] = (countMap[r.customer_profile_id] ?? 0) + 1;
-      }
-    });
-    // 신규: 고객별 첫 방문 1건씩 = 고유 고객 수
-    const newCount = Object.keys(countMap).length;
-    // 재방문: 전체 예약 건수 - 고유 고객 수 (첫 방문 제외한 재방문 건수)
-    const totalWithProfile = Object.values(countMap).reduce((s, c) => s + c, 0);
-    const returnCount = totalWithProfile - newCount;
-    const unknown = reservations.filter((r) => !r.customer_profile_id).length;
-    return { newCount, returnCount, unknown, total: newCount + returnCount };
-  }, [reservations]);
-
-  // 시간대별 주문 비율
-  const hourlyData = useMemo(() => {
-    const cutoff = new Date(thisYear, thisMonth - 3, today.getDate());
-    const rows = hourRange === "recent"
-      ? reservations.filter((r) => r.created_at && new Date(r.created_at) >= cutoff)
-      : reservations;
-    const counts = new Array(24).fill(0);
-    rows.forEach((r) => {
-      if (!r.created_at) return;
-      const hour = new Date(r.created_at).getHours();
-      counts[hour]++;
-    });
-    const total = rows.length;
-    return counts.map((count, hour) => ({
-      hour: `${hour}시`,
-      비율: total > 0 ? Math.round((count / total) * 1000) / 10 : 0,
-    }));
-  }, [reservations, hourRange, thisYear, thisMonth, today]);
-
-  // 요일별 주문 비율 (시간대별과 같은 기간 필터 재사용)
-  const weekdayData = useMemo(() => {
-    const cutoff = new Date(thisYear, thisMonth - 3, today.getDate());
-    const rows = hourRange === "recent"
-      ? reservations.filter((r) => r.created_at && new Date(r.created_at) >= cutoff)
-      : reservations;
-    const counts = new Array(7).fill(0);
-    rows.forEach((r) => {
-      if (!r.created_at) return;
-      counts[new Date(r.created_at).getDay()]++;
-    });
-    const total = rows.length;
-    return counts.map((count, day) => ({
-      day: WEEKDAY_LABELS[day],
-      비율: total > 0 ? Math.round((count / total) * 1000) / 10 : 0,
-    }));
-  }, [reservations, hourRange, thisYear, thisMonth, today]);
-
-  // 베스트셀러 Top 5 (상품명 기준)
-  const bestSellerData = useMemo(() => {
-    const map: Record<string, { count: number; revenue: number; productId: string | null }> = {};
-    reservations.forEach((r) => {
-      (r.items ?? []).forEach((item) => {
-        const key = item.name || item.type || "미지정";
-        if (!map[key]) map[key] = { count: 0, revenue: 0, productId: item.product_id ?? null };
-        map[key].count += 1;
-        map[key].revenue += item.price || 0;
-        if (!map[key].productId && item.product_id) map[key].productId = item.product_id;
-      });
-    });
-    return Object.entries(map)
-      .map(([name, v]) => ({ name, count: v.count, revenue: v.revenue, productId: v.productId }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
-  }, [reservations]);
-
-  // 단골 고객 TOP 5 (총 결제액 기준, customer_profile_id가 없으면 전화번호로 집계)
-  const topCustomersData = useMemo(() => {
-    const map: Record<string, { name: string; phone: string; total: number; count: number }> = {};
-    reservations.forEach((r) => {
-      const key = r.customer_profile_id ?? r.orderer_phone;
-      if (!key) return;
-      if (!map[key]) map[key] = { name: r.orderer_name ?? "이름 없음", phone: r.orderer_phone ?? "", total: 0, count: 0 };
-      map[key].total += r.final_price ?? 0;
-      map[key].count += 1;
-    });
-    return Object.values(map)
-      .filter((c) => c.count >= 2)
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 5);
-  }, [reservations]);
-
-  // 베스트셀러 썸네일용 상품 이미지
-  const [productImages, setProductImages] = useState<Record<string, string | null>>({});
-  useEffect(() => {
-    const ids = [...new Set(bestSellerData.map((p) => p.productId).filter((id): id is string => !!id))];
-    if (ids.length === 0) return;
-    (async () => {
-      const { data } = await supabase.from("products").select("id, image_url").in("id", ids);
-      const map: Record<string, string | null> = {};
-      (data ?? []).forEach((p) => { map[p.id] = p.image_url ?? null; });
-      setProductImages(map);
-    })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bestSellerData.map((p) => p.productId).join(",")]);
+  }, [byMonth, thisYear]);
 
-  // 선물 목적 비율 (맞춤주문에서 선물 목적을 선택한 건만 집계)
-  const purposeData = useMemo(() => {
-    const map: Record<string, number> = {};
-    reservations.forEach((r) => {
-      if (!r.purpose) return;
-      const key = STANDARD_PURPOSES.includes(r.purpose) ? r.purpose : "기타";
-      map[key] = (map[key] ?? 0) + 1;
-    });
-    const total = Object.values(map).reduce((s, v) => s + v, 0);
-    return {
-      total,
-      items: Object.entries(map)
-        .map(([name, value]) => ({ name, value }))
-        .sort((a, b) => b.value - a.value),
-    };
-  }, [reservations]);
+  const channelData = stats.channels;
+  const typeData = stats.types;
+  const deliveryData = stats.deliveries;
 
-  // 옵션 추가 비율 (쇼핑백/메시지카드/생화 수명연장제를 실제로 "추가"한 비율 — 서비스/없음/미포함은 제외, 맞춤주문 건 기준)
-  const optionRateData = useMemo(() => {
-    let total = 0;
-    let bag = 0;
-    let card = 0;
-    let preservative = 0;
-    reservations.forEach((r) => {
-      (r.items ?? []).forEach((item) => {
-        if (item.shopping_bag === undefined && item.message_card === undefined && item.preservative === undefined) return;
-        total += 1;
-        if (item.shopping_bag === "추가") bag += 1;
-        if (item.message_card === "추가") card += 1;
-        if (item.preservative === "추가") preservative += 1;
-      });
-    });
-    return {
-      total,
-      items: [
-        { name: "쇼핑백", value: bag },
-        { name: "메시지카드", value: card },
-        { name: "생화 수명연장제", value: preservative },
-      ],
-    };
-  }, [reservations]);
+  // 신규 / 재방문 비율 (예약 건수 기준) — 신규: 고유 고객 수, 재방문: 첫 방문을 제외한 건수
+  const visitData = {
+    newCount: stats.visits.uniqueCustomers,
+    returnCount: stats.visits.withProfile - stats.visits.uniqueCustomers,
+    unknown: stats.visits.unknown,
+    total: stats.visits.withProfile,
+  };
 
-  // 예산대별 분포 (맞춤주문) — "3만원", "3만원대" 등 표기가 달라도 선두 숫자를 구간으로 묶어서 집계
-  const budgetData = useMemo(() => {
-    const ranges = [
-      { label: "1~5만원", min: 1, max: 5 },
-      { label: "6~10만원", min: 6, max: 10 },
-      { label: "11~15만원", min: 11, max: 15 },
-      { label: "16~20만원", min: 16, max: 20 },
-      { label: "21~25만원", min: 21, max: 25 },
-      { label: "26~30만원", min: 26, max: 30 },
-      { label: "31만원 이상", min: 31, max: Infinity },
-    ];
-    const map: Record<string, number> = {};
-    reservations.forEach((r) => {
-      if (!r.budget) return;
-      const matched = r.budget.match(/\d+/);
-      const label = matched
-        ? ranges.find((range) => Number(matched[0]) >= range.min && Number(matched[0]) <= range.max)?.label ?? "기타"
-        : "기타";
-      map[label] = (map[label] ?? 0) + 1;
-    });
-    const total = Object.values(map).reduce((s, v) => s + v, 0);
-    const items = [...ranges.map((r) => r.label), "기타"]
-      .filter((label) => map[label] > 0)
-      .map((label) => ({ name: label, value: map[label] }));
-    return { total, items };
-  }, [reservations]);
+  // 시간대별 / 요일별 주문 비율 (전체 또는 최근 3개월)
+  const timeTotal = hourRange === "recent" ? stats.timeTotals.recent : stats.timeTotals.all;
+  const toRate = (count: number) => (timeTotal > 0 ? Math.round((count / timeTotal) * 1000) / 10 : 0);
+  const hourlyData = (hourRange === "recent" ? stats.hourly.recent : stats.hourly.all)
+    .map((count, hour) => ({ hour: `${hour}시`, 비율: toRate(count) }));
+  const weekdayData = (hourRange === "recent" ? stats.weekday.recent : stats.weekday.all)
+    .map((count, day) => ({ day: WEEKDAY_LABELS[day], 비율: toRate(count) }));
 
-  // 평균 객단가 추이 (최근 6개월, 배송비 제외)
-  const avgPriceMonthlyData = useMemo(
-    () => monthlyData.map((m) => ({ month: m.month, 평균: m.건수 > 0 ? Math.round(m.매출 / m.건수) : 0 })),
-    [monthlyData]
+  // 베스트셀러 Top 5 (상품명 기준) — 썸네일 이미지도 집계 결과에 포함
+  const bestSellerData = stats.bestSellers;
+  const productImages: Record<string, string | null> = Object.fromEntries(
+    stats.bestSellers.filter((p) => p.productId).map((p) => [p.productId as string, p.imageUrl])
   );
 
-  // 수령방법 비율
-  const deliveryData = useMemo(() => {
-    const map: Record<string, number> = {};
-    reservations.forEach((r) => {
-      const key = r.delivery_type ?? "픽업";
-      map[key] = (map[key] ?? 0) + 1;
-    });
-    return Object.entries(map).map(([name, value]) => ({ name, value }));
-  }, [reservations]);
+  // 단골 고객 TOP 5 (총 결제액 기준, customer_profile_id가 없으면 전화번호로 집계)
+  const topCustomersData = stats.topCustomers;
+
+  // 선물 목적 비율 (맞춤주문에서 선물 목적을 선택한 건만 집계)
+  const purposeData = {
+    total: stats.purposes.reduce((sum, p) => sum + p.value, 0),
+    items: stats.purposes,
+  };
+
+  // 옵션 추가 비율 (쇼핑백/메시지카드/생화 수명연장제를 실제로 "추가"한 비율 — 서비스/없음/미포함은 제외)
+  const optionRateData = {
+    total: stats.options.total,
+    items: [
+      { name: "쇼핑백", value: stats.options.bag },
+      { name: "메시지카드", value: stats.options.card },
+      { name: "생화 수명연장제", value: stats.options.preservative },
+    ],
+  };
+
+  // 예산대별 분포 (맞춤주문)
+  const budgetData = {
+    total: Object.values(stats.budgets).reduce((sum, v) => sum + v, 0),
+    items: BUDGET_LABELS.filter((label) => (stats.budgets[label] ?? 0) > 0)
+      .map((label) => ({ name: label, value: stats.budgets[label] })),
+  };
+
+  // 평균 객단가 추이 (최근 6개월, 배송비 제외)
+  const avgPriceMonthlyData = monthlyData.map((m) => ({ month: m.month, 평균: m.건수 > 0 ? Math.round(m.매출 / m.건수) : 0 }));
 
   if (loading) {
     return <div className="py-16 text-center text-gray-400 text-sm">불러오는 중...</div>;
@@ -409,7 +236,7 @@ export default function StatsTab({ companyId }: Props) {
           />
           <StatCard
             label="예약 건수"
-            value={`${thisMonthData.length}건`}
+            value={`${thisMonthCount}건`}
             trend={{
               text: countDiff === 0 ? "전월과 동일" : `${countDiff > 0 ? "+" : ""}${countDiff}건`,
               tone: countDiff > 0 ? "up" : countDiff < 0 ? "down" : "flat",

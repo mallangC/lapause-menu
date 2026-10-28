@@ -7,11 +7,16 @@ import SaveButton from "@/components/admin/SaveButton";
 import DatePicker, { registerLocale } from "react-datepicker";
 import { ko } from "date-fns/locale";
 import "react-datepicker/dist/react-datepicker.css";
+import { notifyMenuChanged } from "@/lib/menuCacheClient";
+import type { CompanySettings } from "./companySettings";
+import { useSettingsSync } from "./useSettingsSync";
 
 registerLocale("ko", ko);
 
 interface Props {
   companyId: string;
+  settings: CompanySettings;
+  onSettingsSaved: (patch: CompanySettings) => void;
 }
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -88,7 +93,7 @@ const DEFAULT_HOURS: BusinessHours = Object.fromEntries(
   Array.from({ length: 7 }, (_, i) => [String(i), { closed: i === 0, open: "09:00", close: "18:00" }])
 );
 
-export default function BusinessSettingsTab({ companyId }: Props) {
+export default function BusinessSettingsTab({ companyId, settings, onSettingsSaved }: Props) {
   const [businessHours, setBusinessHours] = useState<BusinessHours>(DEFAULT_HOURS);
   const [closedDates, setClosedDates] = useState<string[]>([]);
   const [newDate, setNewDate] = useState<Date | null>(null);
@@ -101,28 +106,22 @@ export default function BusinessSettingsTab({ companyId }: Props) {
 
   const supabase = createClient();
 
-  useEffect(() => {
-    supabase
-      .from("company_settings")
-      .select("business_hours, closed_dates, date_overrides, min_lead_times")
-      .eq("company_id", companyId)
-      .single()
-      .then(({ data }) => {
-        if (!data) return;
-        if (data.business_hours && Object.keys(data.business_hours).length > 0)
-          setBusinessHours(data.business_hours as BusinessHours);
-        if (data.closed_dates) setClosedDates(data.closed_dates);
-        if (data.date_overrides && typeof data.date_overrides === "object")
-          setDateOverrides(pruneOverrides(data.date_overrides as DateOverrides));
-        if (data.min_lead_times && typeof data.min_lead_times === "object")
-          setMinLeadTimes(
-            Object.fromEntries(
-              Object.entries(data.min_lead_times as Record<string, number>).map(([k, v]) => [k, String(v)])
-            )
-          );
-      });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [companyId]);
+  // 매장 설정은 대시보드가 한 번 받아둔 값을 사용 (DB 재조회 없음)
+  const markOwnSave = useSettingsSync(settings, (data) => {
+    if (data.business_hours && Object.keys(data.business_hours).length > 0)
+      setBusinessHours(data.business_hours as BusinessHours);
+    if (data.closed_dates) setClosedDates(data.closed_dates);
+    if (data.date_overrides && typeof data.date_overrides === "object")
+      setDateOverrides(pruneOverrides(data.date_overrides as DateOverrides));
+    if (data.min_lead_times && typeof data.min_lead_times === "object")
+      setMinLeadTimes(
+        Object.fromEntries(
+          Object.entries(data.min_lead_times as Record<string, number>).map(([k, v]) => [k, String(v)])
+        )
+      );
+  });
+  // 이 탭에서 저장한 값을 공유 설정에도 반영 (다른 탭이 최신 값을 보도록)
+  const saveShared = (patch: CompanySettings) => { markOwnSave(); onSettingsSaved(patch); };
 
   const updateDay = (day: number, patch: Partial<DayHours>) => {
     setBusinessHours((prev) => ({
@@ -174,21 +173,24 @@ export default function BusinessSettingsTab({ companyId }: Props) {
     setError(null);
     const prunedOverrides = pruneOverrides(dateOverrides);
     setDateOverrides(prunedOverrides);
-    const { error: err } = await supabase
-      .from("company_settings")
-      .update({
+    const patch = {
         business_hours: businessHours,
         closed_dates: closedDates,
         date_overrides: prunedOverrides,
         min_lead_times: Object.fromEntries(
           Object.entries(minLeadTimes).map(([k, v]) => [k, Number(v) || 0])
         ),
-      })
+      };
+    const { error: err } = await supabase
+      .from("company_settings")
+      .update(patch)
       .eq("company_id", companyId);
     if (err) {
       setError(err.message);
       return false;
     }
+    saveShared(patch);
+    notifyMenuChanged();
   };
 
   const formatDate = (dateStr: string) => {

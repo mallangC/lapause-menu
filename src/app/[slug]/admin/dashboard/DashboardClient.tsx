@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Product, ProductInput, ProductStatus } from "@/types";
 import { Reservation } from "./reservations/types";
+import type { CompanySettings } from "./companySettings";
 import { createClient } from "@/lib/supabase/client";
 import { generateThemeVars } from "@/lib/theme";
 import ProductForm from "@/components/admin/ProductForm";
@@ -53,13 +54,24 @@ interface Props {
   trialEndsAt: string | null;
   planExpiresAt: string | null;
   hasBillingKey: boolean;
+  initialSettings: CompanySettings;
 }
 
 
-export default function DashboardClient({ slug, userId, userEmail, isOAuth, profileName, profilePhone, twoFactorEnabled, companyId, companyName, logoImage, themeBg, themeAccent, initialProducts, locationUrl, kakaoChannelUrl, instagramUrl, youtubeUrl, companyPhone, hiddenProductTypes, hiddenSeasons, consultEnabled, plan, subscriptionPlan, cancelAtPeriodEnd, trialEndsAt, planExpiresAt, hasBillingKey }: Props) {
+export default function DashboardClient({ slug, userId, userEmail, isOAuth, profileName, profilePhone, twoFactorEnabled, companyId, companyName, logoImage, themeBg, themeAccent, initialProducts, locationUrl, kakaoChannelUrl, instagramUrl, youtubeUrl, companyPhone, hiddenProductTypes, hiddenSeasons, consultEnabled, plan, subscriptionPlan, cancelAtPeriodEnd, trialEndsAt, planExpiresAt, hasBillingKey, initialSettings }: Props) {
   const searchParams = useSearchParams();
   const initialTab = (searchParams.get("tab") as Tab | null) ?? "dashboard";
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
+  // 한 번 연 탭은 숨기기만 하고 유지 — 탭을 오갈 때마다 다시 마운트되며 DB를 재조회하지 않도록
+  const [visitedTabs, setVisitedTabs] = useState<Set<Tab>>(() => new Set([initialTab]));
+  useEffect(() => {
+    setVisitedTabs((prev) => (prev.has(activeTab) ? prev : new Set(prev).add(activeTab)));
+  }, [activeTab]);
+  // 매장 설정은 서버에서 한 번 받은 값을 탭들이 공유 (탭별 company_settings 재조회 제거)
+  const [companySettings, setCompanySettings] = useState<CompanySettings>(initialSettings);
+  const handleSettingsSaved = (patch: CompanySettings) => setCompanySettings((prev) => ({ ...prev, ...patch }));
+  // 예약이 바뀔 때만 증가 — 대시보드 요약·통계·정산 탭이 이 값이 바뀔 때만 다시 불러온다
+  const [reservationsVersion, setReservationsVersion] = useState(0);
   const tabScrollRef = useRef<HTMLDivElement>(null);
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
@@ -115,10 +127,13 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
     setReservationsLoading(false);
   };
 
+  // 예약 탭을 처음 열 때부터 조회 (대시보드만 보고 나가는 경우 불필요한 조회를 하지 않도록)
+  const reservationsTabOpened = visitedTabs.has("reservations");
   useEffect(() => {
+    if (!reservationsTabOpened) return;
     fetchReservations(reservationMonth);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [companyId, reservationMonth.year, reservationMonth.month]);
+  }, [companyId, reservationMonth.year, reservationMonth.month, reservationsTabOpened]);
 
 
   const handleAdd = async (data: ProductInput) => {
@@ -397,31 +412,40 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
         )}
 
         <main className="flex-1 min-w-0">
-          {activeTab === "dashboard" && (
-            <DashboardOverviewTab
-              companyId={companyId}
-              slug={slug}
-              plan={plan}
-              onNavigate={(tab, statusFilter) => {
-                setReservationStatusFilter(statusFilter);
-                setActiveTab(tab as Tab);
-              }}
-            />
+          {visitedTabs.has("dashboard") && (
+            <div className={activeTab === "dashboard" ? "" : "hidden"}>
+              <DashboardOverviewTab
+                companyId={companyId}
+                settings={companySettings}
+                refreshKey={reservationsVersion}
+                slug={slug}
+                plan={plan}
+                onNavigate={(tab, statusFilter) => {
+                  setReservationStatusFilter(statusFilter);
+                  setActiveTab(tab as Tab);
+                }}
+              />
+            </div>
           )}
 
-          {activeTab === "reservations" && (
-            <ReservationsTab
-              companyId={companyId}
-              allReservations={allReservations}
-              setAllReservations={setAllReservations}
-              loading={reservationsLoading}
-              onRefresh={() => fetchReservations()}
-              onMonthChange={(year, month) => setReservationMonth((prev) =>
-                prev.year === year && prev.month === month ? prev : { year, month }
-              )}
-              initialStatusFilter={reservationStatusFilter}
-              onClearStatusFilter={() => setReservationStatusFilter(undefined)}
-            />
+          {visitedTabs.has("reservations") && (
+            <div className={activeTab === "reservations" ? "" : "hidden"}>
+              <ReservationsTab
+                // 대시보드 요약에서 상태 필터를 걸고 들어오면 새로 마운트해 필터를 적용
+                key={reservationStatusFilter ?? "all"}
+                companyId={companyId}
+                allReservations={allReservations}
+                setAllReservations={(update) => { setAllReservations(update); setReservationsVersion((v) => v + 1); }}
+                loading={reservationsLoading}
+                onRefresh={() => { fetchReservations(); setReservationsVersion((v) => v + 1); }}
+                settings={companySettings}
+                onMonthChange={(year, month) => setReservationMonth((prev) =>
+                  prev.year === year && prev.month === month ? prev : { year, month }
+                )}
+                initialStatusFilter={reservationStatusFilter}
+                onClearStatusFilter={() => setReservationStatusFilter(undefined)}
+              />
+            </div>
           )}
 
           {/* 상품관리: 항상 마운트, 비활성 시 hidden으로 숨김 (캐싱) */}
@@ -449,113 +473,135 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
             </div>
           </div>
 
-          {activeTab === "stats" && (
-            <StatsTab companyId={companyId} />
-          )}
-
-          {activeTab === "settlement" && (
-            <div className="bg-white border border-gray-200 rounded-xl p-6">
-              <SettlementTab companyId={companyId} />
+          {visitedTabs.has("stats") && (
+            <div className={activeTab === "stats" ? "" : "hidden"}>
+              <StatsTab companyId={companyId} refreshKey={reservationsVersion} />
             </div>
           )}
 
-          {activeTab === "company" && (
-            <div className="bg-white border border-gray-200 rounded-xl p-6">
-              <CompanyInfoTab
-                companyId={companyId}
-                slug={slug}
-                initialName={currentCompanyName}
-                initialLogo={currentLogoImage}
-                initialNaverTalkUrl={currentNaverTalkUrl}
-                initialKakaoChannelUrl={currentKakaoChannelUrl}
-                initialInstagramUrl={currentInstagramUrl}
-                initialYoutubeUrl={currentYoutubeUrl}
-                initialPhone={companyPhone}
-                plan={plan}
-                onSave={(name, logo, naver, kakao, instagram, youtube) => {
-                  setCurrentCompanyName(name);
-                  setCurrentLogoImage(logo);
-                  setCurrentNaverTalkUrl(naver);
-                  setCurrentKakaoChannelUrl(kakao);
-                  setCurrentInstagramUrl(instagram);
-                  setCurrentYoutubeUrl(youtube);
-                }}
-              />
+          {visitedTabs.has("settlement") && (
+            <div className={activeTab === "settlement" ? "" : "hidden"}>
+              <div className="bg-white border border-gray-200 rounded-xl p-6">
+                <SettlementTab companyId={companyId} refreshKey={reservationsVersion} />
+              </div>
             </div>
           )}
 
-          {activeTab === "ordersettings" && (
-            <div className="bg-white border border-gray-200 rounded-xl p-6">
-              <OrderSettingsTab companyId={companyId} plan={plan} />
+          {visitedTabs.has("company") && (
+            <div className={activeTab === "company" ? "" : "hidden"}>
+              <div className="bg-white border border-gray-200 rounded-xl p-6">
+                <CompanyInfoTab
+                  companyId={companyId}
+                  slug={slug}
+                  initialName={currentCompanyName}
+                  initialLogo={currentLogoImage}
+                  initialNaverTalkUrl={currentNaverTalkUrl}
+                  initialKakaoChannelUrl={currentKakaoChannelUrl}
+                  initialInstagramUrl={currentInstagramUrl}
+                  initialYoutubeUrl={currentYoutubeUrl}
+                  initialPhone={companyPhone}
+                  plan={plan}
+                  onSave={(name, logo, naver, kakao, instagram, youtube) => {
+                    setCurrentCompanyName(name);
+                    setCurrentLogoImage(logo);
+                    setCurrentNaverTalkUrl(naver);
+                    setCurrentKakaoChannelUrl(kakao);
+                    setCurrentInstagramUrl(instagram);
+                    setCurrentYoutubeUrl(youtube);
+                  }}
+                />
+              </div>
             </div>
           )}
 
-          {activeTab === "business" && (
-            <div className="bg-white border border-gray-200 rounded-xl p-6">
-              <BusinessSettingsTab companyId={companyId} />
+          {visitedTabs.has("ordersettings") && (
+            <div className={activeTab === "ordersettings" ? "" : "hidden"}>
+              <div className="bg-white border border-gray-200 rounded-xl p-6">
+                <OrderSettingsTab companyId={companyId} plan={plan} settings={companySettings} onSettingsSaved={handleSettingsSaved} />
+              </div>
             </div>
           )}
 
-          {activeTab === "reservation" && (
-            <div className="bg-white border border-gray-200 rounded-xl p-6">
-              <ReservationSettingsTab
-                companyId={companyId}
-                onConsultToggle={handleConsultToggle}
-                onGoToOrderSettings={() => setActiveTab("ordersettings")}
-              />
+          {visitedTabs.has("business") && (
+            <div className={activeTab === "business" ? "" : "hidden"}>
+              <div className="bg-white border border-gray-200 rounded-xl p-6">
+                <BusinessSettingsTab companyId={companyId} settings={companySettings} onSettingsSaved={handleSettingsSaved} />
+              </div>
             </div>
           )}
 
-          {activeTab === "menusettings" && (
-            <div className="bg-white border border-gray-200 rounded-xl p-6">
-              <MenuSettingsTab
-                companyId={companyId}
-                initialHiddenProductTypes={currentHiddenProductTypes}
-                initialHiddenSeasons={currentHiddenSeasons}
-                onSave={(types, seasons) => {
-                  setCurrentHiddenProductTypes(types);
-                  setCurrentHiddenSeasons(seasons);
-                }}
-              />
+          {visitedTabs.has("reservation") && (
+            <div className={activeTab === "reservation" ? "" : "hidden"}>
+              <div className="bg-white border border-gray-200 rounded-xl p-6">
+                <ReservationSettingsTab
+                  companyId={companyId}
+                  settings={companySettings}
+                  onSettingsSaved={handleSettingsSaved}
+                  onConsultToggle={handleConsultToggle}
+                  onGoToOrderSettings={() => setActiveTab("ordersettings")}
+                />
+              </div>
             </div>
           )}
 
-          {activeTab === "settings" && (
-            <div className="bg-white border border-gray-200 rounded-xl p-6">
-              <SettingsTab
-                companyId={companyId}
-                initialBg={themeBg}
-                initialAccent={themeAccent}
-                onThemeChange={(bg, accent) => setThemeVars(generateThemeVars(bg, accent))}
-              />
+          {visitedTabs.has("menusettings") && (
+            <div className={activeTab === "menusettings" ? "" : "hidden"}>
+              <div className="bg-white border border-gray-200 rounded-xl p-6">
+                <MenuSettingsTab
+                  companyId={companyId}
+                  initialHiddenProductTypes={currentHiddenProductTypes}
+                  initialHiddenSeasons={currentHiddenSeasons}
+                  onSave={(types, seasons) => {
+                    setCurrentHiddenProductTypes(types);
+                    setCurrentHiddenSeasons(seasons);
+                  }}
+                />
+              </div>
             </div>
           )}
 
-          {activeTab === "plan" && (
-            <div className="bg-white border border-gray-200 rounded-xl p-6">
-              <PlanTab
-                companyId={companyId}
-                customerName={profileName}
-                plan={plan}
-                subscriptionPlan={subscriptionPlan}
-                cancelAtPeriodEnd={cancelAtPeriodEnd}
-                trialEndsAt={trialEndsAt}
-                planExpiresAt={planExpiresAt}
-                hasBillingKey={hasBillingKey}
-              />
+          {visitedTabs.has("settings") && (
+            <div className={activeTab === "settings" ? "" : "hidden"}>
+              <div className="bg-white border border-gray-200 rounded-xl p-6">
+                <SettingsTab
+                  companyId={companyId}
+                  initialBg={themeBg}
+                  initialAccent={themeAccent}
+                  onThemeChange={(bg, accent) => setThemeVars(generateThemeVars(bg, accent))}
+                />
+              </div>
             </div>
           )}
 
-          {activeTab === "myinfo" && (
-            <div className="bg-white border border-gray-200 rounded-xl p-6">
-              <MyInfoTab
-                slug={slug}
-                email={userEmail}
-                isOAuth={isOAuth}
-                profileName={profileName}
-                profilePhone={profilePhone}
-                initialTwoFactorEnabled={twoFactorEnabled}
-              />
+          {visitedTabs.has("plan") && (
+            <div className={activeTab === "plan" ? "" : "hidden"}>
+              <div className="bg-white border border-gray-200 rounded-xl p-6">
+                <PlanTab
+                  companyId={companyId}
+                  customerName={profileName}
+                  plan={plan}
+                  subscriptionPlan={subscriptionPlan}
+                  cancelAtPeriodEnd={cancelAtPeriodEnd}
+                  trialEndsAt={trialEndsAt}
+                  planExpiresAt={planExpiresAt}
+                  hasBillingKey={hasBillingKey}
+                />
+              </div>
+            </div>
+          )}
+
+          {visitedTabs.has("myinfo") && (
+            <div className={activeTab === "myinfo" ? "" : "hidden"}>
+              <div className="bg-white border border-gray-200 rounded-xl p-6">
+                <MyInfoTab
+                  slug={slug}
+                  email={userEmail}
+                  isOAuth={isOAuth}
+                  profileName={profileName}
+                  profilePhone={profilePhone}
+                  initialTwoFactorEnabled={twoFactorEnabled}
+                />
+              </div>
             </div>
           )}
         </main>

@@ -5,14 +5,18 @@ import { createClient } from "@/lib/supabase/client";
 import { formatMoney, parseMoney } from "@/lib/format";
 import SaveButton from "@/components/admin/SaveButton";
 import { notifyMenuChanged } from "@/lib/menuCacheClient";
+import type { CompanySettings } from "./companySettings";
+import { useSettingsSync } from "./useSettingsSync";
 
 interface Props {
   companyId: string;
+  settings: CompanySettings;
+  onSettingsSaved: (patch: CompanySettings) => void;
   onConsultToggle?: (enabled: boolean) => void;
   onGoToOrderSettings?: () => void;
 }
 
-export default function ReservationSettingsTab({ companyId, onConsultToggle, onGoToOrderSettings }: Props) {
+export default function ReservationSettingsTab({ companyId, settings, onSettingsSaved, onConsultToggle, onGoToOrderSettings }: Props) {
   const [consultApplyStatus, setConsultApplyStatus] = useState<"pending" | "approved" | "rejected" | null>(null);
   const [consultEnabled, setConsultEnabled] = useState(false);
   const [messageCardEnabled, setMessageCardEnabled] = useState(false);
@@ -39,47 +43,39 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle, onG
   const supabase = createClient();
   const mailOrderBlocked = !mailOrderNumber && soldCount >= 50;
 
-  useEffect(() => {
-    supabase
-      .from("company_settings")
-      .select("consult_enabled, consult_apply_status, message_card_enabled, message_card_price, shopping_bag_enabled, shopping_bag_price, preservative_enabled, preservative_price, bank_name, bank_account, bank_holder, address, consult_notice, delivery_fees, delivery_enabled, mail_order_number, sold_count")
-      .eq("company_id", companyId)
-      .single()
-      .then(({ data }) => {
-        if (!data) return;
-        if (data.consult_enabled) setConsultEnabled(data.consult_enabled);
-        if (data.consult_apply_status) setConsultApplyStatus(data.consult_apply_status);
-        setMessageCardEnabled(data.message_card_enabled ?? false);
-        setMessageCardPrice(data.message_card_price ? formatMoney(String(data.message_card_price)) : "");
-        setShoppingBagEnabled(data.shopping_bag_enabled ?? false);
-        setShoppingBagPrice(data.shopping_bag_price ? formatMoney(String(data.shopping_bag_price)) : "");
-        setPreservativeEnabled(data.preservative_enabled ?? false);
-        setPreservativePrice(data.preservative_price ? formatMoney(String(data.preservative_price)) : "");
-        setHasBankInfo(!!(data.address && data.bank_name && data.bank_account && data.bank_holder));
-        setMailOrderNumber(data.mail_order_number ?? "");
-        setSoldCount(data.sold_count ?? 0);
-        if (data.consult_notice) setConsultNotice(data.consult_notice);
-        setDeliveryEnabled(data.delivery_enabled ?? false);
-        if (data.delivery_fees && typeof data.delivery_fees === "object") {
-          const fees = data.delivery_fees as Record<string, number>;
-          setDeliveryFees({
-            "0-1":   fees["0-1"]   != null ? formatMoney(String(fees["0-1"]))   : "",
-            "1-3":   fees["1-3"]   != null ? formatMoney(String(fees["1-3"]))   : "",
-            "3-5":   fees["3-5"]   != null ? formatMoney(String(fees["3-5"]))   : "",
-            "5-10":  fees["5-10"]  != null ? formatMoney(String(fees["5-10"]))  : "",
-            "10-15": fees["10-15"] != null ? formatMoney(String(fees["10-15"])) : "",
-            "15-20": fees["15-20"] != null ? formatMoney(String(fees["15-20"])) : "",
-          });
-        }
+  // 매장 설정은 대시보드가 한 번 받아둔 값을 사용 (DB 재조회 없음)
+  const markOwnSave = useSettingsSync(settings, (data) => {
+    if (data.consult_enabled) setConsultEnabled(data.consult_enabled);
+    if (data.consult_apply_status) setConsultApplyStatus(data.consult_apply_status);
+    setMessageCardEnabled(data.message_card_enabled ?? false);
+    setMessageCardPrice(data.message_card_price ? formatMoney(String(data.message_card_price)) : "");
+    setShoppingBagEnabled(data.shopping_bag_enabled ?? false);
+    setShoppingBagPrice(data.shopping_bag_price ? formatMoney(String(data.shopping_bag_price)) : "");
+    setPreservativeEnabled(data.preservative_enabled ?? false);
+    setPreservativePrice(data.preservative_price ? formatMoney(String(data.preservative_price)) : "");
+    setHasBankInfo(!!(data.address && data.bank_name && data.bank_account && data.bank_holder));
+    setMailOrderNumber(data.mail_order_number ?? "");
+    setSoldCount(data.sold_count ?? 0);
+    if (data.consult_notice) setConsultNotice(data.consult_notice);
+    setDeliveryEnabled(data.delivery_enabled ?? false);
+    if (data.delivery_fees && typeof data.delivery_fees === "object") {
+      const fees = data.delivery_fees as Record<string, number>;
+      setDeliveryFees({
+        "0-1":   fees["0-1"]   != null ? formatMoney(String(fees["0-1"]))   : "",
+        "1-3":   fees["1-3"]   != null ? formatMoney(String(fees["1-3"]))   : "",
+        "3-5":   fees["3-5"]   != null ? formatMoney(String(fees["3-5"]))   : "",
+        "5-10":  fees["5-10"]  != null ? formatMoney(String(fees["5-10"]))  : "",
+        "10-15": fees["10-15"] != null ? formatMoney(String(fees["10-15"])) : "",
+        "15-20": fees["15-20"] != null ? formatMoney(String(fees["15-20"])) : "",
       });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [companyId]);
+    }
+  });
+  // 이 탭에서 저장한 값을 공유 설정에도 반영 (다른 탭이 최신 값을 보도록)
+  const saveShared = (patch: CompanySettings) => { markOwnSave(); onSettingsSaved(patch); };
 
   const handleSave = async () => {
     setError(null);
-    const { error: err } = await supabase
-      .from("company_settings")
-      .update({
+    const patch = {
         consult_enabled: mailOrderBlocked ? false : consultEnabled,
         message_card_enabled: messageCardEnabled,
         message_card_price: messageCardEnabled ? parseMoney(messageCardPrice) : 0,
@@ -92,12 +88,16 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle, onG
         delivery_fees: Object.fromEntries(
           Object.entries(deliveryFees).map(([k, v]) => [k, v === "" ? null : parseMoney(v)])
         ),
-      })
+      };
+    const { error: err } = await supabase
+      .from("company_settings")
+      .update(patch)
       .eq("company_id", companyId);
     if (err) {
       setError(err.message);
       return false;
     }
+    saveShared(patch);
     notifyMenuChanged();
     onConsultToggle?.(consultEnabled);
   };

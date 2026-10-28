@@ -4,12 +4,16 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import QRCode from "qrcode";
 import { createClient } from "@/lib/supabase/client";
+import type { CompanySettings } from "./companySettings";
 
 interface Props {
   companyId: string;
   slug: string;
   plan: "monthly" | "annual" | "none" | "free";
   onNavigate: (tab: string, statusFilter?: string) => void;
+  settings: CompanySettings;
+  /** 예약이 바뀔 때마다 증가 — 바뀌었을 때만 예약 집계를 다시 불러온다 */
+  refreshKey: number;
 }
 
 interface Settings {
@@ -87,9 +91,10 @@ function CheckItem({ ok, label, tab, onNavigate }: { ok: boolean; label: string;
   );
 }
 
-export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate }: Props) {
-  const [settings, setSettings] = useState<Settings | null>(null);
-  const [companyPhone, setCompanyPhone] = useState<string | null>(null);
+export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate, settings: sharedSettings, refreshKey }: Props) {
+  // 매장 설정·전화번호는 대시보드가 받아둔 공유 값을 사용 (DB 재조회 없음, 다른 탭에서 저장하면 바로 반영)
+  const settings = sharedSettings as Settings;
+  const companyPhone = (sharedSettings.company_phone as string | null) ?? null;
   const [reservationCounts, setReservationCounts] = useState<ReservationCounts>({ 미확인: 0, 준비중: 0, 완료: 0, 취소: 0, total: 0 });
   const [todayItems, setTodayItems] = useState<TodayItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -107,17 +112,8 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
     const monthEnd = `${y}-${String(m).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
     const todayStr = `${y}-${String(m).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
-    const [{ data: s }, { data: company }, { data: reservations }, { data: today }] = await Promise.all([
-      supabase
-        .from("company_settings")
-        .select("consult_enabled, consult_apply_status, business_verified_at, bank_account_image_url, bank_name, bank_account, bank_holder, address, delivery_enabled, message_card_enabled, shopping_bag_enabled, preservative_enabled, mail_order_number, sold_count")
-        .eq("company_id", companyId)
-        .single(),
-      supabase
-        .from("companies")
-        .select("phone")
-        .eq("id", companyId)
-        .single(),
+    // 예약 집계만 조회 — 예약이 바뀌었을 때(refreshKey)만 다시 불러온다
+    const [{ data: reservations }, { data: today }] = await Promise.all([
       supabase
         .from("reservations")
         .select("status")
@@ -134,8 +130,6 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
         .order("desired_time", { ascending: true }),
     ]);
 
-    if (s) setSettings(s);
-    if (company?.phone) setCompanyPhone(company.phone);
     if (reservations) {
       const counts = { 미확인: 0, 준비중: 0, 완료: 0, 취소: 0, total: reservations.length };
       for (const r of reservations) {
@@ -148,7 +142,8 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
     }
     if (today) setTodayItems(today as TodayItem[]);
     setLoading(false);
-  }, [companyId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companyId, refreshKey]);
 
   useEffect(() => { load(); }, [load]);
 

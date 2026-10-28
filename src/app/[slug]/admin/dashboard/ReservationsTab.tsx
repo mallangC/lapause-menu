@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, Dispatch, SetStateAction } from "re
 import { createClient } from "@/lib/supabase/client";
 import AddReservationModal from "./AddReservationModal";
 import { Reservation, SortKey } from "./reservations/types";
+import type { CompanySettings } from "./companySettings";
 import { STATUS_ROW_BG, STATUS_LEGEND, PAGE_SIZE } from "./reservations/constants";
 import ReservationDetail from "./reservations/ReservationDetail";
 import CustomerProfileModal from "./reservations/CustomerProfileModal";
@@ -95,11 +96,12 @@ interface Props {
   onRefresh: () => void;
   /** 보고 있는 달이 바뀌면 호출 — 부모가 해당 달 예약만 다시 불러온다 */
   onMonthChange: (year: number, month: number) => void;
+  settings: CompanySettings;
   initialStatusFilter?: string;
   onClearStatusFilter?: () => void;
 }
 
-export default function ReservationsTab({ companyId, allReservations, setAllReservations, loading, onRefresh, onMonthChange, initialStatusFilter, onClearStatusFilter }: Props) {
+export default function ReservationsTab({ companyId, allReservations, setAllReservations, loading, onRefresh, onMonthChange, settings, initialStatusFilter, onClearStatusFilter }: Props) {
   const [page, setPage] = useState(1);
   const sortKey: SortKey = "desired_date";
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -126,6 +128,19 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
 
   const supabase = createClient();
 
+  // 매장 설정은 대시보드가 한 번 받아둔 값을 사용 (DB 재조회 없음)
+  useEffect(() => {
+    setMessageCardEnabled(settings.message_card_enabled ?? false);
+    setMessageCardPrice(settings.message_card_price ?? 0);
+    setShoppingBagEnabled(settings.shopping_bag_enabled ?? false);
+    setShoppingBagPrice(settings.shopping_bag_price ?? 0);
+    setPreservativeEnabled(settings.preservative_enabled ?? false);
+    setPreservativePrice(settings.preservative_price ?? 0);
+    if (settings.business_hours) setBusinessHours(settings.business_hours as Record<string, { closed: boolean; open: string; close: string }>);
+    if (settings.closed_dates) setClosedDates(settings.closed_dates as string[]);
+    if (settings.date_overrides) setDateOverrides(settings.date_overrides as DateOverrides);
+  }, [settings]);
+
   useEffect(() => {
     onMonthChange(viewYear, viewMonth);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -137,23 +152,6 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
   }, [lightboxUrl, showAddModal, profileModal, editingReservation, mobileDetailId]);
 
   useEffect(() => {
-    supabase
-      .from("company_settings")
-      .select("message_card_enabled, message_card_price, shopping_bag_enabled, shopping_bag_price, preservative_enabled, preservative_price, business_hours, closed_dates, date_overrides")
-      .eq("company_id", companyId)
-      .single()
-      .then(({ data }) => {
-        if (!data) return;
-        setMessageCardEnabled(data.message_card_enabled ?? false);
-        setMessageCardPrice(data.message_card_price ?? 0);
-        setShoppingBagEnabled(data.shopping_bag_enabled ?? false);
-        setShoppingBagPrice(data.shopping_bag_price ?? 0);
-        setPreservativeEnabled(data.preservative_enabled ?? false);
-        setPreservativePrice(data.preservative_price ?? 0);
-        if (data.business_hours) setBusinessHours(data.business_hours as Record<string, { closed: boolean; open: string; close: string }>);
-        if (data.closed_dates) setClosedDates(data.closed_dates as string[]);
-        if (data.date_overrides) setDateOverrides(data.date_overrides as DateOverrides);
-      });
     supabase
       .from("company_categories")
       .select("name, hidden")

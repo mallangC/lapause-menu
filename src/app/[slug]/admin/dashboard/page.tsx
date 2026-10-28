@@ -6,6 +6,7 @@ import DashboardClient from "./DashboardClient";
 import { Product } from "@/types";
 import { DEFAULT_THEME_BG, DEFAULT_THEME_ACCENT } from "@/lib/theme";
 import { DEVICE_COOKIE_NAME, hashToken } from "@/lib/twoFactor";
+import { toClientSettings } from "./companySettings";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -114,6 +115,7 @@ export default async function DashboardPage({ params }: Props) {
       trialEndsAt={(company.trial_ends_at as string | null) ?? null}
       planExpiresAt={(company.plan_expires_at as string | null) ?? null}
       hasBillingKey={!!(company.billing_key as string | null)}
+      initialSettings={{ ...toClientSettings(raw.settings as unknown as Record<string, unknown> | null), company_phone: raw.phone ?? null }}
     />
   );
 }

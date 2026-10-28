@@ -7,13 +7,17 @@ import { createClient } from "@/lib/supabase/client";
 import { formatPhone, parsePhone } from "@/lib/format";
 import SaveButton, { SaveButtonHandle } from "@/components/admin/SaveButton";
 import { notifyMenuChanged } from "@/lib/menuCacheClient";
+import type { CompanySettings } from "./companySettings";
+import { useSettingsSync } from "./useSettingsSync";
 
 interface Props {
   companyId: string;
   plan: "monthly" | "annual" | "none" | "free";
+  settings: CompanySettings;
+  onSettingsSaved: (patch: CompanySettings) => void;
 }
 
-export default function OrderSettingsTab({ companyId, plan: _plan }: Props) {
+export default function OrderSettingsTab({ companyId, plan: _plan, settings, onSettingsSaved }: Props) {
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [addressDetail, setAddressDetail] = useState("");
@@ -50,35 +54,33 @@ export default function OrderSettingsTab({ companyId, plan: _plan }: Props) {
   const saveBtnRef = useRef<SaveButtonHandle>(null);
   const supabase = createClient();
 
+  // 매장 설정은 대시보드가 한 번 받아둔 값을 사용 (DB 재조회 없음)
+  const markOwnSave = useSettingsSync(settings, (data) => {
+    if (data.address) setAddress(data.address);
+    if (data.bank_name) setBankName(data.bank_name);
+    if (data.bank_account) setBankAccount(data.bank_account);
+    if (data.bank_holder) setBankHolder(data.bank_holder);
+    if (data.business_number) setBusinessNumber(data.business_number);
+    if (data.mail_order_number) setMailOrderNumber(data.mail_order_number);
+    setSoldCount(data.sold_count ?? 0);
+    if (data.business_verified_at) setBusinessVerifiedAt(data.business_verified_at);
+    if (data.business_status) setBusinessStatus(data.business_status);
+    if (data.bank_account_image_url) setBankAccountImageUrl(data.bank_account_image_url);
+    if (data.business_registration_image_url) setBusinessRegImageUrl(data.business_registration_image_url);
+    if (data.consult_apply_status) setConsultApplyStatus(data.consult_apply_status);
+    if (data.consult_reject_reason) setConsultRejectReason(data.consult_reject_reason);
+    setConsultEnabled(data.consult_enabled ?? false);
+    initialConsultFields.current = {
+      bankName: data.bank_name || "",
+      bankAccount: data.bank_account || "",
+      bankHolder: data.bank_holder || "",
+      businessNumber: data.business_number || "",
+    };
+  });
+  // 이 탭에서 저장한 값을 공유 설정에도 반영 (다른 탭이 최신 값을 보도록)
+  const saveShared = (patch: CompanySettings) => { markOwnSave(); onSettingsSaved(patch); };
+
   useEffect(() => {
-    supabase
-      .from("company_settings")
-      .select("bank_name, bank_account, bank_holder, address, consult_enabled, business_number, mail_order_number, sold_count, business_verified_at, business_status, bank_account_image_url, business_registration_image_url, consult_apply_status, consult_reject_reason")
-      .eq("company_id", companyId)
-      .single()
-      .then(({ data }) => {
-        if (!data) return;
-        if (data.address) setAddress(data.address);
-        if (data.bank_name) setBankName(data.bank_name);
-        if (data.bank_account) setBankAccount(data.bank_account);
-        if (data.bank_holder) setBankHolder(data.bank_holder);
-        if (data.business_number) setBusinessNumber(data.business_number);
-        if (data.mail_order_number) setMailOrderNumber(data.mail_order_number);
-        setSoldCount(data.sold_count ?? 0);
-        if (data.business_verified_at) setBusinessVerifiedAt(data.business_verified_at);
-        if (data.business_status) setBusinessStatus(data.business_status);
-        if (data.bank_account_image_url) setBankAccountImageUrl(data.bank_account_image_url);
-        if (data.business_registration_image_url) setBusinessRegImageUrl(data.business_registration_image_url);
-        if (data.consult_apply_status) setConsultApplyStatus(data.consult_apply_status);
-        if (data.consult_reject_reason) setConsultRejectReason(data.consult_reject_reason);
-        setConsultEnabled(data.consult_enabled ?? false);
-        initialConsultFields.current = {
-          bankName: data.bank_name || "",
-          bankAccount: data.bank_account || "",
-          bankHolder: data.bank_holder || "",
-          businessNumber: data.business_number || "",
-        };
-      });
     supabase
       .from("companies")
       .select("phone")
@@ -107,11 +109,13 @@ export default function OrderSettingsTab({ companyId, plan: _plan }: Props) {
     const res = await fetch("/api/company/bank-doc", { method: "POST", body: formData });
     if (res.ok) {
       setBankAccountImageUrl("uploaded");
+      saveShared({ bank_account_image_url: "uploaded" });
       if (consultApplyStatus !== null) {
         setConsultApplyStatus(null);
         setConsultEnabled(false);
         await supabase.from("company_settings").update({ consult_apply_status: null, consult_enabled: false }).eq("company_id", companyId);
         notifyMenuChanged();
+        saveShared({ consult_apply_status: null, consult_enabled: false });
       }
     } else {
       const data = await res.json();
@@ -144,11 +148,13 @@ export default function OrderSettingsTab({ companyId, plan: _plan }: Props) {
     const res = await fetch("/api/company/business-doc", { method: "POST", body: formData });
     if (res.ok) {
       setBusinessRegImageUrl("uploaded");
+      saveShared({ business_registration_image_url: "uploaded" });
       if (consultApplyStatus !== null) {
         setConsultApplyStatus(null);
         setConsultEnabled(false);
         await supabase.from("company_settings").update({ consult_apply_status: null, consult_enabled: false }).eq("company_id", companyId);
         notifyMenuChanged();
+        saveShared({ consult_apply_status: null, consult_enabled: false });
       }
     } else {
       const data = await res.json();
@@ -177,11 +183,12 @@ export default function OrderSettingsTab({ companyId, plan: _plan }: Props) {
     });
     const data = await res.json();
     if (res.ok) {
-      setBusinessVerifiedAt(new Date().toISOString());
+      const verifiedAt = data.isActive ? new Date().toISOString() : null;
+      setBusinessVerifiedAt(verifiedAt);
       setBusinessStatus(data.status);
+      saveShared({ business_verified_at: verifiedAt, business_status: data.status });
       if (!data.isActive) {
         setVerifyError(`조회 결과: ${data.status}. 계속사업자만 등록 가능합니다.`);
-        setBusinessVerifiedAt(null);
       }
     } else {
       setVerifyError(data.error ?? "인증에 실패했습니다.");
@@ -200,6 +207,7 @@ export default function OrderSettingsTab({ companyId, plan: _plan }: Props) {
     if (res.ok) {
       setConsultApplyStatus("pending");
       setConsultEnabled(false);
+      saveShared({ consult_apply_status: "pending", consult_enabled: false });
     } else {
       setError(data.error ?? "신청에 실패했습니다.");
     }
@@ -224,18 +232,19 @@ export default function OrderSettingsTab({ companyId, plan: _plan }: Props) {
       businessNumber !== initialConsultFields.current.businessNumber;
     const shouldResetConsult = consultFieldsChanged && consultApplyStatus !== null;
 
+    const settingsPatch = {
+      bank_name: bankName || null,
+      bank_account: bankAccount || null,
+      bank_holder: bankHolder || null,
+      bank_account_image_url: bankAccountImageUrl || null,
+      business_number: businessNumber || null,
+      mail_order_number: mailOrderNumber || null,
+      address: address ? (addressDetail ? `${address} ${addressDetail}` : address) : null,
+      ...(shouldResetConsult ? { consult_apply_status: null, consult_enabled: false } : {}),
+      };
     const [{ error: companiesError }, { error: settingsError }, residentResult] = await Promise.all([
       supabase.from("companies").update({ phone: parsePhone(phone) || null }).eq("id", companyId),
-      supabase.from("company_settings").update({
-        bank_name: bankName || null,
-        bank_account: bankAccount || null,
-        bank_holder: bankHolder || null,
-        bank_account_image_url: bankAccountImageUrl || null,
-        business_number: businessNumber || null,
-        mail_order_number: mailOrderNumber || null,
-        address: address ? (addressDetail ? `${address} ${addressDetail}` : address) : null,
-        ...(shouldResetConsult ? { consult_apply_status: null, consult_enabled: false } : {}),
-      }).eq("company_id", companyId),
+      supabase.from("company_settings").update(settingsPatch).eq("company_id", companyId),
       residentTouched
         ? fetch("/api/company/resident-number", {
             method: "POST",
@@ -250,6 +259,7 @@ export default function OrderSettingsTab({ companyId, plan: _plan }: Props) {
       setError(combinedError.message);
       return false;
     }
+    saveShared({ ...settingsPatch, company_phone: parsePhone(phone) || null });
     // 전화번호·사업자번호·통신판매업 번호·주소는 메뉴판 하단 사업자 정보에 노출된다
     notifyMenuChanged();
     if (shouldResetConsult) {

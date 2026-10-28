@@ -6,6 +6,7 @@ import { PLATFORM_FEE_RATE, PLATFORM_FEE_PERCENT_LABEL } from "@/lib/constants";
 
 interface Props {
   companyId: string;
+  refreshKey: number;
 }
 
 interface Settlement {
@@ -46,7 +47,7 @@ function formatMoney(n: number) {
   return `${n.toLocaleString()}원`;
 }
 
-export default function SettlementTab({ companyId }: Props) {
+export default function SettlementTab({ companyId, refreshKey }: Props) {
   const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [pendingGross, setPendingGross] = useState(0);
   const [pendingCount, setPendingCount] = useState(0);
@@ -76,8 +77,9 @@ export default function SettlementTab({ companyId }: Props) {
       setPendingCount((unsettled ?? []).length);
       setLoading(false);
     })();
+  // 탭을 다시 열 때는 재조회하지 않고, 예약이 바뀌었을 때(refreshKey)만 다시 불러온다
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [companyId]);
+  }, [companyId, refreshKey]);
 
   const pendingNet = Math.round(pendingGross * (1 - PLATFORM_FEE_RATE));
 
