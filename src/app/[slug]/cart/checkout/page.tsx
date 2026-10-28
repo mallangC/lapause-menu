@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getMenuData } from "@/lib/menuCache";
 import { generateThemeVars, DEFAULT_THEME_BG, DEFAULT_THEME_ACCENT } from "@/lib/theme";
 import CheckoutClient from "./CheckoutClient";
 
@@ -11,31 +11,13 @@ interface Props {
 export default async function CheckoutPage({ params, searchParams }: Props) {
   const { slug } = await params;
   const sp = await searchParams;
-  const supabase = await createClient();
+  // 메뉴판 캐시 공유 — 구독(plan)을 서비스 롤로 읽어 둔 데이터라 손님(비로그인)도 정확히 판단된다
+  const menu = await getMenuData(slug);
+  if (!menu) notFound();
 
-  const { data: raw } = await supabase
-    .from("companies")
-    .select(`
-      id, name, is_demo,
-      settings:company_settings(
-        logo_image, theme_bg, theme_accent, consult_enabled,
-        address, delivery_enabled, delivery_fees,
-        business_hours, closed_dates, date_overrides,
-        shopping_bag_enabled, shopping_bag_price,
-        preservative_enabled, preservative_price,
-        message_card_enabled, message_card_price,
-        notification_email
-      ),
-      subscription:company_subscriptions(plan)
-    `)
-    .eq("slug", slug)
-    .single();
-
-  if (!raw) notFound();
-
-  const s = raw.settings as unknown as Record<string, unknown> | null ?? {};
-  const sub = raw.subscription as unknown as Record<string, unknown> | null ?? {};
-  if (!sub.plan || sub.plan === "none") notFound();
+  const raw = menu.company;
+  const s = menu.settings;
+  if (!menu.plan || menu.plan === "none") notFound();
 
   const themeVars = generateThemeVars(
     (s.theme_bg as string | null) ?? DEFAULT_THEME_BG,

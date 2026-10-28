@@ -4,7 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import type { Product } from "@/types";
 import { menuCacheKey } from "@/lib/menuCacheKey";
 
-// 공개 메뉴판(/[slug]) 데이터 캐시 — Cloudflare KV(MENU_CACHE)에 매장별로 저장.
+// 공개 메뉴판(/[slug])·상품 상세·장바구니·결제 페이지 공용 데이터 캐시 — Cloudflare KV(MENU_CACHE)에 매장별로 저장.
 // 손님이 메뉴판을 열 때마다 DB를 5번씩 조회하던 것을 캐시가 있으면 0번으로 줄인다.
 // 사장님이 메뉴 관련 정보를 수정하면 purgeMenuCache*()로 바로 비우고, 놓친 경우에도 TTL이 지나면 자동으로 최신화된다.
 // 로컬 `next dev`처럼 KV 바인딩이 없는 환경에서는 캐시 없이 DB를 바로 조회한다.
@@ -59,7 +59,13 @@ async function loadMenuData(slug: string): Promise<MenuData | null> {
         logo_image, theme_bg, theme_accent,
         location_url, kakao_channel_url, instagram_url, youtube_url,
         hidden_product_types, hidden_seasons, consult_enabled,
-        business_number, mail_order_number, address
+        business_number, mail_order_number, address,
+        shopping_bag_enabled, shopping_bag_price,
+        preservative_enabled, preservative_price,
+        message_card_enabled, message_card_price,
+        delivery_enabled, delivery_fees,
+        business_hours, closed_dates, date_overrides,
+        notification_email
       )
     `)
     .eq("slug", slug)

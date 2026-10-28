@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { Product } from "@/types";
+import { getMenuData } from "@/lib/menuCache";
 import { generateThemeVars, DEFAULT_THEME_BG, DEFAULT_THEME_ACCENT } from "@/lib/theme";
 import ProductDetailClient from "./ProductDetailClient";
 
@@ -10,49 +9,19 @@ interface Props {
 
 export default async function ProductDetailPage({ params }: Props) {
   const { slug, productId } = await params;
-  const supabase = await createClient();
+  // 메뉴판 캐시 공유 — 활성 상품·카테고리·설정이 모두 들어 있어 캐시 적중 시 DB 조회 0회
+  const menu = await getMenuData(slug);
+  if (!menu) notFound();
 
-  const { data: raw } = await supabase
-    .from("companies")
-    .select(`
-      id, name,
-      settings:company_settings(
-        logo_image, theme_bg, theme_accent, consult_enabled,
-        hidden_product_types, hidden_seasons
-      ),
-      subscription:company_subscriptions(plan)
-    `)
-    .eq("slug", slug)
-    .single();
+  const raw = menu.company;
+  const s = menu.settings;
+  if (!menu.plan || menu.plan === "none") notFound();
 
-  if (!raw) notFound();
-
-  const s = raw.settings as unknown as Record<string, unknown> | null ?? {};
-  const sub = raw.subscription as unknown as Record<string, unknown> | null ?? {};
-
-  if (sub.plan === "none") notFound();
-
-  const { data: product } = await supabase
-    .from("products")
-    .select("*")
-    .eq("id", productId)
-    .eq("company_id", raw.id)
-    .eq("status", "active")
-    .single();
-
+  const product = menu.products.find((p) => p.id === productId);
   if (!product) notFound();
 
-  const { data: allProducts } = await supabase
-    .from("products")
-    .select("*")
-    .eq("company_id", raw.id)
-    .eq("status", "active")
-    .neq("id", productId);
-
-  const { data: customCats } = await supabase
-    .from("company_categories")
-    .select("category_type, name, hidden")
-    .eq("company_id", raw.id);
+  const allProducts = menu.products.filter((p) => p.id !== productId);
+  const customCats = menu.categories;
 
   const customProductTypes = (customCats ?? [])
     .filter((c) => c.category_type === "product_type" && !c.hidden)
@@ -78,8 +47,8 @@ export default async function ProductDetailPage({ params }: Props) {
       companyName={raw.name ?? slug}
       logoImage={(s.logo_image as string | null) ?? null}
       themeVars={themeVars}
-      product={product as Product}
-      allProducts={(allProducts as Product[]) ?? []}
+      product={product}
+      allProducts={allProducts}
       consultEnabled={(s.consult_enabled as boolean) ?? false}
       hiddenProductTypes={[...((s.hidden_product_types as string[] | null) ?? []), ...hiddenCustomProductTypes]}
       hiddenSeasons={[...((s.hidden_seasons as string[] | null) ?? []), ...hiddenCustomSeasons]}
