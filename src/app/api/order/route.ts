@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { sendReservationConfirmedOwner } from "@/lib/solapi";
 
 interface CartItemPayload {
@@ -43,9 +44,11 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = await createClient();
+    // 매장 조회·고객 등록·사장님 연락처 RPC는 익명 실행 권한을 막아뒀으므로 서버 전용 클라이언트로 호출
+    const adminClient = createAdminClient();
 
     // 휴무일 검증 (결제 승인 전에 막아 불필요한 결제를 방지)
-    const { data: companyId } = await supabase
+    const { data: companyId } = await adminClient
       .rpc("get_company_id_by_slug", { p_slug: slug });
 
     // 데모 매장 여부 확인 (클라이언트가 보낸 값이 아니라 서버에서 직접 조회)
@@ -105,7 +108,7 @@ export async function POST(request: NextRequest) {
     // customer_profile upsert
     let customerProfileId: string | null = null;
     if (orderer.phone) {
-      const { data: profileId } = await supabase.rpc("upsert_customer_profile", {
+      const { data: profileId } = await adminClient.rpc("upsert_customer_profile", {
         p_company_id: companyId,
         p_phone: orderer.phone,
         p_name: orderer.name,
@@ -168,7 +171,7 @@ export async function POST(request: NextRequest) {
 
     // 사장님 알림톡 (데모 매장은 발송하지 않음)
     try {
-      const { data: ownerPhone } = isDemoCompany ? { data: null } : await supabase.rpc("get_owner_phone_by_slug", { p_slug: slug });
+      const { data: ownerPhone } = isDemoCompany ? { data: null } : await adminClient.rpc("get_owner_phone_by_slug", { p_slug: slug });
       if (ownerPhone) {
         const desiredDateTime = `${desiredDate}${desiredTime ? ` ${desiredTime}` : ""}`;
         await sendReservationConfirmedOwner({
