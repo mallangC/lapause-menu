@@ -93,11 +93,13 @@ interface Props {
   setAllReservations: Dispatch<SetStateAction<Reservation[]>>;
   loading: boolean;
   onRefresh: () => void;
+  /** 보고 있는 달이 바뀌면 호출 — 부모가 해당 달 예약만 다시 불러온다 */
+  onMonthChange: (year: number, month: number) => void;
   initialStatusFilter?: string;
   onClearStatusFilter?: () => void;
 }
 
-export default function ReservationsTab({ companyId, allReservations, setAllReservations, loading, onRefresh, initialStatusFilter, onClearStatusFilter }: Props) {
+export default function ReservationsTab({ companyId, allReservations, setAllReservations, loading, onRefresh, onMonthChange, initialStatusFilter, onClearStatusFilter }: Props) {
   const [page, setPage] = useState(1);
   const sortKey: SortKey = "desired_date";
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -123,6 +125,11 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
   const [dateOverrides, setDateOverrides] = useState<DateOverrides>({});
 
   const supabase = createClient();
+
+  useEffect(() => {
+    onMonthChange(viewYear, viewMonth);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewYear, viewMonth]);
 
   useEffect(() => {
     document.body.style.overflow = (lightboxUrl || showAddModal || !!profileModal || !!editingReservation || !!mobileDetailId) ? "hidden" : "";
@@ -258,13 +265,6 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
   const total = filtered.length;
   const totalPages = Math.ceil(total / PAGE_SIZE);
   const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
-  // customer_profile_id 기준 방문 횟수 (NEW 뱃지용)
-  const visitCounts = allReservations.reduce<Record<string, number>>((acc, r) => {
-    const key = r.customer_profile_id;
-    if (key) acc[key] = (acc[key] ?? 0) + 1;
-    return acc;
-  }, {});
 
   return (
     <>

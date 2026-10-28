@@ -86,32 +86,38 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
     return () => { document.body.style.overflow = ""; };
   }, [showForm, editingProduct]);
 
-  useEffect(() => {
-    setReservationsLoading(true);
-    supabase
-      .from("reservations")
-      .select("*")
-      .eq("company_id", companyId)
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false })
-      .then(({ data }) => {
-        setAllReservations((data as Reservation[]) ?? []);
-        setReservationsLoading(false);
-      });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [companyId]);
+  // 예약 탭은 월 단위로 보므로 보고 있는 달(희망일 기준)의 예약만 가져온다.
+  // 전체를 내려받으면 예약이 쌓일수록 느려지고, Supabase 1회 최대 1000행 제한에 걸려 잘린다.
+  const [reservationMonth, setReservationMonth] = useState(() => {
+    const now = new Date();
+    return { year: now.getFullYear(), month: now.getMonth() + 1 };
+  });
+  const reservationRequestId = useRef(0);
 
-  const fetchReservations = async () => {
+  const fetchReservations = async (target = reservationMonth) => {
+    const requestId = ++reservationRequestId.current;
     setReservationsLoading(true);
+    const from = `${target.year}-${String(target.month).padStart(2, "0")}-01`;
+    const next = new Date(target.year, target.month, 1);
+    const to = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}-01`;
     const { data } = await supabase
       .from("reservations")
       .select("*")
       .eq("company_id", companyId)
       .is("deleted_at", null)
+      .gte("desired_date", from)
+      .lt("desired_date", to)
       .order("created_at", { ascending: false });
+    // 달을 빠르게 넘길 때 늦게 도착한 이전 달 응답이 화면을 덮어쓰지 않도록 최신 요청만 반영
+    if (requestId !== reservationRequestId.current) return;
     setAllReservations((data as Reservation[]) ?? []);
     setReservationsLoading(false);
   };
+
+  useEffect(() => {
+    fetchReservations(reservationMonth);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companyId, reservationMonth.year, reservationMonth.month]);
 
 
   const handleAdd = async (data: ProductInput) => {
@@ -404,7 +410,10 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
               allReservations={allReservations}
               setAllReservations={setAllReservations}
               loading={reservationsLoading}
-              onRefresh={fetchReservations}
+              onRefresh={() => fetchReservations()}
+              onMonthChange={(year, month) => setReservationMonth((prev) =>
+                prev.year === year && prev.month === month ? prev : { year, month }
+              )}
               initialStatusFilter={reservationStatusFilter}
               onClearStatusFilter={() => setReservationStatusFilter(undefined)}
             />
