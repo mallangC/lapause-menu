@@ -36,18 +36,24 @@ export default {
         await dispatchBillingRenewals(env);
       } catch (err) {
         console.error("[scheduled] billing-renew dispatch 실패:", err);
+        throw err;
       }
     }
 
     // 매일 16:00 UTC(KST 01:00) — 예약일이 지났는데 미확정 상태인 예약 자동 완료 처리
     if (event.cron === "0 16 * * *") {
       try {
-        await fetch("https://www.flo-aide.com/api/cron/auto-complete-reservations", {
+        const res = await fetch("https://www.flo-aide.com/api/cron/auto-complete-reservations", {
           method: "POST",
           headers: { "x-internal-secret": env.INTERNAL_API_SECRET },
         });
+        const body = await res.text();
+        console.log(`[scheduled] auto-complete-reservations ${res.status}:`, body);
+        // 실패를 크론 결과(Past Cron Events)에도 표시되게 한다
+        if (!res.ok) throw new Error(`auto-complete-reservations 실패 (${res.status})`);
       } catch (err) {
         console.error("[scheduled] auto-complete-reservations 호출 실패:", err);
+        throw err;
       }
     }
   },

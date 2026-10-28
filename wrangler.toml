@@ -3,6 +3,16 @@ compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
 main = "src/cloudflare-worker.ts"
 
+# 실행 로그 저장 (Cloudflare 대시보드 > flo-aide > 관찰 가능성에서 크론·요청 로그 확인)
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+invocation_logs = true
+persist = true
+
+[observability.traces]
+enabled = false
+
 [triggers]
 crons = ["0 18 * * *", "0 16 * * *"]
 
