@@ -5,7 +5,7 @@ compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
 
 [vars]
-NEXT_PUBLIC_SUPABASE_URL = "https://yywoqaydqjcgpwxyantp.supabase.co"
+NEXT_PUBLIC_SUPABASE_URL = "https://ziqatrvwyfvoscfmaaoi.supabase.co"
 
 [[workflows]]
 name = "flo-aide-billing-renew-test"
