@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createServerAuthClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
+import { purgeMenuCacheByCompanyId } from "@/lib/menuCache";
 
 async function verifyOperator() {
   const supabase = await createServerAuthClient();
@@ -52,5 +53,7 @@ export async function POST(request: NextRequest) {
     reason: "운영자가 Free 플랜으로 수동 전환",
   });
 
+  // 구독 상태가 바뀌면 공개 메뉴판(영업 중/서비스 중지) 캐시도 비운다
+  await purgeMenuCacheByCompanyId(companyId);
   return NextResponse.json({ ok: true });
 }

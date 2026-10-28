@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { PRODUCT_TYPES, SEASONS } from "@/lib/constants";
+import { notifyMenuChanged } from "@/lib/menuCacheClient";
 
 interface Props {
   companyId: string;
@@ -39,6 +40,7 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
       : [...hiddenProductTypes, type];
     setHiddenProductTypes(next);
     await supabase.from("company_settings").update({ hidden_product_types: next }).eq("company_id", companyId);
+    notifyMenuChanged();
     onSave(next, hiddenSeasons);
   };
 
@@ -48,6 +50,7 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
       : [...hiddenSeasons, season];
     setHiddenSeasons(next);
     await supabase.from("company_settings").update({ hidden_seasons: next }).eq("company_id", companyId);
+    notifyMenuChanged();
     onSave(hiddenProductTypes, next);
   };
 
@@ -67,6 +70,7 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
       .select()
       .single();
     if (!error && data) {
+      notifyMenuChanged();
       setCustomCategories((prev) => [...prev, data as CustomCategory]);
       resetFn();
     }
@@ -77,11 +81,13 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
     if (!cat) return;
     const newHidden = !cat.hidden;
     await supabase.from("company_categories").update({ hidden: newHidden }).eq("id", id);
+    notifyMenuChanged();
     setCustomCategories((prev) => prev.map((c) => (c.id === id ? { ...c, hidden: newHidden } : c)));
   };
 
   const deleteCategory = async (id: string) => {
     await supabase.from("company_categories").delete().eq("id", id);
+    notifyMenuChanged();
     setCustomCategories((prev) => prev.filter((c) => c.id !== id));
   };
 

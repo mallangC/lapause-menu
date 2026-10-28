@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { formatMoney, parseMoney } from "@/lib/format";
 import SaveButton from "@/components/admin/SaveButton";
+import { notifyMenuChanged } from "@/lib/menuCacheClient";
 
 interface Props {
   companyId: string;
@@ -97,6 +98,7 @@ export default function ReservationSettingsTab({ companyId, onConsultToggle, onG
       setError(err.message);
       return false;
     }
+    notifyMenuChanged();
     onConsultToggle?.(consultEnabled);
   };
 

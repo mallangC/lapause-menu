@@ -21,6 +21,7 @@ import StatsTab from "./StatsTab";
 import SettlementTab from "./SettlementTab";
 import PlanTab from "./PlanTab";
 import DashboardOverviewTab from "./DashboardOverviewTab";
+import { notifyMenuChanged } from "@/lib/menuCacheClient";
 
 type Tab = "dashboard" | "reservations" | "products" | "stats" | "settlement" | "company" | "ordersettings" | "business" | "reservation" | "menusettings" | "settings" | "plan" | "myinfo";
 
@@ -128,6 +129,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
       .select()
       .single();
     if (err) { setError(err.message); return; }
+    notifyMenuChanged();
     setProducts((prev) => [...prev, newProduct as Product]);
     setShowForm(false);
   };
@@ -142,6 +144,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
       .select()
       .single();
     if (err) { setError(err.message); return; }
+    notifyMenuChanged();
     setProducts((prev) => prev.map((p) => (p.id === editingProduct.id ? (updated as Product) : p)));
     setEditingProduct(null);
   };
@@ -149,6 +152,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
   const handleStatusChange = async (id: string, status: ProductStatus) => {
     const { error: err } = await supabase.from("products").update({ status }).eq("id", id);
     if (err) { setError(err.message); return; }
+    notifyMenuChanged();
     setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, status } : p)));
   };
 
@@ -157,6 +161,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
     setError(null);
     const { error: err } = await supabase.from("products").delete().eq("id", id);
     if (err) { setError(err.message); return; }
+    notifyMenuChanged();
     setProducts((prev) => prev.filter((p) => p.id !== id));
   };
 

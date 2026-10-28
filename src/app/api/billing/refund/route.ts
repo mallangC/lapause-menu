@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { purgeMenuCacheByCompanyId } from "@/lib/menuCache";
 
 export const dynamic = "force-dynamic";
 
@@ -207,6 +208,8 @@ export async function POST(req: NextRequest) {
         : Promise.resolve(),
     ]);
 
+    // 구독 상태가 바뀌면 공개 메뉴판(영업 중/서비스 중지) 캐시도 비운다
+    await purgeMenuCacheByCompanyId(companyId);
     return NextResponse.json({
       ok: true,
       refunded,
@@ -287,6 +290,8 @@ async function clearSubscription(supabaseAdmin: ReturnType<typeof getSupabaseAdm
       .update({ consult_enabled: false })
       .eq("company_id", companyId),
   ]);
+  // 구독 상태가 바뀌면 공개 메뉴판(영업 중/서비스 중지) 캐시도 비운다
+  await purgeMenuCacheByCompanyId(companyId);
 }
 
 async function logBilling(supabaseAdmin: ReturnType<typeof getSupabaseAdmin>, {

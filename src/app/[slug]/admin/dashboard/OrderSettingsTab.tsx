@@ -6,6 +6,7 @@ import DaumPostcodeEmbed from "react-daum-postcode";
 import { createClient } from "@/lib/supabase/client";
 import { formatPhone, parsePhone } from "@/lib/format";
 import SaveButton, { SaveButtonHandle } from "@/components/admin/SaveButton";
+import { notifyMenuChanged } from "@/lib/menuCacheClient";
 
 interface Props {
   companyId: string;
@@ -110,6 +111,7 @@ export default function OrderSettingsTab({ companyId, plan: _plan }: Props) {
         setConsultApplyStatus(null);
         setConsultEnabled(false);
         await supabase.from("company_settings").update({ consult_apply_status: null, consult_enabled: false }).eq("company_id", companyId);
+        notifyMenuChanged();
       }
     } else {
       const data = await res.json();
@@ -146,6 +148,7 @@ export default function OrderSettingsTab({ companyId, plan: _plan }: Props) {
         setConsultApplyStatus(null);
         setConsultEnabled(false);
         await supabase.from("company_settings").update({ consult_apply_status: null, consult_enabled: false }).eq("company_id", companyId);
+        notifyMenuChanged();
       }
     } else {
       const data = await res.json();
@@ -247,6 +250,8 @@ export default function OrderSettingsTab({ companyId, plan: _plan }: Props) {
       setError(combinedError.message);
       return false;
     }
+    // 전화번호·사업자번호·통신판매업 번호·주소는 메뉴판 하단 사업자 정보에 노출된다
+    notifyMenuChanged();
     if (shouldResetConsult) {
       setConsultApplyStatus(null);
       setConsultEnabled(false);

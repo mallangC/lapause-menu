@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createServerAuthClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
+import { purgeMenuCacheByCompanyId } from "@/lib/menuCache";
 
 async function verifyOperator() {
   const supabase = await createServerAuthClient();
@@ -57,5 +58,7 @@ export async function POST(request: NextRequest) {
     reason: "운영자가 플랜 만료일(결제일) 30일 연장",
   });
 
+  // 구독 상태가 바뀌면 공개 메뉴판(영업 중/서비스 중지) 캐시도 비운다
+  await purgeMenuCacheByCompanyId(companyId);
   return NextResponse.json({ ok: true, planExpiresAt: newExpiry.toISOString() });
 }

@@ -1,4 +1,5 @@
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { purgeMenuCacheByCompanyId } from "@/lib/menuCache";
 
 function getSupabaseAdmin() {
   return createAdminClient(
@@ -58,6 +59,7 @@ export async function activateBillingKey(
     });
     if (logError) console.error("[billingActivate] billing_logs 기록 실패(무료체험):", logError);
 
+    await purgeMenuCacheByCompanyId(companyId);
     return { status: 200, body: { ok: true, trial: true } };
   }
 
@@ -166,5 +168,7 @@ export async function activateBillingKey(
   if (updateError) console.error("[billingActivate] plan_expires_at 갱신 실패:", updateError);
   if (logError) console.error("[billingActivate] billing_logs 기록 실패(즉시결제 성공):", logError);
 
+  // 구독 상태가 바뀌면 공개 메뉴판(영업 중/서비스 중지) 캐시도 비운다
+  await purgeMenuCacheByCompanyId(companyId);
   return { status: 200, body: { ok: true, trial: false } };
 }

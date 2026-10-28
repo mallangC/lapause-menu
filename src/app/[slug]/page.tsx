@@ -1,10 +1,8 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { createClient } from "@/lib/supabase/server";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { getMenuData } from "@/lib/menuCache";
 import ProductsClient from "./products/ProductsClient";
 import ServiceSuspended from "@/components/main/ServiceSuspended";
-import { Product } from "@/types";
 import { generateThemeVars, DEFAULT_THEME_BG, DEFAULT_THEME_ACCENT } from "@/lib/theme";
 import { formatPhone } from "@/lib/format";
 import type { Metadata } from "next";
@@ -24,55 +22,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function CompanyMenuPage({ params }: Props) {
   const { slug } = await params;
-  const supabase = await createClient();
 
-  const { data: raw } = await supabase
-    .from("companies")
-    .select(`
-      id,
-      name,
-      phone,
-      owner_id,
-      settings:company_settings(
-        logo_image, theme_bg, theme_accent,
-        location_url, kakao_channel_url, instagram_url, youtube_url,
-        hidden_product_types, hidden_seasons, consult_enabled,
-        business_number, mail_order_number, address
-      )
-    `)
-    .eq("slug", slug)
-    .single();
+  // 매장·구독·대표자·상품·카테고리를 KV 캐시에서 우선 조회 (없으면 DB 조회 후 캐시)
+  const menu = await getMenuData(slug);
+  if (!menu) notFound();
 
-  if (!raw) notFound();
+  const raw = menu.company;
+  const s = menu.settings;
+  const customCats = menu.categories;
+  const products = menu.products;
+  const ownerProfile = { name: menu.ownerName };
 
-  const s = raw.settings as unknown as Record<string, unknown> | null ?? {};
-
-  // company_subscriptions는 RLS가 소유주 본인만 읽을 수 있어서, 손님(익명) 조회를 위해 서비스 롤로 plan만 조회
-  const supabaseAdmin = createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-  const [{ data: sub }, { data: ownerProfile }] = await Promise.all([
-    supabaseAdmin.from("company_subscriptions").select("plan").eq("company_id", raw.id).single(),
-    supabaseAdmin.from("profiles").select("name").eq("user_id", raw.owner_id).single(),
-  ]);
-
-  if (!sub?.plan || sub.plan === "none") {
-    return <ServiceSuspended companyName={raw.name} />;
+  if (!menu.plan || menu.plan === "none") {
+    return <ServiceSuspended companyName={raw.name ?? slug} />;
   }
-
-  const { data: products } = await supabase
-    .from("products")
-    .select("*")
-    .eq("company_id", raw.id)
-    .eq("status", "active")
-    .order("product_type", { ascending: true })
-    .order("price", { ascending: true });
-
-  const { data: customCats } = await supabase
-    .from("company_categories")
-    .select("category_type, name, hidden")
-    .eq("company_id", raw.id);
 
   const customProductTypes = (customCats ?? [])
     .filter((c) => c.category_type === "product_type" && !c.hidden)
@@ -99,7 +62,7 @@ export default async function CompanyMenuPage({ params }: Props) {
         companyName={raw.name ?? slug}
         logoImage={(s.logo_image as string | null) ?? null}
         themeVars={themeVars}
-        products={(products as Product[]) ?? []}
+        products={products}
         hiddenProductTypes={[...((s.hidden_product_types as string[]) ?? []), ...hiddenCustomProductTypes]}
         customProductTypes={customProductTypes}
         hiddenSeasons={[...((s.hidden_seasons as string[]) ?? []), ...hiddenCustomSeasons]}

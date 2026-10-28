@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { generateThemeVars, DEFAULT_THEME_BG, DEFAULT_THEME_ACCENT } from "@/lib/theme";
 import SaveButton from "@/components/admin/SaveButton";
+import { notifyMenuChanged } from "@/lib/menuCacheClient";
 
 interface Props {
   companyId: string;
@@ -31,6 +32,7 @@ export default function SettingsTab({ companyId, initialBg, initialAccent, onThe
       setError(err.message);
       return false;
     }
+    notifyMenuChanged();
     onThemeChange(bg, accent);
   };
 

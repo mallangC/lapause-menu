@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import SaveButton, { SaveButtonHandle } from "@/components/admin/SaveButton";
+import { notifyMenuChanged } from "@/lib/menuCacheClient";
 
 interface Props {
   companyId: string;
@@ -73,6 +74,7 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
       setError(combinedError.message);
       return false;
     }
+    notifyMenuChanged();
     onSave(name, logoUrl, locationUrl || null, kakaoChannelUrl || null, instagramUrl || null, youtubeUrl || null);
   };
 

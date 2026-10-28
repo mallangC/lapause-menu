@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import ProductForm from "@/components/admin/ProductForm";
 import { ProductInput } from "@/types";
+import { notifyMenuChanged } from "@/lib/menuCacheClient";
 
 interface Props {
   slug: string;
@@ -110,6 +111,7 @@ function ProductStep({
       setError("상품 저장에 실패했습니다: " + err.message);
       return;
     }
+    notifyMenuChanged();
     onDone();
   };
 

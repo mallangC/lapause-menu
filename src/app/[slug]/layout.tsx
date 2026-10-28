@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { getMenuData } from "@/lib/menuCache";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -7,15 +7,10 @@ interface Props {
 
 export default async function SlugLayout({ params, children }: Props) {
   const { slug } = await params;
-  const supabase = await createClient();
+  // 메뉴판 page와 같은 캐시 데이터를 공유한다 (같은 요청 안에서는 한 번만 조회)
+  const menu = await getMenuData(slug);
 
-  const { data } = await supabase
-    .from("companies")
-    .select("is_demo")
-    .eq("slug", slug)
-    .single();
-
-  const isDemo = data?.is_demo ?? false;
+  const isDemo = menu?.company.is_demo ?? false;
 
   if (!isDemo) return <>{children}</>;
 
