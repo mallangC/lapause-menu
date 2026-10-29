@@ -8,6 +8,7 @@ import { ko } from "date-fns/locale/ko";
 import "react-datepicker/dist/react-datepicker.css";
 import DaumPostcodeEmbed from "react-daum-postcode";
 import StoreHeader from "@/components/main/StoreHeader";
+import OrderCompleteHeader from "@/components/OrderCompleteHeader";
 import AgreementCheckbox from "@/components/AgreementCheckbox";
 import TossPaymentWidget, { TossPaymentWidgetHandle } from "@/components/TossPaymentWidget";
 import { useCart, CartItem } from "@/hooks/useCart";
@@ -303,6 +304,15 @@ export default function CheckoutClient({
 
   if (submitted) {
     const deliveryAmt = deliveryType === "배송" && deliveryFee !== null ? deliveryFee : 0;
+    // 결제 금액 내역 — 맞춤 주문 완료 화면처럼 상품·옵션·배송비를 나눠 보여준다 (금액 계산은 결제 화면과 동일)
+    const productsAmt = submittedItems.reduce((s, i) => s + i.price * i.quantity, 0);
+    const msgCardCount = submittedItems.reduce((s, i) => s + (i.messageCardCount ?? 0), 0);
+    const bagCount = submittedItems.reduce((s, i) => s + (!i.bag_included ? (i.shoppingBagCount ?? 0) : 0), 0);
+    const preservativeCnt = submittedItems.reduce((s, i) => s + (i.preservativeCount ?? 0), 0);
+    const msgCardAmt = msgCardCount * messageCardPrice;
+    const bagAmt = bagCount * shoppingBagPrice;
+    const preservativeAmt = preservativeCnt * preservativePrice;
+    const hasExtras = msgCardAmt > 0 || bagAmt > 0 || preservativeAmt > 0 || deliveryAmt > 0;
     const Row = ({ label, value }: { label: string; value: string }) => (
       <div className="flex px-4 py-3.5 gap-4 border-t border-gray-50">
         <span className="text-sm text-gray-400 w-24 shrink-0 pt-0.5">{label}</span>
@@ -313,16 +323,8 @@ export default function CheckoutClient({
       <div className="min-h-screen bg-gray-100" style={themeVars}>
         <StoreHeader slug={slug} companyName={companyName} logoImage={logoImage} productTypeList={[]} seasonList={[]} consultEnabled={consultEnabled} />
         <div className="max-w-lg mx-auto px-4 py-6 space-y-3">
-          <div className="bg-white rounded-2xl px-6 py-8 text-center space-y-2">
-            <div className="w-14 h-14 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-3">
-              <svg className="w-7 h-7 text-green-500" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-              </svg>
-            </div>
-            <h2 className="text-lg font-semibold text-gray-900">주문이 완료되었습니다</h2>
-            <p className="text-sm text-gray-400">매장에서 확인 후 준비를 시작하겠습니다.</p>
-            <p className="text-xs text-gray-300">예약이 확정되거나 취소되면 카카오톡 알림톡으로 알려드립니다.</p>
-          </div>
+          {/* 완료 헤더 (맞춤 주문 결제 완료와 공통) */}
+          <OrderCompleteHeader />
 
           <div className="bg-white rounded-2xl overflow-hidden">
             <p className="px-4 pt-4 pb-3 text-sm font-semibold text-gray-400 border-b border-gray-100">주문 상품</p>
@@ -363,14 +365,31 @@ export default function CheckoutClient({
           <div className="bg-white rounded-2xl overflow-hidden">
             <p className="px-4 pt-4 pb-3 text-sm font-semibold text-gray-400 border-b border-gray-100">결제 금액</p>
             <div className="px-4 py-4 space-y-3">
-              {deliveryAmt > 0 && (
+              {hasExtras && (
                 <>
                   <div className="flex justify-between text-sm text-gray-600">
-                    <span>상품 금액</span><span>{(finalPriceSnapshot - deliveryAmt).toLocaleString()}원</span>
+                    <span>상품</span><span>{productsAmt.toLocaleString()}원</span>
                   </div>
-                  <div className="flex justify-between text-sm text-gray-600">
-                    <span>배송비</span><span>+{deliveryAmt.toLocaleString()}원</span>
-                  </div>
+                  {msgCardAmt > 0 && (
+                    <div className="flex justify-between text-sm text-gray-600">
+                      <span>메시지 카드 ×{msgCardCount}</span><span>+{msgCardAmt.toLocaleString()}원</span>
+                    </div>
+                  )}
+                  {bagAmt > 0 && (
+                    <div className="flex justify-between text-sm text-gray-600">
+                      <span>쇼핑백 ×{bagCount}</span><span>+{bagAmt.toLocaleString()}원</span>
+                    </div>
+                  )}
+                  {preservativeAmt > 0 && (
+                    <div className="flex justify-between text-sm text-gray-600">
+                      <span>생화 수명연장제 ×{preservativeCnt}</span><span>+{preservativeAmt.toLocaleString()}원</span>
+                    </div>
+                  )}
+                  {deliveryAmt > 0 && (
+                    <div className="flex justify-between text-sm text-gray-600">
+                      <span>배송비</span><span>+{deliveryAmt.toLocaleString()}원</span>
+                    </div>
+                  )}
                   <div className="border-t border-gray-100" />
                 </>
               )}
@@ -404,6 +423,9 @@ export default function CheckoutClient({
     ? selectedDate.getFullYear() === now.getFullYear() && selectedDate.getMonth() === now.getMonth() && selectedDate.getDate() === now.getDate()
     : false;
   const minTimeDate = isToday ? new Date(now.getTime() + 30 * 60000) : null;
+  // 30분 뒤가 다음 날로 넘어가면(23:30 이후) 오늘 슬롯은 없음 — 맞춤 주문(ConsultClient)과 같은 처리.
+  // 이걸 안 하면 다음 날 00:xx를 기준으로 계산돼 이미 지난 오늘 영업시간이 전부 선택 가능해진다.
+  const leadOverflow = !!minTimeDate && minTimeDate.getDate() !== now.getDate();
   const roundedMinutes = minTimeDate ? Math.ceil(minTimeDate.getMinutes() / 30) * 30 : 0;
   const adjustedHour = minTimeDate ? minTimeDate.getHours() + (roundedMinutes === 60 ? 1 : 0) : 0;
   const adjustedMinute = roundedMinutes === 60 ? 0 : roundedMinutes;
@@ -411,7 +433,7 @@ export default function CheckoutClient({
   const [minH, minM] = minTime.split(":").map(Number);
   const [maxH, maxM] = (dayInfo?.close ?? "23:59").split(":").map(Number);
   const timeSlots: string[] = [];
-  if (selectedDate && dayInfo && !dayInfo.closed) {
+  if (selectedDate && dayInfo && !dayInfo.closed && !leadOverflow) {
     const [openH, openM] = dayInfo.open.split(":").map(Number);
     const startTotal = Math.max(minH * 60 + minM, openH * 60 + openM);
     const maxTotal = maxH * 60 + maxM;

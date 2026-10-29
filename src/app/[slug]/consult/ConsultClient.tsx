@@ -15,6 +15,7 @@ import { FLOWER_COLOR_MAP } from "@/lib/constants";
 import { resolveDayHours, type DateOverrides } from "@/lib/businessHours";
 import FlowerNoticeModal from "@/components/FlowerNoticeModal";
 import StoreHeader from "@/components/main/StoreHeader";
+import OrderCompleteHeader from "@/components/OrderCompleteHeader";
 
 registerLocale("ko", ko);
 
@@ -581,16 +582,8 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
         <StoreHeader slug={slug} companyName={companyName} logoImage={logoImage} productTypeList={productTypeList} seasonList={seasonList} consultEnabled={true} />
         <div className="max-w-lg mx-auto px-4 py-6 space-y-3">
 
-          {/* 완료 헤더 */}
-          <div className="bg-white rounded-2xl px-6 py-8 text-center space-y-2">
-            <div className="w-14 h-14 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-3">
-              <svg className="w-7 h-7 text-green-500" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-              </svg>
-            </div>
-            <h2 className="text-lg font-semibold text-gray-900">결제가 완료되었습니다</h2>
-            <p className="text-sm text-gray-400">매장에서 확인 후 준비를 시작하겠습니다.</p>
-          </div>
+          {/* 완료 헤더 (장바구니 결제 완료와 공통) */}
+          <OrderCompleteHeader />
 
           {/* 상품 정보 */}
           {selectedProduct && (
@@ -643,19 +636,19 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                   </div>
                   {msgCardAmt > 0 && (
                     <div className="flex justify-between text-sm text-gray-600">
-                      <span>메시지 카드</span>
+                      <span>메시지 카드 ×{restoredMsgCount}</span>
                       <span>+{msgCardAmt.toLocaleString()}원</span>
                     </div>
                   )}
                   {bagAmt > 0 && (
                     <div className="flex justify-between text-sm text-gray-600">
-                      <span>쇼핑백</span>
+                      <span>쇼핑백 ×{restoredBagCount}</span>
                       <span>+{bagAmt.toLocaleString()}원</span>
                     </div>
                   )}
                   {preservativeAmt > 0 && (
                     <div className="flex justify-between text-sm text-gray-600">
-                      <span>생화 수명연장제</span>
+                      <span>생화 수명연장제 ×{restoredPreservativeCount}</span>
                       <span>+{preservativeAmt.toLocaleString()}원</span>
                     </div>
                   )}

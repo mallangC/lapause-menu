@@ -113,3 +113,10 @@ export async function cancelTossPayment(secretKey: string, paymentKey: string, r
     return false;
   }
 }
+
+/** 수령 희망 일시(KST)가 이미 지났는지 — 결제 화면을 오래 열어둔 채 결제하는 경우 등을 서버에서 막는다 */
+export function isPastPickup(desiredDate: string | undefined, desiredTime: string | undefined) {
+  if (!desiredDate || !/^\d{4}-\d{2}-\d{2}$/.test(desiredDate)) return false;
+  const time = desiredTime && /^\d{2}:\d{2}$/.test(desiredTime) ? desiredTime : "23:59";
+  return new Date(`${desiredDate}T${time}:00+09:00`).getTime() < Date.now();
+}

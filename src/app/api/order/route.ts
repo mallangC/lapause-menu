@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendReservationConfirmedOwner } from "@/lib/solapi";
-import { cancelTossPayment, cartItemsTotal, isValidDeliveryPart, loadCompanyProducts, loadOptionPrices } from "@/lib/orderPricing";
+import { cancelTossPayment, cartItemsTotal, isPastPickup, isValidDeliveryPart, loadCompanyProducts, loadOptionPrices } from "@/lib/orderPricing";
 
 interface CartItemPayload {
   productId: string;
@@ -72,6 +72,10 @@ export async function POST(request: NextRequest) {
       if (isClosedDay || closedDates.includes(body.desiredDate)) {
         return NextResponse.json({ error: "선택하신 날짜는 휴무일입니다. 다른 날짜를 선택해주세요." }, { status: 400 });
       }
+    }
+
+    if (isPastPickup(body.desiredDate, body.desiredTime)) {
+      return NextResponse.json({ error: "선택하신 수령 시간이 이미 지났습니다. 시간을 다시 선택해주세요." }, { status: 400 });
     }
 
     // 없는 매장이면 결제 승인 전에 중단 (승인 후 저장할 곳이 없으면 돈만 빠짐)
