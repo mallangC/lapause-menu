@@ -6,6 +6,9 @@ import Link from "next/link";
 import BillingKeyFlow from "@/components/BillingKeyFlow";
 import { createClient } from "@/lib/supabase/client";
 import { PLAN_PRICES, PLAN_FEATURES } from "@/lib/constants";
+import PromoCodeBox from "@/components/PromoCodeBox";
+import { quoteCharge } from "@/lib/billingPrice";
+import type { AppliedPromo } from "@/lib/appliedPromo";
 
 interface Props {
   companyId: string;
@@ -13,12 +16,15 @@ interface Props {
   customerName: string;
   trialEligible: boolean;
   isNewSignup: boolean;
+  appliedPromo: AppliedPromo;
 }
 
-export default function PlanSelectClient({ companyId, slug, customerName, trialEligible, isNewSignup }: Props) {
+export default function PlanSelectClient({ companyId, slug, customerName, trialEligible, isNewSignup, appliedPromo }: Props) {
   const router = useRouter();
   const [pricingCycle, setPricingCycle] = useState<"monthly" | "annual">("annual");
   const [withdrawalAgreed, setWithdrawalAgreed] = useState(false);
+  const [promoState, setPromoState] = useState<AppliedPromo>(appliedPromo);
+  const firstCharge = quoteCharge(pricingCycle, promoState.promo, promoState.cyclesRemaining);
   // 신규 가입자는 결제 완료 후 매장 정보(이름·URL)를 입력받는다. 기존 매장의 재구독은 바로 온보딩으로.
   const handleSuccess = () => router.push(isNewSignup ? "/setup" : `/${slug}/admin/onboarding`);
 
@@ -88,8 +94,21 @@ export default function PlanSelectClient({ companyId, slug, customerName, trialE
           <div className="mb-4 py-3 px-4 rounded-xl text-center" style={{ background: "rgba(201,169,110,0.1)", border: "1px solid rgba(201,169,110,0.3)" }}>
             <p className="text-[13px] font-semibold" style={{ color: "#9a7a3a" }}>30일 무료 체험 적용</p>
             <p className="text-[11px] mt-0.5" style={{ color: "#b8934a" }}>카드 등록 후 30일간 요금이 청구되지 않습니다</p>
+            <p className="text-[11px] mt-0.5" style={{ color: "#b8934a" }}>
+              체험 종료 후 {pricingCycle === "annual" ? "매년" : "매월"} ₩{firstCharge.amount.toLocaleString()}이 자동 결제됩니다
+            </p>
           </div>
         )}
+
+        <div className="mb-4">
+          <PromoCodeBox
+            companyId={companyId}
+            cycle={pricingCycle}
+            promo={promoState.promo}
+            cyclesRemaining={promoState.cyclesRemaining}
+            onApplied={(promo, cyclesRemaining) => setPromoState({ promo, cyclesRemaining })}
+          />
+        </div>
 
         <BillingKeyFlow
           companyId={companyId}

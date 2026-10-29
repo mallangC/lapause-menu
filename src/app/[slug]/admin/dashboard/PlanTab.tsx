@@ -4,7 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import BillingKeyFlow from "@/components/BillingKeyFlow";
+import PromoCodeBox from "@/components/PromoCodeBox";
 import { PLAN_PRICES, PLAN_FEATURES } from "@/lib/constants";
+import { quoteCharge } from "@/lib/billingPrice";
+import type { AppliedPromo } from "@/lib/appliedPromo";
 
 interface Props {
   companyId: string;
@@ -15,6 +18,7 @@ interface Props {
   trialEndsAt: string | null;
   planExpiresAt: string | null;
   hasBillingKey: boolean;
+  appliedPromo: AppliedPromo;
 }
 
 const CHECK_ICON = (
@@ -23,7 +27,7 @@ const CHECK_ICON = (
   </svg>
 );
 
-export default function PlanTab({ companyId, customerName, plan, subscriptionPlan, cancelAtPeriodEnd, trialEndsAt, planExpiresAt, hasBillingKey }: Props) {
+export default function PlanTab({ companyId, customerName, plan, subscriptionPlan, cancelAtPeriodEnd, trialEndsAt, planExpiresAt, hasBillingKey, appliedPromo }: Props) {
   const [selectedCycle, setSelectedCycle] = useState<"monthly" | "annual">(
     plan === "monthly" || plan === "annual" ? plan : "annual"
   );
@@ -36,6 +40,8 @@ export default function PlanTab({ companyId, customerName, plan, subscriptionPla
   const [refundError, setRefundError] = useState<string | null>(null);
   const [refunding, setRefunding] = useState(false);
   const [showPolicy, setShowPolicy] = useState(false);
+  // 코드 적용 직후 새로고침 없이 금액 안내가 바뀌도록 로컬 상태로 둔다
+  const [promoState, setPromoState] = useState<AppliedPromo>(appliedPromo);
   const router = useRouter();
   const supabase = createClient();
 
@@ -54,11 +60,20 @@ export default function PlanTab({ companyId, customerName, plan, subscriptionPla
     return "—";
   };
 
-  const nextAmount = subscriptionPlan === "annual"
-    ? PLAN_PRICES.annualTotal
-    : subscriptionPlan === "monthly"
-    ? PLAN_PRICES.monthly
+  // 다음 결제 금액 — 할인 코드가 있으면 할인 반영
+  const nextAmount = subscriptionPlan
+    ? quoteCharge(subscriptionPlan, promoState.promo, promoState.cyclesRemaining).amount
     : null;
+
+  const promoBox = (
+    <PromoCodeBox
+      companyId={companyId}
+      cycle={selectedCycle}
+      promo={promoState.promo}
+      cyclesRemaining={promoState.cyclesRemaining}
+      onApplied={(promo, cyclesRemaining) => setPromoState({ promo, cyclesRemaining })}
+    />
+  );
 
   const hasPendingChange = plan !== "none" && subscriptionPlan !== null && plan !== subscriptionPlan;
   const expiryDate = isInTrial ? trialEndsAt : planExpiresAt;
@@ -152,6 +167,7 @@ export default function PlanTab({ companyId, customerName, plan, subscriptionPla
         <PlanCard
           selectedCycle={selectedCycle}
           onCycleChange={setSelectedCycle}
+          promoSlot={promoBox}
           actionSlot={
             <BillingKeyFlow
               companyId={companyId}
@@ -248,8 +264,8 @@ export default function PlanTab({ companyId, customerName, plan, subscriptionPla
             {formatDate(trialEndsAt!)} 체험 종료 후{" "}
             <span className="font-medium text-gray-700">
               {subscriptionPlan === "annual"
-                ? `연간 (₩${PLAN_PRICES.annualTotal.toLocaleString()}/년)`
-                : `월간 (₩${PLAN_PRICES.monthly.toLocaleString()}/월)`}
+                ? `연간 (₩${(nextAmount ?? PLAN_PRICES.annualTotal).toLocaleString()}/년)`
+                : `월간 (₩${(nextAmount ?? PLAN_PRICES.monthly).toLocaleString()}/월)`}
             </span>
             이 자동 결제됩니다.
           </p>
@@ -290,6 +306,7 @@ export default function PlanTab({ companyId, customerName, plan, subscriptionPla
         selectedCycle={selectedCycle}
         onCycleChange={setSelectedCycle}
         currentPlan={plan as "monthly" | "annual"}
+        promoSlot={promoBox}
         actionSlot={actionSlot}
       />
 
@@ -463,11 +480,13 @@ function PlanCard({
   selectedCycle,
   onCycleChange,
   currentPlan,
+  promoSlot,
   actionSlot,
 }: {
   selectedCycle: "monthly" | "annual";
   onCycleChange: (c: "monthly" | "annual") => void;
   currentPlan?: "monthly" | "annual";
+  promoSlot?: React.ReactNode;
   actionSlot: React.ReactNode;
 }) {
   return (
@@ -528,6 +547,8 @@ function PlanCard({
         ))}
       </ul>
 
+      {/* 할인 코드 — 결제 버튼 위에 두어 결제 전에 할인 금액을 확인할 수 있게 */}
+      {promoSlot && <div className="mb-4">{promoSlot}</div>}
       {actionSlot}
     </div>
   );

@@ -1,6 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { describeDiscount, describePromoTerms, isBillingCycle, quoteCharge, type PromoCode } from "@/lib/billingPrice";
+
+interface PromoOption extends PromoCode {
+  description: string | null;
+  active: boolean;
+  operator_only: boolean;
+}
 
 interface StoreRow {
   id: string;
@@ -17,6 +24,7 @@ interface StoreRow {
   planExpiresAt: string | null;
   trialEndsAt: string | null;
   subscriptionPlan: string | null;
+  promo: { code: string; summary: string; cyclesRemaining: number | null } | null;
 }
 
 interface Props {
@@ -44,7 +52,16 @@ export default function StoreManagementTab({ stores }: Props) {
   const [resetPlanTarget, setResetPlanTarget] = useState<StoreRow | null>(null);
   const [resettingPlan, setResettingPlan] = useState(false);
   const [resetPlanError, setResetPlanError] = useState<string | null>(null);
-  const [extendingPlanId, setExtendingPlanId] = useState<string | null>(null);
+  const [extendTarget, setExtendTarget] = useState<StoreRow | null>(null);
+  const [extendMonths, setExtendMonths] = useState("1");
+  const [extending, setExtending] = useState(false);
+  const [extendError, setExtendError] = useState<string | null>(null);
+  const [promoTarget, setPromoTarget] = useState<StoreRow | null>(null);
+  const [promoOptions, setPromoOptions] = useState<PromoOption[] | null>(null);
+  const [selectedPromoId, setSelectedPromoId] = useState("");
+  const [savingPromo, setSavingPromo] = useState(false);
+  const [promoError, setPromoError] = useState<string | null>(null);
+  const [removePromoTarget, setRemovePromoTarget] = useState<StoreRow | null>(null);
   const [memoTarget, setMemoTarget] = useState<StoreRow | null>(null);
   const [memoDraft, setMemoDraft] = useState("");
   const [savingMemo, setSavingMemo] = useState(false);
@@ -55,7 +72,8 @@ export default function StoreManagementTab({ stores }: Props) {
         s.name.includes(search) ||
         s.slug.includes(search) ||
         (s.ownerName ?? "").includes(search) ||
-        (s.ownerPhone ?? "").includes(search)
+        (s.ownerPhone ?? "").includes(search) ||
+        (s.promo?.code ?? "").includes(search.trim().toUpperCase())
       )
     : localStores;
 
@@ -180,29 +198,104 @@ export default function StoreManagementTab({ stores }: Props) {
     }
   };
 
-  const handleExtendPlan = async (store: StoreRow) => {
-    setOpenMenuId(null);
-    setExtendingPlanId(store.id);
+  // 무료체험 중(만료일 없음)이면 체험 종료일을, 유료 구독 중이면 다음 결제일을 늘린다 (서버와 같은 기준)
+  const isInTrialPeriod = (store: StoreRow) => !store.planExpiresAt && !!store.trialEndsAt;
+  const canExtend = (store: StoreRow) => store.plan !== null && store.plan !== "none" && store.plan !== "free";
+
+  const handleExtendPlan = async () => {
+    if (!extendTarget) return;
+    const months = Number(extendMonths);
+    if (!Number.isInteger(months) || months < 1 || months > 24) {
+      setExtendError("1~24 사이의 개월 수를 입력해주세요.");
+      return;
+    }
+    setExtending(true);
+    setExtendError(null);
 
     try {
       const res = await fetch("/api/operator/extend-plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companyId: store.id }),
+        body: JSON.stringify({ companyId: extendTarget.id, months }),
       });
       const data = await res.json();
 
-      if (res.ok) {
-        setLocalStores(prev =>
-          prev.map(s => s.id === store.id ? { ...s, planExpiresAt: data.planExpiresAt } : s)
-        );
+      if (!res.ok) {
+        setExtendError(data.error ?? "처리 중 오류가 발생했습니다.");
       } else {
-        alert(data.error ?? "처리 중 오류가 발생했습니다.");
+        setLocalStores(prev =>
+          prev.map(s => s.id === extendTarget.id ? { ...s, planExpiresAt: data.planExpiresAt, trialEndsAt: data.trialEndsAt } : s)
+        );
+        setExtendTarget(null);
       }
     } catch {
-      alert("네트워크 오류가 발생했습니다.");
+      setExtendError("네트워크 오류가 발생했습니다.");
     } finally {
-      setExtendingPlanId(null);
+      setExtending(false);
+    }
+  };
+
+  const openPromoModal = async (store: StoreRow) => {
+    setOpenMenuId(null);
+    setPromoTarget(store);
+    setSelectedPromoId("");
+    setPromoError(null);
+    if (promoOptions) return;
+    try {
+      const res = await fetch("/api/operator/promo-codes");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "할인 코드를 불러오지 못했습니다.");
+      setPromoOptions(data as PromoOption[]);
+    } catch (err) {
+      setPromoError(err instanceof Error ? err.message : "할인 코드를 불러오지 못했습니다.");
+    }
+  };
+
+  const handleApplyPromo = async () => {
+    if (!promoTarget || !selectedPromoId) return;
+    setSavingPromo(true);
+    setPromoError(null);
+    try {
+      const res = await fetch("/api/operator/store-promo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId: promoTarget.id, promoCodeId: selectedPromoId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setPromoError(data.error ?? "처리 중 오류가 발생했습니다.");
+      } else {
+        setLocalStores(prev => prev.map(s => s.id === promoTarget.id ? { ...s, promo: data.promo } : s));
+        setPromoTarget(null);
+      }
+    } catch {
+      setPromoError("네트워크 오류가 발생했습니다.");
+    } finally {
+      setSavingPromo(false);
+    }
+  };
+
+  const handleRemovePromo = async () => {
+    if (!removePromoTarget) return;
+    setSavingPromo(true);
+    setPromoError(null);
+    try {
+      const res = await fetch("/api/operator/store-promo", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId: removePromoTarget.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setPromoError(data.error ?? "처리 중 오류가 발생했습니다.");
+      } else {
+        setLocalStores(prev => prev.map(s => s.id === removePromoTarget.id ? { ...s, promo: null } : s));
+        setRemovePromoTarget(null);
+      }
+    } catch {
+      setPromoError("네트워크 오류가 발생했습니다.");
+    } finally {
+      setSavingPromo(false);
     }
   };
 
@@ -293,7 +386,7 @@ export default function StoreManagementTab({ stores }: Props) {
           type="text"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="매장명, slug, 담당자 이름·번호로 검색"
+          placeholder="매장명, slug, 담당자 이름·번호, 할인 코드로 검색"
           className="w-full text-sm text-gray-700 outline-none placeholder-gray-300"
         />
         {search && (
@@ -348,6 +441,14 @@ export default function StoreManagementTab({ stores }: Props) {
                       }`}>
                         {store.subscriptionPlan === "annual" ? "연간" : store.subscriptionPlan === "monthly" ? "월간" : store.plan === "free" ? "Free" : "—"}
                       </span>
+                      {store.promo && (
+                        <div
+                          className="mt-1 text-[11px] font-mono text-gold-600"
+                          title={`${store.promo.summary}${store.promo.cyclesRemaining !== null ? ` (남은 할인 ${store.promo.cyclesRemaining}회)` : ""}`}
+                        >
+                          {store.promo.code}
+                        </div>
+                      )}
                     </td>
                     <td className="px-5 py-3.5 text-center text-gray-900 whitespace-nowrap">
                       {getPaymentDate(store) ?? <span className="text-gray-300">—</span>}
@@ -377,13 +478,30 @@ export default function StoreManagementTab({ stores }: Props) {
                         <>
                           <div className="fixed inset-0 z-10" onClick={() => setOpenMenuId(null)} />
                           <div className="absolute right-4 top-10 z-20 w-40 bg-white border border-gray-100 rounded-xl shadow-lg py-1 overflow-hidden">
-                            <button
-                              onClick={() => handleExtendPlan(store)}
-                              disabled={extendingPlanId === store.id}
-                              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
-                            >
-                              {extendingPlanId === store.id ? "처리 중…" : "+30일 연장"}
-                            </button>
+                            {canExtend(store) && (
+                              <button
+                                onClick={() => { setOpenMenuId(null); setExtendTarget(store); setExtendMonths("1"); setExtendError(null); }}
+                                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                              >
+                                {isInTrialPeriod(store) ? "무료체험 연장" : "기간 연장"}
+                              </button>
+                            )}
+                            {store.plan !== "free" && (
+                              <button
+                                onClick={() => openPromoModal(store)}
+                                className="w-full text-left px-4 py-2 text-sm text-gold-600 hover:bg-gold-50 transition-colors"
+                              >
+                                {store.promo ? "할인 변경" : "할인 적용"}
+                              </button>
+                            )}
+                            {store.promo && (
+                              <button
+                                onClick={() => { setOpenMenuId(null); setRemovePromoTarget(store); setPromoError(null); }}
+                                className="w-full text-left px-4 py-2 text-sm text-gray-500 hover:bg-gray-50 transition-colors"
+                              >
+                                할인 해제
+                              </button>
+                            )}
                             {store.plan !== "free" && (
                               <button
                                 onClick={() => { setOpenMenuId(null); setFreePlanTarget(store); setFreePlanError(null); }}
@@ -439,6 +557,173 @@ export default function StoreManagementTab({ stores }: Props) {
           </table>
         </div>
       </div>
+
+      {/* 기간 연장 모달 */}
+      {extendTarget && (() => {
+        const trial = isInTrialPeriod(extendTarget);
+        const months = Number(extendMonths);
+        const validMonths = Number.isInteger(months) && months >= 1 && months <= 24;
+        // 미리보기는 서버와 같은 규칙: 이미 지난 날짜면 오늘부터, 아니면 기존 날짜부터 더한다
+        const currentStr = trial ? extendTarget.trialEndsAt : extendTarget.planExpiresAt;
+        const now = new Date();
+        const current = currentStr ? new Date(currentStr) : null;
+        const preview = new Date(current && current > now ? current : now);
+        if (validMonths) preview.setDate(preview.getDate() + months * 30);
+        return (
+          <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl w-full max-w-md p-6 space-y-4 shadow-xl">
+              <div>
+                <h3 className="text-base font-semibold text-gray-900">{trial ? "무료체험 연장" : "구독 기간 연장"}</h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  <span className="font-medium text-gray-700">{extendTarget.name}</span>의 {trial ? "무료체험 종료일" : "다음 결제일"}을 늘립니다. 늘어난 기간만큼 결제 없이 이용할 수 있습니다. (1개월 = 30일)
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={1}
+                  max={24}
+                  value={extendMonths}
+                  onChange={e => setExtendMonths(e.target.value)}
+                  className="w-24 text-sm border border-gray-200 rounded-xl px-3 py-2 outline-none focus:border-gray-400"
+                />
+                <span className="text-sm text-gray-600">개월 ({validMonths ? months * 30 : "—"}일)</span>
+              </div>
+
+              <div className="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2 space-y-0.5">
+                <p>현재 {trial ? "체험 종료일" : "다음 결제일"}: {formatDate(currentStr) ?? "없음"}</p>
+                <p className="font-medium text-gray-700">연장 후: {validMonths ? formatDate(preview.toISOString()) : "—"}</p>
+              </div>
+
+              {extendError && (
+                <p className="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2">{extendError}</p>
+              )}
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => setExtendTarget(null)}
+                  className="flex-1 text-sm px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleExtendPlan}
+                  disabled={extending || !validMonths}
+                  className="flex-1 text-sm px-4 py-2.5 rounded-xl bg-gray-900 text-white font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {extending ? "처리 중…" : "연장 확인"}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* 할인 적용 모달 */}
+      {promoTarget && (() => {
+        const rawCycle = promoTarget.subscriptionPlan ?? promoTarget.plan;
+        const cycle = isBillingCycle(rawCycle) ? rawCycle : null;
+        const selected = promoOptions?.find(p => p.id === selectedPromoId) ?? null;
+        return (
+          <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl w-full max-w-md p-6 space-y-4 shadow-xl">
+              <div>
+                <h3 className="text-base font-semibold text-gray-900">{promoTarget.promo ? "할인 변경" : "할인 적용"}</h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  <span className="font-medium text-gray-700">{promoTarget.name}</span>에 할인 코드를 직접 적용합니다. 사장님이 코드를 입력할 필요가 없고, <span className="font-medium text-gray-700">다음 결제부터</span> 할인된 금액으로 결제됩니다.
+                </p>
+                {promoTarget.promo && (
+                  <p className="text-xs text-gray-500 mt-2">현재 적용: <span className="font-mono text-gold-600">{promoTarget.promo.code}</span> → 선택한 코드로 교체됩니다.</p>
+                )}
+              </div>
+
+              {promoOptions === null && !promoError && <p className="text-sm text-gray-400">불러오는 중…</p>}
+              {promoOptions?.length === 0 && <p className="text-sm text-gray-400">먼저 할인 코드 탭에서 코드를 만들어주세요.</p>}
+              {!!promoOptions?.length && (
+                <select
+                  value={selectedPromoId}
+                  onChange={e => setSelectedPromoId(e.target.value)}
+                  className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-gray-400 bg-white"
+                >
+                  <option value="">할인 코드 선택</option>
+                  {promoOptions.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.code} — {describeDiscount(p)} · {describePromoTerms(p)}{p.operator_only ? " · 운영자 전용" : ""}{p.description ? ` (${p.description})` : ""}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              {selected && cycle && (() => {
+                const q = quoteCharge(cycle, selected, selected.duration_cycles);
+                return (
+                  <div className="text-xs text-gray-600 bg-gray-50 rounded-lg px-3 py-2 space-y-0.5">
+                    <p>현재 플랜({cycle === "annual" ? "연간" : "월간"}) 기준 다음 결제 금액</p>
+                    <p className="font-medium text-gray-900">
+                      ₩{q.baseAmount.toLocaleString()} → ₩{q.amount.toLocaleString()}
+                      {q.discountAmount === 0 && <span className="font-normal text-gray-400"> (이 플랜은 할인 대상 아님)</span>}
+                    </p>
+                  </div>
+                );
+              })()}
+
+              {promoError && <p className="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2">{promoError}</p>}
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => setPromoTarget(null)}
+                  className="flex-1 text-sm px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleApplyPromo}
+                  disabled={savingPromo || !selectedPromoId}
+                  className="flex-1 text-sm px-4 py-2.5 rounded-xl bg-gray-900 text-white font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {savingPromo ? "처리 중…" : "적용 확인"}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* 할인 해제 모달 */}
+      {removePromoTarget && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 space-y-4 shadow-xl">
+            <div>
+              <h3 className="text-base font-semibold text-gray-900">할인 해제</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                <span className="font-medium text-gray-700">{removePromoTarget.name}</span>의 할인(<span className="font-mono text-gold-600">{removePromoTarget.promo?.code}</span>)을 해제합니다. <span className="font-medium text-gray-700">다음 결제부터 정가</span>로 결제됩니다.
+              </p>
+              <p className="text-xs text-orange-500 bg-orange-50 rounded-lg px-3 py-2 mt-3">
+                사장님 입장에서는 결제 금액이 오르는 변경이에요. 해제 전에 사장님께 미리 안내해주세요.
+              </p>
+            </div>
+
+            {promoError && <p className="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2">{promoError}</p>}
+
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => setRemovePromoTarget(null)}
+                className="flex-1 text-sm px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleRemovePromo}
+                disabled={savingPromo}
+                className="flex-1 text-sm px-4 py-2.5 rounded-xl bg-gray-700 text-white font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {savingPromo ? "처리 중…" : "해제 확인"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Free 플랜 전환 모달 */}
       {freePlanTarget && (

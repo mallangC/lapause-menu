@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import PlanSelectClient from "./PlanSelectClient";
+import { getAppliedPromo } from "@/lib/appliedPromo";
 
 export default async function PlanPage() {
   const supabase = await createClient();
@@ -55,6 +56,9 @@ export default async function PlanPage() {
     redirect(`/${company.slug}/admin/dashboard`);
   }
 
+  // 이전에 등록해 둔 할인 코드 (companyId는 위에서 본인 소유로 조회/생성한 매장)
+  const appliedPromo = await getAppliedPromo(company.id);
+
   return (
     <div className="min-h-screen bg-beige-100 flex flex-col items-center justify-center px-4">
       <div className="w-full max-w-lg -mt-20">
@@ -65,7 +69,7 @@ export default async function PlanPage() {
             <p className="text-xs text-gold-500 mt-1 font-medium">첫 30일은 무료로 이용할 수 있습니다</p>
           )}
         </div>
-        <PlanSelectClient companyId={company.id} slug={company.slug} customerName={profile?.name ?? ""} trialEligible={trialEligible} isNewSignup={isNewSignup} />
+        <PlanSelectClient companyId={company.id} slug={company.slug} customerName={profile?.name ?? ""} trialEligible={trialEligible} isNewSignup={isNewSignup} appliedPromo={appliedPromo} />
       </div>
     </div>
   );

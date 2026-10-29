@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import OperatorDashboardClient from "./OperatorDashboardClient";
+import { describeDiscount, describePromoTerms, pickPromo, PROMO_CODE_COLUMNS } from "@/lib/billingPrice";
 
 export default async function OperatorDashboardPage() {
   const supabase = await createClient();
@@ -20,7 +21,7 @@ export default async function OperatorDashboardPage() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  const [{ data: companies }, { data: reservations }, { data: products }, { data: profiles }, { data: billingLogs }, { data: reservationLogs }] = await Promise.all([
+  const [{ data: companies }, { data: reservations }, { data: products }, { data: profiles }, { data: billingLogs }, { data: reservationLogs }, { data: promoSubs }] = await Promise.all([
     supabase
       .from("companies")
       .select("id, name, slug, created_at, owner_id, operator_memo, is_demo, settings:company_settings(consult_enabled), subscription:company_subscriptions(plan, billing_key, plan_expires_at, trial_ends_at, subscription_plan)")
@@ -38,7 +39,7 @@ export default async function OperatorDashboardPage() {
       .select("user_id, name, phone_number, is_suspended, suspend_reason"),
     supabase
       .from("billing_logs")
-      .select("id, created_at, company_id, operator_id, type, plan, amount, success, reason, error_message")
+      .select("id, created_at, company_id, operator_id, type, plan, amount, base_amount, discount_amount, success, reason, error_message")
       .order("created_at", { ascending: false })
       .limit(500),
     supabaseAdmin
@@ -46,7 +47,17 @@ export default async function OperatorDashboardPage() {
       .select("id, created_at, reservation_id, company_id, actor_user_id, action, field, old_value, new_value, reason")
       .order("created_at", { ascending: false })
       .limit(500),
+    // 매장별 적용된 할인 코드 — promo_codes는 RLS로 막혀 있어 서비스 롤로 조회
+    supabaseAdmin
+      .from("company_subscriptions")
+      .select(`company_id, discount_cycles_remaining, promo:promo_codes(${PROMO_CODE_COLUMNS})`)
+      .not("promo_code_id", "is", null),
   ]);
+
+  const promoMap = Object.fromEntries((promoSubs ?? []).flatMap((s) => {
+    const promo = pickPromo(s.promo);
+    return promo ? [[s.company_id as string, { code: promo.code, summary: `${describeDiscount(promo)} · ${describePromoTerms(promo)}`, cyclesRemaining: s.discount_cycles_remaining as number | null }]] : [];
+  }));
 
   const profileMap = Object.fromEntries((profiles ?? []).map(p => [p.user_id, p]));
   const companyNameMap = Object.fromEntries((companies ?? []).map(c => [c.id, c.name]));
@@ -65,6 +76,7 @@ export default async function OperatorDashboardPage() {
     suspendReason: c.owner_id ? (profileMap[c.owner_id]?.suspend_reason ?? null) : null,
     settings: Array.isArray(c.settings) ? (c.settings[0] ?? null) : c.settings,
     subscription: Array.isArray(c.subscription) ? (c.subscription[0] ?? null) : c.subscription,
+    promo: promoMap[c.id] ?? null,
   }));
 
   const mappedBillingLogs = (billingLogs ?? [])

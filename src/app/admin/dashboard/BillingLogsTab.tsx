@@ -8,9 +8,11 @@ export interface BillingLog {
   company_id: string;
   company_name: string | null;
   operator_id: string | null;
-  type: "charge" | "refund";
+  type: "charge" | "refund" | "extend" | "discount";
   plan: string | null;
   amount: number | null;
+  base_amount: number | null;
+  discount_amount: number | null;
   success: boolean;
   reason: string | null;
   error_message: string | null;
@@ -20,7 +22,9 @@ interface Props {
   logs: BillingLog[];
 }
 
-type TypeFilter = "all" | "charge" | "refund";
+type TypeFilter = "all" | "charge" | "refund" | "extend" | "discount";
+
+const TYPE_LABEL: Record<BillingLog["type"], string> = { charge: "결제", refund: "환불", extend: "기간 연장", discount: "할인 변경" };
 type StatusFilter = "all" | "success" | "fail";
 
 export default function BillingLogsTab({ logs }: Props) {
@@ -86,13 +90,13 @@ export default function BillingLogsTab({ logs }: Props) {
 
         {/* 유형 필터 */}
         <div className="flex bg-white border border-gray-200 rounded-xl overflow-hidden text-sm">
-          {(["all", "charge", "refund"] as TypeFilter[]).map(t => (
+          {(["all", "charge", "refund", "extend", "discount"] as TypeFilter[]).map(t => (
             <button
               key={t}
               onClick={() => setTypeFilter(t)}
               className={`px-3 py-2 transition-colors ${typeFilter === t ? "bg-gray-900 text-white" : "text-gray-500 hover:text-gray-700"}`}
             >
-              {t === "all" ? "전체" : t === "charge" ? "결제" : "환불"}
+              {t === "all" ? "전체" : TYPE_LABEL[t]}
             </button>
           ))}
         </div>
@@ -142,9 +146,12 @@ export default function BillingLogsTab({ logs }: Props) {
                   </td>
                   <td className="px-5 py-3.5">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                      log.type === "charge" ? "bg-blue-50 text-blue-600" : "bg-orange-50 text-orange-500"
+                      log.type === "charge" ? "bg-blue-50 text-blue-600" :
+                      log.type === "extend" ? "bg-green-50 text-green-600" :
+                      log.type === "discount" ? "bg-gold-100 text-gold-600" :
+                      "bg-orange-50 text-orange-500"
                     }`}>
-                      {log.type === "charge" ? "결제" : "환불"}
+                      {TYPE_LABEL[log.type] ?? log.type}
                     </span>
                   </td>
                   <td className="px-5 py-3.5">
@@ -160,6 +167,11 @@ export default function BillingLogsTab({ logs }: Props) {
                   </td>
                   <td className="px-5 py-3.5 text-right font-medium text-gray-900 whitespace-nowrap">
                     {formatAmount(log.amount)}
+                    {!!log.discount_amount && log.base_amount != null && (
+                      <div className="text-[11px] font-normal text-gray-400">
+                        정가 {formatAmount(log.base_amount)} · 할인 −{formatAmount(log.discount_amount)}
+                      </div>
+                    )}
                   </td>
                   <td className="px-5 py-3.5">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -168,7 +180,7 @@ export default function BillingLogsTab({ logs }: Props) {
                       {log.success ? "성공" : "실패"}
                     </span>
                   </td>
-                  <td className="px-5 py-3.5 text-xs text-gray-500 max-w-[200px] truncate">
+                  <td className="px-5 py-3.5 text-xs text-gray-500 max-w-[200px] truncate" title={log.reason ?? log.error_message ?? undefined}>
                     {log.reason ?? log.error_message ?? <span className="text-gray-300">—</span>}
                   </td>
                 </tr>

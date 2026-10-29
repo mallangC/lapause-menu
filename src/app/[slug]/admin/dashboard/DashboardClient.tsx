@@ -21,6 +21,7 @@ import ReservationsTab from "./ReservationsTab";
 import StatsTab from "./StatsTab";
 import SettlementTab from "./SettlementTab";
 import PlanTab from "./PlanTab";
+import type { AppliedPromo } from "@/lib/appliedPromo";
 import DashboardOverviewTab from "./DashboardOverviewTab";
 import { notifyMenuChanged } from "@/lib/menuCacheClient";
 
@@ -54,11 +55,12 @@ interface Props {
   trialEndsAt: string | null;
   planExpiresAt: string | null;
   hasBillingKey: boolean;
+  appliedPromo: AppliedPromo;
   initialSettings: CompanySettings;
 }
 
 
-export default function DashboardClient({ slug, userId, userEmail, isOAuth, profileName, profilePhone, twoFactorEnabled, companyId, companyName, logoImage, themeBg, themeAccent, initialProducts, locationUrl, kakaoChannelUrl, instagramUrl, youtubeUrl, companyPhone, hiddenProductTypes, hiddenSeasons, consultEnabled, plan, subscriptionPlan, cancelAtPeriodEnd, trialEndsAt, planExpiresAt, hasBillingKey, initialSettings }: Props) {
+export default function DashboardClient({ slug, userId, userEmail, isOAuth, profileName, profilePhone, twoFactorEnabled, companyId, companyName, logoImage, themeBg, themeAccent, initialProducts, locationUrl, kakaoChannelUrl, instagramUrl, youtubeUrl, companyPhone, hiddenProductTypes, hiddenSeasons, consultEnabled, plan, subscriptionPlan, cancelAtPeriodEnd, trialEndsAt, planExpiresAt, hasBillingKey, appliedPromo, initialSettings }: Props) {
   const searchParams = useSearchParams();
   const initialTab = (searchParams.get("tab") as Tab | null) ?? "dashboard";
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
@@ -585,6 +587,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
                   trialEndsAt={trialEndsAt}
                   planExpiresAt={planExpiresAt}
                   hasBillingKey={hasBillingKey}
+                  appliedPromo={appliedPromo}
                 />
               </div>
             </div>

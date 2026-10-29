@@ -1,5 +1,6 @@
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { purgeMenuCacheByCompanyId } from "@/lib/menuCache";
+import { nextCyclesRemaining, pickPromo, PROMO_CODE_COLUMNS, quoteCharge } from "@/lib/billingPrice";
 
 function getSupabaseAdmin() {
   return createAdminClient(
@@ -20,7 +21,7 @@ export async function activateBillingKey(
 
   const { data: existingSub } = await supabase
     .from("company_subscriptions")
-    .select("trial_ends_at")
+    .select(`trial_ends_at, discount_cycles_remaining, promo:promo_codes(${PROMO_CODE_COLUMNS})`)
     .eq("company_id", companyId)
     .single();
 
@@ -63,9 +64,15 @@ export async function activateBillingKey(
     return { status: 200, body: { ok: true, trial: true } };
   }
 
-  // 재구독: 즉시 결제
-  const planAmount: Record<string, number> = { monthly: 18900, annual: 159000 };
-  const amount = planAmount[subscriptionPlan] ?? 18900;
+  // 재구독: 즉시 결제 (할인 코드가 적용돼 있으면 할인 금액으로)
+  const cyclesRemaining = (existingSub?.discount_cycles_remaining as number | null | undefined) ?? null;
+  const quote = quoteCharge(subscriptionPlan, pickPromo(existingSub?.promo), cyclesRemaining);
+  const amount = quote.amount;
+  const priceLogFields = {
+    base_amount: quote.baseAmount,
+    discount_amount: quote.discountAmount,
+    promo_code_id: quote.promoCodeId,
+  };
   const planLabel = subscriptionPlan === "annual" ? "연간" : "월간";
   const orderId = `r${companyId.replace(/-/g, "").slice(0, 20)}${Date.now().toString().slice(-8)}`;
 
@@ -84,58 +91,65 @@ export async function activateBillingKey(
 
   if (upsertError) return { status: 500, body: { error: upsertError.message } };
 
-  const payRes = await fetch(
-    `https://api.tosspayments.com/v1/billing/${encodeURIComponent(billingKey)}`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Basic ${encodedKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        customerKey: companyId,
+  // 100% 할인이면 토스 결제 없이 바로 기간을 시작한다
+  let paymentKey: string | null = null;
+  if (amount > 0) {
+    const payRes = await fetch(
+      `https://api.tosspayments.com/v1/billing/${encodeURIComponent(billingKey)}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${encodedKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          customerKey: companyId,
+          amount,
+          orderId,
+          orderName: `Flo.Aide ${planLabel} 구독`,
+        }),
+      }
+    );
+
+    if (!payRes.ok) {
+      const payError = await payRes.json().catch(() => ({}));
+      console.error("[billingActivate] 즉시 결제 실패:", payError);
+
+      const { error: logError } = await supabase.from("billing_logs").insert({
+        company_id: companyId,
+        operator_id: null,
+        type: "charge",
+        plan: subscriptionPlan,
         amount,
-        orderId,
-        orderName: `Flo.Aide ${planLabel} 월 구독`,
-      }),
+        ...priceLogFields,
+        payment_id: null,
+        success: false,
+        error_message: (payError as { message?: string }).message ?? "결제 실패",
+      });
+      if (logError) console.error("[billingActivate] billing_logs 기록 실패(즉시결제 실패):", logError);
+
+      return { status: 400, body: { error: (payError as { message?: string }).message ?? "결제에 실패했습니다." } };
     }
-  );
 
-  if (!payRes.ok) {
-    const payError = await payRes.json().catch(() => ({}));
-    console.error("[billingActivate] 즉시 결제 실패:", payError);
+    const payData = await payRes.json();
 
-    const { error: logError } = await supabase.from("billing_logs").insert({
-      company_id: companyId,
-      operator_id: null,
-      type: "charge",
-      plan: subscriptionPlan,
-      amount,
-      payment_id: null,
-      success: false,
-      error_message: (payError as { message?: string }).message ?? "결제 실패",
-    });
-    if (logError) console.error("[billingActivate] billing_logs 기록 실패(즉시결제 실패):", logError);
+    if (payData.status !== "DONE") {
+      const { error: logError } = await supabase.from("billing_logs").insert({
+        company_id: companyId,
+        operator_id: null,
+        type: "charge",
+        plan: subscriptionPlan,
+        amount,
+        ...priceLogFields,
+        payment_id: null,
+        success: false,
+        error_message: payData.message ?? "결제 실패",
+      });
+      if (logError) console.error("[billingActivate] billing_logs 기록 실패(결제 미완료):", logError);
 
-    return { status: 400, body: { error: (payError as { message?: string }).message ?? "결제에 실패했습니다." } };
-  }
-
-  const payData = await payRes.json();
-
-  if (payData.status !== "DONE") {
-    const { error: logError } = await supabase.from("billing_logs").insert({
-      company_id: companyId,
-      operator_id: null,
-      type: "charge",
-      plan: subscriptionPlan,
-      amount,
-      payment_id: null,
-      success: false,
-      error_message: payData.message ?? "결제 실패",
-    });
-    if (logError) console.error("[billingActivate] billing_logs 기록 실패(결제 미완료):", logError);
-
-    return { status: 400, body: { error: payData.message ?? "결제에 실패했습니다." } };
+      return { status: 400, body: { error: payData.message ?? "결제에 실패했습니다." } };
+    }
+    paymentKey = payData.paymentKey ?? orderId;
   }
 
   const expiresAt = new Date(now);
@@ -152,6 +166,7 @@ export async function activateBillingKey(
         plan_expires_at: expiresAt.toISOString(),
         payment_retry_count: 0,
         next_retry_at: null,
+        discount_cycles_remaining: nextCyclesRemaining(quote, cyclesRemaining),
       })
       .eq("company_id", companyId),
     supabase.from("billing_logs").insert({
@@ -160,9 +175,10 @@ export async function activateBillingKey(
       type: "charge",
       plan: subscriptionPlan,
       amount,
-      payment_id: payData.paymentKey ?? orderId,
+      ...priceLogFields,
+      payment_id: paymentKey,
       success: true,
-      reason: "재구독 즉시 결제",
+      reason: quote.promoCodeId ? "재구독 즉시 결제 (할인 코드 적용)" : "재구독 즉시 결제",
     }),
   ]);
   if (updateError) console.error("[billingActivate] plan_expires_at 갱신 실패:", updateError);

@@ -7,6 +7,7 @@ import { Product } from "@/types";
 import { DEFAULT_THEME_BG, DEFAULT_THEME_ACCENT } from "@/lib/theme";
 import { DEVICE_COOKIE_NAME, hashToken } from "@/lib/twoFactor";
 import { toClientSettings } from "./companySettings";
+import { getAppliedPromo } from "@/lib/appliedPromo";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -80,11 +81,17 @@ export default async function DashboardPage({ params }: Props) {
   // 플랜 미설정이면 플랜 선택 페이지로 (free는 허용)
   if (!plan || plan === "none") redirect("/plan");
 
-  const { data: products } = await supabase
-    .from("products")
-    .select("*")
-    .eq("company_id", raw.id)
-    .order("price", { ascending: true });
+  const [{ data: products }, appliedPromo] = await Promise.all([
+    supabase
+      .from("products")
+      .select("*")
+      .eq("company_id", raw.id)
+      .order("price", { ascending: true }),
+    // 할인 코드가 적용된 매장만 코드 내용을 조회 (소유권은 위 companies 조회에서 확인됨)
+    company.promo_code_id
+      ? getAppliedPromo(raw.id)
+      : Promise.resolve({ promo: null, cyclesRemaining: null }),
+  ]);
 
   return (
     <DashboardClient
@@ -115,6 +122,7 @@ export default async function DashboardPage({ params }: Props) {
       trialEndsAt={(company.trial_ends_at as string | null) ?? null}
       planExpiresAt={(company.plan_expires_at as string | null) ?? null}
       hasBillingKey={!!(company.billing_key as string | null)}
+      appliedPromo={appliedPromo}
       initialSettings={{ ...toClientSettings(raw.settings as unknown as Record<string, unknown> | null), company_phone: raw.phone ?? null }}
     />
   );

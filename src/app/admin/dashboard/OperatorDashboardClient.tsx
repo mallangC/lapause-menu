@@ -9,6 +9,7 @@ import SettlementsTab from "./SettlementsTab";
 import VerificationTab from "./VerificationTab";
 import StoreManagementTab from "./StoreManagementTab";
 import BillingLogsTab, { BillingLog } from "./BillingLogsTab";
+import PromoCodesTab from "./PromoCodesTab";
 import ReservationLogsTab, { ReservationLog } from "./ReservationLogsTab";
 
 interface Company {
@@ -31,6 +32,8 @@ interface Company {
     trial_ends_at: string | null;
     subscription_plan: string | null;
   } | null;
+  /** 적용된 할인 코드 */
+  promo: { code: string; summary: string; cyclesRemaining: number | null } | null;
 }
 
 interface Reservation {
@@ -66,7 +69,7 @@ const PIE_COLORS = ["#c9a96e", "#60a5fa", "#34d399", "#a87c4a"];
 export default function OperatorDashboardClient({ companies, reservations, products, billingLogs, reservationLogs }: Props) {
   const router = useRouter();
   const supabase = createClient();
-  const [activeTab, setActiveTab] = useState<"overview" | "stores" | "billing" | "settlements" | "verification" | "reservationLogs">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "stores" | "billing" | "promoCodes" | "settlements" | "verification" | "reservationLogs">("overview");
   const [gmvRange, setGmvRange] = useState<"month" | "6m" | "1y">("month");
 
   const now = new Date();
@@ -278,6 +281,7 @@ export default function OperatorDashboardClient({ companies, reservations, produ
             { key: "overview", label: "현황" },
             { key: "stores", label: "매장 관리" },
             { key: "billing", label: "결제 이력" },
+            { key: "promoCodes", label: "할인 코드" },
             { key: "settlements", label: "정산 관리" },
             { key: "verification", label: "검증 관리" },
             { key: "reservationLogs", label: "예약 로그" },
@@ -321,6 +325,7 @@ export default function OperatorDashboardClient({ companies, reservations, produ
               planExpiresAt: c.subscription?.plan_expires_at ?? null,
               trialEndsAt: c.subscription?.trial_ends_at ?? null,
               subscriptionPlan: c.subscription?.subscription_plan ?? null,
+              promo: c.promo,
             }))}
           />
         )}
@@ -328,6 +333,8 @@ export default function OperatorDashboardClient({ companies, reservations, produ
         {activeTab === "billing" && (
           <BillingLogsTab logs={billingLogs} />
         )}
+
+        {activeTab === "promoCodes" && <PromoCodesTab />}
 
         {activeTab === "settlements" && (
           <SettlementsTab companies={companies} />

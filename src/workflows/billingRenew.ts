@@ -1,15 +1,10 @@
 import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from "cloudflare:workers";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { PLAN_PRICES } from "../lib/constants";
 import { menuCacheKey } from "../lib/menuCacheKey";
+import { isBillingCycle, nextCyclesRemaining, pickPromo, PROMO_CODE_COLUMNS, quoteCharge } from "../lib/billingPrice";
 
 // 정기결제 자동 갱신 — 구독 1건당 Workflow 인스턴스 1개.
 // 각 step의 결과는 Cloudflare가 기억하므로, 중간에 실패해서 재실행돼도 이미 끝난 결제 step은 다시 실행되지 않는다.
-
-const PLAN_AMOUNT: Record<string, number> = {
-  monthly: PLAN_PRICES.monthly,
-  annual: PLAN_PRICES.annualTotal,
-};
 
 const MAX_RETRIES = 3;
 const RETRY_INTERVAL_HOURS = 24;
@@ -42,6 +37,9 @@ export interface SubscriptionRow {
   cancel_at_period_end: boolean;
   payment_retry_count: number | null;
   next_retry_at: string | null;
+  discount_cycles_remaining: number | null;
+  /** 적용된 할인 코드 (promo_codes 임베드) */
+  promo: unknown;
 }
 
 interface ChargeResult {
@@ -52,7 +50,7 @@ interface ChargeResult {
 }
 
 export const SUBSCRIPTION_COLUMNS =
-  "company_id, plan, subscription_plan, billing_key, trial_ends_at, plan_expires_at, cancel_at_period_end, payment_retry_count, next_retry_at";
+  `company_id, plan, subscription_plan, billing_key, trial_ends_at, plan_expires_at, cancel_at_period_end, payment_retry_count, next_retry_at, discount_cycles_remaining, promo:promo_codes(${PROMO_CODE_COLUMNS})`;
 
 function adminClient(env: BillingEnv) {
   return createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
@@ -157,60 +155,70 @@ export class BillingRenewWorkflow extends WorkflowEntrypoint<BillingEnv, Billing
       return { result: "cancelled" };
     }
 
-    const chargePlan = sub.subscription_plan ?? sub.plan;
-    const amount = PLAN_AMOUNT[chargePlan] ?? PLAN_AMOUNT.monthly;
+    const rawPlan = sub.subscription_plan ?? sub.plan;
+    const chargePlan = isBillingCycle(rawPlan) ? rawPlan : "monthly";
+    // 할인 코드 반영 금액 — sub는 위 step 결과로 고정돼 있어서 재실행돼도 같은 금액
+    const quote = quoteCharge(chargePlan, pickPromo(sub.promo), sub.discount_cycles_remaining);
+    const amount = quote.amount;
     const planLabel = chargePlan === "annual" ? "연간" : "월간";
 
     // 3. 토스 결제 — 네트워크 오류·5xx·429만 재시도 (같은 orderId + 멱등키라 재시도해도 이중 결제 없음).
     //    카드 거절 같은 4xx는 재시도하지 않고 실패 결과로 반환한다.
     let charge: ChargeResult;
-    try {
-      charge = await step.do(
-        "charge",
-        { retries: { limit: 3, delay: "30 seconds", backoff: "exponential" }, timeout: "2 minutes" },
-        async () => {
-          const res = await fetch(`https://api.tosspayments.com/v1/billing/${encodeURIComponent(sub.billing_key!)}`, {
-            method: "POST",
-            headers: {
-              Authorization: tossAuthHeader(env),
-              "Content-Type": "application/json",
-              "Idempotency-Key": orderId,
-            },
-            body: JSON.stringify({
-              customerKey: companyId,
-              amount,
-              orderId,
-              orderName: `Flo.Aide ${planLabel} 구독 갱신`,
-            }),
+    if (amount <= 0) {
+      // 100% 할인 — 토스 결제 없이 기간만 갱신
+      charge = await step.do("skip charge (free by promo)", async () => ({
+        ok: true, paymentKey: null, message: null, chargedAt: new Date().toISOString(),
+      }));
+    } else {
+      try {
+        charge = await step.do(
+          "charge",
+          { retries: { limit: 3, delay: "30 seconds", backoff: "exponential" }, timeout: "2 minutes" },
+          async () => {
+            const res = await fetch(`https://api.tosspayments.com/v1/billing/${encodeURIComponent(sub.billing_key!)}`, {
+              method: "POST",
+              headers: {
+                Authorization: tossAuthHeader(env),
+                "Content-Type": "application/json",
+                "Idempotency-Key": orderId,
+              },
+              body: JSON.stringify({
+                customerKey: companyId,
+                amount,
+                orderId,
+                orderName: `Flo.Aide ${planLabel} 구독 갱신`,
+              }),
+            });
+            if (res.status >= 500 || res.status === 429) throw new Error(`토스 일시 오류 (${res.status})`);
+            const data = await res.json().catch(() => ({})) as { status?: string; paymentKey?: string; message?: string };
+            return {
+              ok: res.ok && data.status === "DONE",
+              paymentKey: data.paymentKey ?? null,
+              message: data.message ?? null,
+              chargedAt: new Date().toISOString(),
+            };
+          }
+        );
+      } catch {
+        // 재시도를 다 써도 응답을 못 받음 → 실제로는 결제됐을 수 있으므로 orderId로 토스에 조회해서 판단
+        charge = await step.do("lookup payment by orderId", { retries: { limit: 3, delay: "1 minute", backoff: "exponential" } }, async () => {
+          const res = await fetch(`https://api.tosspayments.com/v1/payments/orders/${encodeURIComponent(orderId)}`, {
+            headers: { Authorization: tossAuthHeader(env) },
           });
-          if (res.status >= 500 || res.status === 429) throw new Error(`토스 일시 오류 (${res.status})`);
-          const data = await res.json().catch(() => ({})) as { status?: string; paymentKey?: string; message?: string };
+          if (res.status === 404) {
+            return { ok: false, paymentKey: null, message: "토스 응답 없음 (결제 내역 없음)", chargedAt: new Date().toISOString() };
+          }
+          if (!res.ok) throw new Error(`토스 결제 조회 실패 (${res.status})`);
+          const data = await res.json() as { status?: string; paymentKey?: string; approvedAt?: string };
           return {
-            ok: res.ok && data.status === "DONE",
+            ok: data.status === "DONE",
             paymentKey: data.paymentKey ?? null,
-            message: data.message ?? null,
-            chargedAt: new Date().toISOString(),
+            message: data.status === "DONE" ? null : `결제 상태: ${data.status}`,
+            chargedAt: data.approvedAt ?? new Date().toISOString(),
           };
-        }
-      );
-    } catch {
-      // 재시도를 다 써도 응답을 못 받음 → 실제로는 결제됐을 수 있으므로 orderId로 토스에 조회해서 판단
-      charge = await step.do("lookup payment by orderId", { retries: { limit: 3, delay: "1 minute", backoff: "exponential" } }, async () => {
-        const res = await fetch(`https://api.tosspayments.com/v1/payments/orders/${encodeURIComponent(orderId)}`, {
-          headers: { Authorization: tossAuthHeader(env) },
         });
-        if (res.status === 404) {
-          return { ok: false, paymentKey: null, message: "토스 응답 없음 (결제 내역 없음)", chargedAt: new Date().toISOString() };
-        }
-        if (!res.ok) throw new Error(`토스 결제 조회 실패 (${res.status})`);
-        const data = await res.json() as { status?: string; paymentKey?: string; approvedAt?: string };
-        return {
-          ok: data.status === "DONE",
-          paymentKey: data.paymentKey ?? null,
-          message: data.status === "DONE" ? null : `결제 상태: ${data.status}`,
-          chargedAt: data.approvedAt ?? new Date().toISOString(),
-        };
-      });
+      }
     }
 
     // 4. 결과 반영 — DB step이 실패해 재실행돼도 위 결제 step은 기억된 결과를 쓴다
@@ -223,6 +231,7 @@ export class BillingRenewWorkflow extends WorkflowEntrypoint<BillingEnv, Billing
           plan_expires_at: expiresAt.toISOString(),
           payment_retry_count: 0,
           next_retry_at: null,
+          discount_cycles_remaining: nextCyclesRemaining(quote, sub.discount_cycles_remaining),
         }).eq("company_id", companyId));
         return true;
       });
@@ -233,9 +242,13 @@ export class BillingRenewWorkflow extends WorkflowEntrypoint<BillingEnv, Billing
           type: "charge",
           plan: chargePlan,
           amount,
-          payment_id: charge.paymentKey ?? orderId,
+          base_amount: quote.baseAmount,
+          discount_amount: quote.discountAmount,
+          promo_code_id: quote.promoCodeId,
+          // 0원(전액 할인)은 실제 결제가 없으므로 환불 대상이 되지 않게 비워둔다
+          payment_id: amount > 0 ? (charge.paymentKey ?? orderId) : null,
           success: true,
-          reason: "정기결제 자동 갱신",
+          reason: quote.promoCodeId ? "정기결제 자동 갱신 (할인 코드 적용)" : "정기결제 자동 갱신",
         }));
         return true;
       });
@@ -249,6 +262,9 @@ export class BillingRenewWorkflow extends WorkflowEntrypoint<BillingEnv, Billing
         type: "charge",
         plan: chargePlan,
         amount,
+        base_amount: quote.baseAmount,
+        discount_amount: quote.discountAmount,
+        promo_code_id: quote.promoCodeId,
         payment_id: null,
         success: false,
         error_message: charge.message ?? "정기결제 자동 갱신 실패",

@@ -2,13 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { purgeMenuCacheByCompanyId } from "@/lib/menuCache";
+import { PLAN_PRICES } from "@/lib/constants";
+import { isBillingCycle, PLAN_CHARGE_AMOUNT } from "@/lib/billingPrice";
 
 export const dynamic = "force-dynamic";
-
-const PLAN_AMOUNT: Record<string, number> = {
-  monthly: 18900,
-  annual: 159000,
-};
 
 async function sendRefundEmail(to: string, companyName: string, plan: string | null, amount: number | null, reason: string) {
   const apiKey = process.env.RESEND_API_KEY;
@@ -111,7 +108,7 @@ export async function POST(req: NextRequest) {
   const [{ data: chargeLogs }, { data: refundLogs }] = await Promise.all([
     supabaseAdmin
       .from("billing_logs")
-      .select("payment_id, created_at")
+      .select("payment_id, amount, created_at")
       .eq("company_id", companyId)
       .eq("success", true)
       .eq("type", "charge")
@@ -127,7 +124,11 @@ export async function POST(req: NextRequest) {
   ]);
 
   const refundedPaymentIds = new Set((refundLogs ?? []).map((r) => r.payment_id));
-  const paymentKey = (chargeLogs ?? []).find((c) => !refundedPaymentIds.has(c.payment_id))?.payment_id ?? null;
+  const targetCharge = (chargeLogs ?? []).find((c) => !refundedPaymentIds.has(c.payment_id)) ?? null;
+  const paymentKey = targetCharge?.payment_id ?? null;
+  // 환불은 실제로 결제된 금액 기준 (할인 코드로 정가보다 적게 냈을 수 있음). 예전 로그에 금액이 없으면 정가로.
+  const paidAmount = (targetCharge?.amount as number | null | undefined)
+    ?? (isBillingCycle(plan) ? PLAN_CHARGE_AMOUNT[plan] : null);
 
   // 연간 부분환불 처리
   if (isPartial && plan === "annual") {
@@ -143,8 +144,9 @@ export async function POST(req: NextRequest) {
     const now = new Date();
     const usedDays = Math.floor((now.getTime() - paymentDate.getTime()) / 86400000);
     const usedMonths = Math.ceil(usedDays / 30);
-    const deduction = usedMonths * 18900;
-    const refundAmount = Math.max(0, 159000 - deduction);
+    // 공제는 환불 정책대로 할인 없는 월간 정가 기준
+    const deduction = usedMonths * PLAN_PRICES.monthly;
+    const refundAmount = Math.max(0, (paidAmount ?? PLAN_CHARGE_AMOUNT.annual) - deduction);
 
     let refunded = false;
     if (refundAmount > 0) {
@@ -219,7 +221,7 @@ export async function POST(req: NextRequest) {
   }
 
   // 전액 환불 (full 또는 월간)
-  const amount = plan ? (PLAN_AMOUNT[plan] ?? null) : null;
+  const amount = paymentKey ? paidAmount : null;
 
   // 토스 결제 취소 시도 (paymentKey가 있을 때만)
   let refunded = false;

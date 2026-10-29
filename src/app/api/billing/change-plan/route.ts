@@ -4,11 +4,6 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
 
-const PLAN_AMOUNT: Record<string, number> = {
-  monthly: 18900,
-  annual: 159000,
-};
-
 function getSupabaseAdmin() {
   return createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -82,8 +77,6 @@ export async function POST(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const planLabel = newPlan === "annual" ? "연간" : "월간";
-  const _ = PLAN_AMOUNT; // 참조 유지 (향후 즉시 결제 로직 추가 시 사용)
-  void _;
 
   return NextResponse.json({ ok: true, planLabel });
 }
