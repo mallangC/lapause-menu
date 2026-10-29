@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { activateBillingKey } from "@/lib/billingActivate";
+import { isBillingCycle } from "@/lib/billingPrice";
 
 // 토스 SDK requestBillingAuth() 리다이렉트 복귀 후 authKey -> billingKey 교환
 export async function POST(req: NextRequest) {
@@ -15,6 +16,10 @@ export async function POST(req: NextRequest) {
   }
   if (customerKey !== companyId) {
     return NextResponse.json({ error: "잘못된 요청입니다." }, { status: 400 });
+  }
+
+  if (!isBillingCycle(subscriptionPlan)) {
+    return NextResponse.json({ error: "잘못된 요금제입니다." }, { status: 400 });
   }
 
   // 회사 소유권 확인

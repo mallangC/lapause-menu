@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
   // paid_at이 없는 과거 데이터(컬럼 추가 이전 결제 건)만 created_at으로 대체합니다.
   const { data: reservations, error } = await adminClient
     .from("reservations")
-    .select("id, company_id, final_price, paid_at, created_at")
+    .select("id, company_id, final_price, paid_amount, paid_at, created_at")
     .eq("paid", true)
     .not("payment_id", "is", null)
     .is("settlement_id", null)
@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
   for (const r of eligible) {
     const existing = companyMap.get(r.company_id) ?? { count: 0, total: 0, reservationIds: [] };
     existing.count += 1;
-    existing.total += r.final_price || 0;
+    existing.total += r.paid_amount ?? r.final_price ?? 0; // 실제 결제 승인 금액 기준
     existing.reservationIds.push(r.id);
     companyMap.set(r.company_id, existing);
   }

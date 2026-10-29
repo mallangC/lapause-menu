@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     // 결제 총액은 클라이언트를 신뢰하지 않고 연결된 예약에서 다시 집계
     const { data: linkedReservations } = await adminClient
       .from("reservations")
-      .select("id, final_price, paid, payment_id, paid_at, created_at, settlement_id, deleted_at")
+      .select("id, final_price, paid_amount, paid, payment_id, paid_at, created_at, settlement_id, deleted_at")
       .in("id", item.reservation_ids);
 
     const ineligible = (linkedReservations ?? []).find((r) =>
@@ -82,7 +82,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const gross_amount = (linkedReservations ?? []).reduce((s, r) => s + (r.final_price || 0), 0);
+    // 토스가 실제로 승인한 금액 기준 (예전 결제 건은 paid_amount가 없어 final_price로 대체)
+    const gross_amount = (linkedReservations ?? []).reduce((s, r) => s + (r.paid_amount ?? r.final_price ?? 0), 0);
     const total_amount = Math.round(gross_amount * (1 - PLATFORM_FEE_RATE)); // 매장에 실제 이체되는 금액
     const fee_amount = gross_amount - total_amount;                           // 매장에서 차감한 수수료
     const margin_amount = Math.round(gross_amount * PLATFORM_MARGIN_RATE);    // Flo.Aide 순마진(PG 수수료 제외)

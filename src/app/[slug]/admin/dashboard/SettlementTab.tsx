@@ -64,7 +64,7 @@ export default function SettlementTab({ companyId, refreshKey }: Props) {
           .order("period_end", { ascending: false }),
         supabase
           .from("reservations")
-          .select("final_price")
+          .select("final_price, paid_amount")
           .eq("company_id", companyId)
           .eq("paid", true)
           .not("payment_id", "is", null)
@@ -73,7 +73,8 @@ export default function SettlementTab({ companyId, refreshKey }: Props) {
           .is("deleted_at", null),
       ]);
       setSettlements((settlementRows as Settlement[]) ?? []);
-      setPendingGross((unsettled ?? []).reduce((s, r) => s + (r.final_price || 0), 0));
+      // 정산 API와 같은 기준 — 토스가 실제로 승인한 금액 (예전 결제 건은 final_price)
+      setPendingGross((unsettled ?? []).reduce((s, r) => s + (r.paid_amount ?? r.final_price ?? 0), 0));
       setPendingCount((unsettled ?? []).length);
       setLoading(false);
     })();

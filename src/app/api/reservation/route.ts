@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendReservationConfirmedOwner } from "@/lib/solapi";
+import { cancelTossPayment, consultMinimumTotal, loadCompanyProducts, loadOptionPrices } from "@/lib/orderPricing";
 
 interface ReservationBody {
   slug: string;
@@ -91,16 +92,25 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 토스 결제 승인 및 검증 (데모 매장은 실제 결제가 없으므로 건너뛴다)
-    if (paymentKey && !isDemoCompany) {
-      const { data: dbProduct } = await supabase
-        .from("products")
-        .select("price")
-        .eq("id", body.product.id)
-        .single();
+    // 없는 매장이면 결제 승인 전에 중단 (승인 후 저장할 곳이 없으면 돈만 빠짐)
+    if (!companyId) {
+      return NextResponse.json({ error: "매장을 찾을 수 없습니다." }, { status: 404 });
+    }
 
-      if (!dbProduct) {
-        return NextResponse.json({ error: "상품 정보를 찾을 수 없습니다." }, { status: 400 });
+    // 상품은 반드시 이 매장 상품이어야 하고, 이름·가격은 DB 값을 쓴다
+    const dbProduct = (await loadCompanyProducts(adminClient, companyId, [body.product.id])).get(body.product.id);
+    if (!dbProduct) {
+      return NextResponse.json({ error: "상품 정보를 찾을 수 없습니다." }, { status: 400 });
+    }
+
+    // 토스 결제 승인 및 검증 (데모 매장은 실제 결제가 없으므로 건너뛴다)
+    let paidAmount: number | null = null;
+    if (paymentKey && !isDemoCompany) {
+      // 옵션 개수는 서버로 오지 않으므로 '상품가 + 선택한 옵션 최소 1개씩' 이상인지 결제 승인 전에 확인
+      const minimum = consultMinimumTotal(dbProduct, body.form, await loadOptionPrices(adminClient, companyId));
+      const requested = paymentAmount ?? body.finalPrice;
+      if (!Number.isInteger(requested) || (requested as number) < minimum) {
+        return NextResponse.json({ error: "결제 금액이 주문 금액보다 작습니다. 다시 시도해주세요." }, { status: 400 });
       }
 
       const encodedKey = Buffer.from(`${process.env.TOSS_WIDGET_SECRET_KEY!}:`).toString("base64");
@@ -113,7 +123,7 @@ export async function POST(request: NextRequest) {
         body: JSON.stringify({
           paymentKey,
           orderId: paymentOrderId,
-          amount: paymentAmount ?? body.finalPrice ?? dbProduct.price,
+          amount: requested,
         }),
       });
       if (!tossRes.ok) {
@@ -124,12 +134,11 @@ export async function POST(request: NextRequest) {
       if (tossData.status !== "DONE") {
         return NextResponse.json({ error: "결제가 완료되지 않았습니다." }, { status: 400 });
       }
-      if (tossData.totalAmount < dbProduct.price) {
-        return NextResponse.json({ error: "결제 금액이 상품 가격보다 작습니다." }, { status: 400 });
+      if (tossData.totalAmount < minimum) {
+        await cancelTossPayment(process.env.TOSS_WIDGET_SECRET_KEY!, paymentKey, "결제 금액 부족");
+        return NextResponse.json({ error: "결제 금액이 주문 금액보다 작아 결제를 취소했습니다." }, { status: 400 });
       }
-    }
-    if (!companyId) {
-      return NextResponse.json({ success: true });
+      paidAmount = tossData.totalAmount;
     }
 
     // customer_profile upsert
@@ -162,8 +171,9 @@ export async function POST(request: NextRequest) {
     // DB에 예약 저장
     let savedReservationId: string | null = null;
     if (companyId) {
-      const { form, product, orderer, delivery, finalPrice, source } = body;
-      const { data: insertData, error: insertError } = await supabase.from("reservations").insert({
+      const { form, orderer, delivery, finalPrice, source } = body;
+      // 손님은 예약 테이블에 직접 쓸 수 없으므로 서버 전용 클라이언트로 저장
+      const { data: insertData, error: insertError } = await adminClient.from("reservations").insert({
         company_id: companyId,
         customer_profile_id: customerProfileId,
         status: "미확인",
@@ -171,13 +181,13 @@ export async function POST(request: NextRequest) {
         orderer_name: orderer.name,
         orderer_phone: orderer.phone,
         items: [{
-          type: product.product_type,
-          name: product.name,
-          price: product.price,
-          product_id: product.id ?? null,
+          type: dbProduct.product_type,
+          name: dbProduct.name,
+          price: dbProduct.price,
+          product_id: dbProduct.id,
           message_card: form.messageCard,
           message_card_content: form.messageCardContent || null,
-          shopping_bag: product.bag_included ? "서비스" : form.shoppingBag,
+          shopping_bag: dbProduct.bag_included ? "서비스" : form.shoppingBag,
           preservative: form.preservative,
           memo: null,
         }],
@@ -186,7 +196,9 @@ export async function POST(request: NextRequest) {
         paid_at: paymentKey ? new Date().toISOString() : null,
         // 데모 매장은 실제 결제가 아니므로 payment_id를 비워서 정산/통신판매업 판매수량 집계 등 "실결제" 신호로 쓰이는 곳에서 자동 제외되게 한다
         payment_id: isDemoCompany ? null : (paymentKey ?? null),
-        final_price: paymentKey ? (finalPrice ?? product.price) : (product.price ?? finalPrice),
+        // 토스가 실제로 승인한 금액 — 정산은 이 값을 기준으로 한다
+        paid_amount: paidAmount,
+        final_price: paidAmount ?? (paymentKey ? (finalPrice ?? dbProduct.price) : dbProduct.price),
         purpose: form.purpose === "기타" ? form.purposeCustom : form.purpose,
         recipient_gender: form.recipientGender,
         recipient_age: form.recipientAge,
@@ -205,25 +217,34 @@ export async function POST(request: NextRequest) {
         order_type: "consult",
       }).select("id");
 
-      if (insertError) console.error("[reservation] insert 실패:", insertError.message);
-      else {
-        savedReservationId = insertData?.[0]?.id ?? null;
+      if (insertError) {
+        console.error("[reservation] insert 실패:", insertError.message);
+        // 결제는 됐는데 예약이 저장되지 않으면 결제를 되돌린다
+        if (paymentKey && !isDemoCompany) {
+          const cancelled = await cancelTossPayment(process.env.TOSS_WIDGET_SECRET_KEY!, paymentKey, "예약 저장 실패");
+          return NextResponse.json(
+            { error: cancelled ? "예약 저장 중 오류가 발생해 결제를 취소했습니다. 다시 시도해주세요." : "예약 저장 중 오류가 발생했습니다. 결제 취소가 필요하니 매장에 문의해주세요." },
+            { status: 500 }
+          );
+        }
+        return NextResponse.json({ error: "예약 저장 중 오류가 발생했습니다." }, { status: 500 });
       }
+      savedReservationId = insertData?.[0]?.id ?? null;
     }
 
     // 사장님에게 카카오 알림 발송 (데모 매장은 발송하지 않음)
     try {
       const { data: ownerPhone } = isDemoCompany ? { data: null } : await adminClient.rpc("get_owner_phone_by_slug", { p_slug: slug });
       if (ownerPhone) {
-        const { form, product, orderer, finalPrice } = body;
+        const { form, orderer, finalPrice } = body;
         const desiredDateTime = `${form.desiredDate}${form.desiredTime ? ` ${form.desiredTime}` : ""}`;
         await sendReservationConfirmedOwner({
           to: ownerPhone,
           companyName: body.companyName,
-          productType: product.product_type,
+          productType: dbProduct.product_type,
           deliveryType: form.deliveryType,
           desiredDateTime,
-          finalPrice: finalPrice ?? product.price,
+          finalPrice: paidAmount ?? finalPrice ?? dbProduct.price,
           ordererName: orderer.name,
           ordererPhone: orderer.phone,
           requests: form.requests,

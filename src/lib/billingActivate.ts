@@ -64,6 +64,18 @@ export async function activateBillingKey(
     return { status: 200, body: { ok: true, trial: true } };
   }
 
+  // 같은 요청이 연달아 두 번 들어와 두 번 결제되는 것을 막는다 (버튼 연타·새로고침 등)
+  const { count: recentCharges } = await supabase
+    .from("billing_logs")
+    .select("id", { count: "exact", head: true })
+    .eq("company_id", companyId)
+    .eq("type", "charge")
+    .eq("success", true)
+    .gte("created_at", new Date(now.getTime() - 5 * 60 * 1000).toISOString());
+  if (recentCharges) {
+    return { status: 409, body: { error: "방금 결제가 처리되었습니다. 잠시 후 화면을 새로고침해주세요." } };
+  }
+
   // 재구독: 즉시 결제 (할인 코드가 적용돼 있으면 할인 금액으로)
   const cyclesRemaining = (existingSub?.discount_cycles_remaining as number | null | undefined) ?? null;
   const quote = quoteCharge(subscriptionPlan, pickPromo(existingSub?.promo), cyclesRemaining);

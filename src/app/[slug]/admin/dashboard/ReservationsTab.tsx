@@ -215,7 +215,11 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
   const handleDeleteReservation = async (id: string) => {
     if (!confirm("정말 삭제하시겠습니까?")) return;
     const res = await fetch(`/api/reservation/${id}`, { method: "DELETE" });
-    if (!res.ok) return;
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      alert((data as { error?: string }).error ?? "삭제 중 오류가 발생했습니다.");
+      return;
+    }
     setAllReservations((prev) => prev.filter((r) => r.id !== id));
     setExpandedId(null);
     setMobileDetailId(null);

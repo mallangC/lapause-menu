@@ -104,20 +104,13 @@ export async function DELETE(
     if (!company) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  // 포트원 환불 (결제된 예약인 경우)
-  if (reservation?.payment_id) {
-    try {
-      await fetch(`https://api.portone.io/payments/${reservation.payment_id}/cancel`, {
-        method: "POST",
-        headers: {
-          Authorization: `PortOne ${process.env.PORTONE_API_SECRET}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ reason: "관리자 취소" }),
-      });
-    } catch (err) {
-      console.error("[reservation cancel] 환불 실패:", err);
-    }
+  // 카드 결제된 예약은 삭제로 끝내지 않는다 — 먼저 '취소'로 바꾸면 상태 변경 API가 토스 환불까지 처리한다.
+  // (예전에는 여기서 더 이상 쓰지 않는 포트원 API로 환불을 요청해 실제로는 환불되지 않았음)
+  if (reservation.payment_id && reservation.status !== "취소") {
+    return NextResponse.json(
+      { error: "카드 결제된 예약은 바로 삭제할 수 없습니다. 먼저 상태를 '취소'로 변경하면 자동으로 환불되며, 그 후 삭제할 수 있습니다." },
+      { status: 400 }
+    );
   }
 
   // 소프트 딜리트: 판매 수량 집계·정산 로그 무결성을 위해 실제 삭제 대신 deleted_at만 기록

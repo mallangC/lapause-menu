@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { activateBillingKey } from "@/lib/billingActivate";
+import { isBillingCycle } from "@/lib/billingPrice";
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -19,6 +20,10 @@ export async function POST(req: NextRequest) {
 
   if (!companyId || !subscriptionPlan || !cardNumber || !cardExpirationMonth || !cardExpirationYear || !customerIdentityNumber || !cardPassword) {
     return NextResponse.json({ error: "필수 항목이 누락되었습니다." }, { status: 400 });
+  }
+
+  if (!isBillingCycle(subscriptionPlan)) {
+    return NextResponse.json({ error: "잘못된 요금제입니다." }, { status: 400 });
   }
 
   // 회사 소유권 확인

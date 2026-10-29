@@ -132,14 +132,12 @@ export async function POST(req: NextRequest) {
 
   // 연간 부분환불 처리
   if (isPartial && plan === "annual") {
-    // 결제일 = plan_expires_at - 365일
-    const expiresAt = sub?.plan_expires_at ? new Date(sub.plan_expires_at) : null;
-    if (!expiresAt || !paymentKey) {
+    // 결제일 = 환불할 결제 건이 기록된 날 (만료일 − 365일로 계산하면 운영자가 기간을 연장한 매장에서 어긋남)
+    if (!targetCharge?.created_at || !paymentKey) {
       return NextResponse.json({ error: "결제 정보를 찾을 수 없습니다." }, { status: 400 });
     }
 
-    const paymentDate = new Date(expiresAt);
-    paymentDate.setDate(paymentDate.getDate() - 365);
+    const paymentDate = new Date(targetCharge.created_at);
 
     const now = new Date();
     const usedDays = Math.floor((now.getTime() - paymentDate.getTime()) / 86400000);

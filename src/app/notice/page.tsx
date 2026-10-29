@@ -479,6 +479,24 @@ export default function NoticePage() {
             </Callout>
 
             <div className="pt-2 space-y-4">
+              <h3 className="font-medium text-gray-900 text-sm">모바일에서 예약 수정·삭제하기</h3>
+              <p className="text-sm text-gray-500 leading-relaxed">
+                휴대폰 화면에서는 예약 목록이 카드 형태로 보이며, 수정·삭제 버튼이 카드 뒤에 숨어 있습니다.
+              </p>
+              {/* 스크린샷: public/landing/ 에 이미지를 넣고 아래 주석을 풀면 됩니다 (Fig는 PC·모바일 이미지를 따로 지정 가능) */}
+              {/* <Fig src="/landing/cap-reservation-swipe-m.webp" alt="모바일 예약 카드를 왼쪽으로 밀어 수정·삭제 버튼을 연 화면" /> */}
+              <div className="space-y-5">
+                <Step n={1} title="예약 카드를 왼쪽으로 밀기">수정하거나 삭제할 예약 카드를 손가락으로 왼쪽으로 밀어주세요. 카드 오른쪽에 파란색 연필(수정) 버튼과 빨간색 휴지통(삭제) 버튼이 나타납니다.</Step>
+                <Step n={2} title="수정하기">파란색 연필 버튼을 누르면 예약 수정 화면이 열립니다. 내용을 고친 뒤 저장하면 바로 반영됩니다.</Step>
+                <Step n={3} title="삭제하기">빨간색 휴지통 버튼을 누르면 &lsquo;정말 삭제하시겠습니까?&rsquo; 확인 창이 뜨고, 확인을 누르면 삭제됩니다. 카드로 결제된 예약은 먼저 상태를 &lsquo;취소&rsquo;로 변경해야 삭제할 수 있습니다. (취소 시 자동 환불)</Step>
+                <Step n={4} title="버튼 닫기">버튼을 열었다가 그만두려면 카드를 다시 오른쪽으로 밀면 원래대로 돌아갑니다.</Step>
+              </div>
+              <p className="text-xs text-gray-400 leading-relaxed">
+                카드를 밀지 않고 가볍게 누르면 화면 아래에서 예약 상세 정보가 열리며, 상세 정보 안에서도 수정·삭제할 수 있습니다. PC 화면에서는 예약 행을 눌러 상세 정보를 펼친 뒤 수정·삭제할 수 있습니다.
+              </p>
+            </div>
+
+            <div className="pt-2 space-y-4">
               <h3 className="font-medium text-gray-900 text-sm">링크결제 보내기</h3>
               <p className="text-sm text-gray-500 leading-relaxed">
                 예약을 미결제 상태로 등록한 경우 예약 상세 페이지에서 결제 링크를 생성해 고객에게 보낼 수 있습니다.

@@ -97,9 +97,11 @@ export async function POST(request: NextRequest) {
 
   const { data: reservations, error: rErr } = await adminClient
     .from("reservations")
-    .select("id, final_price")
+    .select("id, final_price, paid_amount")
     .eq("company_id", company_id)
     .eq("paid", true)
+    // 카드로 실제 결제된 건만 (사장님이 계좌이체 등으로 '결제완료' 표시만 한 건은 Flo.Aide가 받은 돈이 아님)
+    .not("payment_id", "is", null)
     .is("settlement_id", null)
     .is("deleted_at", null)
     .eq("status", "픽업/배송완료")
@@ -108,7 +110,8 @@ export async function POST(request: NextRequest) {
 
   if (rErr) return NextResponse.json({ error: rErr.message }, { status: 500 });
 
-  const total = (reservations ?? []).reduce((sum, r) => sum + (r.final_price || 0), 0);
+  // 토스가 실제로 승인한 금액 기준 (예전 결제 건은 final_price로 대체)
+  const total = (reservations ?? []).reduce((sum, r) => sum + (r.paid_amount ?? r.final_price ?? 0), 0);
   const count = reservations?.length ?? 0;
 
   if (dry_run) return NextResponse.json({ count, total });

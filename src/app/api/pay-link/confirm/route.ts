@@ -43,6 +43,7 @@ export async function POST(request: NextRequest) {
     const isDemoCompany = companyRow?.is_demo ?? false;
 
     // 토스 결제 승인 (데모 매장은 실제 결제가 없으므로 건너뛴다)
+    let paidAmount: number | null = null;
     if (!isDemoCompany) {
       const encodedKey = Buffer.from(`${process.env.TOSS_WIDGET_SECRET_KEY!}:`).toString("base64");
       const tossRes = await fetch("https://api.tosspayments.com/v1/payments/confirm", {
@@ -66,6 +67,7 @@ export async function POST(request: NextRequest) {
       if (tossData.status !== "DONE") {
         return NextResponse.json({ error: "결제가 완료되지 않았습니다." }, { status: 400 });
       }
+      paidAmount = tossData.totalAmount;
     }
 
     // 예약 결제 완료 처리
@@ -76,6 +78,8 @@ export async function POST(request: NextRequest) {
         paid_at: new Date().toISOString(),
         // 데모 매장은 실제 결제가 아니므로 payment_id를 비워서 정산/통신판매업 판매수량 집계 등 "실결제" 신호로 쓰이는 곳에서 자동 제외되게 한다
         payment_id: isDemoCompany ? null : paymentKey,
+        // 토스가 실제로 승인한 금액 — 정산은 이 값을 기준으로 한다
+        paid_amount: paidAmount,
         order_type: "link",
         payment_token: null,
         payment_link_expires_at: null,
