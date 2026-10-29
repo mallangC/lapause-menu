@@ -129,3 +129,31 @@ export async function PATCH(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
+
+// 삭제 — 적용 중인 매장이 있으면 막는다 (먼저 매장 관리에서 할인을 해제해야 함). 결제 이력은 남고 코드 연결만 끊긴다.
+export async function DELETE(req: NextRequest) {
+  if (!(await verifyOperator())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { id } = await req.json();
+  if (!id) return NextResponse.json({ error: "잘못된 요청입니다." }, { status: 400 });
+
+  const db = createAdminClient();
+  const { count } = await db
+    .from("company_subscriptions")
+    .select("company_id", { count: "exact", head: true })
+    .eq("promo_code_id", id);
+  if (count) {
+    return NextResponse.json(
+      { error: `이 코드로 할인받는 매장이 ${count}곳 있어 삭제할 수 없습니다. 매장 관리에서 할인을 먼저 해제하거나, 새 등록만 막으려면 사용 중지하세요.` },
+      { status: 400 }
+    );
+  }
+
+  const { error } = await db.from("promo_codes").delete().eq("id", id);
+  if (error) {
+    // 23503: 아직 참조하는 행이 있음 (삭제 SQL 미실행 상태에서 결제 이력이 이 코드를 가리키는 경우 등)
+    if (error.code === "23503") return NextResponse.json({ error: "이 코드를 참조하는 기록이 있어 삭제할 수 없습니다." }, { status: 400 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  return NextResponse.json({ ok: true });
+}

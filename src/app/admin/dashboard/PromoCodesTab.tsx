@@ -42,6 +42,9 @@ export default function PromoCodesTab() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<PromoCodeRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/operator/promo-codes")
@@ -104,6 +107,30 @@ export default function PromoCodesTab() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch("/api/operator/promo-codes", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: deleteTarget.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setDeleteError(data.error ?? "삭제 중 오류가 발생했습니다.");
+      } else {
+        setCodes((prev) => (prev ?? []).filter((c) => c.id !== deleteTarget.id));
+        setDeleteTarget(null);
+      }
+    } catch {
+      setDeleteError("네트워크 오류가 발생했습니다.");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -131,17 +158,18 @@ export default function PromoCodesTab() {
                 <th className="text-center px-5 py-3 font-medium whitespace-nowrap">적용 중</th>
                 <th className="text-center px-5 py-3 font-medium whitespace-nowrap">등록 마감</th>
                 <th className="text-center px-5 py-3 font-medium whitespace-nowrap">상태</th>
+                <th className="px-3 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {loadError && (
-                <tr><td colSpan={8} className="px-5 py-10 text-center text-red-400 text-sm">{loadError}</td></tr>
+                <tr><td colSpan={9} className="px-5 py-10 text-center text-red-400 text-sm">{loadError}</td></tr>
               )}
               {!loadError && codes === null && (
-                <tr><td colSpan={8} className="px-5 py-10 text-center text-gray-300 text-sm">불러오는 중…</td></tr>
+                <tr><td colSpan={9} className="px-5 py-10 text-center text-gray-300 text-sm">불러오는 중…</td></tr>
               )}
               {codes?.length === 0 && (
-                <tr><td colSpan={8} className="px-5 py-10 text-center text-gray-300 text-sm">만든 할인 코드가 없습니다.</td></tr>
+                <tr><td colSpan={9} className="px-5 py-10 text-center text-gray-300 text-sm">만든 할인 코드가 없습니다.</td></tr>
               )}
               {codes?.map((c) => {
                 const expired = !!c.expires_at && new Date(c.expires_at) < new Date();
@@ -178,6 +206,14 @@ export default function PromoCodesTab() {
                         {c.active ? "사용 중" : "중지됨"}
                       </button>
                     </td>
+                    <td className="px-3 py-3.5 text-center">
+                      <button
+                        onClick={() => { setDeleteTarget(c); setDeleteError(null); }}
+                        className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+                      >
+                        삭제
+                      </button>
+                    </td>
                   </tr>
                 );
               })}
@@ -185,6 +221,43 @@ export default function PromoCodesTab() {
           </table>
         </div>
       </div>
+
+      {/* 삭제 확인 모달 */}
+      {deleteTarget && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 space-y-4 shadow-xl">
+            <div>
+              <h3 className="text-base font-semibold text-gray-900">할인 코드 삭제</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                <span className="font-mono font-medium text-gray-700">{deleteTarget.code}</span> 코드를 삭제합니다. 삭제 후에는 되돌릴 수 없고, 결제 이력은 그대로 남습니다.
+              </p>
+              {deleteTarget.in_use_count > 0 && (
+                <p className="text-xs text-orange-500 bg-orange-50 rounded-lg px-3 py-2 mt-3">
+                  이 코드로 할인받는 매장이 {deleteTarget.in_use_count}곳 있어 삭제할 수 없습니다. 매장 관리에서 할인을 먼저 해제하거나, 새 등록만 막으려면 사용 중지하세요.
+                </p>
+              )}
+            </div>
+
+            {deleteError && <p className="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2">{deleteError}</p>}
+
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="flex-1 text-sm px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting || deleteTarget.in_use_count > 0}
+                className="flex-1 text-sm px-4 py-2.5 rounded-xl bg-red-500 text-white font-medium hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {deleting ? "삭제 중…" : "삭제 확인"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 생성 모달 */}
       {showForm && (
