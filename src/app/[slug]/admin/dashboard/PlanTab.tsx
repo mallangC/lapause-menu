@@ -34,11 +34,6 @@ export default function PlanTab({ companyId, customerName, plan, subscriptionPla
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
-  const [showRefundModal, setShowRefundModal] = useState(false);
-  const [refundType, setRefundType] = useState<"full" | "partial">("full");
-  const [refundReason, setRefundReason] = useState("");
-  const [refundError, setRefundError] = useState<string | null>(null);
-  const [refunding, setRefunding] = useState(false);
   const [showPolicy, setShowPolicy] = useState(false);
   // 코드 적용 직후 새로고침 없이 금액 안내가 바뀌도록 로컬 상태로 둔다
   const [promoState, setPromoState] = useState<AppliedPromo>(appliedPromo);
@@ -117,32 +112,6 @@ export default function PlanTab({ companyId, customerName, plan, subscriptionPla
       .eq("company_id", companyId);
     setLoading(false);
     router.refresh();
-  };
-
-  const handleRefund = async () => {
-    if (!refundReason.trim()) return;
-    setRefunding(true);
-    setRefundError(null);
-    try {
-      const res = await fetch("/api/billing/refund", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companyId, reason: refundReason.trim(), refundType }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setRefundError(data.error ?? "환불 처리 중 오류가 발생했습니다.");
-      } else {
-        setShowRefundModal(false);
-        setRefundReason("");
-        setSuccess(data.refunded ? "환불이 처리되었습니다." : data.message ?? "처리 완료");
-        setTimeout(() => router.refresh(), 1000);
-      }
-    } catch {
-      setRefundError("네트워크 오류가 발생했습니다.");
-    } finally {
-      setRefunding(false);
-    }
   };
 
   // ── 프리 플랜 ──
@@ -332,37 +301,14 @@ export default function PlanTab({ companyId, customerName, plan, subscriptionPla
         )}
       </div>
 
-      {/* ── 환불 버튼 ── */}
+      {/* ── 환불 안내 — 환불은 운영팀이 문의를 받아 환불 규정에 따라 처리 ── */}
       {subscriptionPlan !== null && !isInTrial && (
-        <div className="mt-4">
-          {plan === "annual" ? (
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => { setRefundType("partial"); setShowRefundModal(true); }}
-                disabled={loading}
-                className="text-xs text-gray-500 hover:text-orange-500 underline underline-offset-2 transition-colors disabled:opacity-50"
-              >
-                부분환불
-              </button>
-              <span className="text-gray-200">|</span>
-              <button
-                onClick={() => { setRefundType("full"); setShowRefundModal(true); }}
-                disabled={loading}
-                className="text-xs text-gray-500 hover:text-red-500 underline underline-offset-2 transition-colors disabled:opacity-50"
-              >
-                전체환불
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => { setRefundType("full"); setShowRefundModal(true); }}
-              disabled={loading}
-              className="text-xs text-gray-500 hover:text-red-500 underline underline-offset-2 transition-colors disabled:opacity-50"
-            >
-              환불
-            </button>
-          )}
-          <p className="text-[11px] text-gray-400 mt-1">환불 처리 후 구독이 해지됩니다.</p>
+        <div className="mt-4 p-3.5 rounded-xl bg-beige-50 border border-beige-200 text-[11px] text-gray-500 leading-relaxed space-y-1">
+          <p className="font-semibold text-gray-600">환불 문의</p>
+          <p>
+            구독 환불은 <a href="http://pf.kakao.com/_yHXlX" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 text-gold-600 hover:text-gold-700">카카오 채널</a> 또는 이메일(floaide.team@gmail.com)로 매장명과 사유를 보내주시면{" "}
+            <a href="/refund" target="_blank" className="underline underline-offset-2 hover:text-gray-700">환불 규정</a>에 따라 확인 후 처리해 드립니다.
+          </p>
         </div>
       )}
 
@@ -428,49 +374,6 @@ export default function PlanTab({ companyId, customerName, plan, subscriptionPla
         </div>
       )}
 
-      {/* 환불 확인 모달 */}
-      {showRefundModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => { setShowRefundModal(false); setRefundReason(""); setRefundError(null); }} />
-          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
-            <h3 className="text-sm font-semibold text-gray-900">
-              {refundType === "partial" ? "부분환불 요청" : "전체환불 요청"}
-            </h3>
-            {refundType === "partial" && (
-              <p className="text-xs text-gray-500 bg-beige-50 rounded-xl p-3">
-                사용일수를 기준으로 월 단위로 공제 후 남은 금액이 환불됩니다.<br />
-                (공제: 사용 개월수 × ₩{PLAN_PRICES.monthly.toLocaleString()})
-              </p>
-            )}
-            <div>
-              <label className="text-xs font-medium text-gray-500 mb-1.5 block">환불 사유</label>
-              <textarea
-                value={refundReason}
-                onChange={e => setRefundReason(e.target.value)}
-                placeholder="환불 사유를 입력하세요"
-                rows={3}
-                className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-gray-400 resize-none placeholder-gray-300"
-              />
-            </div>
-            {refundError && <p className="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2">{refundError}</p>}
-            <div className="flex gap-2 pt-1">
-              <button
-                onClick={() => { setShowRefundModal(false); setRefundReason(""); setRefundError(null); }}
-                className="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
-              >
-                취소
-              </button>
-              <button
-                onClick={handleRefund}
-                disabled={refunding || !refundReason.trim()}
-                className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-red-500 text-white hover:bg-red-600 disabled:opacity-50 transition-colors"
-              >
-                {refunding ? "처리 중..." : "환불 확인"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

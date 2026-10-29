@@ -69,22 +69,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 });
   }
 
-  // 운영자이거나, 해당 매장의 소유주 본인이면 허용
+  // 구독 환불은 운영자만 처리 — 사장님은 카카오 채널·이메일로 문의하면 운영팀이 환불 규정에 따라 처리한다
   const { data: profile } = await supabase
     .from("profiles")
     .select("role")
     .eq("user_id", user.id)
     .single();
-
-  if (profile?.role !== "operator") {
-    const { data: company } = await supabase
-      .from("companies")
-      .select("id")
-      .eq("id", companyId)
-      .eq("owner_id", user.id)
-      .single();
-    if (!company) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  if (profile?.role !== "operator") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   // refundType: "full" | "partial" (partial은 연간 부분환불)
   const isPartial = refundType === "partial";
@@ -112,8 +103,8 @@ export async function POST(req: NextRequest) {
       .eq("company_id", companyId)
       .eq("success", true)
       .eq("type", "charge")
-      .not("payment_id", "is", null)
-      .order("created_at", { ascending: false }),
+      .order("created_at", { ascending: false })
+      .limit(1),
     supabaseAdmin
       .from("billing_logs")
       .select("payment_id")
@@ -124,7 +115,10 @@ export async function POST(req: NextRequest) {
   ]);
 
   const refundedPaymentIds = new Set((refundLogs ?? []).map((r) => r.payment_id));
-  const targetCharge = (chargeLogs ?? []).find((c) => !refundedPaymentIds.has(c.payment_id)) ?? null;
+  // 환불 대상은 가장 최근 결제 1건뿐 — 이미 환불됐거나 0원(전액 할인·무료체험 시작)이면 환불할 결제가 없는 것으로 본다.
+  // (예전에는 '환불 안 된 결제 중 가장 최근'을 찾아서 반복 호출하면 과거 결제까지 차례로 환불될 수 있었음)
+  const latestCharge = chargeLogs?.[0] ?? null;
+  const targetCharge = latestCharge?.payment_id && !refundedPaymentIds.has(latestCharge.payment_id) ? latestCharge : null;
   const paymentKey = targetCharge?.payment_id ?? null;
   // 환불은 실제로 결제된 금액 기준 (할인 코드로 정가보다 적게 냈을 수 있음). 예전 로그에 금액이 없으면 정가로.
   const paidAmount = (targetCharge?.amount as number | null | undefined)

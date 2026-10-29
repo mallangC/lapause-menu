@@ -40,6 +40,7 @@ export default function StoreManagementTab({ stores }: Props) {
   const [refunding, setRefunding] = useState(false);
   const [refundError, setRefundError] = useState<string | null>(null);
   const [refundSuccess, setRefundSuccess] = useState<string | null>(null);
+  const [refundType, setRefundType] = useState<"full" | "partial">("full");
   const [suspendTarget, setSuspendTarget] = useState<StoreRow | null>(null);
   const [suspendReason, setSuspendReason] = useState("");
   const [suspending, setSuspending] = useState(false);
@@ -111,14 +112,16 @@ export default function StoreManagementTab({ stores }: Props) {
       const res = await fetch("/api/billing/refund", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companyId: refundTarget.id, reason: refundReason.trim() }),
+        body: JSON.stringify({ companyId: refundTarget.id, reason: refundReason.trim(), refundType }),
       });
       const data = await res.json();
 
       if (!res.ok) {
         setRefundError(data.error ?? "환불 처리 중 오류가 발생했습니다.");
       } else {
-        setRefundSuccess(data.refunded ? "환불 완료" : data.message ?? "처리 완료");
+        setRefundSuccess(data.refunded
+          ? (data.refundAmount != null ? `환불 완료 (₩${Number(data.refundAmount).toLocaleString()})` : "환불 완료")
+          : data.message ?? "처리 완료");
         setLocalStores(prev =>
           prev.map(s =>
             s.id === refundTarget.id
@@ -526,7 +529,7 @@ export default function StoreManagementTab({ stores }: Props) {
                             </button>
                             {store.billingKey && (
                               <button
-                                onClick={() => { setOpenMenuId(null); setRefundTarget(store); }}
+                                onClick={() => { setOpenMenuId(null); setRefundTarget(store); setRefundType(store.subscriptionPlan === "annual" ? "partial" : "full"); }}
                                 className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors"
                               >
                                 환불
@@ -909,6 +912,27 @@ export default function StoreManagementTab({ stores }: Props) {
 
             {!refundSuccess && (
               <>
+                {refundTarget.subscriptionPlan === "annual" && (
+                  <div className="space-y-2">
+                    <div className="flex bg-white border border-gray-200 rounded-xl overflow-hidden text-sm w-fit">
+                      {(["partial", "full"] as const).map(t => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => setRefundType(t)}
+                          className={`px-3 py-2 transition-colors ${refundType === t ? "bg-gray-900 text-white" : "text-gray-500 hover:text-gray-700"}`}
+                        >
+                          {t === "partial" ? "부분환불" : "전액환불"}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-gray-400 leading-relaxed">
+                      {refundType === "partial"
+                        ? "실제 결제 금액 − 사용 개월수(올림) × 월간 정가로 계산해 환불하고, 사용한 기간까지는 이용할 수 있게 둡니다."
+                        : "결제 금액 전체를 환불합니다. 환불 규정상 서비스 귀책·중복 결제 등에 한해 처리하세요."}
+                    </p>
+                  </div>
+                )}
                 <div>
                   <label className="text-xs font-medium text-gray-500 mb-1.5 block">환불 사유</label>
                   <textarea

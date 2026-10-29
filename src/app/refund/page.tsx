@@ -124,13 +124,23 @@ export default function RefundPage() {
               <p>구독은 언제든지 해지할 수 있으며, 해지 후에도 현재 결제된 구독 기간 만료일까지 서비스를 이용할 수 있습니다. 잔여 기간에 대한 환불은 위 항목의 환불 조건에 해당하는 경우에만 가능합니다.</p>
             </section>
 
-            <section className="p-6 space-y-3">
+            <section className="p-6 border-b border-beige-100 space-y-3">
               <h2 className="font-semibold text-gray-900 text-base">6. 환불 불가 사유</h2>
               <ul className="list-disc list-inside space-y-1.5">
                 <li>구독 기간이 시작된 이후 단순 변심</li>
                 <li>서비스를 실제로 이용한 경우 (부분환불 조건 해당 시 제외)</li>
                 <li>회원 본인의 귀책사유로 서비스 이용이 불가능해진 경우</li>
               </ul>
+            </section>
+
+            <section className="p-6 space-y-3">
+              <h2 className="font-semibold text-gray-900 text-base">7. 환불 신청 방법</h2>
+              <p>구독 환불은 아래 채널로 문의해 주시면 위 기준에 따라 확인 후 처리해 드립니다. 문의 시 매장명과 환불 사유를 함께 알려주세요.</p>
+              <ul className="space-y-1">
+                <li>카카오 채널: <a href="http://pf.kakao.com/_yHXlX" target="_blank" rel="noopener noreferrer" className="text-gray-800 underline underline-offset-2 hover:text-gold-600 transition-colors">카카오 채널 바로가기</a></li>
+                <li>이메일: <span className="text-gray-800">floaide.team@gmail.com</span></li>
+              </ul>
+              <p className="text-xs text-gray-400">환불이 완료되면 구독이 해지되며, 결제 수단에 따라 카드사 취소 반영까지 영업일 기준 3~7일이 걸릴 수 있습니다.</p>
             </section>
           </div>
         </div>
