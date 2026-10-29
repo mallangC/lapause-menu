@@ -1688,7 +1688,8 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
               </div>
 
               {/* ── 오른쪽: 고정 사이드 패널 (PC 전용) ── */}
-              <div className="hidden md:flex md:flex-col md:w-80 md:shrink-0 md:self-start md:sticky md:top-[100px]">
+              {/* top: 헤더(80px) + 단계 표시 바(약 49px) 아래로 여백을 두고 고정 — 더 작으면 단계 바에 위가 가려짐 */}
+              <div className="hidden md:flex md:flex-col md:w-80 md:shrink-0 md:self-start md:sticky md:top-[150px]">
                 <div className="bg-white border border-gray-100 overflow-hidden">
                   {/* 결제 금액 요약 */}
                   {selectedProduct && (
