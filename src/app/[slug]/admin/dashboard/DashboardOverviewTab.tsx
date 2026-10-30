@@ -99,6 +99,10 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
   const [todayItems, setTodayItems] = useState<TodayItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  // URL 복사 → 올릴 곳(채널) 선택 창
+  const [showCopyModal, setShowCopyModal] = useState(false);
+  const [customChannel, setCustomChannel] = useState("");
+  const [showCustomInput, setShowCustomInput] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const supabase = createClient();
@@ -149,14 +153,28 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
 
   const menuUrl = typeof window !== "undefined" ? `${window.location.origin}/${slug}` : `/${slug}`;
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(menuUrl);
+  // 채널별 링크 — ?utm_source= 를 붙여 두면 어느 채널에서 들어와 주문했는지 통계 탭에 잡힌다
+  const channelUrl = (source: string) => `${menuUrl}?utm_source=${source}`;
+
+  const openCopyModal = () => {
+    setCustomChannel("");
+    setShowCustomInput(false);
+    setShowCopyModal(true);
+  };
+
+  const copyLink = (url: string) => {
+    navigator.clipboard.writeText(url);
+    setShowCopyModal(false);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // 기타 채널 이름은 영문 소문자·숫자·-·_ 만 (통계에서 같은 채널끼리 묶이도록)
+  const customValid = /^[a-z0-9_-]{1,30}$/.test(customChannel);
+
   const handleShowQr = async () => {
-    const url = await QRCode.toDataURL(menuUrl, { width: 512, margin: 2 });
+    // 매장에 붙이는 QR은 오프라인 유입으로 따로 집계
+    const url = await QRCode.toDataURL(channelUrl("qr"), { width: 512, margin: 2 });
     setQrDataUrl(url);
     setShowQrModal(true);
   };
@@ -221,7 +239,7 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
             QR 코드
           </button>
           <button
-            onClick={handleCopy}
+            onClick={openCopyModal}
             className="px-3 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-600 hover:bg-gray-50 transition-colors"
           >
             {copied ? "복사됨 ✓" : "URL 복사"}
@@ -229,12 +247,85 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
         </div>
       </div>
 
+      {/* URL 복사 — 링크를 올릴 곳을 고르면 출처(?utm_source=)가 붙은 주소를 복사 */}
+      {showCopyModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setShowCopyModal(false)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-xs p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900">링크를 올릴 곳을 선택해주세요</h3>
+              <p className="text-xs text-gray-600 mt-1 leading-relaxed">
+                이 주소로 들어온 손님만 통계 탭 &lsquo;유입 분석&rsquo;에 채널별 방문·주문으로 집계돼요. 기본 주소로 들어오면 &lsquo;직접 유입&rsquo;으로만 잡혀요.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              {([
+                ["kakao", "카카오톡"],
+                ["instagram", "인스타그램"],
+                ["naver_blog", "블로그"],
+                ["naver", "네이버"],
+              ] as const).map(([source, label]) => (
+                <button
+                  key={source}
+                  type="button"
+                  onClick={() => copyLink(channelUrl(source))}
+                  className="py-2.5 rounded-xl border border-gray-200 text-sm text-gray-700 hover:border-gold-400 hover:bg-gold-50 transition-colors"
+                >
+                  {label}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => copyLink(menuUrl)}
+                className="py-2.5 rounded-xl border border-gray-200 text-sm text-gray-700 hover:border-gold-400 hover:bg-gold-50 transition-colors"
+              >
+                기본 주소
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowCustomInput((v) => !v)}
+                className={`py-2.5 rounded-xl border text-sm transition-colors ${showCustomInput ? "border-gold-400 bg-gold-50 text-gold-700" : "border-gray-200 text-gray-700 hover:border-gold-400 hover:bg-gold-50"}`}
+              >
+                기타 (직접 입력)
+              </button>
+            </div>
+
+            {showCustomInput && (
+              <div className="space-y-1.5">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={customChannel}
+                    onChange={(e) => setCustomChannel(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
+                    onKeyDown={(e) => { if (e.key === "Enter" && customValid) copyLink(channelUrl(customChannel)); }}
+                    placeholder="예) youtube, band"
+                    maxLength={30}
+                    autoFocus
+                    className="flex-1 min-w-0 px-3 py-2 border border-gray-200 rounded-lg text-sm font-mono focus:outline-none focus:border-gold-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => copyLink(channelUrl(customChannel))}
+                    disabled={!customValid}
+                    className="px-3 py-2 rounded-lg bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors disabled:opacity-40"
+                  >
+                    복사
+                  </button>
+                </div>
+                <p className="text-[11px] text-gray-400">영어 소문자·숫자로 입력해주세요. (한글·띄어쓰기는 입력되지 않아요)</p>
+              </div>
+            )}
+
+          </div>
+        </div>
+      )}
+
       {showQrModal && qrDataUrl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setShowQrModal(false)}>
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-xs p-6 space-y-4 text-center" onClick={(e) => e.stopPropagation()}>
             <div>
               <h3 className="text-sm font-semibold text-gray-900">매장 QR 코드</h3>
-              <p className="text-xs text-gray-400 mt-1 break-all font-mono">{menuUrl}</p>
+              <p className="text-xs text-gray-400 mt-1 break-all font-mono">{channelUrl("qr")}</p>
             </div>
             <img src={qrDataUrl} alt="매장 QR 코드" className="w-full rounded-xl border border-gray-100" />
             <div className="flex gap-2">

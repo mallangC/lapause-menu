@@ -9,6 +9,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import DaumPostcodeEmbed from "react-daum-postcode";
 import StoreHeader from "@/components/main/StoreHeader";
 import OrderCompleteHeader from "@/components/OrderCompleteHeader";
+import { readTrafficSource } from "@/lib/trafficSource";
 import AgreementCheckbox from "@/components/AgreementCheckbox";
 import TossPaymentWidget, { TossPaymentWidgetHandle } from "@/components/TossPaymentWidget";
 import { useCart, CartItem } from "@/hooks/useCart";
@@ -214,6 +215,8 @@ export default function CheckoutClient({
             desiredDate: draft.desiredDate, desiredTime: draft.desiredTime,
             requests: draft.requests, finalPrice: draft.finalPrice,
             paymentKey: initialPaymentKey, paymentOrderId: initialOrderId, paymentAmount: initialAmount,
+            // 이번 방문에서 기억해 둔 유입 출처 (?utm_source= / ?from=)
+            trafficSource: readTrafficSource(slug),
           }),
         });
         const data = await res.json();

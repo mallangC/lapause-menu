@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
+import TrafficStats from "./TrafficStats";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
   PieChart, Pie, Legend, LineChart, Line,
@@ -376,6 +377,9 @@ export default function StatsTab({ companyId, refreshKey }: Props) {
       </section>
 
       {/* 채널별 / 상품 유형 순위 */}
+      {/* 유입 분석 — 채널별 방문·주문·전환율, 주문 경로별 */}
+      <TrafficStats companyId={companyId} refreshKey={refreshKey} />
+
       <section className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
         <div className="bg-white -mx-4 md:mx-0 py-4 px-4 md:rounded-2xl md:px-5">
           <h3 className="text-sm font-semibold text-gray-500 mb-3 md:mb-4">채널별 비율</h3>

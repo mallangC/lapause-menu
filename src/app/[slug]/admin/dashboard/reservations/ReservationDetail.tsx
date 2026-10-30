@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { ORDER_PATH_LABEL, trafficSourceLabel, type OrderPath } from "@/lib/trafficSource";
 import { Reservation } from "./types";
 import { STATUS_OPTIONS } from "./constants";
 import { formatDateTime, formatPhone } from "./utils";
@@ -499,7 +500,8 @@ export default function ReservationDetail({
                   <CopyButton text={r.orderer_phone} />
                 </span>
               </Row>
-              <Row label="유입 경로">{r.source ?? "직접 유입"}</Row>
+              <Row label="주문 경로">{ORDER_PATH_LABEL[r.order_path as OrderPath] ?? "—"}</Row>
+              <Row label="유입">{trafficSourceLabel(r.traffic_source)}</Row>
             </SectionCard>
 
             {/* 상품 목록 */}

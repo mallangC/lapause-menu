@@ -1,7 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
-import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { Product } from "@/types";
@@ -50,13 +48,6 @@ export default function MainLayout({
   customSeasons = [],
   consultEnabled = false,
 }: MainLayoutProps) {
-  const searchParams = useSearchParams();
-
-  useEffect(() => {
-    const from = searchParams.get("from");
-    if (from) sessionStorage.setItem(`consult_source_${slug}`, from);
-  }, [searchParams, slug]);
-
   const hasChannels = locationUrl || kakaoChannelUrl || instagramUrl || youtubeUrl;
 
   const productTypeList = [...PRODUCT_TYPES.filter((t) => !hiddenProductTypes.includes(t)), ...customProductTypes];

@@ -16,6 +16,7 @@ import { resolveDayHours, type DateOverrides } from "@/lib/businessHours";
 import FlowerNoticeModal from "@/components/FlowerNoticeModal";
 import StoreHeader from "@/components/main/StoreHeader";
 import OrderCompleteHeader from "@/components/OrderCompleteHeader";
+import { readTrafficSource } from "@/lib/trafficSource";
 
 registerLocale("ko", ko);
 
@@ -76,7 +77,10 @@ interface DraftData {
   cancellationAgreed: boolean;
   noticeAgreed: boolean;
   finalPrice: number;
+  /** 유입 출처 (?utm_source= / ?from=) */
   source?: string | null;
+  /** 주문 경로 — 상품 상세에서 바로 예약했으면 product_detail, 처음부터 고른 맞춤 주문이면 consult */
+  orderPath?: "consult" | "product_detail";
   quantity?: number;
   messageCardCount?: number;
   shoppingBagCount?: number;
@@ -298,7 +302,6 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
   const [shoppingBagCount, setShoppingBagCount] = useState(0);
   const [preservativeCount, setPreservativeCount] = useState(0);
   const [messageCardContents, setMessageCardContents] = useState<string[]>([]);
-  const sourceRef = useRef<string | null>(null);
   const [widgetReady, setWidgetReady] = useState(false);
   const widgetRef = useRef<TossPaymentWidgetHandle>(null);
   const [paymentOrderId] = useState(() => `order${Date.now()}`);
@@ -308,13 +311,6 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
     window.scrollTo(0, 0);
   }, [step]);
 
-  useEffect(() => {
-    const stored = sessionStorage.getItem(`consult_source_${slug}`);
-    if (stored) {
-      sourceRef.current = stored;
-      sessionStorage.removeItem(`consult_source_${slug}`);
-    }
-  }, [slug]);
 
   useEffect(() => {
     const today = new Date();
@@ -409,7 +405,8 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
             paymentKey: returnedPaymentKey,
             paymentOrderId: returnedOrderId,
             paymentAmount: returnedAmount,
-            source: draft.source ?? null,
+            trafficSource: draft.source ?? null,
+            orderPath: draft.orderPath ?? "consult",
           }),
         });
         const data = await res.json();
@@ -518,7 +515,8 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
         cancellationAgreed,
         noticeAgreed,
         finalPrice,
-        source: sourceRef.current,
+        source: readTrafficSource(slug),
+        orderPath: preselectedProduct ? "product_detail" : "consult",
       } satisfies DraftData));
 
       await widgetRef.current?.requestPayment({

@@ -81,6 +81,8 @@ export async function POST(request: NextRequest) {
         // 토스가 실제로 승인한 금액 — 정산은 이 값을 기준으로 한다
         paid_amount: paidAmount,
         order_type: "link",
+        // 사장님이 추가(manual)한 예약이 링크로 결제 완료되면 주문 경로를 링크결제로 바꾼다
+        order_path: "pay_link",
         payment_token: null,
         payment_link_expires_at: null,
       })

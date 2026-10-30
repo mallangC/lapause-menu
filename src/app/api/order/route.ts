@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendReservationConfirmedOwner } from "@/lib/solapi";
 import { cancelTossPayment, cartItemsTotal, isPastPickup, isValidDeliveryPart, loadCompanyProducts, loadOptionPrices } from "@/lib/orderPricing";
+import { normalizeTrafficSource } from "@/lib/trafficSource";
 
 interface CartItemPayload {
   productId: string;
@@ -33,6 +34,7 @@ interface OrderBody {
   paymentKey?: string;
   paymentOrderId?: string;
   paymentAmount?: number;
+  trafficSource?: string | null;
 }
 
 export async function POST(request: NextRequest) {
@@ -55,7 +57,8 @@ export async function POST(request: NextRequest) {
     // 데모 매장 여부 확인 (클라이언트가 보낸 값이 아니라 서버에서 직접 조회)
     let isDemoCompany = false;
     if (companyId) {
-      const { data: companyRow } = await supabase.from("companies").select("is_demo").eq("id", companyId).single();
+      // 로그인 상태·RLS와 관계없이 정확히 읽도록 서버 전용 클라이언트로 조회 (못 읽으면 데모가 아닌 것으로 판단돼 알림톡이 나감)
+      const { data: companyRow } = await adminClient.from("companies").select("is_demo").eq("id", companyId).single();
       isDemoCompany = companyRow?.is_demo ?? false;
     }
 
@@ -192,6 +195,8 @@ export async function POST(request: NextRequest) {
       address_detail: delivery?.addressDetail || null,
       source: "cart",
       order_type: "product",
+      order_path: "cart",
+      traffic_source: normalizeTrafficSource(body.trafficSource) ?? "direct",
     }).select("id");
 
     if (insertError) {

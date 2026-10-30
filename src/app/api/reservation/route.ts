@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendReservationConfirmedOwner } from "@/lib/solapi";
 import { cancelTossPayment, consultMinimumTotal, isPastPickup, loadCompanyProducts, loadOptionPrices } from "@/lib/orderPricing";
+import { normalizeTrafficSource } from "@/lib/trafficSource";
 
 interface ReservationBody {
   slug: string;
@@ -50,7 +51,10 @@ interface ReservationBody {
     address: string;
     addressDetail: string;
   } | null;
-  source?: string | null;
+  /** 유입 출처 (?utm_source= / ?from=) */
+  trafficSource?: string | null;
+  /** 상품 상세에서 바로 예약(product_detail) / 처음부터 고른 맞춤 주문(consult) */
+  orderPath?: string | null;
 }
 
 export async function POST(request: NextRequest) {
@@ -73,7 +77,8 @@ export async function POST(request: NextRequest) {
     // 데모 매장 여부 확인 (클라이언트가 보낸 값이 아니라 서버에서 직접 조회)
     let isDemoCompany = false;
     if (companyId) {
-      const { data: companyRow } = await supabase.from("companies").select("is_demo").eq("id", companyId).single();
+      // 로그인 상태·RLS와 관계없이 정확히 읽도록 서버 전용 클라이언트로 조회 (못 읽으면 데모가 아닌 것으로 판단돼 알림톡이 나감)
+      const { data: companyRow } = await adminClient.from("companies").select("is_demo").eq("id", companyId).single();
       isDemoCompany = companyRow?.is_demo ?? false;
     }
 
@@ -175,7 +180,7 @@ export async function POST(request: NextRequest) {
     // DB에 예약 저장
     let savedReservationId: string | null = null;
     if (companyId) {
-      const { form, orderer, delivery, finalPrice, source } = body;
+      const { form, orderer, delivery, finalPrice } = body;
       // 손님은 예약 테이블에 직접 쓸 수 없으므로 서버 전용 클라이언트로 저장
       const { data: insertData, error: insertError } = await adminClient.from("reservations").insert({
         company_id: companyId,
@@ -217,8 +222,9 @@ export async function POST(request: NextRequest) {
         recipient_phone: delivery?.recipientPhone || null,
         address: delivery?.address || null,
         address_detail: delivery?.addressDetail || null,
-        source: source || null,
         order_type: "consult",
+        order_path: body.orderPath === "product_detail" ? "product_detail" : "consult",
+        traffic_source: normalizeTrafficSource(body.trafficSource) ?? "direct",
       }).select("id");
 
       if (insertError) {

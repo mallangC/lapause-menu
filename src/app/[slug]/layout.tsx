@@ -1,4 +1,5 @@
 import { getMenuData } from "@/lib/menuCache";
+import TrafficTracker from "@/components/main/TrafficTracker";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -12,10 +13,14 @@ export default async function SlugLayout({ params, children }: Props) {
 
   const isDemo = menu?.company.is_demo ?? false;
 
-  if (!isDemo) return <>{children}</>;
+  // 유입 출처 기억 + 방문 수 기록 (관리자·결제 링크 페이지는 컴포넌트 안에서 제외)
+  const tracker = menu ? <TrafficTracker slug={slug} /> : null;
+
+  if (!isDemo) return <>{tracker}{children}</>;
 
   return (
     <>
+      {tracker}
       <div className="sticky top-0 z-[60] bg-red-600 text-white text-center text-xs font-semibold py-1.5 px-2 leading-snug tracking-wide">
         DEMO 모드 — 실제 결제가 이루어지지 않습니다
       </div>
