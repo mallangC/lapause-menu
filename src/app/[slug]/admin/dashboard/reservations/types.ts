@@ -41,7 +41,6 @@ export interface Reservation {
   address_detail: string | null;
   customer_profile_id: string | null;
   reference_images: string[] | null;
-  source: string | null;
   /** 주문 경로: cart / product_detail / consult / manual / pay_link */
   order_path?: string | null;
   /** 유입 출처: instagram / naver / kakao / qr / direct ... (예전 주문은 null) */

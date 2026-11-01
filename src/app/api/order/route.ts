@@ -193,7 +193,6 @@ export async function POST(request: NextRequest) {
       recipient_phone: delivery?.recipientPhone || null,
       address: delivery?.address || null,
       address_detail: delivery?.addressDetail || null,
-      source: "cart",
       order_type: "product",
       order_path: "cart",
       traffic_source: normalizeTrafficSource(body.trafficSource) ?? "direct",
