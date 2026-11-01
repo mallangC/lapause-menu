@@ -11,6 +11,7 @@ import StoreManagementTab from "./StoreManagementTab";
 import BillingLogsTab, { BillingLog } from "./BillingLogsTab";
 import PromoCodesTab from "./PromoCodesTab";
 import ReservationLogsTab, { ReservationLog } from "./ReservationLogsTab";
+import ConsultAnalyticsTab from "./ConsultAnalyticsTab";
 
 interface Company {
   id: string;
@@ -69,7 +70,7 @@ const PIE_COLORS = ["#c9a96e", "#60a5fa", "#34d399", "#a87c4a"];
 export default function OperatorDashboardClient({ companies, reservations, products, billingLogs, reservationLogs }: Props) {
   const router = useRouter();
   const supabase = createClient();
-  const [activeTab, setActiveTab] = useState<"overview" | "stores" | "billing" | "promoCodes" | "settlements" | "verification" | "reservationLogs">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "stores" | "billing" | "promoCodes" | "settlements" | "verification" | "reservationLogs" | "consultAnalytics">("overview");
   const [gmvRange, setGmvRange] = useState<"month" | "6m" | "1y">("month");
 
   const now = new Date();
@@ -285,6 +286,7 @@ export default function OperatorDashboardClient({ companies, reservations, produ
             { key: "settlements", label: "정산 관리" },
             { key: "verification", label: "검증 관리" },
             { key: "reservationLogs", label: "예약 로그" },
+            { key: "consultAnalytics", label: "맞춤주문 분석" },
           ] as const).map(tab => (
             <button
               key={tab.key}
@@ -346,6 +348,10 @@ export default function OperatorDashboardClient({ companies, reservations, produ
 
         {activeTab === "reservationLogs" && (
           <ReservationLogsTab logs={reservationLogs} />
+        )}
+
+        {activeTab === "consultAnalytics" && (
+          <ConsultAnalyticsTab companies={companies} />
         )}
 
         {activeTab === "overview" && (<>
