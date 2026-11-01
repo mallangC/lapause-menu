@@ -153,6 +153,11 @@ export default function SetupForm({ initialOwnerName = "", initialOwnerPhone = "
     router.push(wasPending ? `/${slug}/admin/onboarding` : `/${slug}/admin/dashboard`);
   };
 
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    window.location.href = "/";
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       {error && (
@@ -267,6 +272,16 @@ export default function SetupForm({ initialOwnerName = "", initialOwnerPhone = "
       >
         {loading ? "저장 중..." : "시작하기"}
       </button>
+
+      <div className="text-center">
+        <button
+          type="button"
+          onClick={handleSignOut}
+          className="text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2 transition-colors"
+        >
+          로그아웃
+        </button>
+      </div>
     </form>
   );
 }
