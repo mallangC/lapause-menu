@@ -1078,7 +1078,8 @@ export default function Landing() {
             <div className="flex gap-6">
               <a href="/terms" className="text-[12px] text-neutral-400 hover:text-neutral-600 transition-colors">이용약관</a>
               <a href="/privacy" className="text-[12px] text-neutral-400 hover:text-neutral-600 transition-colors">개인정보처리방침</a>
-              <a href="/refund" className="text-[12px] text-neutral-400 hover:text-neutral-600 transition-colors">환불정책</a>
+              <a href="/refund/subscription" className="text-[12px] text-neutral-400 hover:text-neutral-600 transition-colors">구독 환불정책</a>
+              <a href="/refund" className="text-[12px] text-neutral-400 hover:text-neutral-600 transition-colors">주문 환불정책</a>
             </div>
           </div>
           {/* 사업자 정보 */}

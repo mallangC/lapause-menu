@@ -132,7 +132,7 @@ export default function PlanSelectClient({ companyId, slug, customerName, trialE
         />
         <span className="text-xs text-gray-500 leading-relaxed">
           구독 시작 즉시 서비스 이용이 개시되며,{" "}
-          <Link href="/refund" target="_blank" className="underline text-gold-600 hover:text-gold-700">환불 정책</Link>
+          <Link href="/refund/subscription" target="_blank" className="underline text-gold-600 hover:text-gold-700">구독 환불 정책</Link>
           에 따라 「전자상거래법」 제17조 제2항에 의해 결제 후 청약 철회가 제한될 수 있음을 확인하고 동의합니다. <span className="text-red-400">(필수)</span>
         </span>
       </label>

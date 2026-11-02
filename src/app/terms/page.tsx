@@ -78,8 +78,8 @@ export default function TermsPage() {
 
           <section className="p-6 border-b border-beige-100 space-y-3">
             <h2 className="font-semibold text-gray-900 text-base">6. 환불 정책</h2>
-            <p>구독 결제는 결제 즉시 서비스 이용이 시작되므로 환불이 불가합니다.</p>
-            <p className="text-gray-400 text-xs">회원이 판매한 상품에 대한 구매자의 환불은 해당 회원이 책임지고 처리합니다.</p>
+            <p>구독 결제의 환불은 <Link href="/refund/subscription" className="underline underline-offset-2 hover:text-gray-800">구독 환불 정책</Link>에 따릅니다.</p>
+            <p className="text-gray-400 text-xs">회원이 판매한 상품에 대한 구매자의 환불은 해당 회원이 책임지고 처리하며, 구매자에게는 <Link href="/refund" className="underline underline-offset-2 hover:text-gray-600">주문 환불 정책</Link>이 적용됩니다.</p>
           </section>
 
           <section className="p-6 border-b border-beige-100 space-y-3">
