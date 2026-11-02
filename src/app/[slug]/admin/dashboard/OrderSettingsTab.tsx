@@ -278,354 +278,357 @@ export default function OrderSettingsTab({ companyId, plan: _plan, settings, onS
   const disabledByConsult = consultEnabled;
 
   return (
-    <div className="max-w-md">
-      <h2 className="text-xl font-medium text-gray-900 mb-6">판매 신청</h2>
-
-      {!mailOrderNumber && (
-        <div className={`mb-5 p-4 rounded-xl border flex items-center justify-between gap-3 ${
-          soldCount >= 31 ? "bg-red-50 border-red-200" : "bg-yellow-50 border-yellow-200"
-        }`}>
-          <div>
-            <p className={`text-sm font-semibold ${soldCount >= 31 ? "text-red-700" : "text-yellow-700"}`}>현재 통신판매업 신고가 되어있지 않습니다</p>
-            <p className={`text-xs mt-0.5 ${soldCount >= 31 ? "text-red-500" : "text-yellow-600"}`}>
-              {soldCount >= 50
-                ? "판매 수량이 50개를 초과해 판매가 정지되었습니다. 통신판매업 신고번호를 등록해주세요."
-                : soldCount >= 31
-                ? "판매 수량이 31개를 넘었습니다. 50개 판매 시 자동으로 판매가 정지됩니다. 통신판매업 신고번호를 등록해주세요."
-                : "신고번호를 등록하지 않으면 50개 판매 시 판매가 자동으로 정지됩니다."}
-            </p>
-          </div>
-          <span className={`shrink-0 text-sm font-bold ${soldCount >= 31 ? "text-red-600" : "text-yellow-700"}`}>{Math.min(soldCount, 50)}/50</span>
-        </div>
-      )}
-
-      <form onSubmit={(e) => { e.preventDefault(); saveBtnRef.current?.trigger(); }} className="space-y-5">
-        {error && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
-        )}
-
-        <div className="border border-gray-200 rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <h3 className="text-sm font-semibold text-gray-800">예약 알림 정보</h3>
-            {consultEnabled && (
-              <span className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">맞춤 주문 활성화 중 — 수정 불가</span>
-            )}
-          </div>
-          <p className="text-xs text-gray-400 mb-3">맞춤 주문 기능 활성화 및 카카오 알림톡 발송에 사용됩니다.</p>
-
-          <div className={`space-y-3 ${disabledByConsult ? "opacity-50 pointer-events-none select-none" : ""}`}>
-            {/* 전화번호 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">매장 전화번호</label>
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(formatPhone(e.target.value))}
-                placeholder="010-1234-5678"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
-              />
-              <p className="text-xs text-gray-400 mt-1.5">따로 매장 전화번호가 없다면 핸드폰번호를 다시 입력해주세요.</p>
+    <div className="space-y-4">
+      <h2 className="text-xl font-medium text-gray-900">판매 신청</h2>
+      <div className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:p-6">
+        <div className="max-w-md">
+          {!mailOrderNumber && (
+            <div className={`mb-5 p-4 rounded-xl border flex items-center justify-between gap-3 ${
+              soldCount >= 31 ? "bg-red-50 border-red-200" : "bg-yellow-50 border-yellow-200"
+            }`}>
+              <div>
+                <p className={`text-sm font-semibold ${soldCount >= 31 ? "text-red-700" : "text-yellow-700"}`}>현재 통신판매업 신고가 되어있지 않습니다</p>
+                <p className={`text-xs mt-0.5 ${soldCount >= 31 ? "text-red-500" : "text-yellow-600"}`}>
+                  {soldCount >= 50
+                    ? "판매 수량이 50개를 초과해 판매가 정지되었습니다. 통신판매업 신고번호를 등록해주세요."
+                    : soldCount >= 31
+                    ? "판매 수량이 31개를 넘었습니다. 50개 판매 시 자동으로 판매가 정지됩니다. 통신판매업 신고번호를 등록해주세요."
+                    : "신고번호를 등록하지 않으면 50개 판매 시 판매가 자동으로 정지됩니다."}
+                </p>
+              </div>
+              <span className={`shrink-0 text-sm font-bold ${soldCount >= 31 ? "text-red-600" : "text-yellow-700"}`}>{Math.min(soldCount, 50)}/50</span>
             </div>
+          )}
 
-            {/* 주소 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">매장 주소</label>
-              <div className="space-y-2">
-                <div className="flex gap-2">
+          <form onSubmit={(e) => { e.preventDefault(); saveBtnRef.current?.trigger(); }} className="space-y-5">
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
+            )}
+
+            <div className="border border-gray-200 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="text-sm font-semibold text-gray-800">예약 알림 정보</h3>
+                {consultEnabled && (
+                  <span className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">맞춤 주문 활성화 중 — 수정 불가</span>
+                )}
+              </div>
+              <p className="text-xs text-gray-400 mb-3">맞춤 주문 기능 활성화 및 카카오 알림톡 발송에 사용됩니다.</p>
+
+              <div className={`space-y-3 ${disabledByConsult ? "opacity-50 pointer-events-none select-none" : ""}`}>
+                {/* 전화번호 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">매장 전화번호</label>
                   <input
-                    type="text"
-                    value={address}
-                    readOnly
-                    onClick={() => setShowPostcode(true)}
-                    placeholder="주소 검색을 눌러주세요"
-                    className="flex-1 min-w-0 border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500 cursor-pointer"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPostcode(true)}
-                    className="shrink-0 px-3 py-2.5 rounded-lg border border-gray-300 text-sm text-gray-600 hover:border-gray-500 bg-white transition-colors whitespace-nowrap"
-                  >
-                    찾기
-                  </button>
-                </div>
-                {showAddressDetail && (
-                  <input
-                    type="text"
-                    value={addressDetail}
-                    onChange={(e) => setAddressDetail(e.target.value)}
-                    placeholder="상세주소 (동/호수 등)"
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(formatPhone(e.target.value))}
+                    placeholder="010-1234-5678"
                     className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
                   />
-                )}
-                {showPostcode && (
-                  <div className="border border-gray-200 rounded-xl overflow-hidden">
-                    <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-200">
-                      <span className="text-xs text-gray-500">주소 검색</span>
-                      <button type="button" onClick={() => setShowPostcode(false)} className="text-gray-400 hover:text-gray-600 text-sm">✕</button>
+                  <p className="text-xs text-gray-400 mt-1.5">따로 매장 전화번호가 없다면 핸드폰번호를 다시 입력해주세요.</p>
+                </div>
+
+                {/* 주소 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">매장 주소</label>
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={address}
+                        readOnly
+                        onClick={() => setShowPostcode(true)}
+                        placeholder="주소 검색을 눌러주세요"
+                        className="flex-1 min-w-0 border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500 cursor-pointer"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPostcode(true)}
+                        className="shrink-0 px-3 py-2.5 rounded-lg border border-gray-300 text-sm text-gray-600 hover:border-gray-500 bg-white transition-colors whitespace-nowrap"
+                      >
+                        찾기
+                      </button>
                     </div>
-                    <DaumPostcodeEmbed
-                      onComplete={(data) => {
-                        setAddress(data.roadAddress || data.jibunAddress);
-                        setAddressDetail("");
-                        setShowPostcode(false);
-                        setShowAddressDetail(true);
-                      }}
-                      style={{ height: 400 }}
-                    />
+                    {showAddressDetail && (
+                      <input
+                        type="text"
+                        value={addressDetail}
+                        onChange={(e) => setAddressDetail(e.target.value)}
+                        placeholder="상세주소 (동/호수 등)"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
+                      />
+                    )}
+                    {showPostcode && (
+                      <div className="border border-gray-200 rounded-xl overflow-hidden">
+                        <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-200">
+                          <span className="text-xs text-gray-500">주소 검색</span>
+                          <button type="button" onClick={() => setShowPostcode(false)} className="text-gray-400 hover:text-gray-600 text-sm">✕</button>
+                        </div>
+                        <DaumPostcodeEmbed
+                          onComplete={(data) => {
+                            setAddress(data.roadAddress || data.jibunAddress);
+                            setAddressDetail("");
+                            setShowPostcode(false);
+                            setShowAddressDetail(true);
+                          }}
+                          style={{ height: 400 }}
+                        />
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            </div>
-
-            {/* 은행 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">은행</label>
-              <input
-                type="text"
-                value={bankName}
-                onChange={(e) => setBankName(e.target.value)}
-                placeholder="예: 국민은행"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
-              />
-            </div>
-
-            {/* 계좌번호 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">계좌번호</label>
-              <input
-                type="text"
-                value={bankAccount}
-                onChange={(e) => setBankAccount(e.target.value)}
-                placeholder="예: 000-0000-0000-00"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
-              />
-            </div>
-
-            {/* 예금주 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">예금주</label>
-              <input
-                type="text"
-                value={bankHolder}
-                onChange={(e) => setBankHolder(e.target.value)}
-                placeholder="예: 홍길동"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
-              />
-            </div>
-          </div>
-          <p className="text-xs text-gray-400 mt-3">계좌번호를 잘못 적어서 생기는 불이익은 책임지지 않습니다.</p>
-        </div>
-
-        {/* 통장사본 */}
-        <div className={`border border-gray-200 rounded-xl p-4${disabledByConsult ? " opacity-50 pointer-events-none select-none" : ""}`}>
-          <h3 className="text-sm font-semibold text-gray-800 mb-1">통장사본</h3>
-          <p className="text-xs text-gray-400 mb-3">정산 처리를 위해 계좌 확인용으로 사용됩니다.</p>
-          {bankAccountImageUrl ? (
-            <div className="flex items-center gap-3">
-              <button type="button" onClick={handleViewBankDoc} className="text-xs text-blue-500 hover:underline">통장사본 확인</button>
-              <button type="button" onClick={() => setBankAccountImageUrl(null)} className="text-xs text-gray-400 hover:text-red-400">삭제</button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => bankImageInputRef.current?.click()}
-              disabled={bankImageUploading}
-              className="px-4 py-2 border border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-gray-500 hover:text-gray-700 transition-colors disabled:opacity-50"
-            >
-              {bankImageUploading ? "업로드 중..." : "+ 통장사본 업로드"}
-            </button>
-          )}
-          <input ref={bankImageInputRef} type="file" accept="image/*,application/pdf" onChange={handleBankImageUpload} className="hidden" />
-        </div>
-
-        {/* 사업자 정보 */}
-        <div className={`border border-gray-200 rounded-xl p-4${disabledByConsult ? " opacity-50 pointer-events-none select-none" : ""}`}>
-          <h3 className="text-sm font-semibold text-gray-800 mb-3">사업자 정보</h3>
-          <div className="space-y-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">사업자등록번호</label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={businessNumber}
-                  onChange={(e) => {
-                    const raw = e.target.value.replace(/\D/g, "").slice(0, 10);
-                    const formatted = raw.length <= 3 ? raw : raw.length <= 5 ? `${raw.slice(0, 3)}-${raw.slice(3)}` : `${raw.slice(0, 3)}-${raw.slice(3, 5)}-${raw.slice(5)}`;
-                    setBusinessNumber(formatted);
-                    setBusinessVerifiedAt(null);
-                    setBusinessStatus(null);
-                    setVerifyError(null);
-                  }}
-                  placeholder="000-00-00000"
-                  className="flex-1 border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
-                />
-                <button
-                  type="button"
-                  onClick={handleVerifyBusiness}
-                  disabled={verifying || businessNumber.replace(/\D/g, "").length !== 10}
-                  className="shrink-0 px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-600 hover:border-gray-500 bg-white transition-colors disabled:opacity-40 whitespace-nowrap"
-                >
-                  {verifying ? "조회 중..." : "인증"}
-                </button>
-              </div>
-              {businessVerifiedAt && businessStatus && (
-                <div className="mt-2 flex items-center gap-1.5 text-xs text-green-600">
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                  인증 완료 · {businessStatus} · {new Date(businessVerifiedAt).toLocaleDateString("ko-KR")}
                 </div>
-              )}
-              {verifyError && <p className="mt-2 text-xs text-red-500">{verifyError}</p>}
-            </div>
 
-            {/* 대표자 주민등록번호 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">대표자 주민등록번호</label>
-              <p className="text-xs text-gray-400 mb-2">세금계산서 발행 등 세무 처리를 위해 필요하며, 암호화되어 저장됩니다. 저장 후에는 일부만 마스킹되어 표시됩니다.</p>
-
-              {residentNumberMasked && !editingResident ? (
-                <div className="flex items-center gap-3">
-                  <span className="font-mono text-sm text-gray-700">{residentNumberMasked}</span>
-                  <button
-                    type="button"
-                    onClick={() => setEditingResident(true)}
-                    className="text-xs text-gray-400 hover:text-gray-700 underline"
-                  >
-                    수정
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
+                {/* 은행 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">은행</label>
                   <input
                     type="text"
-                    inputMode="numeric"
-                    value={residentFront}
-                    onChange={(e) => setResidentFront(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                    placeholder="앞 6자리"
-                    maxLength={6}
-                    className="w-24 border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500 text-center"
+                    value={bankName}
+                    onChange={(e) => setBankName(e.target.value)}
+                    placeholder="예: 국민은행"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
                   />
-                  <span className="text-gray-400">-</span>
+                </div>
+
+                {/* 계좌번호 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">계좌번호</label>
                   <input
                     type="text"
-                    inputMode="numeric"
-                    value={residentBack}
-                    onChange={(e) => setResidentBack(e.target.value.replace(/\D/g, "").slice(0, 7))}
-                    placeholder="뒤 7자리"
-                    maxLength={7}
-                    className="w-28 border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500 text-center"
+                    value={bankAccount}
+                    onChange={(e) => setBankAccount(e.target.value)}
+                    placeholder="예: 000-0000-0000-00"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
                   />
-                  {residentNumberMasked && (
-                    <button
-                      type="button"
-                      onClick={() => { setEditingResident(false); setResidentFront(""); setResidentBack(""); setResidentError(null); }}
-                      className="text-xs text-gray-400 hover:text-gray-700"
-                    >
-                      취소
-                    </button>
-                  )}
                 </div>
-              )}
-              {(editingResident || (!residentNumberMasked && (residentFront || residentBack))) && !residentError && (
-                <p className="mt-2 text-xs text-gray-400">아래 &lsquo;저장&rsquo; 버튼을 눌러야 함께 저장됩니다.</p>
-              )}
-              {residentError && <p className="mt-2 text-xs text-red-500">{residentError}</p>}
+
+                {/* 예금주 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">예금주</label>
+                  <input
+                    type="text"
+                    value={bankHolder}
+                    onChange={(e) => setBankHolder(e.target.value)}
+                    placeholder="예: 홍길동"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-gray-400 mt-3">계좌번호를 잘못 적어서 생기는 불이익은 책임지지 않습니다.</p>
             </div>
 
-            {/* 사업자등록증 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">사업자등록증</label>
-              <p className="text-xs text-gray-400 mb-2">본인 명의 사업자 확인용으로 사용됩니다. 사진 또는 PDF로 업로드하세요.</p>
-              {businessRegImageUrl ? (
+            {/* 통장사본 */}
+            <div className={`border border-gray-200 rounded-xl p-4${disabledByConsult ? " opacity-50 pointer-events-none select-none" : ""}`}>
+              <h3 className="text-sm font-semibold text-gray-800 mb-1">통장사본</h3>
+              <p className="text-xs text-gray-400 mb-3">정산 처리를 위해 계좌 확인용으로 사용됩니다.</p>
+              {bankAccountImageUrl ? (
                 <div className="flex items-center gap-3">
-                  <button type="button" onClick={handleViewBusinessReg} className="text-xs text-blue-500 hover:underline">사업자등록증 확인</button>
-                  <button type="button" onClick={() => setBusinessRegImageUrl(null)} className="text-xs text-gray-400 hover:text-red-400">삭제</button>
+                  <button type="button" onClick={handleViewBankDoc} className="text-xs text-blue-500 hover:underline">통장사본 확인</button>
+                  <button type="button" onClick={() => setBankAccountImageUrl(null)} className="text-xs text-gray-400 hover:text-red-400">삭제</button>
                 </div>
               ) : (
                 <button
                   type="button"
-                  onClick={() => businessRegInputRef.current?.click()}
-                  disabled={businessRegUploading}
+                  onClick={() => bankImageInputRef.current?.click()}
+                  disabled={bankImageUploading}
                   className="px-4 py-2 border border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-gray-500 hover:text-gray-700 transition-colors disabled:opacity-50"
                 >
-                  {businessRegUploading ? "업로드 중..." : "+ 사업자등록증 업로드"}
+                  {bankImageUploading ? "업로드 중..." : "+ 통장사본 업로드"}
                 </button>
               )}
-              <input ref={businessRegInputRef} type="file" accept="image/*,application/pdf" onChange={handleBusinessRegUpload} className="hidden" />
+              <input ref={bankImageInputRef} type="file" accept="image/*,application/pdf" onChange={handleBankImageUpload} className="hidden" />
             </div>
 
-            {/* 통신판매업 신고번호 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">통신판매업 신고번호</label>
-              <p className="text-xs text-gray-400 mb-2">
-                상품을 50개 판매하기 전 통신판매업 신고를 해주세요.<br />
-                통신판매업 미신고 상태로 50개 판매 시 판매가 정지됩니다.
-              </p>
-              <input
-                type="text"
-                value={mailOrderNumber}
-                onChange={(e) => setMailOrderNumber(e.target.value)}
-                placeholder="예: 제2024-서울강남-0000호"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
+            {/* 사업자 정보 */}
+            <div className={`border border-gray-200 rounded-xl p-4${disabledByConsult ? " opacity-50 pointer-events-none select-none" : ""}`}>
+              <h3 className="text-sm font-semibold text-gray-800 mb-3">사업자 정보</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">사업자등록번호</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={businessNumber}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/\D/g, "").slice(0, 10);
+                        const formatted = raw.length <= 3 ? raw : raw.length <= 5 ? `${raw.slice(0, 3)}-${raw.slice(3)}` : `${raw.slice(0, 3)}-${raw.slice(3, 5)}-${raw.slice(5)}`;
+                        setBusinessNumber(formatted);
+                        setBusinessVerifiedAt(null);
+                        setBusinessStatus(null);
+                        setVerifyError(null);
+                      }}
+                      placeholder="000-00-00000"
+                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleVerifyBusiness}
+                      disabled={verifying || businessNumber.replace(/\D/g, "").length !== 10}
+                      className="shrink-0 px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-600 hover:border-gray-500 bg-white transition-colors disabled:opacity-40 whitespace-nowrap"
+                    >
+                      {verifying ? "조회 중..." : "인증"}
+                    </button>
+                  </div>
+                  {businessVerifiedAt && businessStatus && (
+                    <div className="mt-2 flex items-center gap-1.5 text-xs text-green-600">
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                      인증 완료 · {businessStatus} · {new Date(businessVerifiedAt).toLocaleDateString("ko-KR")}
+                    </div>
+                  )}
+                  {verifyError && <p className="mt-2 text-xs text-red-500">{verifyError}</p>}
+                </div>
+
+                {/* 대표자 주민등록번호 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">대표자 주민등록번호</label>
+                  <p className="text-xs text-gray-400 mb-2">세금계산서 발행 등 세무 처리를 위해 필요하며, 암호화되어 저장됩니다. 저장 후에는 일부만 마스킹되어 표시됩니다.</p>
+
+                  {residentNumberMasked && !editingResident ? (
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono text-sm text-gray-700">{residentNumberMasked}</span>
+                      <button
+                        type="button"
+                        onClick={() => setEditingResident(true)}
+                        className="text-xs text-gray-400 hover:text-gray-700 underline"
+                      >
+                        수정
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={residentFront}
+                        onChange={(e) => setResidentFront(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                        placeholder="앞 6자리"
+                        maxLength={6}
+                        className="w-24 border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500 text-center"
+                      />
+                      <span className="text-gray-400">-</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={residentBack}
+                        onChange={(e) => setResidentBack(e.target.value.replace(/\D/g, "").slice(0, 7))}
+                        placeholder="뒤 7자리"
+                        maxLength={7}
+                        className="w-28 border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500 text-center"
+                      />
+                      {residentNumberMasked && (
+                        <button
+                          type="button"
+                          onClick={() => { setEditingResident(false); setResidentFront(""); setResidentBack(""); setResidentError(null); }}
+                          className="text-xs text-gray-400 hover:text-gray-700"
+                        >
+                          취소
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  {(editingResident || (!residentNumberMasked && (residentFront || residentBack))) && !residentError && (
+                    <p className="mt-2 text-xs text-gray-400">아래 &lsquo;저장&rsquo; 버튼을 눌러야 함께 저장됩니다.</p>
+                  )}
+                  {residentError && <p className="mt-2 text-xs text-red-500">{residentError}</p>}
+                </div>
+
+                {/* 사업자등록증 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">사업자등록증</label>
+                  <p className="text-xs text-gray-400 mb-2">본인 명의 사업자 확인용으로 사용됩니다. 사진 또는 PDF로 업로드하세요.</p>
+                  {businessRegImageUrl ? (
+                    <div className="flex items-center gap-3">
+                      <button type="button" onClick={handleViewBusinessReg} className="text-xs text-blue-500 hover:underline">사업자등록증 확인</button>
+                      <button type="button" onClick={() => setBusinessRegImageUrl(null)} className="text-xs text-gray-400 hover:text-red-400">삭제</button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => businessRegInputRef.current?.click()}
+                      disabled={businessRegUploading}
+                      className="px-4 py-2 border border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-gray-500 hover:text-gray-700 transition-colors disabled:opacity-50"
+                    >
+                      {businessRegUploading ? "업로드 중..." : "+ 사업자등록증 업로드"}
+                    </button>
+                  )}
+                  <input ref={businessRegInputRef} type="file" accept="image/*,application/pdf" onChange={handleBusinessRegUpload} className="hidden" />
+                </div>
+
+                {/* 통신판매업 신고번호 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">통신판매업 신고번호</label>
+                  <p className="text-xs text-gray-400 mb-2">
+                    상품을 50개 판매하기 전 통신판매업 신고를 해주세요.<br />
+                    통신판매업 미신고 상태로 50개 판매 시 판매가 정지됩니다.
+                  </p>
+                  <input
+                    type="text"
+                    value={mailOrderNumber}
+                    onChange={(e) => setMailOrderNumber(e.target.value)}
+                    placeholder="예: 제2024-서울강남-0000호"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 판매 신청 */}
+            <div className="border border-gray-200 rounded-xl p-4">
+              <h3 className="text-sm font-semibold text-gray-800 mb-1">판매 신청</h3>
+              <p className="text-xs text-gray-400 mb-3">통신판매업 신고번호를 제외한 모든 항목을 입력·업로드해야 신청할 수 있습니다.</p>
+              {consultApplyStatus === "pending" && (
+                <div className="rounded-lg bg-yellow-50 border border-yellow-100 px-4 py-3 text-sm text-yellow-700">
+                  검토 중입니다. 운영자 확인 후 안내드리겠습니다.
+                </div>
+              )}
+              {consultApplyStatus === "approved" && (
+                <div className="rounded-lg bg-green-50 border border-green-100 px-4 py-3 text-sm text-green-700">
+                  승인되었습니다. 판매 설정 탭에서 활성화할 수 있습니다.
+                </div>
+              )}
+              {consultApplyStatus === "rejected" && (
+                <div className="rounded-lg bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-600 space-y-1">
+                  <div className="font-medium">반려되었습니다.</div>
+                  {consultRejectReason && <div className="text-xs">{consultRejectReason}</div>}
+                </div>
+              )}
+              {(!consultApplyStatus || consultApplyStatus === "rejected") && (() => {
+                const canApply = !!businessVerifiedAt && !!bankAccountImageUrl && !!businessRegImageUrl && !!bankName && !!bankAccount && !!bankHolder;
+                return (
+                  <div className="space-y-2 mt-2">
+                    {!canApply && (
+                      <ul className="text-xs text-gray-400 space-y-0.5 list-disc list-inside">
+                        {!businessVerifiedAt && <li>사업자등록번호 인증 필요</li>}
+                        {!bankAccountImageUrl && <li>통장사본 업로드 필요</li>}
+                        {!businessRegImageUrl && <li>사업자등록증 업로드 필요</li>}
+                        {(!bankName || !bankAccount || !bankHolder) && <li>계좌 정보 입력 필요</li>}
+                      </ul>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleConsultApply}
+                      disabled={!canApply || applying}
+                      className="px-5 py-2.5 bg-gold-500 text-white text-sm rounded-lg hover:bg-gold-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {applying ? "신청 중..." : "맞춤 주문 신청하기"}
+                    </button>
+                  </div>
+                );
+              })()}
+            </div>
+
+            <div className="sticky bottom-0 bg-white border-t border-gray-100 -mx-0 pt-4 pb-1 md:pb-6 flex items-center gap-3">
+              <SaveButton
+                ref={saveBtnRef}
+                onSave={handleSave}
+                className="text-sm font-medium text-white bg-gold-500 hover:bg-gold-600"
               />
             </div>
-          </div>
+          </form>
         </div>
-
-        {/* 판매 신청 */}
-        <div className="border border-gray-200 rounded-xl p-4">
-          <h3 className="text-sm font-semibold text-gray-800 mb-1">판매 신청</h3>
-          <p className="text-xs text-gray-400 mb-3">통신판매업 신고번호를 제외한 모든 항목을 입력·업로드해야 신청할 수 있습니다.</p>
-          {consultApplyStatus === "pending" && (
-            <div className="rounded-lg bg-yellow-50 border border-yellow-100 px-4 py-3 text-sm text-yellow-700">
-              검토 중입니다. 운영자 확인 후 안내드리겠습니다.
-            </div>
-          )}
-          {consultApplyStatus === "approved" && (
-            <div className="rounded-lg bg-green-50 border border-green-100 px-4 py-3 text-sm text-green-700">
-              승인되었습니다. 판매 설정 탭에서 활성화할 수 있습니다.
-            </div>
-          )}
-          {consultApplyStatus === "rejected" && (
-            <div className="rounded-lg bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-600 space-y-1">
-              <div className="font-medium">반려되었습니다.</div>
-              {consultRejectReason && <div className="text-xs">{consultRejectReason}</div>}
-            </div>
-          )}
-          {(!consultApplyStatus || consultApplyStatus === "rejected") && (() => {
-            const canApply = !!businessVerifiedAt && !!bankAccountImageUrl && !!businessRegImageUrl && !!bankName && !!bankAccount && !!bankHolder;
-            return (
-              <div className="space-y-2 mt-2">
-                {!canApply && (
-                  <ul className="text-xs text-gray-400 space-y-0.5 list-disc list-inside">
-                    {!businessVerifiedAt && <li>사업자등록번호 인증 필요</li>}
-                    {!bankAccountImageUrl && <li>통장사본 업로드 필요</li>}
-                    {!businessRegImageUrl && <li>사업자등록증 업로드 필요</li>}
-                    {(!bankName || !bankAccount || !bankHolder) && <li>계좌 정보 입력 필요</li>}
-                  </ul>
-                )}
-                <button
-                  type="button"
-                  onClick={handleConsultApply}
-                  disabled={!canApply || applying}
-                  className="px-5 py-2.5 bg-gold-500 text-white text-sm rounded-lg hover:bg-gold-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  {applying ? "신청 중..." : "맞춤 주문 신청하기"}
-                </button>
-              </div>
-            );
-          })()}
-        </div>
-
-        <div className="sticky bottom-0 bg-white border-t border-gray-100 -mx-0 pt-4 pb-1 md:pb-6 flex items-center gap-3">
-          <SaveButton
-            ref={saveBtnRef}
-            onSave={handleSave}
-            className="text-sm font-medium text-white bg-gold-500 hover:bg-gold-600"
-          />
-        </div>
-      </form>
+      </div>
     </div>
   );
 }

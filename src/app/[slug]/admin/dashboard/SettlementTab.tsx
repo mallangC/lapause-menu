@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { PLATFORM_FEE_RATE, PLATFORM_FEE_PERCENT_LABEL } from "@/lib/constants";
+import Pagination from "@/components/admin/Pagination";
 
 interface Props {
   companyId: string;
@@ -33,11 +34,11 @@ const STATUS_STYLE: Record<string, string> = {
 
 function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="bg-white border border-gray-100 rounded-2xl p-3 md:p-5 shadow-sm flex items-center justify-between md:block">
-      <p className="text-xs text-gray-400 md:mb-1">{label}</p>
-      <div className="text-right md:text-left">
+    <div className="bg-white px-4 py-3.5 md:p-5 md:rounded-2xl flex items-center justify-between gap-3 md:block">
+      <p className="text-xs text-gray-400 md:mb-1 shrink-0 whitespace-nowrap">{label}</p>
+      <div className="text-right md:text-left min-w-0">
         <p className="text-base md:text-2xl font-semibold text-gray-900 truncate">{value}</p>
-        {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
+        {sub && <p className="text-xs text-gray-400 mt-0.5 md:mt-1">{sub}</p>}
       </div>
     </div>
   );
@@ -47,21 +48,28 @@ function formatMoney(n: number) {
   return `${n.toLocaleString()}원`;
 }
 
+const PAGE_SIZE = 10;
+
 export default function SettlementTab({ companyId, refreshKey }: Props) {
   const [settlements, setSettlements] = useState<Settlement[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [page, setPage] = useState(1);
+  const [listLoading, setListLoading] = useState(true);
   const [pendingGross, setPendingGross] = useState(0);
   const [pendingCount, setPendingCount] = useState(0);
+  const [completedRows, setCompletedRows] = useState<{ total_amount: number; year_month: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
 
+  // 위쪽 합계 — 목록 페이지와 무관하게 전체 기준으로 계산
   useEffect(() => {
     (async () => {
-      const [{ data: settlementRows }, { data: unsettled }] = await Promise.all([
+      const [{ data: completed }, { data: unsettled }] = await Promise.all([
         supabase
           .from("settlements")
-          .select("id, period_start, period_end, year_month, total_amount, status, transferred_at")
+          .select("total_amount, year_month")
           .eq("company_id", companyId)
-          .order("period_end", { ascending: false }),
+          .eq("status", "completed"),
         supabase
           .from("reservations")
           .select("final_price, paid_amount")
@@ -72,7 +80,7 @@ export default function SettlementTab({ companyId, refreshKey }: Props) {
           .is("settlement_id", null)
           .is("deleted_at", null),
       ]);
-      setSettlements((settlementRows as Settlement[]) ?? []);
+      setCompletedRows(completed ?? []);
       // 정산 API와 같은 기준 — 토스가 실제로 승인한 금액 (예전 결제 건은 final_price)
       setPendingGross((unsettled ?? []).reduce((s, r) => s + (r.paid_amount ?? r.final_price ?? 0), 0));
       setPendingCount((unsettled ?? []).length);
@@ -82,31 +90,51 @@ export default function SettlementTab({ companyId, refreshKey }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId, refreshKey]);
 
+  // 정산 내역 — 한 페이지(10건)씩 불러온다
+  useEffect(() => {
+    (async () => {
+      setListLoading(true);
+      const from = (page - 1) * PAGE_SIZE;
+      const { data, count } = await supabase
+        .from("settlements")
+        .select("id, period_start, period_end, year_month, total_amount, status, transferred_at", { count: "exact" })
+        .eq("company_id", companyId)
+        .order("period_end", { ascending: false })
+        .range(from, from + PAGE_SIZE - 1);
+      setSettlements((data as Settlement[]) ?? []);
+      setTotalCount(count ?? 0);
+      setListLoading(false);
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companyId, refreshKey, page]);
+
   const pendingNet = Math.round(pendingGross * (1 - PLATFORM_FEE_RATE));
 
   const completedTotal = useMemo(
-    () => settlements.filter((s) => s.status === "completed").reduce((sum, s) => sum + s.total_amount, 0),
-    [settlements]
+    () => completedRows.reduce((sum, s) => sum + s.total_amount, 0),
+    [completedRows]
   );
 
   const thisMonthKey = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
   const thisMonthCompleted = useMemo(
-    () => settlements.filter((s) => s.status === "completed" && s.year_month === thisMonthKey).reduce((sum, s) => sum + s.total_amount, 0),
-    [settlements, thisMonthKey]
+    () => completedRows.filter((s) => s.year_month === thisMonthKey).reduce((sum, s) => sum + s.total_amount, 0),
+    [completedRows, thisMonthKey]
   );
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   if (loading) {
     return <div className="py-12 text-center text-sm text-gray-400">불러오는 중...</div>;
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 md:space-y-4">
       <div>
-        <h2 className="text-xl font-bold text-gray-900">정산</h2>
+        <h2 className="text-xl font-medium text-gray-900">정산</h2>
         <p className="text-xs text-gray-400 mt-1">결제 수수료 {PLATFORM_FEE_PERCENT_LABEL}를 제외한 실 입금 예정/완료 금액입니다.</p>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 md:gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-px md:gap-3 -mx-4 md:mx-0 bg-gray-100 md:bg-transparent">
         <StatCard label="정산 예정 금액" value={formatMoney(pendingNet)} sub={`${pendingCount}건 · 미정산`} />
         <StatCard label="이번 달 정산 완료" value={formatMoney(thisMonthCompleted)} />
         <StatCard label="누적 정산 완료" value={formatMoney(completedTotal)} />
@@ -118,24 +146,49 @@ export default function SettlementTab({ companyId, refreshKey }: Props) {
         <p>· 정산 대상: 결제일로부터 영업일 기준 4일이 지나고, 예약 상태가 &lsquo;픽업/배송완료&rsquo;인 예약 건</p>
       </div>
 
-      <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 text-xs text-gray-400">
-                <th className="text-left px-5 py-3 font-medium">정산 기간</th>
-                <th className="text-right px-5 py-3 font-medium">정산 금액</th>
-                <th className="text-center px-5 py-3 font-medium">상태</th>
-                <th className="text-right px-5 py-3 font-medium">입금일</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {settlements.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="px-5 py-10 text-center text-gray-400">정산 내역이 없습니다.</td>
+      <div className="bg-white -mx-4 md:mx-0 md:rounded-2xl overflow-hidden">
+        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide px-4 md:px-5 pt-5 pb-2">
+          정산 내역{totalCount > 0 && <span className="ml-1.5 text-xs font-normal text-gray-300 normal-case">{totalCount}건</span>}
+        </h3>
+
+        {listLoading && settlements.length === 0 ? (
+          <p className="px-4 py-10 text-center text-sm text-gray-300">불러오는 중...</p>
+        ) : settlements.length === 0 ? (
+          <p className="px-4 py-10 text-center text-sm text-gray-400">정산 내역이 없습니다.</p>
+        ) : (
+          <>
+            {/* 모바일: 한 건씩 세로로 */}
+            <ul className="md:hidden divide-y divide-gray-50">
+              {settlements.map((s) => (
+                <li key={s.id} className="px-4 py-3.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-xs text-gray-500 tabular-nums">{s.period_start} ~ {s.period_end}</span>
+                    <span className={`shrink-0 px-2 py-0.5 rounded-full text-[11px] font-medium ${STATUS_STYLE[s.status]}`}>
+                      {STATUS_LABEL[s.status]}
+                    </span>
+                  </div>
+                  <div className="flex items-end justify-between gap-3 mt-1.5">
+                    <span className="text-base font-semibold text-gray-900">{formatMoney(s.total_amount)}</span>
+                    <span className="text-xs text-gray-400 whitespace-nowrap">
+                      {s.transferred_at ? `입금 ${new Date(s.transferred_at).toLocaleDateString("ko-KR")}` : "입금 전"}
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+
+            {/* PC: 표 */}
+            <table className="hidden md:table w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 text-xs text-gray-400">
+                  <th className="text-left px-5 py-3 font-medium">정산 기간</th>
+                  <th className="text-right px-5 py-3 font-medium">정산 금액</th>
+                  <th className="text-center px-5 py-3 font-medium">상태</th>
+                  <th className="text-right px-5 py-3 font-medium">입금일</th>
                 </tr>
-              ) : (
-                settlements.map((s) => (
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {settlements.map((s) => (
                   <tr key={s.id}>
                     <td className="px-5 py-3 text-gray-700">{s.period_start} ~ {s.period_end}</td>
                     <td className="px-5 py-3 text-right font-medium text-gray-900">{formatMoney(s.total_amount)}</td>
@@ -148,11 +201,14 @@ export default function SettlementTab({ companyId, refreshKey }: Props) {
                       {s.transferred_at ? new Date(s.transferred_at).toLocaleDateString("ko-KR") : "—"}
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
+
+        {/* 페이지네이션 */}
+        <Pagination page={page} totalPages={totalPages} onChange={setPage} disabled={listLoading} className="px-4 py-4 border-t border-gray-50" />
       </div>
     </div>
   );

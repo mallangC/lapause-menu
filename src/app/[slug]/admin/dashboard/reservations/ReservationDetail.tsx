@@ -201,6 +201,15 @@ export default function ReservationDetail({
 
   const refImages = r.reference_images?.filter(Boolean) ?? [];
 
+  // 결제 금액은 저장된 최종 금액(결제 링크가 실제로 청구하는 값)을 그대로 쓰고, 상품 합계는 거기서 배송비를 뺀 값으로 보여준다
+  // (옵션 가격을 지금 설정값으로 다시 계산하면, 주문 뒤 가격을 바꾼 경우 결제 링크 금액과 달라질 수 있어서)
+  const isDelivery = r.delivery_type === "배송";
+  const deliveryFeeAmount = isDelivery ? r.delivery_fee ?? 0 : 0;
+  // 배송인데 배송비를 아직 정하지 않음 — 링크 금액은 만드는 순간 고정되므로 미리 알려준다
+  const deliveryFeeMissing = isDelivery && r.delivery_fee == null;
+  const payAmount = r.final_price ?? 0;
+  const productsTotal = payAmount - deliveryFeeAmount;
+
   return (
     <>
       {showPayLinkModal && (
@@ -241,6 +250,10 @@ export default function ReservationDetail({
                     <span className="text-gray-400">결제 금액</span>
                     <span className="font-medium text-gray-800">{r.final_price.toLocaleString()}원</span>
                   </div>
+                  {/* 상세 화면 결제 칸과 같은 내역 — 배송비가 더해진 금액이라는 걸 보여준다 */}
+                  <p className="text-[11px] text-gray-400 text-right -mt-0.5">
+                    상품 {productsTotal.toLocaleString()}원{isDelivery && deliveryFeeAmount > 0 ? ` + 배송비 ${deliveryFeeAmount.toLocaleString()}원` : ""}
+                  </p>
                   <div className="flex justify-between">
                     <span className="text-gray-400">만료</span>
                     <span className="text-gray-600">
@@ -471,42 +484,35 @@ export default function ReservationDetail({
           )}
 
           <div className="flex-1 min-w-0 space-y-2">
-            {/* 주문 정보 */}
+            {/* 취소 사유 — 취소된 예약은 가장 먼저 봐야 해서 맨 위 */}
+            {r.status === "취소" && r.cancel_reason && (
+              <SectionCard>
+                <Row label="취소 사유"><span className="text-red-500">{r.cancel_reason}</span></Row>
+              </SectionCard>
+            )}
+
+            {/* 주문자 */}
             <SectionCard>
-              {r.channel && <Row label="채널">{r.channel}</Row>}
-              <Row label="결제">
-                <div className="flex items-center gap-2">
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${r.paid ? "bg-green-50 text-green-600" : "bg-gray-100 text-gray-400"}`}>
-                    {r.paid ? "결제완료" : "미결제"}
-                  </span>
-                  {!r.paid && (
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); setShowPayLinkModal(true); }}
-                      className="flex items-center justify-center gap-1.5 text-sm sm:text-xs font-medium px-7 py-2 sm:px-2.5 sm:py-1 rounded-lg bg-gold-50 text-gold-700 border border-gold-200 hover:bg-gold-100 hover:border-gold-300 hover:shadow-sm active:bg-gold-100 transition-all"
-                    >
-                      <svg className="w-4 h-4 sm:w-3.5 sm:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
-                      </svg>
-                      결제 링크
-                    </button>
-                  )}
-                </div>
-              </Row>
-              <Row label="최종 가격">{(r.final_price ?? 0).toLocaleString()}원</Row>
               <Row label="연락처">
                 <span className="flex items-center gap-1">
                   {formatPhone(r.orderer_phone)}
                   <CopyButton text={r.orderer_phone} />
                 </span>
               </Row>
+              {r.channel && <Row label="채널">{r.channel}</Row>}
               <Row label="주문 경로">{ORDER_PATH_LABEL[r.order_path as OrderPath] ?? "—"}</Row>
               <Row label="유입">{trafficSourceLabel(r.traffic_source)}</Row>
             </SectionCard>
 
-            {/* 상품 목록 */}
-            {r.items?.length > 0 && (
-              <SectionCard>
+            {/* 제작 정보 — 선물 용도(상품을 해석하는 기준) → 상품·옵션·카드 문구 → 요청 사항(꼭 지킬 지시) 순 */}
+            <SectionCard>
+              {(r.recipient_gender || r.recipient_age || r.relationship || r.purpose || r.mood) && (
+                <div className="pb-2 border-b border-gray-50">
+                  <Row label="선물 용도">
+                    {[r.recipient_gender, r.recipient_age, r.relationship, r.purpose, r.mood].filter(Boolean).join(" · ")}
+                  </Row>
+                </div>
+              )}
                 {r.items.map((item, i) => (
                   <div key={i} className={i > 0 ? "pt-2 border-t border-gray-50" : ""}>
                     <div className="flex gap-2 text-sm">
@@ -542,10 +548,10 @@ export default function ReservationDetail({
                           const addon = messageCardPrice * addonCount(item.message_card) + shoppingBagPrice * addonCount(item.shopping_bag) + preservativePrice * addonCount(item.preservative);
                           const total = item.price + addon;
                           return (
-                            <div className="pt-1.5 border-t border-gray-100 sm:border-t-0 sm:pt-0 sm:text-right shrink-0">
+                            <div className="pt-1.5 border-t border-gray-100 sm:border-t-0 sm:pt-0 text-right shrink-0">
                               <span className="font-medium text-gray-800">{total.toLocaleString()}원</span>
                               {addon > 0 && (
-                                <p className="text-[11px] text-gray-400">상품 {item.price.toLocaleString()}원 + 추가 {addon.toLocaleString()}원</p>
+                                <p className="text-[11px] text-gray-400">상품 {item.price.toLocaleString()}원 + 옵션 {addon.toLocaleString()}원</p>
                               )}
                             </div>
                           );
@@ -554,30 +560,14 @@ export default function ReservationDetail({
                     </div>
                   </div>
                 ))}
-                {r.items.length > 1 && (
-                  <div className="pt-2 border-t border-gray-100 flex justify-between text-sm">
-                    <span className="text-gray-500 font-medium">총 상품 금액</span>
-                    <span className="font-semibold text-gray-900">
-                      {r.items.reduce((sum, item) => {
-                        const addon = messageCardPrice * addonCount(item.message_card) + shoppingBagPrice * addonCount(item.shopping_bag) + preservativePrice * addonCount(item.preservative);
-                        return sum + item.price + addon;
-                      }, 0).toLocaleString()}원
-                    </span>
-                  </div>
-                )}
-              </SectionCard>
-            )}
+              {r.requests && (
+                <div className="pt-2 border-t border-gray-50">
+                  <Row label="요청 사항"><span className="whitespace-pre-wrap">{r.requests}</span></Row>
+                </div>
+              )}
+            </SectionCard>
 
-            {/* 선물 용도 */}
-            {(r.recipient_gender || r.recipient_age || r.relationship || r.purpose || r.mood) && (
-              <SectionCard>
-                <Row label="선물 용도">
-                  {[r.recipient_gender, r.recipient_age, r.relationship, r.purpose, r.mood].filter(Boolean).join(" · ")}
-                </Row>
-              </SectionCard>
-            )}
-
-            {/* 배송 정보 */}
+            {/* 배송 정보 — 수령 방법(픽업·배송)은 예약 줄·모바일 상세 창 위쪽 배지로 보여서 여기서는 배송일 때만 */}
             {r.delivery_type === "배송" && (
               <SectionCard>
                 <Row label="받는 분">
@@ -621,19 +611,47 @@ export default function ReservationDetail({
               </SectionCard>
             )}
 
-            {/* 요청 사항 */}
-            {r.requests && (
-              <SectionCard>
-                <Row label="요청 사항"><span className="whitespace-pre-wrap">{r.requests}</span></Row>
-              </SectionCard>
-            )}
-
-            {/* 취소 사유 */}
-            {r.status === "취소" && r.cancel_reason && (
-              <SectionCard>
-                <Row label="취소 사유"><span className="text-red-500">{r.cancel_reason}</span></Row>
-              </SectionCard>
-            )}
+            {/* 결제 — 상품 합계 + 배송비 = 결제 금액을 영수증처럼 쌓고, 결제 링크는 그 금액 바로 아래에서 만든다 */}
+            <SectionCard>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-400">결제</span>
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${r.paid ? "bg-green-50 text-green-600" : "bg-gray-100 text-gray-400"}`}>
+                  {r.paid ? "결제완료" : "미결제"}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm text-gray-600">
+                <span>상품 합계 <span className="text-xs text-gray-400">(옵션 포함)</span></span>
+                <span>{productsTotal.toLocaleString()}원</span>
+              </div>
+              {isDelivery && (
+                <div className="flex justify-between text-sm text-gray-600">
+                  <span>배송비</span>
+                  <span>{deliveryFeeMissing ? "미정" : `+${deliveryFeeAmount.toLocaleString()}원`}</span>
+                </div>
+              )}
+              <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-700">결제 금액</span>
+                <span className="text-base font-bold text-gray-900">{payAmount.toLocaleString()}원</span>
+              </div>
+              {!r.paid && (
+                <>
+                  {deliveryFeeMissing && (
+                    <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2">배송비가 아직 없어요. 결제 링크를 만들기 전에 위에서 배송비를 넣어주세요.</p>
+                  )}
+                  <button
+                    type="button"
+                    data-coach="rv-paylink"
+                    onClick={(e) => { e.stopPropagation(); setShowPayLinkModal(true); }}
+                    className="w-full flex items-center justify-center gap-1.5 text-sm font-medium py-2 rounded-lg bg-gold-500/10 text-gold-600 border border-gold-400/60 hover:bg-gold-500/20 active:bg-gold-500/20 transition-all"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+                    </svg>
+                    이 금액으로 결제 링크 만들기
+                  </button>
+                </>
+              )}
+            </SectionCard>
           </div>
         </div>
 

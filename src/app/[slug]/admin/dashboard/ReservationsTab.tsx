@@ -10,6 +10,7 @@ import ReservationDetail from "./reservations/ReservationDetail";
 import CustomerProfileModal from "./reservations/CustomerProfileModal";
 import { formatDateHeader, formatTimeOnly } from "./reservations/utils";
 import type { DateOverrides } from "@/lib/businessHours";
+import Pagination from "@/components/admin/Pagination";
 
 const ACTION_WIDTH = 116;
 
@@ -441,6 +442,10 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
                 <span className={`w-2.5 h-2.5 rounded-full ${STATUS_DOT[mobileDetailReservation.status] ?? "bg-gray-300"}`} />
                 <span className="text-sm font-semibold text-gray-900">{mobileDetailReservation.orderer_name}</span>
                 <span className="text-xs text-gray-400">{formatDateHeader(mobileDetailReservation.desired_date)}</span>
+                {/* 수령 방법 배지 — 목록 카드와 같은 모양 (상세 본문에는 수령 방법 줄이 없다) */}
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${mobileDetailReservation.delivery_type === "배송" ? "border border-blue-400 text-blue-500" : "border border-gray-400 text-gray-500"}`}>
+                  {mobileDetailReservation.delivery_type}
+                </span>
               </div>
               <button onClick={() => setMobileDetailId(null)} className="text-gray-400 hover:text-gray-600 transition-colors p-1">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -888,19 +893,7 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
         )}
 
         {/* 페이지네이션 */}
-        {totalPages > 1 && (
-          <div className="flex justify-center gap-1 pt-2">
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-              <button
-                key={p}
-                onClick={() => setPage(p)}
-                className={`w-8 h-8 rounded-lg text-sm transition-colors ${p === page ? "bg-gold-500 text-white" : "text-gray-500 hover:bg-gray-100"}`}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
-        )}
+        <Pagination page={page} totalPages={totalPages} onChange={setPage} className="pt-2" />
         </div>
       </div>
     </>

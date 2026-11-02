@@ -45,8 +45,12 @@ const EMPTY_STATS: CompanyStats = {
 const BUDGET_LABELS = ["1~5만원", "6~10만원", "11~15만원", "16~20만원", "21~25만원", "26~30만원", "31만원 이상", "기타"];
 
 const GOLD = "#c9a96e";
-const COLORS = ["#c9a96e", "#a87c4a", "#e8c99a", "#8b6035", "#f0ddb8", "#7a4f28"];
+// 예산대 색 — 칸마다 확실히 구분되도록 색을 바꾸되, 낮은 예산(따뜻한 색) → 높은 예산(차가운 색) 순서로 흐르게
+const BUDGET_COLORS = ["#F9C74F", "#F8961E", "#E05780", "#9B5DE5", "#4D7CFE", "#2A9D8F", "#90BE6D", "#d1d5db"];
+// 도넛 차트 색 — 매장 포인트 금색은 쓰지 않는다 (금색 화면 위에서 구분이 잘 되도록)
+const COLORS = ["#4D7CFE", "#E05780", "#F8961E", "#2A9D8F", "#9B5DE5", "#F9C74F"];
 const CHANNEL_COLORS: Record<string, string> = {
+  "Flo.Aide": "#4D7CFE",
   네이버: "#03C75A",
   카카오: "#FEE500",
   워크인: "#fb923c",
@@ -61,12 +65,12 @@ const STANDARD_PURPOSES = ["기념", "축하", "감사", "위로", "데이트"];
 
 // 상품 유형별 고정 색상 — 순위가 바뀌어도(항목 수가 늘어나도) 같은 이름은 항상 같은 색을 쓰도록 이름 기준으로 고정
 const TYPE_COLORS: Record<string, string> = {
-  꽃다발: "#c9a96e",
-  꽃바구니: "#6ea8fe",
-  센터피스: "#fb923c",
-  화병꽂이: "#8b5cf6",
-  식물: "#2dbb6e",
-  조화: "#f472b6",
+  꽃다발: "#E05780",
+  꽃바구니: "#4D7CFE",
+  센터피스: "#F8961E",
+  화병꽂이: "#9B5DE5",
+  식물: "#2A9D8F",
+  조화: "#F9C74F",
   기타: "#9ca3af",
   미지정: "#9ca3af",
 };
@@ -551,20 +555,28 @@ export default function StatsTab({ companyId, refreshKey }: Props) {
           {budgetData.items.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-4">데이터 없음</p>
           ) : (
-            budgetData.items.map((item) => {
-              const pct = budgetData.total > 0 ? Math.round((item.value / budgetData.total) * 100) : 0;
-              return (
-                <div key={item.name} className="space-y-1.5">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-700">{item.name}</span>
-                    <span className="font-medium text-gray-900 whitespace-nowrap">{item.value}건 <span className="text-xs text-gray-400 font-normal">({pct}%)</span></span>
-                  </div>
-                  <div className="bg-gray-100 rounded-full h-2 overflow-hidden">
-                    <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: GOLD }} />
-                  </div>
-                </div>
-              );
-            })
+            // 한 줄 누적 막대 — 예산대마다 다른 색, 낮은 예산(따뜻한 색) → 높은 예산(차가운 색) 순서
+            <div>
+              <div className="flex h-3 rounded-full overflow-hidden bg-gray-100 gap-px">
+                {budgetData.items.map((item, i) => (
+                  <div key={item.name} style={{ width: `${(item.value / budgetData.total) * 100}%`, backgroundColor: BUDGET_COLORS[i % BUDGET_COLORS.length] }} />
+                ))}
+              </div>
+              <ul className="mt-4 space-y-2.5">
+                {budgetData.items.map((item, i) => {
+                  const pct = budgetData.total > 0 ? Math.round((item.value / budgetData.total) * 100) : 0;
+                  return (
+                    <li key={item.name} className="flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-2 text-gray-700">
+                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: BUDGET_COLORS[i % BUDGET_COLORS.length] }} />
+                        {item.name}
+                      </span>
+                      <span className="font-medium text-gray-900 whitespace-nowrap">{item.value}건 <span className="text-xs text-gray-400 font-normal">({pct}%)</span></span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
           )}
         </div>
       </section>

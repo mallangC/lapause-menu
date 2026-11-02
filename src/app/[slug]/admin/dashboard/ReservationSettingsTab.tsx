@@ -122,359 +122,368 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
         </div>
       </div>
     )}
-    <div className="max-w-lg space-y-4">
+    <div className="space-y-4">
       <h2 className="text-xl font-medium text-gray-900">판매 설정</h2>
-
-      {error && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
-      )}
-
-      {/* 맞춤 주문 기능 활성화 */}
-      {consultApplyStatus !== "approved" ? (
-        <div className="p-4 border border-gray-200 rounded-xl bg-gray-50 text-sm text-gray-500">
-          {consultApplyStatus === "pending" && "운영자 검토 중입니다. 승인 후 활성화할 수 있습니다."}
-          {consultApplyStatus === "rejected" && (
-            <span>맞춤 주문 신청이 반려되었습니다.{" "}
-              <button type="button" onClick={onGoToOrderSettings} className="underline text-gold-600 hover:text-gold-700">판매 신청 탭</button>에서 재신청해주세요.
-            </span>
+      <div className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:p-6">
+        <div className="max-w-lg space-y-4">
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
           )}
-          {!consultApplyStatus && (
-            <span>맞춤 주문을 사용하려면{" "}
-              <button type="button" onClick={onGoToOrderSettings} className="underline text-gold-600 hover:text-gold-700">판매 신청 탭</button>에서 신청해주세요.
-            </span>
+
+          {/* 맞춤 주문 기능 활성화 */}
+          {consultApplyStatus !== "approved" ? (
+            <div className="p-4 border border-gray-200 rounded-xl bg-gray-50 text-sm text-gray-500">
+              {consultApplyStatus === "pending" && "운영자 검토 중입니다. 승인 후 활성화할 수 있습니다."}
+              {consultApplyStatus === "rejected" && (
+                <span>맞춤 주문 신청이 반려되었습니다.{" "}
+                  <button type="button" onClick={onGoToOrderSettings} className="underline text-gold-600 hover:text-gold-700">판매 신청 탭</button>에서 재신청해주세요.
+                </span>
+              )}
+              {!consultApplyStatus && (
+                <span>맞춤 주문을 사용하려면{" "}
+                  <button type="button" onClick={onGoToOrderSettings} className="underline text-gold-600 hover:text-gold-700">판매 신청 탭</button>에서 신청해주세요.
+                </span>
+              )}
+            </div>
+          ) : (
+            <div className="p-4 border border-gray-200 rounded-xl bg-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-800">판매 기능</p>
+                  <p className="text-xs text-gray-400 mt-0.5">판매 기능을 활성화하고 맞춤 주문하기 버튼을 표시합니다.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (mailOrderBlocked) {
+                      setShowMailOrderWarning(true);
+                      return;
+                    }
+                    if (!consultEnabled && !hasBankInfo) {
+                      setShowBankWarning(true);
+                      return;
+                    }
+                    setConsultEnabled((prev) => !prev);
+                  }}
+                  className={`shrink-0 w-12 h-6 rounded-full transition-colors relative ${
+                    consultEnabled ? "bg-gold-500" : "bg-gray-200"
+                  } ${mailOrderBlocked ? "opacity-40 cursor-not-allowed" : ""}`}
+                >
+                  <span
+                    className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${
+                      consultEnabled ? "left-6" : "left-0.5"
+                    }`}
+                  />
+                </button>
+              </div>
+              {mailOrderBlocked && (
+                <p className="text-xs text-red-500 mt-2">
+                  통신판매업 미신고 상태로 50개를 판매해 판매 기능이 정지되었습니다.{" "}
+                  <button type="button" onClick={onGoToOrderSettings} className="underline text-red-600 hover:text-red-700">판매 신청 탭</button>에서 신고번호를 등록해주세요.
+                </p>
+              )}
+            </div>
           )}
-        </div>
-      ) : (
-        <div className="p-4 border border-gray-200 rounded-xl bg-white">
-          <div className="flex items-center justify-between">
+
+          {/* 통신판매업 미신고 30개 초과 경고 팝업 */}
+          {showMailOrderWarning && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={() => setShowMailOrderWarning(false)}>
+              <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center shrink-0">
+                    <svg className="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">통신판매업 신고가 필요합니다</p>
+                    <p className="text-xs text-gray-400 mt-0.5">신고번호 미등록 상태로 50개를 판매해 판매 기능이 정지되었습니다.</p>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  <button type="button" onClick={() => { setShowMailOrderWarning(false); onGoToOrderSettings?.(); }} className="font-medium text-gold-600 underline hover:text-gold-700">판매 신청 탭</button>에서 통신판매업 신고번호를 등록하면 다시 활성화할 수 있습니다.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowMailOrderWarning(false)}
+                  className="w-full bg-gold-500 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-gold-600 transition-colors"
+                >
+                  확인
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 계좌 정보 미입력 경고 팝업 */}
+          {showBankWarning && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={() => setShowBankWarning(false)}>
+              <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
+                    <svg className="w-5 h-5 text-amber-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">계좌 정보를 먼저 입력해주세요</p>
+                    <p className="text-xs text-gray-400 mt-0.5">맞춤 주문 기능을 활성화하려면 계좌 정보가 필요합니다.</p>
+                  </div>
+                </div>
+                <div className="space-y-2 text-xs text-gray-500 leading-relaxed">
+                  <p>
+                    맞춤 주문 기능을 활성화하려면<br />
+                    <button type="button" onClick={() => { setShowBankWarning(false); onGoToOrderSettings?.(); }} className="font-medium text-gold-600 underline hover:text-gold-700">판매 신청 탭</button>에서<br />
+                    매장 주소, 은행, 계좌번호, 예금주를 모두 입력해주세요.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowBankWarning(false)}
+                  className="w-full bg-gold-500 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-gold-600 transition-colors"
+                >
+                  확인
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 추가 옵션 설정 (메시지 카드 · 쇼핑백 · 생화 수명연장제) — 배송비 설정처럼 제목 아래 한 카드에 줄로 나눠 묶는다 */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium text-gray-700">추가 옵션 설정</h3>
+            <div className="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
+              {/* 메시지 카드 */}
+              <div className="flex items-center justify-between gap-3 px-4 py-3.5 bg-white">
+                <div>
+                  <p className="text-sm font-medium text-gray-800">메시지 카드</p>
+                  <p className="text-xs text-gray-400 mt-0.5">예약 추가 시 메시지 카드 옵션을 표시합니다.</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {messageCardEnabled && (
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={messageCardPrice}
+                        onChange={(e) => setMessageCardPrice(formatMoney(e.target.value))}
+                        placeholder="0"
+                        className="w-20 border border-gray-200 rounded-lg px-2 py-1 text-sm text-right focus:outline-none focus:border-gray-400 bg-white"
+                      />
+                      <span className="text-xs text-gray-400">원</span>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setMessageCardEnabled((prev) => !prev)}
+                    className={`w-12 h-6 rounded-full transition-colors relative ${messageCardEnabled ? "bg-gold-500" : "bg-gray-200"}`}
+                  >
+                    <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${messageCardEnabled ? "left-6" : "left-0.5"}`} />
+                  </button>
+                </div>
+              </div>
+
+              {/* 쇼핑백 */}
+              <div className="flex items-center justify-between gap-3 px-4 py-3.5 bg-white">
+                <div>
+                  <p className="text-sm font-medium text-gray-800">쇼핑백</p>
+                  <p className="text-xs text-gray-400 mt-0.5">예약 추가 시 쇼핑백 옵션을 표시합니다.</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {shoppingBagEnabled && (
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={shoppingBagPrice}
+                        onChange={(e) => setShoppingBagPrice(formatMoney(e.target.value))}
+                        placeholder="0"
+                        className="w-20 border border-gray-200 rounded-lg px-2 py-1 text-sm text-right focus:outline-none focus:border-gray-400 bg-white"
+                      />
+                      <span className="text-xs text-gray-400">원</span>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setShoppingBagEnabled((prev) => !prev)}
+                    className={`w-12 h-6 rounded-full transition-colors relative ${shoppingBagEnabled ? "bg-gold-500" : "bg-gray-200"}`}
+                  >
+                    <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${shoppingBagEnabled ? "left-6" : "left-0.5"}`} />
+                  </button>
+                </div>
+              </div>
+
+              {/* 생화 수명연장제 */}
+              <div className="flex items-center justify-between gap-3 px-4 py-3.5 bg-white">
+                <div>
+                  <p className="text-sm font-medium text-gray-800">생화 수명연장제</p>
+                  <p className="text-xs text-gray-400 mt-0.5">예약 추가 시 생화 수명연장제 옵션을 표시합니다.</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {preservativeEnabled && (
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={preservativePrice}
+                        onChange={(e) => setPreservativePrice(formatMoney(e.target.value))}
+                        placeholder="0"
+                        className="w-20 border border-gray-200 rounded-lg px-2 py-1 text-sm text-right focus:outline-none focus:border-gray-400 bg-white"
+                      />
+                      <span className="text-xs text-gray-400">원</span>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setPreservativeEnabled((prev) => !prev)}
+                    className={`w-12 h-6 rounded-full transition-colors relative ${preservativeEnabled ? "bg-gold-500" : "bg-gray-200"}`}
+                  >
+                    <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${preservativeEnabled ? "left-6" : "left-0.5"}`} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 배송 기능 */}
+          <div className="flex items-center justify-between p-4 border border-gray-200 rounded-xl bg-white">
             <div>
-              <p className="text-sm font-medium text-gray-800">판매 기능</p>
-              <p className="text-xs text-gray-400 mt-0.5">판매 기능을 활성화하고 맞춤 주문하기 버튼을 표시합니다.</p>
+              <p className="text-sm font-medium text-gray-800">배송 기능</p>
+              <p className="text-xs text-gray-400 mt-0.5">활성화 시 맞춤 주문에서 배송 선택이 추가됩니다.</p>
             </div>
             <button
               type="button"
               onClick={() => {
-                if (mailOrderBlocked) {
-                  setShowMailOrderWarning(true);
-                  return;
+                if (!deliveryEnabled) {
+                  if (!deliveryFees["0-1"]) { setShowDeliveryFeeWarning(true); return; }
                 }
-                if (!consultEnabled && !hasBankInfo) {
-                  setShowBankWarning(true);
-                  return;
-                }
-                setConsultEnabled((prev) => !prev);
+                setDeliveryEnabled((prev) => !prev);
               }}
-              className={`shrink-0 w-12 h-6 rounded-full transition-colors relative ${
-                consultEnabled ? "bg-gold-500" : "bg-gray-200"
-              } ${mailOrderBlocked ? "opacity-40 cursor-not-allowed" : ""}`}
+              className={`shrink-0 w-12 h-6 rounded-full transition-colors relative ${deliveryEnabled ? "bg-gold-500" : "bg-gray-200"}`}
             >
-              <span
-                className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${
-                  consultEnabled ? "left-6" : "left-0.5"
-                }`}
-              />
+              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${deliveryEnabled ? "left-6" : "left-0.5"}`} />
             </button>
           </div>
-          {mailOrderBlocked && (
-            <p className="text-xs text-red-500 mt-2">
-              통신판매업 미신고 상태로 50개를 판매해 판매 기능이 정지되었습니다.{" "}
-              <button type="button" onClick={onGoToOrderSettings} className="underline text-red-600 hover:text-red-700">판매 신청 탭</button>에서 신고번호를 등록해주세요.
-            </p>
-          )}
-        </div>
-      )}
 
-      {/* 통신판매업 미신고 30개 초과 경고 팝업 */}
-      {showMailOrderWarning && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={() => setShowMailOrderWarning(false)}>
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center shrink-0">
-                <svg className="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
-                </svg>
+          {/* 배송비 미설정 경고 */}
+          {showDeliveryFeeWarning && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={() => setShowDeliveryFeeWarning(false)}>
+              <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
+                    <svg className="w-5 h-5 text-amber-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">1km 이내 배송비를 먼저 설정해주세요</p>
+                    <p className="text-xs text-gray-400 mt-0.5">배송 기능을 활성화하려면 1km 이내 배송비가 필수입니다. 나머지 구간은 선택 사항입니다.</p>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  아래 <span className="font-medium text-gray-700">배송비 설정</span>에서 <span className="font-medium text-gray-700">1km 이내</span> 배송비를 입력하고 저장해주세요. 나머지 구간은 비워두면 해당 거리에서 고객에게 &ldquo;매장 문의&rdquo;로 안내됩니다.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowDeliveryFeeWarning(false)}
+                  className="w-full bg-gold-500 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-gold-600 transition-colors"
+                >
+                  확인
+                </button>
               </div>
-              <div>
-                <p className="text-sm font-semibold text-gray-900">통신판매업 신고가 필요합니다</p>
-                <p className="text-xs text-gray-400 mt-0.5">신고번호 미등록 상태로 50개를 판매해 판매 기능이 정지되었습니다.</p>
-              </div>
-            </div>
-            <p className="text-xs text-gray-500 leading-relaxed">
-              <button type="button" onClick={() => { setShowMailOrderWarning(false); onGoToOrderSettings?.(); }} className="font-medium text-gold-600 underline hover:text-gold-700">판매 신청 탭</button>에서 통신판매업 신고번호를 등록하면 다시 활성화할 수 있습니다.
-            </p>
-            <button
-              type="button"
-              onClick={() => setShowMailOrderWarning(false)}
-              className="w-full bg-gold-500 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-gold-600 transition-colors"
-            >
-              확인
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* 예약 확인 안내 문구 */}
-      <div className="space-y-2">
-        <div className="flex items-center gap-1.5">
-          <p className="text-sm font-medium text-gray-800">예약 확인 안내 문구</p>
-          <button type="button" onClick={() => setShowNoticeInfo(true)}>
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600 transition-colors" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
-            </svg>
-          </button>
-        </div>
-        <p className="text-xs text-gray-400 -mt-1">고객이 예약을 완료하기 직전 확인 화면 상단에 표시됩니다.</p>
-        <textarea
-          value={consultNotice}
-          onChange={(e) => setConsultNotice(e.target.value.slice(0, 500))}
-          placeholder={"예) 주문 후 입금 완료 시 예약이 확정됩니다.\n당일 취소는 불가하오니 신중히 주문해주세요."}
-          rows={6}
-          maxLength={500}
-          className="block w-full border border-gray-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-gray-400 resize-none bg-white"
-        />
-        <p className="text-xs text-gray-400 text-right">{consultNotice.length}/500</p>
-      </div>
-
-      {/* 계좌 정보 미입력 경고 팝업 */}
-      {showBankWarning && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={() => setShowBankWarning(false)}>
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
-                <svg className="w-5 h-5 text-amber-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-gray-900">계좌 정보를 먼저 입력해주세요</p>
-                <p className="text-xs text-gray-400 mt-0.5">맞춤 주문 기능을 활성화하려면 계좌 정보가 필요합니다.</p>
-              </div>
-            </div>
-            <div className="space-y-2 text-xs text-gray-500 leading-relaxed">
-              <p>
-                맞춤 주문 기능을 활성화하려면<br />
-                <button type="button" onClick={() => { setShowBankWarning(false); onGoToOrderSettings?.(); }} className="font-medium text-gold-600 underline hover:text-gold-700">판매 신청 탭</button>에서<br />
-                매장 주소, 은행, 계좌번호, 예금주를 모두 입력해주세요.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowBankWarning(false)}
-              className="w-full bg-gold-500 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-gold-600 transition-colors"
-            >
-              확인
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* 메시지 카드 */}
-      <div className="flex items-center justify-between p-4 border border-gray-200 rounded-xl bg-white">
-        <div>
-          <p className="text-sm font-medium text-gray-800">메시지 카드</p>
-          <p className="text-xs text-gray-400 mt-0.5">예약 추가 시 메시지 카드 옵션을 표시합니다.</p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          {messageCardEnabled && (
-            <div className="flex items-center gap-1">
-              <input
-                type="text"
-                inputMode="numeric"
-                value={messageCardPrice}
-                onChange={(e) => setMessageCardPrice(formatMoney(e.target.value))}
-                placeholder="0"
-                className="w-20 border border-gray-200 rounded-lg px-2 py-1 text-sm text-right focus:outline-none focus:border-gray-400 bg-white"
-              />
-              <span className="text-xs text-gray-400">원</span>
             </div>
           )}
-          <button
-            type="button"
-            onClick={() => setMessageCardEnabled((prev) => !prev)}
-            className={`w-12 h-6 rounded-full transition-colors relative ${messageCardEnabled ? "bg-gold-500" : "bg-gray-200"}`}
-          >
-            <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${messageCardEnabled ? "left-6" : "left-0.5"}`} />
-          </button>
-        </div>
-      </div>
 
-      {/* 쇼핑백 */}
-      <div className="flex items-center justify-between p-4 border border-gray-200 rounded-xl bg-white">
-        <div>
-          <p className="text-sm font-medium text-gray-800">쇼핑백</p>
-          <p className="text-xs text-gray-400 mt-0.5">예약 추가 시 쇼핑백 옵션을 표시합니다.</p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          {shoppingBagEnabled && (
-            <div className="flex items-center gap-1">
-              <input
-                type="text"
-                inputMode="numeric"
-                value={shoppingBagPrice}
-                onChange={(e) => setShoppingBagPrice(formatMoney(e.target.value))}
-                placeholder="0"
-                className="w-20 border border-gray-200 rounded-lg px-2 py-1 text-sm text-right focus:outline-none focus:border-gray-400 bg-white"
-              />
-              <span className="text-xs text-gray-400">원</span>
-            </div>
-          )}
-          <button
-            type="button"
-            onClick={() => setShoppingBagEnabled((prev) => !prev)}
-            className={`w-12 h-6 rounded-full transition-colors relative ${shoppingBagEnabled ? "bg-gold-500" : "bg-gray-200"}`}
-          >
-            <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${shoppingBagEnabled ? "left-6" : "left-0.5"}`} />
-          </button>
-        </div>
-      </div>
-
-      {/* 생화 수명연장제 */}
-      <div className="flex items-center justify-between p-4 border border-gray-200 rounded-xl bg-white">
-        <div>
-          <p className="text-sm font-medium text-gray-800">생화 수명연장제</p>
-          <p className="text-xs text-gray-400 mt-0.5">예약 추가 시 생화 수명연장제 옵션을 표시합니다.</p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          {preservativeEnabled && (
-            <div className="flex items-center gap-1">
-              <input
-                type="text"
-                inputMode="numeric"
-                value={preservativePrice}
-                onChange={(e) => setPreservativePrice(formatMoney(e.target.value))}
-                placeholder="0"
-                className="w-20 border border-gray-200 rounded-lg px-2 py-1 text-sm text-right focus:outline-none focus:border-gray-400 bg-white"
-              />
-              <span className="text-xs text-gray-400">원</span>
-            </div>
-          )}
-          <button
-            type="button"
-            onClick={() => setPreservativeEnabled((prev) => !prev)}
-            className={`w-12 h-6 rounded-full transition-colors relative ${preservativeEnabled ? "bg-gold-500" : "bg-gray-200"}`}
-          >
-            <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${preservativeEnabled ? "left-6" : "left-0.5"}`} />
-          </button>
-        </div>
-      </div>
-
-      {/* 배송 기능 */}
-      <div className="flex items-center justify-between p-4 border border-gray-200 rounded-xl bg-white">
-        <div>
-          <p className="text-sm font-medium text-gray-800">배송 기능</p>
-          <p className="text-xs text-gray-400 mt-0.5">활성화 시 맞춤 주문에서 배송 선택이 추가됩니다.</p>
-        </div>
-        <button
-          type="button"
-          onClick={() => {
-            if (!deliveryEnabled) {
-              if (!deliveryFees["0-1"]) { setShowDeliveryFeeWarning(true); return; }
-            }
-            setDeliveryEnabled((prev) => !prev);
-          }}
-          className={`shrink-0 w-12 h-6 rounded-full transition-colors relative ${deliveryEnabled ? "bg-gold-500" : "bg-gray-200"}`}
-        >
-          <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${deliveryEnabled ? "left-6" : "left-0.5"}`} />
-        </button>
-      </div>
-
-      {/* 배송비 미설정 경고 */}
-      {showDeliveryFeeWarning && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={() => setShowDeliveryFeeWarning(false)}>
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
-                <svg className="w-5 h-5 text-amber-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-gray-900">1km 이내 배송비를 먼저 설정해주세요</p>
-                <p className="text-xs text-gray-400 mt-0.5">배송 기능을 활성화하려면 1km 이내 배송비가 필수입니다. 나머지 구간은 선택 사항입니다.</p>
-              </div>
-            </div>
-            <p className="text-xs text-gray-500 leading-relaxed">
-              아래 <span className="font-medium text-gray-700">배송비 설정</span>에서 <span className="font-medium text-gray-700">1km 이내</span> 배송비를 입력하고 저장해주세요. 나머지 구간은 비워두면 해당 거리에서 고객에게 &ldquo;매장 문의&rdquo;로 안내됩니다.
-            </p>
-            <button
-              type="button"
-              onClick={() => setShowDeliveryFeeWarning(false)}
-              className="w-full bg-gold-500 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-gold-600 transition-colors"
-            >
-              확인
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* 배송비 설정 */}
-      <div className="space-y-3">
-        <div>
-          <div className="flex items-center gap-1.5">
-            <h3 className="text-sm font-medium text-gray-700">배송비 설정</h3>
-            <button type="button" onClick={() => setShowDeliveryFeeTip(true)}>
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600 transition-colors" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
-              </svg>
-            </button>
-          </div>
-          <p className="text-xs text-gray-400 mt-0.5">거리별 배송비를 설정합니다. 비워두면 해당 구간은 표시되지 않습니다.</p>
-        </div>
-        <div className="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
-          {[
-            { key: "0-1",   label: "1km 이내"   },
-            { key: "1-3",   label: "1 ~ 3km"   },
-            { key: "3-5",   label: "3 ~ 5km"   },
-            { key: "5-10",  label: "5 ~ 10km"  },
-            { key: "10-15", label: "10 ~ 15km" },
-            { key: "15-20", label: "15 ~ 20km" },
-          ].map(({ key, label }) => (
-            <div key={key} className="flex items-center justify-between px-4 py-3 bg-white">
-              <span className="text-sm text-gray-700">{label}</span>
+          {/* 배송비 설정 */}
+          <div className="space-y-3">
+            <div>
               <div className="flex items-center gap-1.5">
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={deliveryFees[key]}
-                  onChange={(e) => setDeliveryFees((prev) => ({ ...prev, [key]: formatMoney(e.target.value) }))}
-                  placeholder="미설정"
-                  className="w-24 border border-gray-200 rounded-lg px-2 py-1 text-sm text-right focus:outline-none focus:border-gray-400 bg-white"
-                />
-                <span className="text-xs text-gray-400">원</span>
+                <h3 className="text-sm font-medium text-gray-700">배송비 설정</h3>
+                <button type="button" onClick={() => setShowDeliveryFeeTip(true)}>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600 transition-colors" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
+                  </svg>
+                </button>
               </div>
+              <p className="text-xs text-gray-400 mt-0.5">거리별 배송비를 설정합니다. 비워두면 해당 구간은 표시되지 않습니다.</p>
             </div>
-          ))}
-        </div>
-      </div>
+            <div className="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
+              {[
+                { key: "0-1",   label: "1km 이내"   },
+                { key: "1-3",   label: "1 ~ 3km"   },
+                { key: "3-5",   label: "3 ~ 5km"   },
+                { key: "5-10",  label: "5 ~ 10km"  },
+                { key: "10-15", label: "10 ~ 15km" },
+                { key: "15-20", label: "15 ~ 20km" },
+              ].map(({ key, label }) => (
+                <div key={key} className="flex items-center justify-between px-4 py-3 bg-white">
+                  <span className="text-sm text-gray-700">{label}</span>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={deliveryFees[key]}
+                      onChange={(e) => setDeliveryFees((prev) => ({ ...prev, [key]: formatMoney(e.target.value) }))}
+                      placeholder="미설정"
+                      className="w-24 border border-gray-200 rounded-lg px-2 py-1 text-sm text-right focus:outline-none focus:border-gray-400 bg-white"
+                    />
+                    <span className="text-xs text-gray-400">원</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
 
-      <div className="sticky bottom-0 bg-white border-t border-gray-100 -mx-0 pt-4 pb-1 flex items-center gap-3">
-        <SaveButton
-          onSave={handleSave}
-          className="text-sm font-medium text-white bg-gold-500 hover:bg-gold-600"
-        />
-      </div>
-
-      {/* 배송비 참고 이미지 모달 */}
-      {showDeliveryFeeTip && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4" onClick={() => setShowDeliveryFeeTip(false)}>
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm md:max-w-lg flex flex-col max-h-[85vh]" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
-              <h3 className="text-sm font-semibold text-gray-900">배송비 설정 참고</h3>
-              <button type="button" onClick={() => setShowDeliveryFeeTip(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+          {/* 예약 확인 안내 문구 — 손님이 결제 직전 마지막 확인 화면에서 보는 글이라 맨 아래(저장 버튼 위) */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5">
+              <p className="text-sm font-medium text-gray-800">예약 확인 안내 문구</p>
+              <button type="button" onClick={() => setShowNoticeInfo(true)}>
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600 transition-colors" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
                 </svg>
               </button>
             </div>
-            <div className="p-5 overflow-y-auto">
-              <p className="text-xs text-gray-500 mb-3 leading-relaxed">
-                고객이 배송 주소를 입력하면 매장 주소와의 거리가 자동으로 측정되고, 그 거리 구간에 맞춰 여기서 설정한 배송비가 최종 금액에 자동으로 추가됩니다.
-              </p>
-              <img src="/delivery-fee-tip.png" alt="배송비 설정 참고 이미지" className="w-full rounded-xl border border-gray-100" />
-            </div>
+            <p className="text-xs text-gray-400 -mt-1">고객이 예약을 완료하기 직전 확인 화면 상단에 표시됩니다.</p>
+            <textarea
+              value={consultNotice}
+              onChange={(e) => setConsultNotice(e.target.value.slice(0, 500))}
+              placeholder={"예) 주문 후 입금 완료 시 예약이 확정됩니다.\n당일 취소는 불가하오니 신중히 주문해주세요."}
+              rows={6}
+              maxLength={500}
+              className="block w-full border border-gray-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-gray-400 resize-none bg-white"
+            />
+            <p className="text-xs text-gray-400 text-right">{consultNotice.length}/500</p>
           </div>
+
+          <div className="sticky bottom-0 bg-white border-t border-gray-100 -mx-0 pt-4 pb-1 flex items-center gap-3">
+            <SaveButton
+              onSave={handleSave}
+              className="text-sm font-medium text-white bg-gold-500 hover:bg-gold-600"
+            />
+          </div>
+
+          {/* 배송비 참고 이미지 모달 */}
+          {showDeliveryFeeTip && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4" onClick={() => setShowDeliveryFeeTip(false)}>
+              <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm md:max-w-lg flex flex-col max-h-[85vh]" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
+                  <h3 className="text-sm font-semibold text-gray-900">배송비 설정 참고</h3>
+                  <button type="button" onClick={() => setShowDeliveryFeeTip(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="p-5 overflow-y-auto">
+                  <p className="text-xs text-gray-500 mb-3 leading-relaxed">
+                    고객이 배송 주소를 입력하면 매장 주소와의 거리가 자동으로 측정되고, 그 거리 구간에 맞춰 여기서 설정한 배송비가 최종 금액에 자동으로 추가됩니다.
+                  </p>
+                  <img src="/delivery-fee-tip.png" alt="배송비 설정 참고 이미지" className="w-full rounded-xl border border-gray-100" />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
     </>
   );

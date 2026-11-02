@@ -42,114 +42,116 @@ export default function SettingsTab({ companyId, initialBg, initialAccent, onThe
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       <h2 className="text-xl font-medium text-gray-900">디자인</h2>
+      <div className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:p-6">
+        <div className="space-y-8">
+          {/* 사이트 색상 */}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">사이트 색상</h3>
 
-      {/* 사이트 색상 */}
-      <div>
-        <h3 className="text-sm font-semibold text-gray-900 mb-4">사이트 색상</h3>
+            <div className="space-y-4">
+              {/* 배경색 */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-700">배경색</p>
+                  <p className="text-xs text-gray-400 mt-0.5">페이지 전체 배경 계열 (옅은 색 추천)</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5 leading-relaxed">(어두우면 상품명·가격 같은 글씨가 잘 안 보여요)</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-gray-400 font-mono">{bg}</span>
+                  <label className="relative cursor-pointer">
+                    <div
+                      className="w-10 h-10 rounded-lg border-2 border-gray-300 shadow-sm overflow-hidden"
+                      style={{ backgroundColor: bg }}
+                    />
+                    <input
+                      type="color"
+                      value={bg}
+                      onChange={(e) => setBg(e.target.value)}
+                      className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                    />
+                  </label>
+                </div>
+              </div>
 
-        <div className="space-y-4">
-          {/* 배경색 */}
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-700">배경색</p>
-              <p className="text-xs text-gray-400 mt-0.5">페이지 전체 배경 계열</p>
+              {/* 포인트색 */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-700">포인트색</p>
+                  <p className="text-xs text-gray-400 mt-0.5">버튼, 강조 요소 색상 (진한 색 추천)</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5 leading-relaxed">(밝으면 버튼 위 흰 글씨가 잘 안 보여요)</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-gray-400 font-mono">{accent}</span>
+                  <label className="relative cursor-pointer">
+                    <div
+                      className="w-10 h-10 rounded-lg border-2 border-gray-300 shadow-sm overflow-hidden"
+                      style={{ backgroundColor: accent }}
+                    />
+                    <input
+                      type="color"
+                      value={accent}
+                      onChange={(e) => setAccent(e.target.value)}
+                      className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                    />
+                  </label>
+                </div>
+              </div>
             </div>
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-gray-400 font-mono">{bg}</span>
-              <label className="relative cursor-pointer">
-                <div
-                  className="w-10 h-10 rounded-lg border-2 border-gray-300 shadow-sm overflow-hidden"
-                  style={{ backgroundColor: bg }}
-                />
-                <input
-                  type="color"
-                  value={bg}
-                  onChange={(e) => setBg(e.target.value)}
-                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                />
-              </label>
-            </div>
-          </div>
 
-          {/* 포인트색 */}
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-700">포인트색</p>
-              <p className="text-xs text-gray-400 mt-0.5">버튼, 강조 요소 색상</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-gray-400 font-mono">{accent}</span>
-              <label className="relative cursor-pointer">
-                <div
-                  className="w-10 h-10 rounded-lg border-2 border-gray-300 shadow-sm overflow-hidden"
-                  style={{ backgroundColor: accent }}
-                />
-                <input
-                  type="color"
-                  value={accent}
-                  onChange={(e) => setAccent(e.target.value)}
-                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                />
-              </label>
-            </div>
-          </div>
-        </div>
-
-        {/* 미리보기 */}
-        <div
-          className="mt-5 rounded-xl p-4 border"
-          style={{
-            ...previewVars as React.CSSProperties,
-            backgroundColor: previewVars["--color-beige-100"],
-            borderColor: previewVars["--color-beige-300"],
-          }}
-        >
-          <p className="text-xs font-semibold mb-3" style={{ color: previewVars["--color-beige-400"] }}>
-            미리보기
-          </p>
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              className="px-3 py-1.5 rounded-lg text-xs font-medium text-white"
-              style={{ backgroundColor: previewVars["--color-gold-500"] }}
-            >
-              버튼 예시
-            </button>
-            <span
-              className="px-3 py-1.5 rounded-lg text-xs border"
+            {/* 미리보기 */}
+            <div
+              className="mt-5 rounded-xl p-4 border"
               style={{
+                ...previewVars as React.CSSProperties,
+                backgroundColor: previewVars["--color-beige-100"],
                 borderColor: previewVars["--color-beige-300"],
-                backgroundColor: previewVars["--color-beige-50"],
-                color: "#2c2416",
               }}
             >
-              태그 예시
-            </span>
-            <span className="text-xs font-semibold tracking-wider" style={{ color: previewVars["--color-gold-500"] }}>
-              포인트 텍스트
-            </span>
+              {/* 제목 오른쪽에 대비 안내 */}
+              <div className="flex items-baseline gap-2 mb-3">
+                <p className="text-xs text-gray-900 shrink-0">
+                  미리보기
+                </p>
+                <p className="text-[11px] text-gray-500 leading-relaxed">
+                  {/* 모바일에서만 '대비가 필요해요.' 뒤에서 줄바꿈 */}
+                  버튼이 잘 보이려면 두 색의 대비가 필요해요.<br className="md:hidden" /> 배경은 옅게, 포인트는 진하게 골라주세요.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium text-white"
+                  style={{ backgroundColor: previewVars["--color-gold-500"] }}
+                >
+                  버튼 예시
+                </button>
+                <span className="text-xs font-semibold tracking-wider" style={{ color: previewVars["--color-gold-500"] }}>
+                  포인트 텍스트
+                </span>
+              </div>
+            </div>
+
+            {error && (
+              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
+            )}
+
+            <div className="mt-6 flex items-center gap-3">
+              <SaveButton
+                onSave={handleSave}
+                className="text-sm font-medium text-white bg-gold-500 hover:bg-gold-600"
+              />
+              <button
+                onClick={handleReset}
+                className="px-4 py-2 rounded-lg text-sm border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                기본값으로
+              </button>
+            </div>
           </div>
-        </div>
 
-        {error && (
-          <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
-        )}
-
-        <div className="mt-6 flex items-center gap-3">
-          <SaveButton
-            onSave={handleSave}
-            className="text-sm font-medium text-white bg-gold-500 hover:bg-gold-600"
-          />
-          <button
-            onClick={handleReset}
-            className="px-4 py-2 rounded-lg text-sm border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors"
-          >
-            기본값으로
-          </button>
         </div>
       </div>
-
     </div>
   );
 }

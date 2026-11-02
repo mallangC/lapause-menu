@@ -122,7 +122,7 @@ export default function CustomerProfileModal({ profileId, ordererName, ordererPh
               value={memo}
               onChange={(e) => { setMemo(e.target.value); setMemoSaved(false); }}
               rows={3}
-              placeholder="고객 관련 메모를 남기세요 (예: 빨간색 싫어함, 카드 항상 원함)"
+              placeholder="고객 관련 메모를 남기세요 (예: 빨간색 불호, 카드 항상 원함)"
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400 resize-none text-gray-700 placeholder:text-gray-300"
             />
             <button

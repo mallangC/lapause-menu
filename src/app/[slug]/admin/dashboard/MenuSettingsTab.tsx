@@ -99,141 +99,144 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
     customCategories.filter((c) => c.category_type === "season" && !c.hidden).length;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       <div>
         <h2 className="text-xl font-medium text-gray-900 mb-1">메뉴 설정</h2>
         <p className="text-xs text-gray-400">직접 추가, 삭제가 가능합니다. 기본 제공 항목도 삭제할 수 있습니다.</p>
       </div>
+      <div className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:p-6">
+        <div className="space-y-8">
+          {/* 상품 유형 */}
+          <div>
+            <p className="text-sm font-medium text-gray-700 mb-2">
+              상품 유형 <span className="text-gray-400 font-normal">({activeProductTypeCount}/{MAX_PRODUCT_TYPES})</span>
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              {PRODUCT_TYPES.filter((type) => !hiddenProductTypes.includes(type)).map((type) => (
+                <div key={type} className="relative flex items-center justify-center py-2 px-3 pr-7 rounded-lg border border-gray-200 text-sm text-gray-700">
+                  <span className="truncate">{type}</span>
+                  <button
+                    onClick={() => toggleProductType(type)}
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors text-base leading-none"
+                    title="삭제"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+              {customCategories.filter((c) => c.category_type === "product_type").map((cat) => (
+                <div key={cat.id} className="relative">
+                  <button
+                    onClick={() => toggleCustomHidden(cat.id)}
+                    className={`w-full py-2 px-3 pr-7 rounded-lg border text-sm text-center truncate transition-colors ${
+                      cat.hidden
+                        ? "border-red-300 bg-red-50 text-red-500 font-medium"
+                        : "border-gray-200 text-gray-700 hover:border-gray-300"
+                    }`}
+                  >
+                    {cat.hidden ? `${cat.name} (숨김)` : cat.name}
+                  </button>
+                  <button
+                    onClick={() => deleteCategory(cat.id)}
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors text-base leading-none"
+                    title="삭제"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+              {showProductTypeForm ? (
+                <div className="space-y-1">
+                  <input
+                    autoFocus
+                    value={newProductTypeName}
+                    onChange={(e) => { setNewProductTypeName(e.target.value); if (duplicateError === "product_type") setDuplicateError(null); }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") { e.preventDefault(); addCategory("product_type", newProductTypeName, () => { setNewProductTypeName(""); setShowProductTypeForm(false); }); }
+                      if (e.key === "Escape") { setShowProductTypeForm(false); setNewProductTypeName(""); setDuplicateError(null); }
+                    }}
+                    onBlur={() => { if (!newProductTypeName.trim()) { setShowProductTypeForm(false); setDuplicateError(null); } }}
+                    placeholder="이름 입력 후 엔터"
+                    className={`w-full border rounded-lg px-2.5 py-2 text-sm placeholder-gray-300 focus:outline-none ${duplicateError === "product_type" ? "border-red-400 text-red-500" : "border-gold-400 text-gray-700 focus:border-gold-500"}`}
+                  />
+                  {duplicateError === "product_type" && <p className="text-xs text-red-500 leading-tight">중복된 이름</p>}
+                </div>
+              ) : activeProductTypeCount < MAX_PRODUCT_TYPES ? (
+                <button
+                  onClick={() => setShowProductTypeForm(true)}
+                  className="py-2 px-3 rounded-lg border border-dashed border-gray-300 text-gray-400 text-sm hover:border-gold-400 hover:text-gold-500 transition-colors"
+                >
+                  +
+                </button>
+              ) : null}
+            </div>
+          </div>
 
-      {/* 상품 유형 */}
-      <div>
-        <p className="text-sm font-medium text-gray-700 mb-2">
-          상품 유형 <span className="text-gray-400 font-normal">({activeProductTypeCount}/{MAX_PRODUCT_TYPES})</span>
-        </p>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-          {PRODUCT_TYPES.filter((type) => !hiddenProductTypes.includes(type)).map((type) => (
-            <div key={type} className="relative flex items-center justify-center py-2 px-3 pr-7 rounded-lg border border-gray-200 text-sm text-gray-700">
-              <span className="truncate">{type}</span>
-              <button
-                onClick={() => toggleProductType(type)}
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors text-base leading-none"
-                title="삭제"
-              >
-                ×
-              </button>
+          {/* 시즌 */}
+          <div>
+            <p className="text-sm font-medium text-gray-700 mb-2">
+              시즌 <span className="text-gray-400 font-normal">({activeSeasonCount}/{MAX_SEASONS})</span>
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              {SEASONS.filter((season) => !hiddenSeasons.includes(season)).map((season) => (
+                <div key={season} className="relative flex items-center justify-center py-2 px-3 pr-7 rounded-lg border border-gray-200 text-sm text-gray-700">
+                  <span className="truncate">{season}</span>
+                  <button
+                    onClick={() => toggleSeason(season)}
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors text-base leading-none"
+                    title="삭제"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+              {customCategories.filter((c) => c.category_type === "season").map((cat) => (
+                <div key={cat.id} className="relative">
+                  <button
+                    onClick={() => toggleCustomHidden(cat.id)}
+                    className={`w-full py-2 px-3 pr-7 rounded-lg border text-sm text-center truncate transition-colors ${
+                      cat.hidden
+                        ? "border-red-300 bg-red-50 text-red-500 font-medium"
+                        : "border-gray-200 text-gray-700 hover:border-gray-300"
+                    }`}
+                  >
+                    {cat.hidden ? `${cat.name} (숨김)` : cat.name}
+                  </button>
+                  <button
+                    onClick={() => deleteCategory(cat.id)}
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors text-base leading-none"
+                    title="삭제"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+              {showSeasonForm ? (
+                <div className="space-y-1">
+                  <input
+                    autoFocus
+                    value={newSeasonName}
+                    onChange={(e) => { setNewSeasonName(e.target.value); if (duplicateError === "season") setDuplicateError(null); }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") { e.preventDefault(); addCategory("season", newSeasonName, () => { setNewSeasonName(""); setShowSeasonForm(false); }); }
+                      if (e.key === "Escape") { setShowSeasonForm(false); setNewSeasonName(""); setDuplicateError(null); }
+                    }}
+                    onBlur={() => { if (!newSeasonName.trim()) { setShowSeasonForm(false); setDuplicateError(null); } }}
+                    placeholder="이름 입력 후 엔터"
+                    className={`w-full border rounded-lg px-2.5 py-2 text-sm placeholder-gray-300 focus:outline-none ${duplicateError === "season" ? "border-red-400 text-red-500" : "border-gold-400 text-gray-700 focus:border-gold-500"}`}
+                  />
+                  {duplicateError === "season" && <p className="text-xs text-red-500 leading-tight">중복된 이름</p>}
+                </div>
+              ) : activeSeasonCount < MAX_SEASONS ? (
+                <button
+                  onClick={() => setShowSeasonForm(true)}
+                  className="py-2 px-3 rounded-lg border border-dashed border-gray-300 text-gray-400 text-sm hover:border-gold-400 hover:text-gold-500 transition-colors"
+                >
+                  +
+                </button>
+              ) : null}
             </div>
-          ))}
-          {customCategories.filter((c) => c.category_type === "product_type").map((cat) => (
-            <div key={cat.id} className="relative">
-              <button
-                onClick={() => toggleCustomHidden(cat.id)}
-                className={`w-full py-2 px-3 pr-7 rounded-lg border text-sm text-center truncate transition-colors ${
-                  cat.hidden
-                    ? "border-red-300 bg-red-50 text-red-500 font-medium"
-                    : "border-gray-200 text-gray-700 hover:border-gray-300"
-                }`}
-              >
-                {cat.hidden ? `${cat.name} (숨김)` : cat.name}
-              </button>
-              <button
-                onClick={() => deleteCategory(cat.id)}
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors text-base leading-none"
-                title="삭제"
-              >
-                ×
-              </button>
-            </div>
-          ))}
-          {showProductTypeForm ? (
-            <div className="space-y-1">
-              <input
-                autoFocus
-                value={newProductTypeName}
-                onChange={(e) => { setNewProductTypeName(e.target.value); if (duplicateError === "product_type") setDuplicateError(null); }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") { e.preventDefault(); addCategory("product_type", newProductTypeName, () => { setNewProductTypeName(""); setShowProductTypeForm(false); }); }
-                  if (e.key === "Escape") { setShowProductTypeForm(false); setNewProductTypeName(""); setDuplicateError(null); }
-                }}
-                onBlur={() => { if (!newProductTypeName.trim()) { setShowProductTypeForm(false); setDuplicateError(null); } }}
-                placeholder="이름 입력 후 엔터"
-                className={`w-full border rounded-lg px-2.5 py-2 text-sm placeholder-gray-300 focus:outline-none ${duplicateError === "product_type" ? "border-red-400 text-red-500" : "border-gold-400 text-gray-700 focus:border-gold-500"}`}
-              />
-              {duplicateError === "product_type" && <p className="text-xs text-red-500 leading-tight">중복된 이름</p>}
-            </div>
-          ) : activeProductTypeCount < MAX_PRODUCT_TYPES ? (
-            <button
-              onClick={() => setShowProductTypeForm(true)}
-              className="py-2 px-3 rounded-lg border border-dashed border-gray-300 text-gray-400 text-sm hover:border-gold-400 hover:text-gold-500 transition-colors"
-            >
-              +
-            </button>
-          ) : null}
-        </div>
-      </div>
-
-      {/* 시즌 */}
-      <div>
-        <p className="text-sm font-medium text-gray-700 mb-2">
-          시즌 <span className="text-gray-400 font-normal">({activeSeasonCount}/{MAX_SEASONS})</span>
-        </p>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-          {SEASONS.filter((season) => !hiddenSeasons.includes(season)).map((season) => (
-            <div key={season} className="relative flex items-center justify-center py-2 px-3 pr-7 rounded-lg border border-gray-200 text-sm text-gray-700">
-              <span className="truncate">{season}</span>
-              <button
-                onClick={() => toggleSeason(season)}
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors text-base leading-none"
-                title="삭제"
-              >
-                ×
-              </button>
-            </div>
-          ))}
-          {customCategories.filter((c) => c.category_type === "season").map((cat) => (
-            <div key={cat.id} className="relative">
-              <button
-                onClick={() => toggleCustomHidden(cat.id)}
-                className={`w-full py-2 px-3 pr-7 rounded-lg border text-sm text-center truncate transition-colors ${
-                  cat.hidden
-                    ? "border-red-300 bg-red-50 text-red-500 font-medium"
-                    : "border-gray-200 text-gray-700 hover:border-gray-300"
-                }`}
-              >
-                {cat.hidden ? `${cat.name} (숨김)` : cat.name}
-              </button>
-              <button
-                onClick={() => deleteCategory(cat.id)}
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors text-base leading-none"
-                title="삭제"
-              >
-                ×
-              </button>
-            </div>
-          ))}
-          {showSeasonForm ? (
-            <div className="space-y-1">
-              <input
-                autoFocus
-                value={newSeasonName}
-                onChange={(e) => { setNewSeasonName(e.target.value); if (duplicateError === "season") setDuplicateError(null); }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") { e.preventDefault(); addCategory("season", newSeasonName, () => { setNewSeasonName(""); setShowSeasonForm(false); }); }
-                  if (e.key === "Escape") { setShowSeasonForm(false); setNewSeasonName(""); setDuplicateError(null); }
-                }}
-                onBlur={() => { if (!newSeasonName.trim()) { setShowSeasonForm(false); setDuplicateError(null); } }}
-                placeholder="이름 입력 후 엔터"
-                className={`w-full border rounded-lg px-2.5 py-2 text-sm placeholder-gray-300 focus:outline-none ${duplicateError === "season" ? "border-red-400 text-red-500" : "border-gold-400 text-gray-700 focus:border-gold-500"}`}
-              />
-              {duplicateError === "season" && <p className="text-xs text-red-500 leading-tight">중복된 이름</p>}
-            </div>
-          ) : activeSeasonCount < MAX_SEASONS ? (
-            <button
-              onClick={() => setShowSeasonForm(true)}
-              className="py-2 px-3 rounded-lg border border-dashed border-gray-300 text-gray-400 text-sm hover:border-gold-400 hover:text-gold-500 transition-colors"
-            >
-              +
-            </button>
-          ) : null}
+          </div>
         </div>
       </div>
     </div>

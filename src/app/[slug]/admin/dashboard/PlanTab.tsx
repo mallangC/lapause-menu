@@ -222,158 +222,166 @@ export default function PlanTab({ companyId, customerName, plan, subscriptionPla
   }
 
   return (
-    <div>
-      <h2 className="text-base font-semibold text-gray-900 mb-4">요금제</h2>
-
-      {/* ── 상태 배너 ── */}
-      {isInTrial && !cancelAtPeriodEnd && (
-        <div className="mb-5 p-4 rounded-xl bg-gold-500/10 border border-gold-400/30 space-y-1">
-          <p className="text-sm font-semibold text-gold-600">무료 체험 중 · D-{trialDaysLeft}</p>
-          <p className="text-xs text-gray-500">
-            {formatDate(trialEndsAt!)} 체험 종료 후{" "}
-            <span className="font-medium text-gray-700">
-              {subscriptionPlan === "annual"
-                ? `연간 (₩${(nextAmount ?? PLAN_PRICES.annualTotal).toLocaleString()}/년)`
-                : `월간 (₩${(nextAmount ?? PLAN_PRICES.monthly).toLocaleString()}/월)`}
-            </span>
-            이 자동 결제됩니다.
-          </p>
-        </div>
-      )}
-      {isInTrial && cancelAtPeriodEnd && (
-        <div className="mb-5 p-4 rounded-xl bg-red-50 border border-red-200 space-y-1">
-          <p className="text-sm font-semibold text-red-500">해지 예정</p>
-          <p className="text-xs text-gray-500">{formatDate(trialEndsAt!)} 무료 체험 종료 후 플랜이 해지됩니다.</p>
-        </div>
-      )}
-      {!isInTrial && planExpiresAt && !cancelAtPeriodEnd && (
-        <div className="mb-5 p-4 rounded-xl bg-beige-50 border border-beige-200 space-y-0.5">
-          <p className="text-xs text-gray-400">다음 결제일</p>
-          <p className="text-sm font-medium text-gray-800">{formatDate(planExpiresAt)}</p>
-          {nextAmount != null && (
-            <p className="text-xs text-gray-500">
-              {subscriptionPlan === "annual" ? `₩${nextAmount.toLocaleString()} (연간)` : `₩${nextAmount.toLocaleString()}/월`}
-            </p>
+    <div className="space-y-4">
+      <h2 className="text-xl font-medium text-gray-900">요금제</h2>
+      <div className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:p-6">
+        <div>
+          {/* ── 상태 배너 ── */}
+          {isInTrial && !cancelAtPeriodEnd && (
+            <div className="mb-5 p-4 rounded-xl bg-gold-500/10 border border-gold-400/30 space-y-1">
+              <p className="text-sm font-semibold text-gold-600">무료 체험 중 · D-{trialDaysLeft}</p>
+              <p className="text-xs text-gray-500">
+                {formatDate(trialEndsAt!)} 체험 종료 후{" "}
+                <span className="font-medium text-gray-700">
+                  {subscriptionPlan === "annual"
+                    ? `연간 (₩${(nextAmount ?? PLAN_PRICES.annualTotal).toLocaleString()}/년)`
+                    : `월간 (₩${(nextAmount ?? PLAN_PRICES.monthly).toLocaleString()}/월)`}
+                </span>
+                이 자동 결제됩니다.
+              </p>
+            </div>
           )}
-        </div>
-      )}
-      {!isInTrial && planExpiresAt && cancelAtPeriodEnd && (
-        <div className="mb-5 p-4 rounded-xl bg-red-50 border border-red-200 space-y-1">
-          <p className="text-sm font-semibold text-red-500">해지 예정</p>
-          <p className="text-xs text-gray-500">{formatDate(planExpiresAt)} 이후 플랜이 해지됩니다.</p>
-        </div>
-      )}
-
-      {success && (
-        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
-          {success}
-        </div>
-      )}
-
-      {/* ── 플랜 카드 ── */}
-      <PlanCard
-        selectedCycle={selectedCycle}
-        onCycleChange={setSelectedCycle}
-        currentPlan={plan as "monthly" | "annual"}
-        promoSlot={promoBox}
-        actionSlot={actionSlot}
-      />
-
-      {/* ── 구독 정책 안내 ── */}
-      <div className="mt-4">
-        <button
-          onClick={() => setShowPolicy((v) => !v)}
-          className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-gray-600 transition-colors"
-        >
-          <span className="font-semibold uppercase tracking-wide">구독 정책 안내</span>
-          <svg className={`w-3 h-3 transition-transform ${showPolicy ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
-        {showPolicy && (
-          <ul className="mt-2 text-[11px] text-gray-400 space-y-1.5">
-            <li>· 월간 플랜은 매월 ₩{PLAN_PRICES.monthly.toLocaleString()}이 자동 결제됩니다.</li>
-            <li>· 연간 플랜은 연 1회 ₩{PLAN_PRICES.annualTotal.toLocaleString()}이 결제됩니다. (월 환산 ₩{PLAN_PRICES.annual.toLocaleString()})</li>
-            <li>· 결제 실패 시 24시간 간격으로 최대 3회 재시도되며, 모두 실패하면 구독이 자동 해지됩니다.</li>
-            <li>· 플랜 전환은 현재 결제 기간이 끝난 후 적용됩니다.</li>
-            <li>· 구독 해지 시 현재 기간 종료 후 자동 결제가 중단되며, 잔여 기간은 정상 이용 가능합니다.</li>
-          </ul>
-        )}
-      </div>
-
-      {/* ── 환불 안내 — 환불은 운영팀이 문의를 받아 환불 규정에 따라 처리 ── */}
-      {subscriptionPlan !== null && !isInTrial && (
-        <div className="mt-4 p-3.5 rounded-xl bg-beige-50 border border-beige-200 text-[11px] text-gray-500 leading-relaxed space-y-1">
-          <p className="font-semibold text-gray-600">환불 문의</p>
-          <p>
-            구독 환불은 <a href="http://pf.kakao.com/_yHXlX" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 text-gold-600 hover:text-gold-700">카카오 채널</a> 또는 이메일(floaide.team@gmail.com)로 매장명과 사유를 보내주시면{" "}
-            <a href="/refund" target="_blank" className="underline underline-offset-2 hover:text-gray-700">환불 규정</a>에 따라 확인 후 처리해 드립니다.
-          </p>
-        </div>
-      )}
-
-      {/* ── 구독 해지 / 해지 취소 ── */}
-      {subscriptionPlan !== null && (
-        <div className="mt-4 pt-5 border-t border-beige-200">
-          {cancelAtPeriodEnd ? (
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-red-400">구독 해지가 예약되었습니다.</span>
-              <button
-                onClick={handleUndoCancel}
-                disabled={loading}
-                className="text-xs text-gold-600 hover:text-gold-700 underline underline-offset-2 transition-colors disabled:opacity-50"
-              >
-                해지 취소
-              </button>
+          {isInTrial && cancelAtPeriodEnd && (
+            <div className="mb-5 p-4 rounded-xl bg-red-50 border border-red-200 space-y-1">
+              <p className="text-sm font-semibold text-red-500">해지 예정</p>
+              <p className="text-xs text-gray-500">{formatDate(trialEndsAt!)} 무료 체험 종료 후 플랜이 해지됩니다.</p>
             </div>
-          ) : (
-            <>
-              <button
-                onClick={() => setShowCancelModal(true)}
-                disabled={loading}
-                className="text-xs text-gray-500 hover:text-red-500 underline underline-offset-2 transition-colors disabled:opacity-50"
-              >
-                구독 해지
-              </button>
-              <p className="text-[11px] text-gray-400 mt-1">해지 시 현재 기간 종료 후 자동 결제가 중단됩니다.</p>
-            </>
           )}
-        </div>
-      )}
+          {!isInTrial && planExpiresAt && !cancelAtPeriodEnd && (
+            <div className="mb-5 p-4 rounded-xl bg-beige-50 border border-beige-200 space-y-0.5">
+              <p className="text-xs text-gray-400">다음 결제일</p>
+              <p className="text-sm font-medium text-gray-800">{formatDate(planExpiresAt)}</p>
+              {nextAmount != null && (
+                <p className="text-xs text-gray-500">
+                  {subscriptionPlan === "annual" ? `₩${nextAmount.toLocaleString()} (연간)` : `₩${nextAmount.toLocaleString()}/월`}
+                </p>
+              )}
+            </div>
+          )}
+          {!isInTrial && planExpiresAt && cancelAtPeriodEnd && (
+            <div className="mb-5 p-4 rounded-xl bg-red-50 border border-red-200 space-y-1">
+              <p className="text-sm font-semibold text-red-500">해지 예정</p>
+              <p className="text-xs text-gray-500">{formatDate(planExpiresAt)} 이후 플랜이 해지됩니다.</p>
+            </div>
+          )}
 
-      {/* 구독 해지 확인 모달 */}
-      {showCancelModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowCancelModal(false)} />
-          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center shrink-0">
-                <svg className="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-gray-900">구독을 해지하시겠습니까?</p>
-                <p className="text-xs text-gray-400 mt-0.5">현재 기간이 종료되면 자동 결제가 중단됩니다.</p>
-              </div>
+          {success && (
+            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+              {success}
             </div>
-            <ul className="text-xs text-gray-500 space-y-1.5 bg-beige-50 rounded-xl p-4">
-              <li>· 해지 후에도 현재 구독 기간까지는 정상 이용 가능합니다.</li>
-              <li>· 기간 종료 후 메뉴판이 비공개 처리됩니다.</li>
-              <li>· 잔여 기간에 대한 환불은 제공되지 않습니다.</li>
-            </ul>
-            <div className="flex gap-2 pt-1">
-              <button onClick={() => setShowCancelModal(false)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
-                돌아가기
-              </button>
-              <button onClick={handleCancel} disabled={loading} className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-red-500 text-white hover:bg-red-600 disabled:opacity-50 transition-colors">
-                {loading ? "처리 중..." : "해지 확인"}
-              </button>
-            </div>
+          )}
+
+          {/* ── 플랜 카드 ── */}
+          <PlanCard
+            selectedCycle={selectedCycle}
+            onCycleChange={setSelectedCycle}
+            currentPlan={plan as "monthly" | "annual"}
+            promoSlot={promoBox}
+            actionSlot={actionSlot}
+          />
+
+          {/* ── 구독 정책 안내 ── */}
+          <div className="mt-4">
+            <button
+              onClick={() => setShowPolicy((v) => !v)}
+              className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <span className="font-semibold uppercase tracking-wide">구독 정책 안내</span>
+              <svg className={`w-3 h-3 transition-transform ${showPolicy ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {showPolicy && (
+              <ul className="mt-2 text-[11px] text-gray-400 space-y-1.5">
+                <li>· 월간 플랜은 매월 ₩{PLAN_PRICES.monthly.toLocaleString()}이 자동 결제됩니다.</li>
+                <li>· 연간 플랜은 연 1회 ₩{PLAN_PRICES.annualTotal.toLocaleString()}이 결제됩니다. (월 환산 ₩{PLAN_PRICES.annual.toLocaleString()})</li>
+                <li>· 결제 실패 시 24시간 간격으로 최대 3회 재시도되며, 모두 실패하면 구독이 자동 해지됩니다.</li>
+                <li>· 플랜 전환은 현재 결제 기간이 끝난 후 적용됩니다.</li>
+                <li>· 구독 해지 시 현재 기간 종료 후 자동 결제가 중단되며, 잔여 기간은 정상 이용 가능합니다.</li>
+                <li>
+                  · 환불은{" "}
+                  <a href="/refund/subscription" target="_blank" className="underline underline-offset-2 hover:text-gray-600">구독 환불 정책</a>
+                  에 따릅니다.
+                </li>
+              </ul>
+            )}
           </div>
-        </div>
-      )}
 
+          {/* ── 환불 안내 — 환불은 운영팀이 문의를 받아 환불 규정에 따라 처리 ── */}
+          {subscriptionPlan !== null && !isInTrial && (
+            <div className="mt-4 p-3.5 rounded-xl bg-beige-50 border border-beige-200 text-[11px] text-gray-500 leading-relaxed space-y-1">
+              <p className="font-semibold text-gray-600">환불 문의</p>
+              <p>
+                구독 환불은 <a href="http://pf.kakao.com/_yHXlX" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 text-gold-600 hover:text-gold-700">카카오 채널</a> 또는 이메일(floaide.team@gmail.com)로 매장명과 사유를 보내주시면{" "}
+                <a href="/refund/subscription" target="_blank" className="underline underline-offset-2 hover:text-gray-700">구독 환불 정책</a>에 따라 확인 후 처리해 드립니다.
+              </p>
+            </div>
+          )}
+
+          {/* ── 구독 해지 / 해지 취소 ── */}
+          {subscriptionPlan !== null && (
+            <div className="mt-4 pt-5 border-t border-beige-200">
+              {cancelAtPeriodEnd ? (
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-red-400">구독 해지가 예약되었습니다.</span>
+                  <button
+                    onClick={handleUndoCancel}
+                    disabled={loading}
+                    className="text-xs text-gold-600 hover:text-gold-700 underline underline-offset-2 transition-colors disabled:opacity-50"
+                  >
+                    해지 취소
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setShowCancelModal(true)}
+                    disabled={loading}
+                    className="text-xs text-gray-500 hover:text-red-500 underline underline-offset-2 transition-colors disabled:opacity-50"
+                  >
+                    구독 해지
+                  </button>
+                  <p className="text-[11px] text-gray-400 mt-1">해지 시 현재 기간 종료 후 자동 결제가 중단됩니다.</p>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* 구독 해지 확인 모달 */}
+          {showCancelModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+              <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowCancelModal(false)} />
+              <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center shrink-0">
+                    <svg className="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">구독을 해지하시겠습니까?</p>
+                    <p className="text-xs text-gray-400 mt-0.5">현재 기간이 종료되면 자동 결제가 중단됩니다.</p>
+                  </div>
+                </div>
+                <ul className="text-xs text-gray-500 space-y-1.5 bg-beige-50 rounded-xl p-4">
+                  <li>· 해지 후에도 현재 구독 기간까지는 정상 이용 가능합니다.</li>
+                  <li>· 기간 종료 후 메뉴판이 비공개 처리됩니다.</li>
+                  <li>· 잔여 기간에 대한 환불은 제공되지 않습니다.</li>
+                </ul>
+                <div className="flex gap-2 pt-1">
+                  <button onClick={() => setShowCancelModal(false)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+                    돌아가기
+                  </button>
+                  <button onClick={handleCancel} disabled={loading} className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-red-500 text-white hover:bg-red-600 disabled:opacity-50 transition-colors">
+                    {loading ? "처리 중..." : "해지 확인"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+        </div>
+      </div>
     </div>
   );
 }

@@ -291,9 +291,9 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
       </div>
 
       <div className="flex flex-1 max-w-6xl w-full mx-auto px-4 py-6 gap-6">
-        {/* 데스크탑 사이드 탭 */}
-        <nav className="hidden md:block w-44 shrink-0">
-          <ul className="space-y-1">
+        {/* 데스크탑 사이드 탭 — 흰 패널로 감싸 회색 바탕과 구분 (오른쪽 콘텐츠 카드와 같은 모양) */}
+        <nav className="hidden md:block w-48 shrink-0 self-start">
+          <ul className="space-y-1 bg-white rounded-2xl p-2">
             {mainTabs.map((tab) => (
               <li
                 key={tab.key}
@@ -302,7 +302,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
                 <button
                   onClick={() => { setActiveTab(tab.key); setShowForm(false); setEditingProduct(null); setError(null); }}
                   className={`w-full text-left px-4 py-2.5 rounded-lg text-sm transition-colors ${
-                    activeTab === tab.key ? "bg-gold-500 text-white font-medium" : "text-gray-700 hover:bg-gold-500/50"
+                    activeTab === tab.key ? "bg-gold-500 text-white font-medium" : "text-gray-700 hover:bg-gray-100"
                   }`}
                 >
                   {tab.label}
@@ -314,7 +314,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
               <button
                 onClick={() => setShowSettingsDropdown((v) => !v)}
                 className={`w-full text-left px-4 py-2.5 rounded-lg text-sm transition-colors flex items-center justify-between ${
-                  isSettingsTab ? "bg-gold-500 text-white font-medium" : "text-gray-700 hover:bg-gold-500/50"
+                  isSettingsTab ? "bg-gold-500 text-white font-medium" : "text-gray-700 hover:bg-gray-100"
                 }`}
               >
                 설정
@@ -329,7 +329,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
                       <button
                         onClick={() => { setActiveTab(tab.key); setShowForm(false); setEditingProduct(null); setError(null); }}
                         className={`w-full text-left px-4 py-2 rounded-lg text-sm transition-colors ${
-                          activeTab === tab.key ? "bg-gold-100 text-gold-700 font-medium" : "text-gray-500 hover:bg-gold-500/30 hover:text-gray-700"
+                          activeTab === tab.key ? "bg-gold-500/10 text-gold-600 font-medium" : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
                         }`}
                       >
                         {tab.label}
@@ -455,23 +455,25 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
             {error && (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
             )}
-            <div className="bg-white border border-gray-200 rounded-xl p-6">
-              <div className="flex items-center justify-between mb-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
                 <h2 className="text-xl font-medium text-gray-900">상품 목록</h2>
                 <button
                   onClick={() => products.length >= 500 ? setShowLimitModal(true) : setShowForm(true)}
-                  className="bg-gold-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gold-600 transition-colors"
+                  className="bg-gold-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gold-600 transition-colors whitespace-nowrap"
                 >
                   + 상품 추가
                 </button>
               </div>
-              <ProductTable
-                products={products}
-                onEdit={(product) => { setEditingProduct(product); setShowForm(false); }}
-                onDelete={handleDelete}
-                onStatusChange={handleStatusChange}
-                companyId={companyId}
-              />
+              <div className="bg-white -mx-4 md:mx-0 py-4 px-4 md:rounded-2xl md:px-5">
+                <ProductTable
+                  products={products}
+                  onEdit={(product) => { setEditingProduct(product); setShowForm(false); }}
+                  onDelete={handleDelete}
+                  onStatusChange={handleStatusChange}
+                  companyId={companyId}
+                />
+              </div>
             </div>
           </div>
 
@@ -483,128 +485,110 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
 
           {visitedTabs.has("settlement") && (
             <div className={activeTab === "settlement" ? "" : "hidden"}>
-              <div className="bg-white border border-gray-200 rounded-xl p-6">
-                <SettlementTab companyId={companyId} refreshKey={reservationsVersion} />
-              </div>
+              <SettlementTab companyId={companyId} refreshKey={reservationsVersion} />
             </div>
           )}
 
           {visitedTabs.has("company") && (
             <div className={activeTab === "company" ? "" : "hidden"}>
-              <div className="bg-white border border-gray-200 rounded-xl p-6">
-                <CompanyInfoTab
-                  companyId={companyId}
-                  slug={slug}
-                  initialName={currentCompanyName}
-                  initialLogo={currentLogoImage}
-                  initialNaverTalkUrl={currentNaverTalkUrl}
-                  initialKakaoChannelUrl={currentKakaoChannelUrl}
-                  initialInstagramUrl={currentInstagramUrl}
-                  initialYoutubeUrl={currentYoutubeUrl}
-                  initialPhone={companyPhone}
-                  plan={plan}
-                  onSave={(name, logo, naver, kakao, instagram, youtube) => {
-                    setCurrentCompanyName(name);
-                    setCurrentLogoImage(logo);
-                    setCurrentNaverTalkUrl(naver);
-                    setCurrentKakaoChannelUrl(kakao);
-                    setCurrentInstagramUrl(instagram);
-                    setCurrentYoutubeUrl(youtube);
-                  }}
-                />
-              </div>
+              <CompanyInfoTab
+                companyId={companyId}
+                slug={slug}
+                initialName={currentCompanyName}
+                initialLogo={currentLogoImage}
+                initialNaverTalkUrl={currentNaverTalkUrl}
+                initialKakaoChannelUrl={currentKakaoChannelUrl}
+                initialInstagramUrl={currentInstagramUrl}
+                initialYoutubeUrl={currentYoutubeUrl}
+                initialPhone={companyPhone}
+                plan={plan}
+                onSave={(name, logo, naver, kakao, instagram, youtube) => {
+                  setCurrentCompanyName(name);
+                  setCurrentLogoImage(logo);
+                  setCurrentNaverTalkUrl(naver);
+                  setCurrentKakaoChannelUrl(kakao);
+                  setCurrentInstagramUrl(instagram);
+                  setCurrentYoutubeUrl(youtube);
+                }}
+              />
             </div>
           )}
 
           {visitedTabs.has("ordersettings") && (
             <div className={activeTab === "ordersettings" ? "" : "hidden"}>
-              <div className="bg-white border border-gray-200 rounded-xl p-6">
-                <OrderSettingsTab companyId={companyId} plan={plan} settings={companySettings} onSettingsSaved={handleSettingsSaved} />
-              </div>
+              <OrderSettingsTab companyId={companyId} plan={plan} settings={companySettings} onSettingsSaved={handleSettingsSaved} />
             </div>
           )}
 
           {visitedTabs.has("business") && (
             <div className={activeTab === "business" ? "" : "hidden"}>
-              <div className="bg-white border border-gray-200 rounded-xl p-6">
-                <BusinessSettingsTab companyId={companyId} settings={companySettings} onSettingsSaved={handleSettingsSaved} />
-              </div>
+              <BusinessSettingsTab companyId={companyId} settings={companySettings} onSettingsSaved={handleSettingsSaved} />
             </div>
           )}
 
           {visitedTabs.has("reservation") && (
             <div className={activeTab === "reservation" ? "" : "hidden"}>
-              <div className="bg-white border border-gray-200 rounded-xl p-6">
-                <ReservationSettingsTab
-                  companyId={companyId}
-                  settings={companySettings}
-                  onSettingsSaved={handleSettingsSaved}
-                  onConsultToggle={handleConsultToggle}
-                  onGoToOrderSettings={() => setActiveTab("ordersettings")}
-                />
-              </div>
+              <ReservationSettingsTab
+                companyId={companyId}
+                settings={companySettings}
+                onSettingsSaved={handleSettingsSaved}
+                onConsultToggle={handleConsultToggle}
+                onGoToOrderSettings={() => setActiveTab("ordersettings")}
+              />
             </div>
           )}
 
           {visitedTabs.has("menusettings") && (
             <div className={activeTab === "menusettings" ? "" : "hidden"}>
-              <div className="bg-white border border-gray-200 rounded-xl p-6">
-                <MenuSettingsTab
-                  companyId={companyId}
-                  initialHiddenProductTypes={currentHiddenProductTypes}
-                  initialHiddenSeasons={currentHiddenSeasons}
-                  onSave={(types, seasons) => {
-                    setCurrentHiddenProductTypes(types);
-                    setCurrentHiddenSeasons(seasons);
-                  }}
-                />
-              </div>
+              <MenuSettingsTab
+                companyId={companyId}
+                initialHiddenProductTypes={currentHiddenProductTypes}
+                initialHiddenSeasons={currentHiddenSeasons}
+                onSave={(types, seasons) => {
+                  setCurrentHiddenProductTypes(types);
+                  setCurrentHiddenSeasons(seasons);
+                }}
+              />
             </div>
           )}
 
           {visitedTabs.has("settings") && (
             <div className={activeTab === "settings" ? "" : "hidden"}>
-              <div className="bg-white border border-gray-200 rounded-xl p-6">
-                <SettingsTab
-                  companyId={companyId}
-                  initialBg={themeBg}
-                  initialAccent={themeAccent}
-                  onThemeChange={(bg, accent) => setThemeVars(generateThemeVars(bg, accent))}
-                />
-              </div>
+              <SettingsTab
+                companyId={companyId}
+                initialBg={themeBg}
+                initialAccent={themeAccent}
+                onThemeChange={(bg, accent) => setThemeVars(generateThemeVars(bg, accent))}
+              />
             </div>
           )}
 
           {visitedTabs.has("plan") && (
             <div className={activeTab === "plan" ? "" : "hidden"}>
-              <div className="bg-white border border-gray-200 rounded-xl p-6">
-                <PlanTab
-                  companyId={companyId}
-                  customerName={profileName}
-                  plan={plan}
-                  subscriptionPlan={subscriptionPlan}
-                  cancelAtPeriodEnd={cancelAtPeriodEnd}
-                  trialEndsAt={trialEndsAt}
-                  planExpiresAt={planExpiresAt}
-                  hasBillingKey={hasBillingKey}
-                  appliedPromo={appliedPromo}
-                />
-              </div>
+              <PlanTab
+                companyId={companyId}
+                customerName={profileName}
+                plan={plan}
+                subscriptionPlan={subscriptionPlan}
+                cancelAtPeriodEnd={cancelAtPeriodEnd}
+                trialEndsAt={trialEndsAt}
+                planExpiresAt={planExpiresAt}
+                hasBillingKey={hasBillingKey}
+                appliedPromo={appliedPromo}
+              />
             </div>
           )}
 
           {visitedTabs.has("myinfo") && (
             <div className={activeTab === "myinfo" ? "" : "hidden"}>
-              <div className="bg-white border border-gray-200 rounded-xl p-6">
-                <MyInfoTab
-                  slug={slug}
-                  email={userEmail}
-                  isOAuth={isOAuth}
-                  profileName={profileName}
-                  profilePhone={profilePhone}
-                  initialTwoFactorEnabled={twoFactorEnabled}
-                />
-              </div>
+              <MyInfoTab
+                slug={slug}
+                email={userEmail}
+                isOAuth={isOAuth}
+                profileName={profileName}
+                profilePhone={profilePhone}
+                initialTwoFactorEnabled={twoFactorEnabled}
+              />
             </div>
           )}
         </main>

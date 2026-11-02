@@ -27,6 +27,52 @@ function kstDateDaysAgo(days: number) {
 
 const won = (n: number) => `${n.toLocaleString()}원`;
 
+// 비중 색 — 항목 순서대로 (주문 경로별)
+const SHARE_COLORS = ["#4D7CFE", "#E05780", "#F8961E", "#2A9D8F", "#9B5DE5", "#F9C74F", "#9ca3af"];
+// 유입 채널 색 — 각 서비스 대표색 (매장 포인트 금색은 쓰지 않는다)
+const SOURCE_COLORS: Record<string, string> = {
+  instagram: "#E1306C",
+  naver: "#03C75A",
+  naver_blog: "#3B82F6", // 네이버(초록)와 겹치지 않게 파란색
+  kakao: "#FEE500",
+  youtube: "#FF0000",
+  qr: "#4B5563",
+  direct: "#9B5DE5",
+};
+
+// 한 줄 누적 막대 — 전체 매출을 100%로 두고 항목별 비중만큼 색 칸으로 나눈다. 아래는 같은 색 점이 붙은 목록
+function StackedShare({ rows }: { rows: { key: string; label: string; revenue: number; detail: string; color?: string }[] }) {
+  const total = rows.reduce((s, r) => s + r.revenue, 0);
+  const pctOf = (v: number) => (total > 0 ? Math.round((v / total) * 100) : 0);
+  return (
+    <div>
+      <div className="flex h-3 rounded-full overflow-hidden bg-gray-100 gap-px">
+        {rows.map((r, i) =>
+          r.revenue > 0 ? (
+            <div key={r.key} style={{ width: `${(r.revenue / total) * 100}%`, backgroundColor: r.color ?? SHARE_COLORS[i % SHARE_COLORS.length] }} />
+          ) : null
+        )}
+      </div>
+      <ul className="mt-4 space-y-3">
+        {rows.map((r, i) => (
+          <li key={r.key} className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2 min-w-0">
+              <span className="w-2.5 h-2.5 rounded-full shrink-0 mt-1" style={{ backgroundColor: r.color ?? SHARE_COLORS[i % SHARE_COLORS.length] }} />
+              <div className="min-w-0">
+                <p className="text-sm text-gray-800">{r.label}</p>
+                <p className="text-[11px] text-gray-400 mt-0.5">{r.detail}</p>
+              </div>
+            </div>
+            <p className="text-sm font-semibold text-gray-900 shrink-0">
+              {won(r.revenue)} <span className="text-xs font-normal text-gray-400">({pctOf(r.revenue)}%)</span>
+            </p>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 // 유입 분석 — 채널별 방문·주문·전환율·매출, 주문 경로별 주문·매출
 // 방문 수는 menu_visits(브라우저 기준 하루 1회), 주문은 취소·삭제 제외, 매출은 결제 완료 건의 실제 결제 금액
 export default function TrafficStats({ companyId, refreshKey }: Props) {
@@ -92,6 +138,7 @@ export default function TrafficStats({ companyId, refreshKey }: Props) {
   }, [companyId, range, refreshKey]);
 
   const siteOrders = sourceRows.reduce((s, r) => s + r.orders, 0);
+  const [view, setView] = useState<"source" | "path">("source");
 
   return (
     <section className="space-y-3 md:space-y-4">
@@ -121,7 +168,7 @@ export default function TrafficStats({ companyId, refreshKey }: Props) {
                 <p className="text-base font-semibold text-gray-900">{totalVisits.toLocaleString()}</p>
               </div>
               <div className="bg-gray-50 rounded-xl px-3 py-2.5">
-                <p className="text-[11px] text-gray-400">사이트 주문</p>
+                <p className="text-[11px] text-gray-400">주문</p>
                 <p className="text-base font-semibold text-gray-900">{siteOrders.toLocaleString()}</p>
               </div>
               <div className="bg-gray-50 rounded-xl px-3 py-2.5">
@@ -132,61 +179,49 @@ export default function TrafficStats({ companyId, refreshKey }: Props) {
               </div>
             </div>
 
-            <p className="text-xs font-medium text-gray-500 mb-2">유입 채널별</p>
-            <div className="overflow-x-auto -mx-1">
-              <table className="w-full text-sm min-w-[420px]">
-                <thead>
-                  <tr className="text-xs text-gray-400 border-b border-gray-100">
-                    <th className="text-left font-medium px-1 py-2">유입 채널</th>
-                    <th className="text-right font-medium px-1 py-2">방문</th>
-                    <th className="text-right font-medium px-1 py-2">주문</th>
-                    <th className="text-right font-medium px-1 py-2">전환율</th>
-                    <th className="text-right font-medium px-1 py-2">매출</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sourceRows.length === 0 && (
-                    <tr><td colSpan={5} className="py-6 text-center text-xs text-gray-300">아직 집계된 방문·주문이 없습니다.</td></tr>
-                  )}
-                  {sourceRows.map((r) => (
-                    <tr key={r.source ?? "unknown"} className="border-b border-gray-50 last:border-0">
-                      <td className="px-1 py-2 text-gray-800">{trafficSourceLabel(r.source)}</td>
-                      <td className="px-1 py-2 text-right text-gray-700">{r.visits.toLocaleString()}</td>
-                      <td className="px-1 py-2 text-right text-gray-700">{r.orders.toLocaleString()}</td>
-                      <td className="px-1 py-2 text-right text-gray-700">
-                        {r.visits > 0 ? `${((r.orders / r.visits) * 100).toFixed(1)}%` : "—"}
-                      </td>
-                      <td className="px-1 py-2 text-right text-gray-900 font-medium">{won(r.revenue)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            {/* 유입 채널 / 주문 경로 — 한 번에 하나만, 표 대신 한 줄 누적 막대 + 목록 (칸 수가 달라 어색하거나 모바일에서 잘리지 않게) */}
+            <div className="flex rounded-full bg-gray-100 p-0.5 text-xs w-fit mb-3">
+              {([
+                { key: "source", label: "유입 채널별" },
+                { key: "path", label: "주문 경로별" },
+              ] as const).map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => setView(key)}
+                  className={`px-3 py-1 rounded-full transition-colors font-medium ${view === key ? "bg-gold-500 text-white shadow-sm" : "text-gray-500"}`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
 
-            <p className="text-xs font-medium text-gray-500 mt-5 mb-2">주문 경로별</p>
-            <div className="overflow-x-auto -mx-1">
-              <table className="w-full text-sm min-w-[300px]">
-                <thead>
-                  <tr className="text-xs text-gray-400 border-b border-gray-100">
-                    <th className="text-left font-medium px-1 py-2">경로</th>
-                    <th className="text-right font-medium px-1 py-2">주문</th>
-                    <th className="text-right font-medium px-1 py-2">매출</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pathRows.length === 0 && (
-                    <tr><td colSpan={3} className="py-6 text-center text-xs text-gray-300">이 기간에 주문이 없습니다.</td></tr>
-                  )}
-                  {pathRows.map((r) => (
-                    <tr key={r.path} className="border-b border-gray-50 last:border-0">
-                      <td className="px-1 py-2 text-gray-800">{ORDER_PATH_LABEL[r.path] ?? r.path}</td>
-                      <td className="px-1 py-2 text-right text-gray-700">{r.orders.toLocaleString()}</td>
-                      <td className="px-1 py-2 text-right text-gray-900 font-medium">{won(r.revenue)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            {view === "source" ? (
+              sourceRows.length === 0 ? (
+                <p className="py-6 text-center text-xs text-gray-300">아직 집계된 방문·주문이 없습니다.</p>
+              ) : (
+                <StackedShare
+                  rows={[...sourceRows].sort((a, b) => b.revenue - a.revenue).map((r) => ({
+                    key: r.source ?? "unknown",
+                    color: r.source ? SOURCE_COLORS[r.source] : undefined,
+                    // 네이버 블로그는 '블로그'로 짧게
+                    label: r.source === "naver_blog" ? "블로그" : trafficSourceLabel(r.source),
+                    revenue: r.revenue,
+                    detail: `방문 ${r.visits.toLocaleString()} · 주문 ${r.orders.toLocaleString()} · 전환 ${r.visits > 0 ? `${((r.orders / r.visits) * 100).toFixed(1)}%` : "—"}`,
+                  }))}
+                />
+              )
+            ) : pathRows.length === 0 ? (
+              <p className="py-6 text-center text-xs text-gray-300">이 기간에 주문이 없습니다.</p>
+            ) : (
+              <StackedShare
+                rows={[...pathRows].sort((a, b) => b.revenue - a.revenue).map((r) => ({
+                  key: r.path,
+                  label: ORDER_PATH_LABEL[r.path] ?? r.path,
+                  revenue: r.revenue,
+                  detail: `주문 ${r.orders.toLocaleString()}건`,
+                }))}
+              />
+            )}
 
             <p className="text-[11px] text-gray-400 leading-relaxed mt-4">
               방문은 같은 브라우저 기준 하루 1회로 셉니다. 채널은 대시보드의 &lsquo;채널별 링크 복사&rsquo;로 만든 주소로 들어온 경우에 구분되며, 주소에 채널 표시가 없으면 &lsquo;직접 유입&rsquo;으로 집계됩니다.
