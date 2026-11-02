@@ -65,7 +65,7 @@ async function loadMenuData(slug: string): Promise<MenuData | null> {
         message_card_enabled, message_card_price,
         delivery_enabled, delivery_fees,
         business_hours, closed_dates, date_overrides,
-        notification_email
+        notification_email, min_lead_times, consult_notice
       )
     `)
     .eq("slug", slug)

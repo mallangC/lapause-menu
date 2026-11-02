@@ -35,7 +35,14 @@ interface OrderBody {
   paymentOrderId?: string;
   paymentAmount?: number;
   trafficSource?: string | null;
+  /** 주문 경로 — 상품 상세에서 수량 2개 이상으로 바로 예약했으면 product_detail, 장바구니면 cart */
+  orderPath?: string | null;
+  /** 선물 정보 (선택) — 맞춤주문 1단계와 같은 항목 */
+  gift?: { purpose?: string; purposeCustom?: string; recipientGender?: string; recipientAge?: string } | null;
 }
+
+// 선물 정보 한 칸 — 비어 있으면 null, 길이는 넉넉히 자른다
+const giftText = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim().slice(0, 50) : null);
 
 export async function POST(request: NextRequest) {
   try {
@@ -194,7 +201,10 @@ export async function POST(request: NextRequest) {
       address: delivery?.address || null,
       address_detail: delivery?.addressDetail || null,
       order_type: "product",
-      order_path: "cart",
+      order_path: body.orderPath === "product_detail" ? "product_detail" : "cart",
+      purpose: giftText(body.gift?.purpose === "기타" ? body.gift?.purposeCustom || "기타" : body.gift?.purpose),
+      recipient_gender: giftText(body.gift?.recipientGender),
+      recipient_age: giftText(body.gift?.recipientAge),
       traffic_source: normalizeTrafficSource(body.trafficSource) ?? "direct",
     }).select("id");
 

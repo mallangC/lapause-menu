@@ -7,7 +7,7 @@ import { Product } from "@/types";
 import { FLOWER_COLOR_MAP, BADGE_COLORS, PRODUCT_TYPES, SEASONS } from "@/lib/constants";
 import FlowerNoticeModal from "@/components/FlowerNoticeModal";
 import StoreHeader from "@/components/main/StoreHeader";
-import { useCart } from "@/hooks/useCart";
+import { useCart, startDirectOrder } from "@/hooks/useCart";
 
 interface ProductDetailClientProps {
   slug: string;
@@ -50,6 +50,8 @@ export default function ProductDetailClient({
       image_url: product.image_url ?? null,
       product_type: product.product_type,
       bag_included: product.bag_included ?? false,
+      message_card_unavailable: product.message_card_unavailable ?? false,
+      preservative_unavailable: product.preservative_unavailable ?? false,
     }, quantity);
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
@@ -227,15 +229,19 @@ export default function ProductDetailClient({
                         : "border-gray-200 text-gray-700 hover:border-gold-400 hover:text-gold-500"
                     }`}
                   >
-                    {added ? "담겼습니다 ✓" : "장바구니"}
+                    {added ? "담겼습니다 ✓" : "장바구니 담기"}
                   </button>
                 )}
                 {consultEnabled && (
                   <button
-                    onClick={() => setNoticeOpen(true)}
+                    onClick={() => {
+                      // 안내를 읽는 동안 다음 화면을 미리 받아 둬서 확인을 누르면 바로 넘어가게 한다
+                      router.prefetch(quantity >= 2 ? `/${slug}/cart?direct=1` : `/${slug}/consult?productId=${product.id}&quantity=${quantity}`);
+                      setNoticeOpen(true);
+                    }}
                     className="flex-1 py-4 rounded-2xl bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors"
                   >
-                    예약하기
+                    바로 예약하기
                   </button>
                 )}
               </div>
@@ -286,7 +292,25 @@ export default function ProductDetailClient({
 
       {noticeOpen && (
         <FlowerNoticeModal
-          onConfirm={() => router.push(`/${slug}/consult?productId=${product.id}&quantity=${quantity}`)}
+          onConfirm={() => {
+            // 1개는 기존처럼 맞춤주문 화면에서 예약, 2개 이상은 장바구니 주문 로직(상품별 수량·옵션)을 쓰는 바로 예약 화면으로
+            // — 바로 예약은 장바구니와 다른 저장소를 써서 담아둔 장바구니에는 영향이 없다
+            if (quantity >= 2) {
+              startDirectOrder(slug, {
+                productId: product.id,
+                name: product.name,
+                price: product.price ?? 0,
+                image_url: product.image_url ?? null,
+                product_type: product.product_type,
+                bag_included: product.bag_included ?? false,
+                message_card_unavailable: product.message_card_unavailable ?? false,
+                preservative_unavailable: product.preservative_unavailable ?? false,
+              }, quantity);
+              router.push(`/${slug}/cart?direct=1`);
+            } else {
+              router.push(`/${slug}/consult?productId=${product.id}&quantity=${quantity}`);
+            }
+          }}
           onClose={() => setNoticeOpen(false)}
         />
       )}

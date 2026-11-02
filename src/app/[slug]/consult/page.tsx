@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { Product } from "@/types";
+import { getMenuData } from "@/lib/menuCache";
+import { PRODUCT_TYPES, SEASONS } from "@/lib/constants";
 import ConsultClient from "./ConsultClient";
 
 interface Props {
@@ -11,58 +11,34 @@ interface Props {
 export default async function ConsultPage({ params, searchParams }: Props) {
   const { slug } = await params;
   const { productId, paymentKey, orderId, quantity } = await searchParams;
-  const supabase = await createClient();
+  // 메뉴판 캐시 공유 — 매장·설정·상품·카테고리가 모두 들어 있어 캐시 적중 시 DB 조회 0회 (예전엔 매번 3번 순서대로 조회해 화면 전환이 느렸다)
+  const menu = await getMenuData(slug);
+  const raw = menu?.company;
+  const s = menu?.settings ?? {};
 
-  const { data: raw } = await supabase
-    .from("companies")
-    .select(`
-      id, name, is_demo,
-      settings:company_settings(
-        logo_image, business_hours, closed_dates, date_overrides, notification_email, min_lead_times,
-        consult_notice, address, delivery_enabled, delivery_fees, consult_enabled,
-        message_card_enabled, message_card_price, shopping_bag_enabled, shopping_bag_price, preservative_enabled, preservative_price,
-        hidden_product_types, hidden_seasons
-      )
-    `)
-    .eq("slug", slug)
-    .single();
+  if (!menu || !raw || !s.consult_enabled) notFound();
 
-  const s = raw?.settings as unknown as Record<string, unknown> | null ?? {};
-
-  if (!raw || !s.consult_enabled) notFound();
-
-  const { data: products } = await supabase
-    .from("products")
-    .select("*")
-    .eq("company_id", raw.id)
-    .eq("status", "active")
-    .order("price", { ascending: true });
-
-  const { data: customCats } = await supabase
-    .from("company_categories")
-    .select("category_type, name, hidden")
-    .eq("company_id", raw.id);
-
-  const { PRODUCT_TYPES, SEASONS } = await import("@/lib/constants");
+  const customCats = menu.categories;
   const hiddenProductTypes = (s.hidden_product_types as string[] | null) ?? [];
   const hiddenSeasons = (s.hidden_seasons as string[] | null) ?? [];
-  const customProductTypes = (customCats ?? [])
+  const customProductTypes = customCats
     .filter((c) => c.category_type === "product_type" && !c.hidden)
     .map((c) => c.name as string);
-  const customSeasons = (customCats ?? [])
+  const customSeasons = customCats
     .filter((c) => c.category_type === "season" && !c.hidden)
     .map((c) => c.name as string);
   const productTypeList = [...PRODUCT_TYPES.filter((t) => !hiddenProductTypes.includes(t)), ...customProductTypes];
   const seasonList = [...SEASONS.filter((s2) => !hiddenSeasons.includes(s2)), ...customSeasons];
 
-  const allProducts = (products as Product[]) ?? [];
+  // 추천·선택 목록은 예전처럼 가격 오름차순 (캐시는 상품 유형 → 가격 순)
+  const allProducts = [...menu.products].sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
   const preselectedProduct = productId ? allProducts.find((p) => p.id === productId) ?? null : null;
 
   return (
     <ConsultClient
       key={`${productId ?? "none"}_${quantity ?? "1"}`}
       slug={slug}
-      companyName={raw.name}
+      companyName={raw.name ?? slug}
       logoImage={(s.logo_image as string | null) ?? null}
       productTypeList={productTypeList}
       seasonList={seasonList}

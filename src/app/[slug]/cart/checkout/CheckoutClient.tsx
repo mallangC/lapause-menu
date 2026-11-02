@@ -3,20 +3,16 @@
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import DatePicker, { registerLocale } from "react-datepicker";
-import { ko } from "date-fns/locale/ko";
-import "react-datepicker/dist/react-datepicker.css";
-import DaumPostcodeEmbed from "react-daum-postcode";
+import { LazyDatePicker, LazyDaumPostcode, preloadOrderInputs } from "@/components/LazyOrderInputs";
 import StoreHeader from "@/components/main/StoreHeader";
 import OrderCompleteHeader from "@/components/OrderCompleteHeader";
 import { readTrafficSource } from "@/lib/trafficSource";
 import AgreementCheckbox from "@/components/AgreementCheckbox";
+import GiftInfoStep, { EMPTY_GIFT_INFO, OrderStepBar, giftInfoText, type GiftInfo } from "@/components/GiftInfoStep";
 import TossPaymentWidget, { TossPaymentWidgetHandle } from "@/components/TossPaymentWidget";
 import { useCart, CartItem } from "@/hooks/useCart";
 import { formatPhone, parsePhone } from "@/lib/format";
 import { resolveDayHours, type DateOverrides } from "@/lib/businessHours";
-
-registerLocale("ko", ko);
 
 interface DayHours { closed: boolean; open: string; close: string; }
 
@@ -39,6 +35,12 @@ interface CheckoutClientProps {
   messageCardEnabled: boolean;
   messageCardPrice: number;
   notificationEmail: string | null;
+  /** 상품 유형별 최소 준비 시간(시간) — 맞춤주문과 같은 기준, 미설정이면 2시간 */
+  minLeadTimes: Record<string, number>;
+  /** 사장님 안내 사항 — 있으면 확인 체크를 받아야 결제할 수 있다 */
+  consultNotice: string | null;
+  /** 상품 상세 바로 예약(수량 2개 이상) — 장바구니 대신 바로 예약 저장소를 쓰고 주문 경로를 product_detail로 남긴다 */
+  direct: boolean;
   isDemo: boolean;
   initialPaymentKey: string | null;
   initialOrderId: string | null;
@@ -61,6 +63,8 @@ interface DraftData {
   requests: string;
   finalPrice: number;
   privacyAgreed: boolean;
+  noticeAgreed?: boolean;
+  gift?: GiftInfo;
 }
 
 async function geocodeKakao(address: string) {
@@ -91,10 +95,13 @@ export default function CheckoutClient({
   storeAddress, deliveryEnabled, deliveryFees,
   businessHours, closedDates, dateOverrides = {},
   shoppingBagEnabled, shoppingBagPrice, preservativeEnabled, preservativePrice, messageCardEnabled, messageCardPrice,
-  notificationEmail, isDemo,
+  notificationEmail, minLeadTimes, consultNotice, direct, isDemo,
   initialPaymentKey, initialOrderId, initialAmount, failCode, failMessage,
 }: CheckoutClientProps) {
-  const { items: cartItems, clearCart } = useCart(slug);
+  const { items: cartItems, clearCart } = useCart(slug, direct ? "direct" : "cart");
+  // 결제 복귀용 임시 저장 키·주소 — 장바구니 결제와 바로 예약 결제가 서로 섞이지 않게 나눈다
+  const draftKey = `${direct ? "direct" : "cart"}_checkout_draft_${slug}`;
+  const checkoutPath = `/${slug}/cart/checkout${direct ? "?direct=1" : ""}`;
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -109,6 +116,12 @@ export default function CheckoutClient({
   const [requests, setRequests] = useState("");
   const [privacyAgreed, setPrivacyAgreed] = useState(false);
   const [cancellationAgreed, setCancellationAgreed] = useState(false);
+  const [noticeAgreed, setNoticeAgreed] = useState(false);
+  const [gift, setGift] = useState<GiftInfo>(EMPTY_GIFT_INFO);
+  // 1단계 선물 정보(맞춤주문 1단계와 같은 화면) → 2단계 예약 확인(주문서)
+  const [orderStep, setOrderStep] = useState<1 | 2>(1);
+  const goStep = (n: 1 | 2) => { setOrderStep(n); window.scrollTo(0, 0); };
+  const refNotice = useRef<HTMLDivElement>(null);
   const [errors, setErrors] = useState<string[]>([]);
   const [fieldErrors, setFieldErrors] = useState<Record<string, boolean>>({});
   const refName = useRef<HTMLDivElement>(null);
@@ -154,6 +167,9 @@ export default function CheckoutClient({
     return false;
   };
 
+  // 1단계를 보는 동안 2단계 달력·주소 검색을 미리 받아 둔다
+  useEffect(() => { preloadOrderInputs(); }, []);
+
   useEffect(() => {
     if (deliveryType !== "배송" || !address || !storeAddress) { setDeliveryFee(null); setDeliveryDistance(null); return; }
     const timer = setTimeout(async () => {
@@ -171,7 +187,7 @@ export default function CheckoutClient({
 
   useEffect(() => {
     if (!initialPaymentKey && !initialOrderId) return;
-    window.history.replaceState({}, "", `/${slug}/cart/checkout`);
+    window.history.replaceState({}, "", checkoutPath);
 
     if (failCode) {
       setError(failMessage ?? "결제가 취소되었습니다.");
@@ -185,8 +201,12 @@ export default function CheckoutClient({
           setAddress(draft.address); setAddressDetail(draft.addressDetail);
           setDesiredTime(draft.desiredTime); setRequests(draft.requests);
           setPrivacyAgreed(draft.privacyAgreed);
+          if (draft.noticeAgreed !== undefined) setNoticeAgreed(draft.noticeAgreed);
+          if (draft.gift) setGift(draft.gift);
+          // 결제 실패로 돌아오면 입력해 둔 주문서(2단계)로 바로 보여준다
+          setOrderStep(2);
         } catch { /* ignore */ }
-        sessionStorage.removeItem(`cart_checkout_draft_${slug}`);
+        sessionStorage.removeItem(draftKey);
       }
       setIsProcessingRedirect(false);
       return;
@@ -194,11 +214,11 @@ export default function CheckoutClient({
 
     if (!initialPaymentKey) { setIsProcessingRedirect(false); return; }
 
-    const saved = sessionStorage.getItem(`cart_checkout_draft_${slug}`);
+    const saved = sessionStorage.getItem(draftKey);
     if (!saved) { setError("결제 정보를 찾을 수 없습니다."); setIsProcessingRedirect(false); return; }
 
     const draft: DraftData = JSON.parse(saved);
-    sessionStorage.removeItem(`cart_checkout_draft_${slug}`);
+    sessionStorage.removeItem(draftKey);
 
     const run = async () => {
       setSubmitting(true);
@@ -217,6 +237,8 @@ export default function CheckoutClient({
             paymentKey: initialPaymentKey, paymentOrderId: initialOrderId, paymentAmount: initialAmount,
             // 이번 방문에서 기억해 둔 유입 출처 (?utm_source= / ?from=)
             trafficSource: readTrafficSource(slug),
+            orderPath: direct ? "product_detail" : "cart",
+            gift: draft.gift ?? null,
           }),
         });
         const data = await res.json();
@@ -227,6 +249,7 @@ export default function CheckoutClient({
         setAddress(draft.address); setAddressDetail(draft.addressDetail);
         setDesiredTime(draft.desiredTime); setRequests(draft.requests);
         setSubmittedItems(draft.items);
+        if (draft.gift) setGift(draft.gift);
         setFinalPriceSnapshot(draft.finalPrice);
         clearCart();
         setSubmitted(true);
@@ -250,20 +273,20 @@ export default function CheckoutClient({
       items: checkedItems, name, phone: parsePhone(phone),
       deliveryType, recipientName, recipientPhone: parsePhone(recipientPhone),
       address, addressDetail, desiredDate, desiredTime, requests,
-      finalPrice, privacyAgreed,
+      finalPrice, privacyAgreed, noticeAgreed, gift,
     };
-    sessionStorage.setItem(`cart_checkout_draft_${slug}`, JSON.stringify(draft));
+    sessionStorage.setItem(draftKey, JSON.stringify(draft));
 
     try {
       await widgetRef.current?.requestPayment({
         orderId: paymentOrderId,
         orderName: checkedItems.length === 1 ? checkedItems[0].name : `${checkedItems[0].name} 외 ${checkedItems.length - 1}건`,
         customerName: name,
-        successUrl: `${window.location.origin}/${slug}/cart/checkout`,
-        failUrl: `${window.location.origin}/${slug}/cart/checkout?code=FAIL`,
+        successUrl: `${window.location.origin}${checkoutPath}`,
+        failUrl: `${window.location.origin}${checkoutPath}${direct ? "&" : "?"}code=FAIL`,
       });
     } catch (err) {
-      sessionStorage.removeItem(`cart_checkout_draft_${slug}`);
+      sessionStorage.removeItem(draftKey);
       setError(err instanceof Error ? err.message : "결제 중 오류가 발생했습니다.");
       setSubmitting(false);
     }
@@ -271,6 +294,7 @@ export default function CheckoutClient({
 
   const handleConfirm = () => {
     const fe: Record<string, boolean> = {};
+    if (consultNotice && !noticeAgreed) fe.notice = true;
     if (!name) fe.name = true;
     if (parsePhone(phone).length < 10) fe.phone = true;
     if (!deliveryType) fe.deliveryType = true;
@@ -282,7 +306,7 @@ export default function CheckoutClient({
 
     if (Object.keys(fe).length > 0) {
       setFieldErrors(fe);
-      const firstRef = fe.name ? refName : fe.phone ? refPhone : fe.deliveryType ? refDeliveryType : fe.deliveryInfo ? refDeliveryInfo : fe.date ? refDate : fe.time ? refTime : refAgreement;
+      const firstRef = fe.notice ? refNotice : fe.name ? refName : fe.phone ? refPhone : fe.deliveryType ? refDeliveryType : fe.deliveryInfo ? refDeliveryInfo : fe.date ? refDate : fe.time ? refTime : refAgreement;
       firstRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
@@ -362,6 +386,7 @@ export default function CheckoutClient({
             )}
             <Row label="수령 날짜" value={desiredDate} />
             {desiredTime && <Row label="수령 시간" value={desiredTime} />}
+            {giftInfoText(gift) && <Row label="선물 정보" value={giftInfoText(gift)} />}
             {requests && <Row label="요청 사항" value={requests} />}
           </div>
 
@@ -415,7 +440,11 @@ export default function CheckoutClient({
     return (
       <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center gap-4" style={themeVars}>
         <p className="text-gray-400">선택된 상품이 없습니다.</p>
-        <Link href={`/${slug}/cart`} className="px-6 py-2.5 rounded-full bg-gold-500 text-white text-sm font-medium">장바구니로 돌아가기</Link>
+        {direct ? (
+          <Link href={`/${slug}`} className="px-6 py-2.5 rounded-full bg-gold-500 text-white text-sm font-medium">상품 보러가기</Link>
+        ) : (
+          <Link href={`/${slug}/cart`} className="px-6 py-2.5 rounded-full bg-gold-500 text-white text-sm font-medium">장바구니로 돌아가기</Link>
+        )}
       </div>
     );
   }
@@ -425,8 +454,10 @@ export default function CheckoutClient({
   const isToday = selectedDate
     ? selectedDate.getFullYear() === now.getFullYear() && selectedDate.getMonth() === now.getMonth() && selectedDate.getDate() === now.getDate()
     : false;
-  const minTimeDate = isToday ? new Date(now.getTime() + 30 * 60000) : null;
-  // 30분 뒤가 다음 날로 넘어가면(23:30 이후) 오늘 슬롯은 없음 — 맞춤 주문(ConsultClient)과 같은 처리.
+  // 최소 준비 시간 — 주문 상품 유형 중 가장 오래 걸리는 것 기준 (맞춤주문과 같은 설정, 미설정이면 2시간)
+  const leadHours = Math.max(0, ...checkedItems.map((i) => minLeadTimes[i.product_type] ?? 2));
+  const minTimeDate = isToday ? new Date(now.getTime() + leadHours * 60 * 60000) : null;
+  // 준비 시간을 더했더니 다음 날로 넘어가면 오늘 슬롯은 없음 — 맞춤 주문(ConsultClient)과 같은 처리.
   // 이걸 안 하면 다음 날 00:xx를 기준으로 계산돼 이미 지난 오늘 영업시간이 전부 선택 가능해진다.
   const leadOverflow = !!minTimeDate && minTimeDate.getDate() !== now.getDate();
   const roundedMinutes = minTimeDate ? Math.ceil(minTimeDate.getMinutes() / 30) * 30 : 0;
@@ -462,6 +493,7 @@ export default function CheckoutClient({
   return (
     <div className="min-h-screen bg-gray-100" style={themeVars}>
       <StoreHeader slug={slug} companyName={companyName} logoImage={logoImage} productTypeList={[]} seasonList={[]} consultEnabled={consultEnabled} />
+      <OrderStepBar step={orderStep} onBack={() => goStep(1)} />
       <TossPaymentWidget
         ref={widgetRef}
         customerKey={paymentOrderId}
@@ -471,11 +503,27 @@ export default function CheckoutClient({
         isDemo={isDemo}
       />
 
+      {orderStep === 1 ? (
+        <div className="max-w-2xl mx-auto px-4 py-5">
+          <GiftInfoStep value={gift} onChange={setGift} onNext={() => goStep(2)} />
+        </div>
+      ) : (
       <div className="max-w-5xl mx-auto px-4 py-5">
         <div className="flex flex-col md:flex-row md:gap-5">
 
           {/* ── 왼쪽: 폼 영역 ── */}
           <div className="flex-1 min-w-0 md:max-w-xl space-y-2 -mx-4 md:mx-0">
+
+            {/* 사장님 안내 사항 */}
+            {consultNotice && (
+              <div ref={refNotice} className={`rounded-xl px-4 py-3 border ${fieldErrors.notice ? "border-red-300 bg-red-50" : "bg-amber-50 border-amber-200"}`}>
+                <p className={`text-sm whitespace-pre-wrap leading-relaxed ${fieldErrors.notice ? "text-red-700" : "text-amber-800"}`}>{consultNotice}</p>
+                <label className={`flex items-center gap-2 mt-3 text-sm cursor-pointer ${fieldErrors.notice ? "text-red-500 font-medium" : "text-amber-700"}`}>
+                  <AgreementCheckbox checked={noticeAgreed} onChange={(v) => { setNoticeAgreed(v); if (fieldErrors.notice) setFieldErrors(p => ({ ...p, notice: false })); }} />
+                  <span>안내 사항을 확인했습니다. <span className="text-red-400">*</span></span>
+                </label>
+              </div>
+            )}
 
             {/* 주문 상품 */}
             <div className="bg-white px-4 py-4 space-y-3">
@@ -525,7 +573,7 @@ export default function CheckoutClient({
                   <div key={type}>
                     <button
                       onClick={() => { setDeliveryType(type); setFieldErrors(p => ({ ...p, deliveryType: false })); }}
-                      className={`w-full flex items-center justify-between px-4 py-3.5 text-left transition-colors ${deliveryType === type ? "bg-beige-50" : "hover:bg-gray-50"}`}
+                      className={`w-full flex items-center justify-between px-4 py-3.5 text-left transition-colors ${deliveryType === type ? "bg-[color-mix(in_srgb,var(--color-gold-500)_8%,#fff)]" : "hover:bg-gray-50"}`}
                     >
                       <span className={`text-sm ${deliveryType === type ? "text-gold-600 font-medium" : "text-gray-800"}`}>{type}</span>
                       <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${deliveryType === type ? "border-gold-500 bg-gold-500" : "border-gray-300"}`}>
@@ -561,7 +609,7 @@ export default function CheckoutClient({
                                 <span className="text-xs text-gray-500">주소 검색</span>
                                 <button onClick={() => setShowPostcode(false)} className="text-gray-400 hover:text-gray-600 text-sm">✕</button>
                               </div>
-                              <DaumPostcodeEmbed onComplete={(data) => { setAddress(data.address); setShowPostcode(false); }} style={{ height: 400 }} />
+                              <LazyDaumPostcode onComplete={(data) => { setAddress(data.address); setShowPostcode(false); }} style={{ height: 400 }} />
                             </div>
                           )}
                           {address && (
@@ -593,7 +641,7 @@ export default function CheckoutClient({
                 <h3 className="text-sm font-medium text-gray-700">수령 날짜 <span className="text-red-400">*</span></h3>
               </div>
               <div className="large-datepicker overflow-hidden">
-                <DatePicker
+                <LazyDatePicker
                   selected={selectedDate}
                   onChange={(date: Date | null) => { setSelectedDate(date); setDesiredTime(""); }}
                   inline locale="ko"
@@ -619,7 +667,7 @@ export default function CheckoutClient({
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                   {timeSlots.map((slot) => (
                     <button key={slot} onClick={() => { setDesiredTime(slot); if (fieldErrors.time) setFieldErrors(p => ({ ...p, time: false })); }}
-                      className={`py-3 rounded-lg text-sm font-medium transition-colors ${desiredTime === slot ? "bg-gold-500 text-white" : fieldErrors.time ? "bg-red-50 border border-red-200 text-gray-700 hover:bg-red-100" : "bg-beige-100 text-gray-700 hover:bg-beige-200"}`}>
+                      className={`py-3 rounded-lg text-sm font-medium transition-colors ${desiredTime === slot ? "bg-gold-500 text-white" : fieldErrors.time ? "bg-red-50 border border-red-200 text-gray-700 hover:bg-red-100" : "bg-[color-mix(in_srgb,var(--color-gold-500)_8%,#fff)] text-gray-700 hover:bg-[color-mix(in_srgb,var(--color-gold-500)_18%,#fff)]"}`}>
                       {slot}
                     </button>
                   ))}
@@ -697,6 +745,7 @@ export default function CheckoutClient({
 
         </div>
       </div>
+      )}
     </div>
   );
 }

@@ -322,6 +322,19 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
   const set = (key: keyof ConsultForm, value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
+  // 추가 불가로 둔 상품을 고르면 앞서 고른 메시지 카드·수명연장제를 비운다 (금액·주문에 남지 않도록)
+  useEffect(() => {
+    if (selectedProduct?.message_card_unavailable) {
+      setForm((prev) => ({ ...prev, messageCard: "없음", messageCardContent: "" }));
+      setMessageCardCount(0);
+      setMessageCardContents([]);
+    }
+    if (selectedProduct?.preservative_unavailable) {
+      setForm((prev) => ({ ...prev, preservative: "없음" }));
+      setPreservativeCount(0);
+    }
+  }, [selectedProduct]);
+
   // 토스 결제 리다이렉트 복귀 처리
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -745,7 +758,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                       placeholder="직접 입력"
                       value={form.purposeCustom}
                       onChange={(e) => set("purposeCustom", e.target.value)}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-gray-400 bg-beige-50 placeholder:text-gray-400"
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-gray-400 bg-[color-mix(in_srgb,var(--color-gold-500)_8%,#fff)] placeholder:text-gray-400"
                       autoFocus
                     />
                   </div>
@@ -817,7 +830,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                               key={opt}
                               type="button"
                               onClick={() => section.onSelect(opt)}
-                              className={`w-full flex items-center justify-between pl-8 pr-4 py-3.5 text-left transition-colors ${section.selected === opt ? "bg-beige-50" : "hover:bg-gray-50"}`}
+                              className={`w-full flex items-center justify-between pl-8 pr-4 py-3.5 text-left transition-colors ${section.selected === opt ? "bg-[color-mix(in_srgb,var(--color-gold-500)_8%,#fff)]" : "hover:bg-gray-50"}`}
                             >
                               <span className={`text-sm ${section.selected === opt ? "text-gold-600 font-medium" : "text-gray-800"}`}>{opt}</span>
                               <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${section.selected === opt ? "border-gold-500 bg-gold-500" : "border-gray-300"}`}>
@@ -893,7 +906,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                       placeholder="직접 입력"
                       value={form.budgetCustom}
                       onChange={(e) => set("budgetCustom", e.target.value)}
-                      className="w-40 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-gray-400 bg-beige-50 placeholder:text-gray-400"
+                      className="w-40 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-gray-400 bg-[color-mix(in_srgb,var(--color-gold-500)_8%,#fff)] placeholder:text-gray-400"
                       autoFocus
                     />
                     <span className="text-sm text-gray-500">만원</span>
@@ -939,7 +952,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                               key={opt}
                               type="button"
                               onClick={() => section.onSelect(opt)}
-                              className={`w-full flex items-center justify-between pl-8 pr-4 py-3.5 text-left transition-colors ${section.selected === opt ? "bg-beige-50" : "hover:bg-gray-50"}`}
+                              className={`w-full flex items-center justify-between pl-8 pr-4 py-3.5 text-left transition-colors ${section.selected === opt ? "bg-[color-mix(in_srgb,var(--color-gold-500)_8%,#fff)]" : "hover:bg-gray-50"}`}
                             >
                               <span className={`text-sm ${section.selected === opt ? "text-gold-600 font-medium" : "text-gray-800"}`}>{opt}</span>
                               <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${section.selected === opt ? "border-gold-500 bg-gold-500" : "border-gray-300"}`}>
@@ -1215,7 +1228,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                         <button
                           type="button"
                           onClick={() => { set("deliveryType", v); setS4fe(p => ({ ...p, deliveryType: false })); }}
-                          className={`w-full flex items-center justify-between px-4 py-3.5 text-left transition-colors ${form.deliveryType === v ? "bg-beige-50" : "hover:bg-gray-50"}`}
+                          className={`w-full flex items-center justify-between px-4 py-3.5 text-left transition-colors ${form.deliveryType === v ? "bg-[color-mix(in_srgb,var(--color-gold-500)_8%,#fff)]" : "hover:bg-gray-50"}`}
                         >
                           <span className={`text-sm ${form.deliveryType === v ? "text-gold-600 font-medium" : "text-gray-800"}`}>{v}</span>
                           <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${form.deliveryType === v ? "border-gold-500 bg-gold-500" : "border-gray-300"}`}>
@@ -1403,7 +1416,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                                   ? "bg-gold-500 text-white"
                                   : s4fe.time
                                   ? "bg-red-50 border border-red-200 text-gray-700 hover:bg-red-100"
-                                  : "bg-beige-100 text-gray-700 hover:bg-beige-200"
+                                  : "bg-[color-mix(in_srgb,var(--color-gold-500)_8%,#fff)] text-gray-700 hover:bg-[color-mix(in_srgb,var(--color-gold-500)_18%,#fff)]"
                               }`}
                             >
                               {slot}
@@ -1472,7 +1485,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                                 set("messageCard", next);
                                 if (next === "없음") set("messageCardContent", "");
                               }}
-                              className={`w-full flex items-center justify-between px-4 py-3.5 text-left transition-colors ${form.messageCard === "추가" ? "bg-beige-50" : "hover:bg-gray-50"}`}
+                              className={`w-full flex items-center justify-between px-4 py-3.5 text-left transition-colors ${form.messageCard === "추가" ? "bg-[color-mix(in_srgb,var(--color-gold-500)_8%,#fff)]" : "hover:bg-gray-50"}`}
                             >
                               <div>
                                 <span className={`text-sm ${form.messageCard === "추가" ? "text-gold-600 font-medium" : "text-gray-800"}`}>메시지 카드</span>
@@ -1563,7 +1576,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                           <button
                             type="button"
                             onClick={() => set("shoppingBag", form.shoppingBag === "추가" ? "없음" : "추가")}
-                            className={`w-full flex items-center justify-between px-4 py-3.5 text-left transition-colors ${form.shoppingBag === "추가" ? "bg-beige-50" : "hover:bg-gray-50"}`}
+                            className={`w-full flex items-center justify-between px-4 py-3.5 text-left transition-colors ${form.shoppingBag === "추가" ? "bg-[color-mix(in_srgb,var(--color-gold-500)_8%,#fff)]" : "hover:bg-gray-50"}`}
                           >
                             <div>
                               <span className={`text-sm ${form.shoppingBag === "추가" ? "text-gold-600 font-medium" : "text-gray-800"}`}>쇼핑백</span>
@@ -1579,7 +1592,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                           </button>
                         )
                       )}
-                      {preservativeEnabled && (
+                      {preservativeEnabled && !selectedProduct?.preservative_unavailable && (
                         quantity >= 2 ? (
                           /* 수량 2개 이상: 카운터 UI */
                           <div className="flex items-center justify-between px-4 py-3.5">
@@ -1612,7 +1625,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                           <button
                             type="button"
                             onClick={() => set("preservative", form.preservative === "추가" ? "없음" : "추가")}
-                            className={`w-full flex items-center justify-between px-4 py-3.5 text-left transition-colors ${form.preservative === "추가" ? "bg-beige-50" : "hover:bg-gray-50"}`}
+                            className={`w-full flex items-center justify-between px-4 py-3.5 text-left transition-colors ${form.preservative === "추가" ? "bg-[color-mix(in_srgb,var(--color-gold-500)_8%,#fff)]" : "hover:bg-gray-50"}`}
                           >
                             <div>
                               <span className={`text-sm ${form.preservative === "추가" ? "text-gold-600 font-medium" : "text-gray-800"}`}>생화 수명연장제</span>

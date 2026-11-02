@@ -5,7 +5,7 @@ import CheckoutClient from "./CheckoutClient";
 
 interface Props {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ paymentKey?: string; orderId?: string; amount?: string; code?: string; message?: string }>;
+  searchParams: Promise<{ paymentKey?: string; orderId?: string; amount?: string; code?: string; message?: string; direct?: string }>;
 }
 
 export default async function CheckoutPage({ params, searchParams }: Props) {
@@ -44,6 +44,9 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
       messageCardEnabled={(s.message_card_enabled as boolean) ?? false}
       messageCardPrice={(s.message_card_price as number) ?? 2000}
       notificationEmail={(s.notification_email as string | null) ?? null}
+      minLeadTimes={(s.min_lead_times as Record<string, number> | null) ?? {}}
+      consultNotice={(s.consult_notice as string | null) ?? null}
+      direct={sp.direct === "1"}
       isDemo={raw.is_demo ?? false}
       initialPaymentKey={sp.paymentKey ?? null}
       initialOrderId={sp.orderId ?? null}

@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import StoreHeader from "@/components/main/StoreHeader";
 import { useCart } from "@/hooks/useCart";
+import FlowerNoticeModal from "@/components/FlowerNoticeModal";
 
 interface CartClientProps {
   slug: string;
@@ -35,8 +36,15 @@ export default function CartClient({
   messageCardPrice,
 }: CartClientProps) {
   const router = useRouter();
-  const { items, checkedItems, removeItem, updateItem, clearCart } = useCart(slug);
+  // ?direct=1 — 상품 상세에서 수량 2개 이상으로 바로 예약하는 화면. 장바구니와 같은 화면·로직을 쓰지만 저장소가 따로라 담아둔 장바구니는 그대로다
+  const direct = useSearchParams().get("direct") === "1";
+  const { items, checkedItems, removeItem, updateItem, clearCart } = useCart(slug, direct ? "direct" : "cart");
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
+  const [noticeOpen, setNoticeOpen] = useState(false);
+  const checkoutPath = `/${slug}/cart/checkout${direct ? "?direct=1" : ""}`;
+  const goCheckout = () => router.push(checkoutPath);
+  // 장바구니 다음 화면은 주문서뿐이라 들어오자마자 미리 받아 둔다 (배포 환경에서만 동작)
+  useEffect(() => { router.prefetch(checkoutPath); }, [router, checkoutPath]);
 
   const totalPrice = checkedItems.reduce((sum, item) => {
     let price = item.price * item.quantity;
@@ -48,13 +56,13 @@ export default function CartClient({
 
   if (items.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50" style={themeVars}>
+      <div className="min-h-screen bg-beige-100" style={themeVars}>
         <StoreHeader slug={slug} companyName={companyName} logoImage={logoImage} productTypeList={[]} seasonList={[]} consultEnabled={consultEnabled} />
         <div className="flex flex-col items-center justify-center py-32 px-8 text-center gap-4">
-          <svg className="w-16 h-16 text-gray-200" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+          <svg className="w-16 h-16 text-gray-300" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
           </svg>
-          <p className="text-gray-400 text-base">장바구니가 비어있습니다</p>
+          <p className="text-gray-400 text-base">{direct ? "예약할 상품이 없습니다" : "장바구니가 비어있습니다"}</p>
           <Link href={`/${slug}`} className="mt-2 px-6 py-2.5 rounded-full bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors">
             상품 보러가기
           </Link>
@@ -64,13 +72,13 @@ export default function CartClient({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50" style={themeVars}>
+    <div className="min-h-screen bg-beige-100" style={themeVars}>
       <StoreHeader slug={slug} companyName={companyName} logoImage={logoImage} productTypeList={[]} seasonList={[]} consultEnabled={consultEnabled} />
 
       <div className="max-w-lg mx-auto px-4 py-6 pb-36">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-lg font-semibold text-gray-900">장바구니</h1>
-          <button onClick={clearCart} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">전체 삭제</button>
+          <h1 className="text-lg font-semibold text-gray-900">{direct ? "바로 예약하기" : "장바구니"}</h1>
+          {!direct && <button onClick={clearCart} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">전체 삭제</button>}
         </div>
 
         <div className="space-y-3">
@@ -190,8 +198,13 @@ export default function CartClient({
                           </div>
                         )}
 
-                        {/* 생화 수명연장제 */}
-                        {preservativeEnabled && (
+                        {/* 생화 수명연장제 — 추가 불가 상품은 안내만 */}
+                        {preservativeEnabled && item.preservative_unavailable && (
+                          <div>
+                            <p className="text-sm text-gray-400">생화 수명연장제 추가 불가 상품</p>
+                          </div>
+                        )}
+                        {preservativeEnabled && !item.preservative_unavailable && (
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="text-sm text-gray-700">생화 수명연장제</p>
@@ -217,8 +230,13 @@ export default function CartClient({
                           </div>
                         )}
 
-                        {/* 메시지카드 */}
-                        {messageCardEnabled && (
+                        {/* 메시지카드 — 추가 불가 상품은 안내만 (쇼핑백 포함 상품과 같은 방식) */}
+                        {messageCardEnabled && item.message_card_unavailable && (
+                          <div>
+                            <p className="text-sm text-gray-400">메시지 카드 추가 불가 상품</p>
+                          </div>
+                        )}
+                        {messageCardEnabled && !item.message_card_unavailable && (
                           <div className="space-y-2">
                             <div className="flex items-center justify-between">
                               <div>
@@ -294,13 +312,19 @@ export default function CartClient({
           </div>
           <button
             disabled={checkedItems.length === 0}
-            onClick={() => router.push(`/${slug}/cart/checkout`)}
+            // 장바구니 주문은 여기서 생화 안내를 확인받는다 (바로 예약은 상품 상세에서 이미 확인함)
+            onClick={() => {
+              if (direct) return goCheckout();
+              setNoticeOpen(true);
+            }}
             className="px-8 py-3 rounded-full bg-gold-500 text-white font-medium text-sm hover:bg-gold-600 transition-colors disabled:opacity-40 disabled:pointer-events-none"
           >
             주문하기
           </button>
         </div>
       </div>
+
+      {noticeOpen && <FlowerNoticeModal onConfirm={goCheckout} onClose={() => setNoticeOpen(false)} />}
     </div>
   );
 }
