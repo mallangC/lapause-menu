@@ -1,0 +1,942 @@
+"use client";
+
+import { useState, useEffect, useMemo, useRef } from "react";
+import DaumPostcodeEmbed from "react-daum-postcode";
+import type { Reservation, ReservationItem } from "@/app/[slug]/admin/dashboard/reservations/types";
+import { formatPhone, parsePhone, formatMoney, parseMoney } from "@/lib/format";
+import DatePicker, { registerLocale } from "react-datepicker";
+import { ko } from "date-fns/locale";
+import "react-datepicker/dist/react-datepicker.css";
+registerLocale("ko", ko);
+
+import { PRODUCT_TYPES as DEFAULT_PRODUCT_TYPES } from "@/lib/constants";
+import { resolveDayHours, type DateOverrides } from "@/lib/businessHours";
+
+function CustomSelect({ value, onChange, options, placeholder, error }: {
+  value: string;
+  onChange: (v: string) => void;
+  options: string[];
+  placeholder?: string;
+  error?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className={`w-full flex items-center justify-between px-3 py-2 border rounded-lg text-sm transition-colors bg-white ${
+          error ? "border-red-400" : open ? "border-gray-400" : "border-gray-200 hover:border-gray-300"
+        }`}
+      >
+        <span className={value ? "text-gray-800" : "text-gray-300"}>{value || placeholder || "선택"}</span>
+        <svg className={`w-4 h-4 text-gray-400 transition-transform shrink-0 ${open ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {open && (
+        <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+          {options.map((opt) => (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => { onChange(opt); setOpen(false); }}
+              className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center justify-between ${
+                value === opt ? "bg-beige-50 text-gold-600 font-medium" : "text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              {opt}
+              {value === opt && (
+                <svg className="w-4 h-4 text-gold-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                </svg>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface ItemForm {
+  type: string;
+  name: string;
+  price: string;
+  message_card: string;
+  message_card_content: string;
+  shopping_bag: string;
+  preservative: string;
+  memo: string;
+  product_id: string | null;
+}
+
+const emptyItem = (): ItemForm => ({
+  type: "",
+  name: "",
+  price: "",
+  message_card: "없음",
+  message_card_content: "",
+  shopping_bag: "없음",
+  preservative: "없음",
+  memo: "",
+  product_id: null,
+});
+
+interface DayHours { closed: boolean; open: string; close: string; }
+
+interface Props {
+  onClose: () => void;
+  /** 미리보기 — 저장 대신 만든 예약을 넘겨 목록에 바로 더한다 */
+  onSaved: (reservation: Reservation) => void;
+  messageCardEnabled?: boolean;
+  messageCardPrice?: number;
+  shoppingBagEnabled?: boolean;
+  shoppingBagPrice?: number;
+  preservativeEnabled?: boolean;
+  preservativePrice?: number;
+  customProductTypes?: string[];
+  businessHours?: Record<string, DayHours>;
+  closedDates?: string[];
+  dateOverrides?: DateOverrides;
+  initialData?: Reservation;
+  reservationId?: string;
+}
+
+const CHANNELS = ["Flo.Aide", "네이버", "카카오", "워크인"];
+const CHANNEL_STYLE: Record<string, string> = {
+  네이버: "border-[#03C75A] bg-[#03C75A] text-white",
+  카카오: "border-[#FEE500] bg-[#FEE500] text-gray-800",
+  워크인: "border-orange-400 bg-orange-400 text-white",
+  "Flo.Aide": "border-gold-500 bg-gold-500 text-white",
+};
+const CHANNEL_ACTIVE_TEXT: Record<string, string> = {
+  네이버: "text-[#03C75A]",
+  카카오: "text-yellow-500",
+  워크인: "text-orange-400",
+  "Flo.Aide": "text-gold-600",
+};
+const CHANNEL_IDLE: Record<string, string> = {
+  네이버: "border-gray-200 text-gray-500 hover:border-[#03C75A] hover:text-[#03C75A]",
+  카카오: "border-gray-200 text-gray-500 hover:border-yellow-400 hover:text-yellow-600",
+  워크인: "border-gray-200 text-gray-500 hover:border-orange-400 hover:text-orange-400",
+  "Flo.Aide": "border-gray-200 text-gray-500 hover:border-gold-500 hover:text-gold-600",
+};
+const DELIVERY_TYPES = ["픽업", "배송"];
+const GENDERS = ["여성", "남성", "부모님"];
+const AGES = ["10대", "20대", "30대", "40대", "50대 이상"];
+const RELATIONSHIPS = ["연인", "가족", "친구", "직장동료/상사", "기타"];
+const MOODS = ["깔끔한 화이트&그린", "화사한 파스텔톤", "선명한 비비드톤", "차분한 딥컬러"];
+
+function parseNaverText(text: string) {
+  const r: Record<string, string | Date | null | boolean> = {};
+
+  const name = text.match(/예약자\s+([^\n]+)/);
+  if (name) r.ordererName = name[1].trim();
+
+  const phone = text.match(/전화번호\s+([\d\-]+)/);
+  if (phone) r.ordererPhone = phone[1].replace(/\D/g, "");
+
+  const date = text.match(/이용일시\s+(\d{4})\.\s*(\d+)\.\s*(\d+)\.\(.+?\)\s+(오전|오후)\s+(\d+):(\d+)/);
+  if (date) {
+    const [, y, mo, d, ampm, h, mi] = date;
+    let hour = parseInt(h);
+    if (ampm === "오후" && hour !== 12) hour += 12;
+    if (ampm === "오전" && hour === 12) hour = 0;
+    r.selectedDate = new Date(parseInt(y), parseInt(mo) - 1, parseInt(d), hour, parseInt(mi));
+  }
+
+  const productName = text.match(/상품\s+([^\n]+)/);
+  if (productName) r.productName = productName[1].trim();
+
+  const price = text.match(/결제금액\s+([\d,]+)원/);
+  if (price) r.productPrice = price[1].replace(/,/g, "");
+
+  if (text.includes("결제완료")) r.paid = true;
+
+  const route = text.match(/유입경로\s+([^\n]+)/);
+  if (route) {
+    if (route[1].includes("네이버")) r.channel = "네이버";
+    else if (route[1].includes("카카오")) r.channel = "카카오";
+  }
+
+  const extras: string[] = [];
+
+  const optSection = text.match(/옵션\s*([\s\S]+?)(?=필수|유입경로|예약자입력정보|결제정보|$)/);
+  if (optSection) {
+    const optText = optSection[1];
+    const optLines = optText.split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("*"));
+    if (optText.includes("꽃다발") || optText.includes("다발")) r.productType = "꽃다발";
+    else if (optText.includes("바구니")) r.productType = "꽃바구니";
+    else if (optText.includes("센터피스")) r.productType = "센터피스";
+    else if (optText.includes("화병")) r.productType = "화병꽂이";
+    if (optText.includes("쇼핑백")) r.shoppingBag = "추가";
+    if (optText.includes("메시지카드") || optText.includes("메시지 카드")) r.messageCard = "추가";
+    if (optText.includes("수명연장제")) r.preservative = "추가";
+    if (optLines.length > 0) extras.push(`[옵션] ${optLines.join(", ")}`);
+  }
+
+  const reqSection = text.match(/필수\s*([\s\S]+?)(?=유입경로|예약자입력정보|결제정보|$)/);
+  if (reqSection) {
+    const reqText = reqSection[1];
+    if (reqText.includes("쇼핑백")) r.shoppingBag = "추가";
+    if (reqText.includes("메시지카드") || reqText.includes("메시지 카드")) r.messageCard = "추가";
+    if (reqText.includes("수명연장제")) r.preservative = "추가";
+  }
+
+  const infoSection = text.match(/예약자입력정보\s*([\s\S]+?)(?=결제정보|$)/);
+  if (infoSection) {
+    const lines = infoSection[1].split("\n").map((l) => l.trim()).filter(Boolean);
+    for (const line of lines) {
+      if (line.startsWith("*") || line.includes("<")) continue;
+      extras.push(line);
+    }
+  }
+
+  if (extras.length > 0) r.requests = extras.join("\n");
+
+  return r;
+}
+
+const DAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
+
+// 미리보기 예약 추가 — 실제 AddReservationModal 복사본. DB·이미지 업로드 없이 만든 예약을 화면 목록에만 더한다
+export default function PreviewAddReservationModal({
+  onClose, onSaved,
+  messageCardEnabled = false, messageCardPrice = 0,
+  shoppingBagEnabled = false, shoppingBagPrice = 0,
+  preservativeEnabled = false, preservativePrice = 0,
+  customProductTypes = [],
+  businessHours = {},
+  closedDates = [],
+  dateOverrides = {},
+  initialData, reservationId,
+}: Props) {
+  const allProductTypes = [...DEFAULT_PRODUCT_TYPES, ...customProductTypes];
+  const [channel, setChannel] = useState<string | null>(
+    initialData?.channel ?? (reservationId ? null : "Flo.Aide")
+  );
+  const [pasteText, setPasteText] = useState("");
+  const [showPaste, setShowPaste] = useState(false);
+  const pasteTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const [showCopyInfo, setShowCopyInfo] = useState(false);
+  const [showPostcode, setShowPostcode] = useState(false);
+  const [showExtra, setShowExtra] = useState(
+    !!(initialData?.purpose || initialData?.recipient_gender || initialData?.recipient_age || initialData?.relationship || initialData?.mood)
+  );
+  const [refImageFiles, setRefImageFiles] = useState<File[]>([]);
+  const [refImagePreviews, setRefImagePreviews] = useState<string[]>(initialData?.reference_images?.filter(Boolean) ?? []);
+  const [refImageUrls, setRefImageUrls] = useState<string[]>(initialData?.reference_images?.filter(Boolean) ?? []);
+
+  // items 상태
+  const [items, setItems] = useState<ItemForm[]>(() => {
+    if (initialData?.items?.length) {
+      return initialData.items.map((item: ReservationItem) => ({
+        type: item.type,
+        name: item.name,
+        price: String(item.price),
+        message_card: item.message_card,
+        message_card_content: item.message_card_content ?? "",
+        shopping_bag: item.shopping_bag,
+        preservative: item.preservative ?? "없음",
+        memo: item.memo ?? "",
+        product_id: item.product_id ?? null,
+      }));
+    }
+    if (reservationId) return [emptyItem()];
+    return [{ ...emptyItem(), type: "꽃다발" }];
+  });
+
+  const updateItem = (index: number, field: keyof ItemForm, value: string) => {
+    setItems((prev) => prev.map((item, i) => i === index ? { ...item, [field]: value } : item));
+  };
+
+  const addItem = () => setItems((prev) => [...prev, emptyItem()]);
+  const removeItem = (index: number) => setItems((prev) => prev.filter((_, i) => i !== index));
+
+  const [ordererName, setOrdererName] = useState(initialData?.orderer_name ?? "");
+  const [ordererPhone, setOrdererPhone] = useState(initialData?.orderer_phone ?? "");
+  const [deliveryType, setDeliveryType] = useState(initialData?.delivery_type ?? "픽업");
+  const [deliveryFee, setDeliveryFee] = useState(initialData?.delivery_fee != null ? String(initialData.delivery_fee) : "");
+  const [selectedDate, setSelectedDate] = useState<Date | null>(() => {
+    if (!initialData?.desired_date) return null;
+    const [y, m, d] = initialData.desired_date.split("-").map(Number);
+    if (initialData.desired_time) {
+      const [h, min] = initialData.desired_time.split(":").map(Number);
+      return new Date(y, m - 1, d, h, min);
+    }
+    return new Date(y, m - 1, d);
+  });
+
+  const defaultOpenTime = useMemo(() => {
+    const now = new Date();
+    const rounded = new Date(now);
+    const mins = now.getMinutes();
+    const remainder = mins % 30;
+    if (remainder !== 0) rounded.setMinutes(mins + (30 - remainder));
+    rounded.setSeconds(0, 0);
+    return rounded;
+  }, []);
+
+  const [recipientGender, setRecipientGender] = useState(initialData?.recipient_gender ?? "");
+  const [recipientAge, setRecipientAge] = useState(initialData?.recipient_age ?? "");
+  const [relationship, setRelationship] = useState(initialData?.relationship ?? "");
+  const [mood, setMood] = useState(initialData?.mood ?? "");
+  const [purpose, setPurpose] = useState(initialData?.purpose ?? "");
+  const [purposeCustom, setPurposeCustom] = useState(
+    initialData?.purpose && !["기념", "축하", "감사", "위로"].includes(initialData.purpose) ? initialData.purpose : ""
+  );
+  const [requests, setRequests] = useState(initialData?.requests ?? "");
+  const [recipientName, setRecipientName] = useState(initialData?.recipient_name ?? "");
+  const [recipientPhone, setRecipientPhone] = useState(initialData?.recipient_phone ?? "");
+  const [address, setAddress] = useState(initialData?.address ?? "");
+  const [addressDetail, setAddressDetail] = useState(initialData?.address_detail ?? "");
+  const [paid, setPaid] = useState(initialData?.paid ?? false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<string[]>([]);
+  const nameFieldRef = useRef<HTMLDivElement>(null);
+  const phoneFieldRef = useRef<HTMLDivElement>(null);
+  const channelFieldRef = useRef<HTMLDivElement>(null);
+  const itemTypeFieldRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const dateFieldRef = useRef<HTMLDivElement>(null);
+  const clearFieldError = (label: string) => setFieldErrors((prev) => prev.filter((f) => f !== label));
+
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
+
+  const finalPrice = useMemo(() => {
+    const itemsTotal = items.reduce((sum, item) => {
+      return sum
+        + (Number(item.price) || 0)
+        + (messageCardEnabled && item.message_card === "추가" ? messageCardPrice : 0)
+        + (shoppingBagEnabled && item.shopping_bag === "추가" ? shoppingBagPrice : 0)
+        + (preservativeEnabled && item.preservative === "추가" ? preservativePrice : 0);
+    }, 0);
+    return itemsTotal + (deliveryType === "배송" ? (Number(deliveryFee) || 0) : 0);
+  }, [items, messageCardEnabled, messageCardPrice, shoppingBagEnabled, shoppingBagPrice, preservativeEnabled, preservativePrice, deliveryType, deliveryFee]);
+
+  const handleRefImageAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    const remaining = 3 - refImagePreviews.length;
+    const toAdd = files.slice(0, remaining);
+    setRefImageFiles((prev) => [...prev, ...toAdd]);
+    toAdd.forEach((file) => {
+      const url = URL.createObjectURL(file);
+      setRefImagePreviews((prev) => [...prev, url]);
+    });
+    e.target.value = "";
+  };
+
+  const handleRefImageRemove = (index: number) => {
+    const isExisting = index < refImageUrls.length;
+    if (isExisting) {
+      setRefImageUrls((prev) => prev.filter((_, i) => i !== index));
+      setRefImagePreviews((prev) => prev.filter((_, i) => i !== index));
+    } else {
+      const fileIndex = index - refImageUrls.length;
+      setRefImageFiles((prev) => prev.filter((_, i) => i !== fileIndex));
+      setRefImagePreviews((prev) => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  // 미리보기 — 업로드 없이 화면에서 고른 사진 미리보기 주소를 그대로 쓴다
+  const uploadRefImages = async (): Promise<string[]> => refImagePreviews;
+
+  const buildItemsPayload = () =>
+    items.map((item) => ({
+      type: item.type,
+      name: item.name,
+      price: Number(item.price) || 0,
+      product_id: item.product_id ?? null,
+      message_card: item.message_card,
+      message_card_content:
+        (item.message_card === "추가" || item.message_card === "서비스") ? item.message_card_content || null : null,
+      shopping_bag: item.shopping_bag,
+      preservative: item.preservative,
+      memo: item.memo || null,
+    }));
+
+  const handleSubmit = async () => {
+    const desiredDate = selectedDate
+      ? `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`
+      : "";
+    const desiredTime = selectedDate
+      ? `${String(selectedDate.getHours()).padStart(2, "0")}:${String(selectedDate.getMinutes()).padStart(2, "0")}`
+      : "";
+
+    const missing: string[] = [];
+    if (!channel) missing.push("채널");
+    if (!ordererName) missing.push("예약자 이름");
+    if (!ordererPhone) missing.push("전화번호");
+    if (!selectedDate) missing.push("예약 일시");
+    if (items.some((item) => !item.type)) missing.push("상품 유형");
+    if (missing.length > 0) {
+      setFieldErrors(missing);
+      let target: HTMLElement | null = null;
+      if (!ordererName) target = nameFieldRef.current;
+      else if (!ordererPhone) target = phoneFieldRef.current;
+      else if (!channel) target = channelFieldRef.current;
+      else if (items.some((item) => !item.type)) target = itemTypeFieldRefs.current[items.findIndex((item) => !item.type)] ?? null;
+      else if (!selectedDate) target = dateFieldRef.current;
+      target?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    setFieldErrors([]);
+    setSaving(true);
+    setError(null);
+
+    const uploadedImages = await uploadRefImages();
+    const itemsPayload = buildItemsPayload();
+
+    // 미리보기 — 서버 저장 대신 예약 한 건을 만들어 목록에 더한다 (사장님이 직접 추가한 예약은 준비중으로 들어간다)
+    onSaved({
+      id: `added-${Date.now()}`,
+      created_at: new Date().toISOString(),
+      status: "준비중",
+      orderer_name: ordererName,
+      orderer_phone: parsePhone(ordererPhone),
+      items: itemsPayload,
+      quantity: 1,
+      paid,
+      final_price: finalPrice,
+      purpose: purpose === "기타" ? purposeCustom : purpose,
+      recipient_gender: recipientGender,
+      recipient_age: recipientAge,
+      relationship,
+      mood,
+      budget: "",
+      channel,
+      delivery_type: deliveryType,
+      delivery_fee: deliveryType === "배송" && deliveryFee ? Number(deliveryFee) : null,
+      admin_memo: null,
+      cancel_reason: null,
+      desired_date: desiredDate,
+      desired_time: desiredTime,
+      requests: requests || null,
+      recipient_name: deliveryType === "배송" ? recipientName || null : null,
+      recipient_phone: deliveryType === "배송" ? parsePhone(recipientPhone) || null : null,
+      address: deliveryType === "배송" ? address || null : null,
+      address_detail: deliveryType === "배송" ? addressDetail || null : null,
+      customer_profile_id: null,
+      reference_images: uploadedImages.length > 0 ? uploadedImages : null,
+      order_path: "manual",
+      traffic_source: null,
+      payment_token: null,
+      payment_link_expires_at: null,
+      payment_id: null,
+      settlement_id: null,
+    });
+  };
+
+  const inputCls = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400 bg-white placeholder:text-gray-300";
+  const sectionHeaderCls = "px-5 pt-4 pb-3 border-b border-gray-100";
+  const sectionLabelCls = "text-xs font-medium text-gray-400 uppercase tracking-wider";
+  const fieldLabelCls = "block text-xs text-gray-500 mb-1";
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-gray-100 rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        {/* 헤더 */}
+        <div className="flex items-center justify-between px-5 pt-5 pb-4 bg-white">
+          <h3 className="font-medium text-gray-900">{reservationId ? "예약 수정" : "예약 직접 추가"}</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
+        </div>
+
+        <div className="space-y-2">
+
+        {/* 네이버 예약 자동 입력 */}
+        <div className="bg-white px-5 py-4" data-coach="add-paste">
+          <div className="border-2 border-dashed border-gray-200 rounded-xl overflow-hidden">
+            <div
+              role="button"
+              onClick={() => {
+                const next = !showPaste;
+                setShowPaste(next);
+                if (next) setTimeout(() => pasteTextareaRef.current?.focus(), 0);
+              }}
+              className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-gray-500 hover:bg-gray-50 transition-colors cursor-pointer"
+            >
+              <span className="font-medium text-gray-600">네이버 예약 자동 입력</span>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={(e) => { e.stopPropagation(); setShowCopyInfo(true); }}
+                  className="w-5 h-5 rounded-full border border-gray-300 text-gray-400 hover:text-gray-600 hover:border-gray-500 flex items-center justify-center text-xs font-medium transition-colors">
+                  i
+                </button>
+                <svg xmlns="http://www.w3.org/2000/svg" className={`w-4 h-4 transition-transform ${showPaste ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                </svg>
+              </div>
+            </div>
+            {showPaste && (
+            <div className="px-4 pb-4 border-t border-gray-100">
+              <textarea
+                ref={pasteTextareaRef}
+                value={pasteText}
+                onChange={(e) => setPasteText(e.target.value)}
+                onPaste={(e) => {
+                  const text = e.clipboardData.getData("text");
+                  if (text.trim()) {
+                    setPasteText(text);
+                    setTimeout(() => {
+                      const parsed = parseNaverText(text);
+                      if (parsed.ordererName) setOrdererName(parsed.ordererName as string);
+                      if (parsed.ordererPhone) setOrdererPhone(formatPhone(parsed.ordererPhone as string));
+                      if (parsed.selectedDate) setSelectedDate(parsed.selectedDate as Date);
+                      if (parsed.channel) setChannel(parsed.channel as string);
+                      else setChannel("네이버");
+                      if (parsed.requests) setRequests(parsed.requests as string);
+                      if (parsed.paid) setPaid(true);
+                      setItems((prev) => {
+                        const first = { ...prev[0] };
+                        if (parsed.productType) first.type = parsed.productType as string;
+                        if (parsed.productName) first.name = parsed.productName as string;
+                        if (parsed.productPrice) {
+                          let price = Number(parsed.productPrice);
+                          if (shoppingBagEnabled && parsed.shoppingBag === "추가") price -= shoppingBagPrice;
+                          if (messageCardEnabled && parsed.messageCard === "추가") price -= messageCardPrice;
+                          if (preservativeEnabled && parsed.preservative === "추가") price -= preservativePrice;
+                          first.price = String(Math.max(0, price));
+                        }
+                        if (messageCardEnabled && parsed.messageCard) first.message_card = parsed.messageCard as string;
+                        if (shoppingBagEnabled && parsed.shoppingBag) first.shopping_bag = parsed.shoppingBag as string;
+                        if (preservativeEnabled && parsed.preservative) first.preservative = parsed.preservative as string;
+                        return [first, ...prev.slice(1)];
+                      });
+                      setShowPaste(false);
+                      setPasteText("");
+                    }, 0);
+                    e.preventDefault();
+                  }
+                }}
+                placeholder="네이버 예약 내용을 전체 복사해서 붙여넣으세요"
+                rows={5}
+                className="w-full mt-3 border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-gold-400 resize-none text-gray-700"
+              />
+            </div>
+          )}
+          </div>
+        </div>
+
+        {showCopyInfo && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40" onClick={() => setShowCopyInfo(false)}>
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 flex flex-col max-h-[85vh]" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
+                <h3 className="text-sm font-semibold text-gray-900">복사 방법 안내</h3>
+                <button type="button" onClick={() => setShowCopyInfo(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="p-5 space-y-3 overflow-y-auto">
+                <div className="space-y-1.5 text-sm text-gray-600 leading-relaxed">
+                  <p>네이버 예약 관리 페이지에서 예약 상세 내용을 아래 이미지의 범위대로 전체 선택 후 복사하여 붙여넣으세요.</p>
+                  <ul className="list-disc list-inside text-xs text-gray-400 space-y-1 pl-1">
+                    <li>&#39;예약자&#39;부터 &#39;결제/환불정보&#39;까지 드래그하여 복사</li>
+                    <li>이름, 전화번호, 가격, 이용 시간이 자동으로 입력됩니다.</li>
+                    <li>예약자 입력 정보는 모두 요청 사항에 자동으로 입력됩니다</li>
+                  </ul>
+                </div>
+                <img src="/copy-info.png" alt="복사 범위 안내" className="w-full rounded-xl border border-gray-100" />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 섹션: 예약자 정보 */}
+        <div className="bg-white" data-coach="add-orderer">
+          <div className={sectionHeaderCls}>
+            <p className={sectionLabelCls}>예약자 정보</p>
+          </div>
+          <div className="px-5 py-4 space-y-3">
+            <div ref={nameFieldRef}>
+              <label className={fieldErrors.includes("예약자 이름") ? "block text-xs text-red-500 mb-1" : fieldLabelCls}>이름 <span className="text-red-500">*</span></label>
+              <input
+                className={fieldErrors.includes("예약자 이름") ? `${inputCls} border-red-400 focus:border-red-500` : inputCls}
+                value={ordererName}
+                onChange={(e) => { setOrdererName(e.target.value); clearFieldError("예약자 이름"); }}
+                placeholder="홍길동"
+              />
+            </div>
+            <div ref={phoneFieldRef}>
+              <label className={fieldErrors.includes("전화번호") ? "block text-xs text-red-500 mb-1" : fieldLabelCls}>연락처 <span className="text-red-500">*</span></label>
+              <input
+                className={fieldErrors.includes("전화번호") ? `${inputCls} border-red-400 focus:border-red-500` : inputCls}
+                type="tel"
+                value={ordererPhone}
+                onChange={(e) => { setOrdererPhone(formatPhone(e.target.value)); clearFieldError("전화번호"); }}
+                placeholder="010-1234-5678"
+              />
+            </div>
+            <div ref={channelFieldRef}>
+              <label className={fieldErrors.includes("채널") ? "block text-xs text-red-500 mb-1" : fieldLabelCls}>채널 <span className="text-red-500">*</span></label>
+              <div className={`flex p-1 rounded-xl ${fieldErrors.includes("채널") ? "bg-red-50 border border-red-300" : "bg-gray-100"}`}>
+                {CHANNELS.map((c) => (
+                  <button key={c} type="button" onClick={() => { setChannel(channel === c ? null : c); clearFieldError("채널"); }}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      channel === c ? "bg-gold-500 text-white shadow-sm" : "text-gray-400 hover:text-gray-500"
+                    }`}>
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 섹션: 상품 */}
+        <div className="bg-white">
+          <div className={sectionHeaderCls}>
+            <p className={sectionLabelCls}>상품</p>
+          </div>
+          <div className="px-5 py-4 space-y-4">
+            {items.map((item, idx) => (
+              <div key={idx} className={`space-y-3 ${idx > 0 ? "pt-4 border-t border-gray-100" : ""}`}>
+                <div className="flex items-center justify-between">
+                  {items.length > 1 && <p className="text-xs text-gray-400">상품 {idx + 1}</p>}
+                  {items.length > 1 && (
+                    <button type="button" onClick={() => removeItem(idx)}
+                      className="text-xs text-red-400 hover:text-red-600 transition-colors">
+                      삭제
+                    </button>
+                  )}
+                </div>
+                <div ref={(el) => { itemTypeFieldRefs.current[idx] = el; }}>
+                  <label className={fieldErrors.includes("상품 유형") && !item.type ? "block text-xs text-red-500 mb-1" : fieldLabelCls}>상품 유형 <span className="text-red-500">*</span></label>
+                  <CustomSelect
+                    value={item.type}
+                    onChange={(v) => { updateItem(idx, "type", v); if (!items.some((it, i) => i !== idx && !it.type)) clearFieldError("상품 유형"); }}
+                    options={allProductTypes}
+                    placeholder="유형 선택"
+                    error={fieldErrors.includes("상품 유형") && !item.type}
+                  />
+                </div>
+                <div>
+                  <label className={fieldLabelCls}>상품명</label>
+                  <input className={inputCls} value={item.name}
+                    onChange={(e) => updateItem(idx, "name", e.target.value)} placeholder="예) 핑크 꽃다발" />
+                </div>
+                <div>
+                  <label className={fieldLabelCls}>금액</label>
+                  <div className="flex items-center gap-2">
+                    <input className={inputCls} type="text" inputMode="numeric"
+                      value={item.price === "" ? "" : formatMoney(item.price)}
+                      onChange={(e) => {
+                        const raw = parseMoney(e.target.value);
+                        updateItem(idx, "price", raw === 0 && e.target.value !== "0" ? "" : String(raw));
+                      }}
+                      placeholder="0" />
+                    <span className="text-sm text-gray-500 shrink-0">원</span>
+                  </div>
+                </div>
+                {(messageCardEnabled || shoppingBagEnabled || preservativeEnabled) && (
+                  <div className="space-y-3">
+                    {messageCardEnabled && (
+                      <div>
+                        <label className={fieldLabelCls}>메시지 카드{messageCardPrice > 0 && <span className="text-gray-400 font-normal ml-1">(+{messageCardPrice.toLocaleString()}원)</span>}</label>
+                        <div className="flex p-1 bg-gray-100 rounded-xl">
+                          {["추가", "서비스", "없음"].map((opt) => (
+                            <button key={opt} type="button" onClick={() => updateItem(idx, "message_card", opt)}
+                              className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                                item.message_card === opt ? "bg-gold-500 text-white shadow-sm" : "text-gray-400 hover:text-gray-500"
+                              }`}>
+                              {opt}
+                            </button>
+                          ))}
+                        </div>
+                        {(item.message_card === "추가" || item.message_card === "서비스") && (
+                          <textarea className={`${inputCls} resize-none mt-2`} rows={2}
+                            value={item.message_card_content}
+                            onChange={(e) => updateItem(idx, "message_card_content", e.target.value)}
+                            placeholder="메시지 내용 (30자 이내 작성 권장)" />
+                        )}
+                      </div>
+                    )}
+                    {shoppingBagEnabled && (
+                      <div>
+                        <label className={fieldLabelCls}>쇼핑백{shoppingBagPrice > 0 && <span className="text-gray-400 font-normal ml-1">(+{shoppingBagPrice.toLocaleString()}원)</span>}</label>
+                        <div className="flex p-1 bg-gray-100 rounded-xl">
+                          {["추가", "서비스", "없음"].map((opt) => (
+                            <button key={opt} type="button" onClick={() => updateItem(idx, "shopping_bag", opt)}
+                              className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                                item.shopping_bag === opt ? "bg-gold-500 text-white shadow-sm" : "text-gray-400 hover:text-gray-500"
+                              }`}>
+                              {opt}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {preservativeEnabled && (
+                      <div>
+                        <label className={fieldLabelCls}>생화 수명연장제{preservativePrice > 0 && <span className="text-gray-400 font-normal ml-1">(+{preservativePrice.toLocaleString()}원)</span>}</label>
+                        <div className="flex p-1 bg-gray-100 rounded-xl">
+                          {["추가", "서비스", "없음"].map((opt) => (
+                            <button key={opt} type="button" onClick={() => updateItem(idx, "preservative", opt)}
+                              className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                                item.preservative === opt ? "bg-gold-500 text-white shadow-sm" : "text-gray-400 hover:text-gray-500"
+                              }`}>
+                              {opt}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                <div>
+                  <label className={fieldLabelCls}>상품 메모</label>
+                  <input className={inputCls} value={item.memo}
+                    onChange={(e) => updateItem(idx, "memo", e.target.value)}
+                    placeholder="이 상품에 대한 메모 (선택)" />
+                </div>
+              </div>
+            ))}
+            <button type="button" onClick={addItem}
+              className="w-full py-2.5 border-2 border-dashed border-gray-200 rounded-xl text-sm text-gray-400 hover:border-gray-400 hover:text-gray-600 transition-colors">
+              + 상품 추가
+            </button>
+          </div>
+        </div>
+
+        {/* 섹션: 수령 정보 */}
+        <div className="bg-white">
+          <div className={sectionHeaderCls}>
+            <p className={sectionLabelCls}>수령 정보</p>
+          </div>
+          <div className="px-5 py-4 space-y-3">
+            <div>
+              <label className={fieldLabelCls}>수령 방법</label>
+              <div className="flex p-1 bg-gray-100 rounded-xl">
+                {DELIVERY_TYPES.map((d) => (
+                  <button key={d} type="button" onClick={() => setDeliveryType(d)}
+                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
+                      deliveryType === d ? "bg-gold-500 text-white shadow-sm" : "text-gray-400 hover:text-gray-500"
+                    }`}>
+                    {d}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div ref={dateFieldRef}>
+              <label className={fieldErrors.includes("예약 일시") ? "block text-xs text-red-500 mb-1" : fieldLabelCls}>수령 희망 일시 <span className="text-red-500">*</span></label>
+              <DatePicker
+                locale="ko"
+                selected={selectedDate}
+                onChange={(date: Date | null) => { setSelectedDate(date); clearFieldError("예약 일시"); }}
+                showTimeSelect
+                timeFormat="HH:mm"
+                timeIntervals={30}
+                dateFormat="yy년 M월 d일 (eee) HH:mm"
+                openToDate={!reservationId ? defaultOpenTime : undefined}
+                onCalendarOpen={() => {
+                  if (selectedDate || reservationId) return;
+                  setTimeout(() => {
+                    const list = document.querySelector(".react-datepicker__time-list");
+                    if (!list) return;
+                    const target = `${String(defaultOpenTime.getHours()).padStart(2, "0")}:${String(defaultOpenTime.getMinutes()).padStart(2, "0")}`;
+                    const items = list.querySelectorAll(".react-datepicker__time-list-item");
+                    items.forEach((item) => {
+                      if (item.textContent?.trim() === target) {
+                        (item as HTMLElement).scrollIntoView({ block: "center" });
+                      }
+                    });
+                  }, 50);
+                }}
+                placeholderText="날짜와 시간을 선택해주세요"
+                className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none bg-white cursor-pointer ${
+                  fieldErrors.includes("예약 일시") ? "border-red-400 focus:border-red-500" : "border-gray-200 focus:border-gold-400"
+                }`}
+                wrapperClassName="w-full"
+                calendarClassName="!font-sans !text-sm !border-gray-200 !rounded-xl !shadow-lg admin-modal-datepicker admin-modal-datepicker-wide"
+                filterDate={(date) => {
+                  const dayKey = String(date.getDay());
+                  const h = businessHours[dayKey];
+                  if (h?.closed) return false;
+                  const formatted = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+                  return !closedDates.includes(formatted);
+                }}
+                popperPlacement="bottom-start"
+                dayClassName={(date) => {
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  return date < today ? "react-datepicker__day--past" : "";
+                }}
+                filterTime={(time) => {
+                  if (Object.keys(businessHours).length === 0) return true;
+                  const h = resolveDayHours(time, businessHours, dateOverrides);
+                  if (!h) return true;
+                  if (h.closed) return false;
+                  const [openH, openM] = h.open.split(":").map(Number);
+                  const [closeH, closeM] = h.close.split(":").map(Number);
+                  const t = time.getHours() * 60 + time.getMinutes();
+                  return t >= openH * 60 + openM && t <= closeH * 60 + closeM;
+                }}
+                renderCustomHeader={({ date, decreaseMonth, increaseMonth, prevMonthButtonDisabled, nextMonthButtonDisabled }) => (
+                  <div className="flex items-center justify-between px-3 py-1">
+                    <button type="button" onClick={decreaseMonth} disabled={prevMonthButtonDisabled}
+                      className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-gray-100 disabled:opacity-30 transition-colors text-gray-600">‹</button>
+                    <span className="text-sm font-medium text-gray-800">{date.getMonth() + 1}월</span>
+                    <button type="button" onClick={increaseMonth} disabled={nextMonthButtonDisabled}
+                      className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-gray-100 disabled:opacity-30 transition-colors text-gray-600">›</button>
+                  </div>
+                )}
+              />
+            </div>
+            {deliveryType === "배송" && (
+              <div className="space-y-3 pt-2">
+                <div>
+                  <label className={fieldLabelCls}>받는 분 이름</label>
+                  <input className={inputCls} value={recipientName} onChange={(e) => setRecipientName(e.target.value)} placeholder="홍길동" />
+                </div>
+                <div>
+                  <label className={fieldLabelCls}>받는 분 연락처</label>
+                  <input className={inputCls} type="tel" value={recipientPhone}
+                    onChange={(e) => setRecipientPhone(formatPhone(e.target.value))} placeholder="010-1234-5678" />
+                </div>
+                <div>
+                  <label className={fieldLabelCls}>배송 주소</label>
+                  <div className="flex gap-2">
+                    <input className={`${inputCls} flex-1 min-w-0 cursor-pointer`} value={address} readOnly
+                      onClick={() => setShowPostcode(true)} placeholder="주소 검색" />
+                    <button type="button" onClick={() => setShowPostcode(true)}
+                      className="shrink-0 px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:border-gray-400 bg-white transition-colors whitespace-nowrap">
+                      찾기
+                    </button>
+                  </div>
+                  {showPostcode && (
+                    <div className="mt-2 border border-gray-200 rounded-xl overflow-hidden">
+                      <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-200">
+                        <span className="text-xs text-gray-500">주소 검색</span>
+                        <button type="button" onClick={() => setShowPostcode(false)} className="text-gray-400 hover:text-gray-600 text-sm">✕</button>
+                      </div>
+                      <DaumPostcodeEmbed
+                        onComplete={(data) => {
+                          setAddress(data.roadAddress || data.jibunAddress);
+                          setShowPostcode(false);
+                        }}
+                        style={{ height: 400 }}
+                      />
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <label className={fieldLabelCls}>상세 주소</label>
+                  <input className={inputCls} value={addressDetail} onChange={(e) => setAddressDetail(e.target.value)} placeholder="상세 주소" />
+                </div>
+                <div>
+                  <label className={fieldLabelCls}>배송비 (선택)</label>
+                  <input className={inputCls} type="text" inputMode="numeric"
+                    value={deliveryFee ? Number(deliveryFee).toLocaleString() : ""}
+                    onChange={(e) => setDeliveryFee(e.target.value.replace(/[^0-9]/g, ""))}
+                    placeholder="0" />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 섹션: 요청 사항 + 참고 이미지 */}
+        <div className="bg-white">
+          <div className={sectionHeaderCls}>
+            <p className={sectionLabelCls}>추가 정보</p>
+          </div>
+          <div className="px-5 py-4 space-y-3">
+            <div>
+              <label className={fieldLabelCls}>요청 사항</label>
+              <textarea className={`${inputCls} resize-none`} rows={4} value={requests}
+                onChange={(e) => setRequests(e.target.value)} placeholder="요청 사항" />
+            </div>
+            <div>
+              <label className={fieldLabelCls}>참고 이미지 <span className="text-gray-300 font-normal">(최대 3장)</span></label>
+              <div className="flex gap-2 flex-wrap">
+                {refImagePreviews.map((url, i) => (
+                  <div key={i} className="relative w-20 h-20 shrink-0">
+                    <img src={url} alt="" className="w-full h-full object-cover rounded-xl border border-gray-200" />
+                    <button type="button" onClick={() => handleRefImageRemove(i)}
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-700 text-white rounded-full flex items-center justify-center text-xs hover:bg-gray-900 transition-colors">
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                {refImagePreviews.length < 3 && (
+                  <label className="w-20 h-20 shrink-0 flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-gray-400 transition-colors text-gray-400 hover:text-gray-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mb-0.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                    <span className="text-xs">추가</span>
+                    <input type="file" accept="image/*" multiple className="hidden" onChange={handleRefImageAdd} />
+                  </label>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 섹션: 결제 */}
+        <div className="bg-white" data-coach="add-paid">
+          <div className={sectionHeaderCls}>
+            <p className={sectionLabelCls}>결제</p>
+          </div>
+          <div className="px-5 py-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-500">최종 금액</span>
+              <div className="text-right">
+                <span className="text-base font-semibold text-gray-900">{finalPrice.toLocaleString()}원</span>
+                {items.length > 0 && (
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {items.map((item) => `${item.type || "상품"} ${Number(item.price).toLocaleString()}`).join(" + ")}
+                    {deliveryType === "배송" && Number(deliveryFee) > 0 && ` + 배송비 ${Number(deliveryFee).toLocaleString()}`}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div>
+              <label className={fieldLabelCls}>결제 상태</label>
+              <div className="flex p-1 rounded-xl bg-gray-100">
+                <button type="button" onClick={() => setPaid(false)}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${!paid ? "bg-white text-gray-800 shadow-sm" : "text-gray-400 hover:text-gray-500"}`}>
+                  미결제
+                </button>
+                <button type="button" onClick={() => setPaid(true)}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${paid ? "bg-gold-500 text-white shadow-sm" : "text-gray-400 hover:text-gray-500"}`}>
+                  결제 완료
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 하단 버튼 */}
+        <div className="bg-white px-5 py-4 space-y-3">
+          {error && <p className="text-sm text-red-500">{error}</p>}
+          <div className="flex gap-3">
+            <button type="button" onClick={onClose}
+              className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-700 hover:border-gray-400 transition-colors">
+              취소
+            </button>
+            <button type="button" onClick={handleSubmit} disabled={saving}
+              className="flex-1 py-2.5 rounded-xl bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+              {saving ? "저장 중..." : (reservationId ? "수정 완료" : "예약 추가")}
+            </button>
+          </div>
+        </div>
+
+        </div>{/* space-y-2 끝 */}
+      </div>
+    </div>
+  );
+}

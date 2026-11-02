@@ -1,0 +1,348 @@
+"use client";
+
+import { useState } from "react";
+import type { DayHours, BusinessHours, DateOverrides } from "@/lib/businessHours";
+import SaveButton from "@/components/admin/SaveButton";
+import DatePicker, { registerLocale } from "react-datepicker";
+import { ko } from "date-fns/locale";
+import "react-datepicker/dist/react-datepicker.css";
+import { PREVIEW_TODAY } from "../_mockReservations";
+
+registerLocale("ko", ko);
+
+interface Props {
+  /** 미리보기 — 저장 대신 안내 */
+  onNotice: (message: string) => void;
+}
+
+const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
+const HOURS = Array.from({ length: 18 }, (_, i) => String(i + 6).padStart(2, "0"));
+const MINUTES = ["00", "30"];
+
+const toDateStr = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+// 오늘보다 이전 날짜의 영업시간 변경 내역은 더 이상 쓸모가 없으므로 정리한다.
+const pruneOverrides = (overrides: DateOverrides): DateOverrides => {
+  const todayStr = toDateStr(PREVIEW_TODAY);
+  return Object.fromEntries(Object.entries(overrides).filter(([date]) => date >= todayStr));
+};
+
+function DateField({ value, onChange, placeholder }: { value: Date | null; onChange: (d: Date | null) => void; placeholder?: string }) {
+  return (
+    <DatePicker
+      locale="ko"
+      selected={value}
+      onChange={onChange}
+      dateFormat="yy년 M월 d일 (eee)"
+      minDate={PREVIEW_TODAY}
+      placeholderText={placeholder ?? "날짜를 선택해주세요"}
+      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-500 bg-white cursor-pointer"
+      wrapperClassName="w-full"
+      calendarClassName="!font-sans !text-sm !border-gray-200 !rounded-xl !shadow-lg admin-modal-datepicker"
+      popperPlacement="bottom-start"
+      dayClassName={(date) => {
+        const today = new Date(PREVIEW_TODAY);
+        today.setHours(0, 0, 0, 0);
+        return date < today ? "react-datepicker__day--past" : "";
+      }}
+      renderCustomHeader={({ date, decreaseMonth, increaseMonth, prevMonthButtonDisabled, nextMonthButtonDisabled }) => (
+        <div className="flex items-center justify-between px-3 py-1">
+          <button type="button" onClick={decreaseMonth} disabled={prevMonthButtonDisabled}
+            className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-gray-100 disabled:opacity-30 transition-colors text-gray-600">‹</button>
+          <span className="text-sm font-medium text-gray-800">{date.getMonth() + 1}월</span>
+          <button type="button" onClick={increaseMonth} disabled={nextMonthButtonDisabled}
+            className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-gray-100 disabled:opacity-30 transition-colors text-gray-600">›</button>
+        </div>
+      )}
+    />
+  );
+}
+
+function TimeSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [h, m] = value.split(":");
+  return (
+    <div className="flex items-center gap-1 border border-gray-200 rounded-lg overflow-hidden bg-white">
+      <select
+        value={h}
+        onChange={(e) => onChange(`${e.target.value}:${m}`)}
+        className="px-2 py-1.5 text-sm text-gray-700 focus:outline-none bg-transparent cursor-pointer"
+      >
+        {HOURS.map((hh) => (
+          <option key={hh} value={hh}>{hh}</option>
+        ))}
+      </select>
+      <span className="text-gray-300 text-sm select-none">:</span>
+      <select
+        value={m}
+        onChange={(e) => onChange(`${h}:${e.target.value}`)}
+        className="px-2 py-1.5 text-sm text-gray-700 focus:outline-none bg-transparent cursor-pointer"
+      >
+        {MINUTES.map((mm) => (
+          <option key={mm} value={mm}>{mm}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+// 미리보기 매장 설정 (목업) — 월요일 정기 휴무, 일요일은 짧게, 크리스마스 이브는 늦게까지
+const MOCK_HOURS: BusinessHours = {
+  "0": { closed: false, open: "11:00", close: "17:00" },
+  "1": { closed: true, open: "10:00", close: "20:00" },
+  "2": { closed: false, open: "10:00", close: "20:00" },
+  "3": { closed: false, open: "10:00", close: "20:00" },
+  "4": { closed: false, open: "10:00", close: "20:00" },
+  "5": { closed: false, open: "10:00", close: "20:00" },
+  "6": { closed: false, open: "10:00", close: "20:00" },
+};
+const MOCK_CLOSED_DATES = ["2026-11-24", "2027-01-01"];
+const MOCK_OVERRIDES: DateOverrides = {
+  "2026-12-24": { open: "09:00", close: "22:00" },
+  "2026-12-31": { open: "10:00", close: "17:00" },
+};
+const MOCK_LEAD_TIMES: Record<string, string> = { 꽃다발: "2", 꽃바구니: "3", 센터피스: "4", 화병꽂이: "3", 기타: "2" };
+
+// 미리보기 영업 설정 — 실제 BusinessSettingsTab 복사본. 목업 매장 설정을 쓰고 저장은 하지 않는다 (오늘 = 2026-11-10)
+export default function PreviewBusinessSettingsTab({ onNotice }: Props) {
+  const [businessHours, setBusinessHours] = useState<BusinessHours>(MOCK_HOURS);
+  const [closedDates, setClosedDates] = useState<string[]>(MOCK_CLOSED_DATES);
+  const [newDate, setNewDate] = useState<Date | null>(null);
+  const [dateOverrides, setDateOverrides] = useState<DateOverrides>(MOCK_OVERRIDES);
+  const [overrideDate, setOverrideDate] = useState<Date | null>(null);
+  const [overrideOpen, setOverrideOpen] = useState("09:00");
+  const [overrideClose, setOverrideClose] = useState("18:00");
+  const [minLeadTimes, setMinLeadTimes] = useState<Record<string, string>>(MOCK_LEAD_TIMES);
+  const error: string | null = null;
+
+  const updateDay = (day: number, patch: Partial<DayHours>) => {
+    setBusinessHours((prev) => ({
+      ...prev,
+      [String(day)]: { ...prev[String(day)], ...patch },
+    }));
+  };
+
+  const addClosedDate = () => {
+    if (!newDate) return;
+    const dateStr = toDateStr(newDate);
+    if (closedDates.includes(dateStr)) return;
+    setClosedDates((prev) => [...prev, dateStr].sort());
+    setNewDate(null);
+  };
+
+  const removeClosedDate = (date: string) => {
+    setClosedDates((prev) => prev.filter((d) => d !== date));
+  };
+
+  const handleOverrideDateChange = (d: Date | null) => {
+    setOverrideDate(d);
+    if (!d) return;
+    const existing = dateOverrides[toDateStr(d)];
+    if (existing) {
+      setOverrideOpen(existing.open);
+      setOverrideClose(existing.close);
+    }
+  };
+
+  const addDateOverride = () => {
+    if (!overrideDate) return;
+    const dateStr = toDateStr(overrideDate);
+    setDateOverrides((prev) => pruneOverrides({ ...prev, [dateStr]: { open: overrideOpen, close: overrideClose } }));
+    setOverrideDate(null);
+    setOverrideOpen("09:00");
+    setOverrideClose("18:00");
+  };
+
+  const removeDateOverride = (date: string) => {
+    setDateOverrides((prev) => {
+      const next = { ...prev };
+      delete next[date];
+      return next;
+    });
+  };
+
+  // 미리보기 — 저장하지 않고 안내만
+  const handleSave = async () => {
+    onNotice("미리보기라 실제로 저장되지는 않아요.");
+  };
+
+  const formatDate = (dateStr: string) => {
+    const d = new Date(dateStr + "T00:00:00");
+    return d.toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "short" });
+  };
+
+  return (
+    <div className="space-y-4">
+      <h2 className="text-xl font-medium text-gray-900">영업 설정</h2>
+      <div className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:p-6">
+        <div className="max-w-lg space-y-6">
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
+          )}
+
+          {/* 당일 예약 시간 설정 */}
+          <div className="space-y-3" data-coach="bz-lead">
+            <div>
+              <h3 className="text-sm font-medium text-gray-700">당일 예약 시간 설정</h3>
+              <p className="text-xs text-gray-400 mt-0.5">유형별로 제작에 최소 몇 시간이 필요한지 입력하세요. (기본값: 2시간)</p>
+            </div>
+            <div className="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
+              {["꽃다발", "꽃바구니", "센터피스", "화병꽂이", "기타"].map((type) => (
+                <div key={type} className="flex items-center justify-between px-4 py-3 bg-white">
+                  <span className="text-sm text-gray-700">{type}</span>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={minLeadTimes[type] ?? "2"}
+                      onChange={(e) => {
+                        const digits = e.target.value.replace(/\D/g, "").slice(0, 2);
+                        const clamped = digits === "" ? "" : String(Math.min(72, Number(digits)));
+                        setMinLeadTimes((prev) => ({ ...prev, [type]: clamped }));
+                      }}
+                      onBlur={() => {
+                        if ((minLeadTimes[type] ?? "") === "") {
+                          setMinLeadTimes((prev) => ({ ...prev, [type]: "0" }));
+                        }
+                      }}
+                      className="w-16 border border-gray-200 rounded-lg px-2 py-1 text-sm text-center focus:outline-none focus:border-gray-400 bg-white"
+                    />
+                    <span className="text-xs text-gray-400">시간</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 요일별 영업 시간 */}
+          <div className="space-y-3" data-coach="bz-hours">
+            <h3 className="text-sm font-medium text-gray-700">요일별 영업 시간</h3>
+            <div className="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
+              {[1, 2, 3, 4, 5, 6, 0].map((i) => {
+                const label = WEEKDAYS[i];
+                const day = businessHours[String(i)] ?? { closed: false, open: "09:00", close: "18:00" };
+                return (
+                  <div key={i} className={`flex items-center gap-3 px-4 py-3 ${day.closed ? "bg-gray-50" : "bg-white"}`}>
+                    <span className={`w-6 text-sm font-medium shrink-0 ${day.closed ? "text-gray-300" : "text-gray-700"}`}>
+                      {label}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => updateDay(i, { closed: !day.closed })}
+                      className={`shrink-0 w-12 h-6 rounded-full transition-colors relative ${
+                        day.closed ? "bg-gray-200" : "bg-gold-500"
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${
+                          day.closed ? "left-0.5" : "left-6"
+                        }`}
+                      />
+                    </button>
+                    <span className={`text-xs shrink-0 w-6 ${day.closed ? "text-gray-300" : "text-gray-400"}`}>
+                      {day.closed ? "휴무" : "영업"}
+                    </span>
+                    {day.closed ? (
+                      <span className="text-sm text-gray-300 ml-auto">—</span>
+                    ) : (
+                      <div className="flex items-center gap-2 ml-auto">
+                        <TimeSelect value={day.open} onChange={(v) => updateDay(i, { open: v })} />
+                        <span className="text-gray-300 text-sm">~</span>
+                        <TimeSelect value={day.close} onChange={(v) => updateDay(i, { close: v })} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 특정 휴무일 */}
+          <div className="space-y-3" data-coach="bz-closed">
+            <h3 className="text-sm font-medium text-gray-700">휴무일 설정</h3>
+            <p className="text-xs text-gray-400">공휴일, 임시 휴무일 등을 직접 지정합니다.</p>
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <DateField value={newDate} onChange={setNewDate} />
+              </div>
+              <button
+                type="button"
+                onClick={addClosedDate}
+                disabled={!newDate}
+                className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-700 disabled:opacity-40 transition-colors"
+              >
+                추가
+              </button>
+            </div>
+            {closedDates.length > 0 && (
+              <ul className="space-y-1.5">
+                {closedDates.map((date) => (
+                  <li key={date} className="flex items-center justify-between px-3 py-2.5 bg-gray-50 rounded-lg border border-gray-100">
+                    <span className="text-sm text-gray-700">{formatDate(date)}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeClosedDate(date)}
+                      className="text-gray-300 hover:text-red-400 transition-colors text-sm ml-4"
+                    >
+                      ✕
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {/* 특정 날짜 영업시간 변경 */}
+          <div className="space-y-3" data-coach="bz-override">
+            <h3 className="text-sm font-medium text-gray-700">영업시간 변경</h3>
+            <p className="text-xs text-gray-400">특정 날짜만 영업시간을 다르게 적용합니다. 기본 요일별 영업시간은 그대로 유지됩니다.</p>
+            <div className="flex flex-col gap-2">
+              <DateField value={overrideDate} onChange={handleOverrideDateChange} />
+              <div className="flex items-center gap-2">
+                <TimeSelect value={overrideOpen} onChange={setOverrideOpen} />
+                <span className="text-gray-300 text-sm">~</span>
+                <TimeSelect value={overrideClose} onChange={setOverrideClose} />
+                <button
+                  type="button"
+                  onClick={addDateOverride}
+                  disabled={!overrideDate}
+                  className="ml-auto px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-700 disabled:opacity-40 transition-colors"
+                >
+                  추가
+                </button>
+              </div>
+              {overrideDate && dateOverrides[toDateStr(overrideDate)] && (
+                <p className="text-xs text-gold-600">이미 등록된 날짜입니다. 추가하면 기존 시간을 덮어씁니다.</p>
+              )}
+            </div>
+            {Object.keys(dateOverrides).length > 0 && (
+              <ul className="space-y-1.5">
+                {Object.entries(dateOverrides).sort(([a], [b]) => a.localeCompare(b)).map(([date, hours]) => (
+                  <li key={date} className="flex items-center justify-between px-3 py-2.5 bg-gray-50 rounded-lg border border-gray-100">
+                    <div className="text-sm text-gray-700">
+                      {formatDate(date)}
+                      <span className="text-gray-400 ml-2">{hours.open}~{hours.close}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeDateOverride(date)}
+                      className="text-gray-300 hover:text-red-400 transition-colors text-sm ml-4"
+                    >
+                      ✕
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="sticky bottom-0 bg-white border-t border-gray-100 -mx-0 pt-4 pb-1 flex items-center gap-3">
+            <SaveButton
+              onSave={handleSave}
+              className="text-sm font-medium text-white bg-gold-500 hover:bg-gold-600"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
