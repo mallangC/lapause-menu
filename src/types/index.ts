@@ -32,6 +32,8 @@ export interface Product {
   created_at: string;
   bag_included: boolean;
   message_card_unavailable: boolean;
+  /** 생화 수명연장제 추가 불가 — 체크한 상품은 장바구니·바로 예약·맞춤주문에서 수명연장제를 고를 수 없다 */
+  preservative_unavailable: boolean;
 }
 
 export interface FilterState {

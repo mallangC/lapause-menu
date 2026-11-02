@@ -29,6 +29,8 @@ export default function ProductCard({ product, consultEnabled, slug }: ProductCa
         image_url: product.image_url,
         product_type: product.product_type,
         bag_included: product.bag_included,
+        message_card_unavailable: product.message_card_unavailable ?? false,
+        preservative_unavailable: product.preservative_unavailable ?? false,
       });
     }
   };

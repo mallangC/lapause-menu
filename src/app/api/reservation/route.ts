@@ -111,6 +111,13 @@ export async function POST(request: NextRequest) {
     if (!dbProduct) {
       return NextResponse.json({ error: "상품 정보를 찾을 수 없습니다." }, { status: 400 });
     }
+    // 사장님이 메시지카드 추가 불가로 둔 상품에는 카드를 붙일 수 없다 (맞춤주문 화면에서도 숨기지만 서버에서 한 번 더 막는다)
+    if (dbProduct.message_card_unavailable && body.form?.messageCard === "추가") {
+      return NextResponse.json({ error: "이 상품은 메시지 카드를 추가할 수 없어요." }, { status: 400 });
+    }
+    if (dbProduct.preservative_unavailable && body.form?.preservative === "추가") {
+      return NextResponse.json({ error: "이 상품은 생화 수명연장제를 추가할 수 없어요." }, { status: 400 });
+    }
 
     // 토스 결제 승인 및 검증 (데모 매장은 실제 결제가 없으므로 건너뛴다)
     let paidAmount: number | null = null;

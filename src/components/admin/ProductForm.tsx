@@ -145,6 +145,7 @@ const DEFAULT_INPUT: ProductInput = {
   status: "active",
   bag_included: false,
   message_card_unavailable: false,
+  preservative_unavailable: false,
 };
 
 export default function ProductForm({ initialData, onSubmit, onCancel, companyId }: ProductFormProps) {
@@ -164,6 +165,7 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
           status: initialData.status ?? "active",
           bag_included: initialData.bag_included ?? false,
           message_card_unavailable: initialData.message_card_unavailable ?? false,
+          preservative_unavailable: initialData.preservative_unavailable ?? false,
         }
       : DEFAULT_INPUT
   );
@@ -478,10 +480,11 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
                     key={s}
                     type="button"
                     onClick={() => setData({ ...data, seasons: selected ? [] : [s] })}
-                    className={`py-1.5 rounded-lg border text-sm transition-colors ${
+                    // 분위기 버튼과 같은 색 (선택: 진한 금색 / 기본: 흰 바탕 회색 글자)
+                    className={`py-1.5 rounded-lg border text-sm font-medium transition-all ${
                       selected
-                        ? "border-gold-400 bg-gold-400 text-white font-medium"
-                        : "border-gray-200 text-gray-600 hover:border-gold-500 hover:text-gold-500"
+                        ? "border-gold-500 bg-gold-500 text-white"
+                        : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
                     }`}
                   >
                     {s}
@@ -525,18 +528,18 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
           </div>
 
           <div>
-            <label className={fieldLabelCls}>맞춤 주문 옵션</label>
+            <label className={fieldLabelCls}>추가 옵션 설정</label>
             <div className="space-y-2">
               <button
                 type="button"
                 onClick={() => setData({ ...data, bag_included: !data.bag_included })}
                 className={`w-full flex items-center justify-between px-4 py-2.5 rounded-lg border text-sm transition-colors ${
                   data.bag_included
-                    ? "border-gold-400 bg-gold-50 text-gold-700"
+                    ? "border-gold-400 bg-gold-500/10 text-gold-600"
                     : "border-gray-200 text-gray-600 hover:border-gray-400"
                 }`}
               >
-                <span>쇼핑백 포함 (추가 선택 불가)</span>
+                <span>쇼핑백 포함 (추가 불가)</span>
                 <span className={`w-5 h-5 rounded border flex items-center justify-center text-xs font-bold shrink-0 ${
                   data.bag_included ? "bg-gold-400 border-gold-400 text-white" : "border-gray-300"
                 }`}>
@@ -548,7 +551,7 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
                 onClick={() => setData({ ...data, message_card_unavailable: !data.message_card_unavailable })}
                 className={`w-full flex items-center justify-between px-4 py-2.5 rounded-lg border text-sm transition-colors ${
                   data.message_card_unavailable
-                    ? "border-gold-400 bg-gold-50 text-gold-700"
+                    ? "border-gold-400 bg-gold-500/10 text-gold-600"
                     : "border-gray-200 text-gray-600 hover:border-gray-400"
                 }`}
               >
@@ -557,6 +560,22 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
                   data.message_card_unavailable ? "bg-gold-400 border-gold-400 text-white" : "border-gray-300"
                 }`}>
                   {data.message_card_unavailable ? "✓" : ""}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setData({ ...data, preservative_unavailable: !data.preservative_unavailable })}
+                className={`w-full flex items-center justify-between px-4 py-2.5 rounded-lg border text-sm transition-colors ${
+                  data.preservative_unavailable
+                    ? "border-gold-400 bg-gold-500/10 text-gold-600"
+                    : "border-gray-200 text-gray-600 hover:border-gray-400"
+                }`}
+              >
+                <span>생화 수명연장제 추가 불가</span>
+                <span className={`w-5 h-5 rounded border flex items-center justify-center text-xs font-bold shrink-0 ${
+                  data.preservative_unavailable ? "bg-gold-400 border-gold-400 text-white" : "border-gray-300"
+                }`}>
+                  {data.preservative_unavailable ? "✓" : ""}
                 </span>
               </button>
             </div>

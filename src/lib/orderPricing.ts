@@ -40,13 +40,15 @@ export interface DbProduct {
   name: string;
   product_type: string;
   bag_included: boolean | null;
+  message_card_unavailable: boolean | null;
+  preservative_unavailable: boolean | null;
 }
 
 /** 이 매장의 상품만 가져온다 (다른 매장 상품 id로 바꿔치기 방지) */
 export async function loadCompanyProducts(db: SupabaseClient, companyId: string, ids: string[]) {
   const { data } = await db
     .from("products")
-    .select("id, price, name, product_type, bag_included")
+    .select("id, price, name, product_type, bag_included, message_card_unavailable, preservative_unavailable")
     .eq("company_id", companyId)
     .in("id", ids);
   return new Map((data as DbProduct[] | null ?? []).map((p) => [p.id, p]));
@@ -74,6 +76,9 @@ export function cartItemsTotal(lines: CartLine[], products: Map<string, DbProduc
   for (const line of lines) {
     const p = products.get(line.productId);
     if (!p || !Number.isInteger(line.quantity) || line.quantity < 1) return null;
+    // 사장님이 메시지카드 추가 불가로 둔 상품에 카드가 붙어 오면 잘못된 주문으로 본다
+    if (p.message_card_unavailable && count(line.messageCardCount) > 0) return null;
+    if (p.preservative_unavailable && count(line.preservativeCount) > 0) return null;
     total += p.price * line.quantity;
     if (!p.bag_included) total += prices.shoppingBag * count(line.shoppingBagCount);
     total += prices.preservative * count(line.preservativeCount);
