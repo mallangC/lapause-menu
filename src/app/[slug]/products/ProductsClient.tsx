@@ -120,7 +120,8 @@ export default function ProductsClient({
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50" style={themeVars}>
+    // 세로 flex — 상품이 적거나 없어도 푸터가 화면 바닥보다 위로 올라오지 않게 (상품 목록이 남는 높이를 채운다)
+    <div className="min-h-screen flex flex-col bg-beige-100" style={themeVars}>
       <div className="sticky top-0 z-40">
         <StoreHeader
           slug={slug}
@@ -170,6 +171,7 @@ export default function ProductsClient({
           <div className="relative shrink-0">
             <button
               onClick={() => setOpenFilterDropdown(openFilterDropdown === "flowerColors" ? null : "flowerColors")}
+              aria-label="필터"
               className={`w-8 h-8 flex items-center justify-center rounded-lg border transition-colors ${
                 hasFilter ? "border-gold-400 text-gold-500" : "border-gray-200 text-gray-400 hover:border-gray-400 hover:text-gray-600"
               }`}
@@ -256,8 +258,8 @@ export default function ProductsClient({
         />
       </div>
 
-      {/* 상품 목록 */}
-      <div className="max-w-6xl mx-auto">
+      {/* 상품 목록 — 남는 높이를 채워 푸터를 화면 바닥으로 민다 */}
+      <div className="max-w-6xl mx-auto w-full flex-1 flex flex-col">
         {(() => {
           if (activeTab !== "all" || hasFilter || !!typeParam) {
             return <ProductGrid products={filteredProducts} consultEnabled={consultEnabled} slug={slug} />;
@@ -292,8 +294,8 @@ export default function ProductsClient({
         })()}
       </div>
 
-      {/* 푸터 */}
-      <div className="bg-white mt-2">
+      {/* 푸터 — 마지막 상품 바로 아래에 붙이고, 위에 옅은 회색 선으로 구분한다 */}
+      <div className="bg-white border-t border-gray-100">
         <div className="max-w-4xl mx-auto px-4 py-8 flex flex-col items-center gap-8">
           {(locationUrl || kakaoChannelUrl || instagramUrl || youtubeUrl) && (
             <div className="flex flex-row gap-8 justify-center">
