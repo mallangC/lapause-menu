@@ -4,8 +4,9 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
+import { RESERVED_SLUGS } from "@/lib/constants";
 
-type SlugStatus = "idle" | "checking" | "available" | "taken";
+type SlugStatus = "idle" | "checking" | "available" | "taken" | "reserved";
 
 interface Props {
   initialOwnerName?: string;
@@ -33,6 +34,7 @@ export default function SetupForm({ initialOwnerName = "", initialOwnerPhone = "
     if (!slug) { setSlugStatus("idle"); return; }
     // 기존 slug와 동일하면 체크 불필요
     if (slug === initialSlug) { setSlugStatus("available"); return; }
+    if (RESERVED_SLUGS.has(slug)) { setSlugStatus("reserved"); return; }
     setSlugStatus("checking");
     const timer = setTimeout(async () => {
       const { data } = await supabase.from("companies").select("id").eq("slug", slug).single();
@@ -81,6 +83,11 @@ export default function SetupForm({ initialOwnerName = "", initialOwnerPhone = "
 
     if (!slug) {
       setError("URL 슬러그를 입력해 주세요.");
+      return;
+    }
+
+    if (slugStatus === "reserved") {
+      setError("사이트에서 쓰는 주소라 사용할 수 없습니다. 다른 슬러그를 입력해 주세요.");
       return;
     }
 
@@ -261,13 +268,14 @@ export default function SetupForm({ initialOwnerName = "", initialOwnerPhone = "
           {slugStatus === "checking" && <p className="text-xs text-gray-400">확인 중...</p>}
           {slugStatus === "available" && <p className="text-xs text-emerald-600">사용 가능한 URL입니다.</p>}
           {slugStatus === "taken" && <p className="text-xs text-red-500">이미 사용 중인 URL입니다.</p>}
+          {slugStatus === "reserved" && <p className="text-xs text-red-500">사이트에서 쓰는 주소라 사용할 수 없습니다.</p>}
           {slugStatus === "idle" && <p className="text-xs text-gray-400">영문 소문자, 숫자, 하이픈(-)만 사용 가능</p>}
         </div>
       </div>
 
       <button
         type="submit"
-        disabled={loading || uploading || slugStatus === "taken" || slugStatus === "checking"}
+        disabled={loading || uploading || slugStatus === "taken" || slugStatus === "reserved" || slugStatus === "checking"}
         className="w-full bg-gold-500 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-gold-600 disabled:opacity-50 transition-colors"
       >
         {loading ? "저장 중..." : "시작하기"}

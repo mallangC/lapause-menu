@@ -42,6 +42,37 @@ export const STORAGE_BUCKET = "product_menu";
 // ── 요금제 ──────────────────────────────────────────
 // 가격이나 기능 내용은 여기서만 수정하면 전체 반영됩니다.
 
+// 매장 주소(slug)로 쓸 수 없는 이름 — 사이트 페이지·정적 파일 주소와 겹치면 그 매장 메뉴판에 들어갈 수 없다
+// DB 제약(companies_slug_not_reserved)과 같은 목록이어야 한다 — 바꾸면 SQL도 함께 바꾼다
+export const RESERVED_SLUGS = new Set([
+  // 지금 있는 페이지·정적 파일
+  "admin", "announcements", "api", "auth", "forgot-password", "guide", "login", "notice", "plan", "preview",
+  "privacy", "refund", "reset-password", "setup", "signup", "terms",
+  "fonts", "landing", "_next", "favicon.ico", "robots.txt", "sitemap.xml", "icon.png", "opengraph-image.jpg",
+  // 커뮤니티
+  "community", "board", "boards", "forum", "post", "posts", "feed", "story", "stories", "magazine", "blog",
+  "news", "qna", "talk", "lounge", "club", "chat", "message", "messages",
+  // 꽃집 찾기 (검색·내 주변·키워드·지도·지역 모아보기)
+  "search", "find", "explore", "discover", "browse", "shop", "shops", "store", "stores", "florist", "florists",
+  "flower", "flowers", "flowershop", "near", "nearby", "near-me", "around", "local", "region", "regions",
+  "area", "areas", "location", "locations", "map", "maps", "place", "places", "directory", "list", "ranking",
+  "best", "popular", "trending", "recommend", "keyword", "keywords", "tag", "tags", "category", "categories",
+  "collection", "collections", "menu", "menus",
+  // 회원·주문 등 일반 서비스 주소
+  "account", "my", "mypage", "me", "profile", "user", "users", "member", "members", "join", "register",
+  "signin", "signout", "logout", "onboarding", "settings", "dashboard", "order", "orders", "cart", "pay",
+  "payment", "checkout", "review", "reviews", "like", "likes", "wishlist", "favorite", "favorites",
+  "notification", "notifications",
+  // 쿠폰·할인·혜택
+  "coupon", "coupons", "event", "events", "promo", "promotion", "promotions", "discount", "discounts",
+  "sale", "sales", "deal", "deals", "benefit", "benefits", "offer", "offers", "reward", "rewards",
+  "point", "points", "membership", "voucher", "vouchers", "gift", "gifts", "giftcard", "special",
+  // 회사·안내·시스템
+  "about", "help", "faq", "contact", "support", "pricing", "partner", "partners", "business", "owner",
+  "owners", "home", "index", "app", "www", "mail", "static", "assets", "public", "cdn", "docs", "status",
+  "download", "new", "edit",
+]);
+
 export const PLAN_PRICES = {
   monthly: 18900,
   annual: 13250,       // 월 환산
