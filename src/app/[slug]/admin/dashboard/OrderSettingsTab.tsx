@@ -386,35 +386,30 @@ export default function OrderSettingsTab({ companyId, plan: _plan, settings, onS
                     className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
                   />
                 </div>
+
+                {/* 통장사본 — 계좌 정보 바로 아래 (같은 카드) */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">통장사본</label>
+                  <p className="text-xs text-gray-400 mb-2">정산 처리를 위해 계좌 확인용으로 사용됩니다.</p>
+                  {bankAccountImageUrl ? (
+                    <div className="flex items-center gap-3">
+                      <button type="button" onClick={handleViewBankDoc} className="text-xs text-blue-500 hover:underline">통장사본 확인</button>
+                      <button type="button" onClick={() => setBankAccountImageUrl(null)} className="text-xs text-gray-400 hover:text-red-400">삭제</button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => bankImageInputRef.current?.click()}
+                      disabled={bankImageUploading}
+                      className="px-4 py-2 border border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-gray-500 hover:text-gray-700 transition-colors disabled:opacity-50"
+                    >
+                      {bankImageUploading ? "업로드 중..." : "+ 통장사본 업로드"}
+                    </button>
+                  )}
+                  <input ref={bankImageInputRef} type="file" accept="image/*,application/pdf" onChange={handleBankImageUpload} className="hidden" />
+                </div>
               </div>
               <p className="text-xs text-gray-400 mt-3">계좌번호를 잘못 적어서 생기는 불이익은 책임지지 않습니다.</p>
-            </div>
-
-        </div>
-      </div>
-
-      {/* 통장사본 */}
-      <div className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:p-6">
-        <div className="max-w-md">
-            <div className={disabledByConsult ? "opacity-50 pointer-events-none select-none" : ""}>
-              <h3 className="text-sm font-semibold text-gray-800 mb-1">통장사본</h3>
-              <p className="text-xs text-gray-400 mb-3">정산 처리를 위해 계좌 확인용으로 사용됩니다.</p>
-              {bankAccountImageUrl ? (
-                <div className="flex items-center gap-3">
-                  <button type="button" onClick={handleViewBankDoc} className="text-xs text-blue-500 hover:underline">통장사본 확인</button>
-                  <button type="button" onClick={() => setBankAccountImageUrl(null)} className="text-xs text-gray-400 hover:text-red-400">삭제</button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => bankImageInputRef.current?.click()}
-                  disabled={bankImageUploading}
-                  className="px-4 py-2 border border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-gray-500 hover:text-gray-700 transition-colors disabled:opacity-50"
-                >
-                  {bankImageUploading ? "업로드 중..." : "+ 통장사본 업로드"}
-                </button>
-              )}
-              <input ref={bankImageInputRef} type="file" accept="image/*,application/pdf" onChange={handleBankImageUpload} className="hidden" />
             </div>
 
         </div>
