@@ -62,30 +62,23 @@ function DateField({ value, onChange, placeholder }: { value: Date | null; onCha
   );
 }
 
+// 시간 선택 — 시·분을 따로 고르지 않고 '09:00' 한 칸에서 고른다 (30분 단위라 목록이 짧고, 칸이 좁아 모바일 한 줄에 들어간다)
+const TIME_OPTIONS = HOURS.flatMap((hh) => MINUTES.map((mm) => `${hh}:${mm}`));
+
 function TimeSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const [h, m] = value.split(":");
+  // 목록에 없는 값(예: 예전에 저장한 09:15)도 그대로 보이게 앞에 끼워 넣는다
+  const options = TIME_OPTIONS.includes(value) ? TIME_OPTIONS : [value, ...TIME_OPTIONS];
   return (
-    <div className="flex items-center gap-1 border border-gray-200 rounded-lg overflow-hidden bg-white">
-      <select
-        value={h}
-        onChange={(e) => onChange(`${e.target.value}:${m}`)}
-        className="px-2 py-1.5 text-sm text-gray-700 focus:outline-none bg-transparent cursor-pointer"
-      >
-        {HOURS.map((hh) => (
-          <option key={hh} value={hh}>{hh}</option>
-        ))}
-      </select>
-      <span className="text-gray-300 text-sm select-none">:</span>
-      <select
-        value={m}
-        onChange={(e) => onChange(`${h}:${e.target.value}`)}
-        className="px-2 py-1.5 text-sm text-gray-700 focus:outline-none bg-transparent cursor-pointer"
-      >
-        {MINUTES.map((mm) => (
-          <option key={mm} value={mm}>{mm}</option>
-        ))}
-      </select>
-    </div>
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      // 칸이 너무 작아 보이지 않게 최소 너비·여백을 둔다 (모바일 한 줄: 요일·스위치를 빼고 남는 폭 안에 두 칸이 들어가는 크기)
+      className="min-w-[92px] border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 bg-white focus:outline-none focus:border-gray-400 cursor-pointer"
+    >
+      {options.map((t) => (
+        <option key={t} value={t}>{t}</option>
+      ))}
+    </select>
   );
 }
 
@@ -199,9 +192,11 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
   };
 
   return (
-    <div className="space-y-4">
+    // 섹션마다 흰 카드로 나눠 회색 바탕이 굵은 구분선처럼 보이게 한다 (통계 화면과 같은 방식)
+    <div className="space-y-3">
       <h2 className="text-xl font-medium text-gray-900">영업 설정</h2>
-      <div className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:p-6">
+      {/* 첫 카드(당일 예약 시간 설정) — 모바일은 목록 박스가 없어 '기타' 줄 아래 카드 여백을 없앤다 (목록 마지막 줄 여백으로 끝) */}
+      <div className="bg-white -mx-4 md:mx-0 pt-5 pb-0 px-4 md:rounded-2xl md:p-6">
         <div className="max-w-lg space-y-6">
           {error && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
@@ -213,9 +208,10 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
               <h3 className="text-sm font-medium text-gray-700">당일 예약 시간 설정</h3>
               <p className="text-xs text-gray-400 mt-0.5">유형별로 제작에 최소 몇 시간이 필요한지 입력하세요. (기본값: 2시간)</p>
             </div>
-            <div className="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
+            {/* 모바일: 박스 없이 맨 위·줄 사이 모두 옅은 선, 줄 왼쪽 끝을 제목에 맞춤 / PC: 박스 */}
+            <div className="border-t border-gray-100 md:border md:border-gray-200 md:rounded-xl overflow-hidden divide-y divide-gray-100">
               {["꽃다발", "꽃바구니", "센터피스", "화병꽂이", "기타"].map((type) => (
-                <div key={type} className="flex items-center justify-between px-4 py-3 bg-white">
+                <div key={type} className="flex items-center justify-between px-0 md:px-4 py-3 bg-white">
                   <span className="text-sm text-gray-700">{type}</span>
                   <div className="flex items-center gap-1.5">
                     <input
@@ -241,22 +237,34 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
             </div>
           </div>
 
+        </div>
+      </div>
+
+      <div className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:p-6">
+        <div className="max-w-lg space-y-6">
           {/* 요일별 영업 시간 */}
           <div className="space-y-3">
             <h3 className="text-sm font-medium text-gray-700">요일별 영업 시간</h3>
-            <div className="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
+            {/* 모바일: 박스 없이 옅은 선으로만 나누고 왼쪽 끝을 제목에 맞춘다. 한 줄 = 요일(휴무면 '휴무') … 시간 · 스위치(오른쪽 끝)
+                PC: 지금처럼 박스 안 한 줄 (요일 · 스위치 · 영업/휴무 · 시간) — 순서는 order로 바꾼다 */}
+            <div className="border-t border-gray-100 md:border md:border-gray-200 md:rounded-xl overflow-hidden divide-y divide-gray-100">
               {[1, 2, 3, 4, 5, 6, 0].map((i) => {
                 const label = WEEKDAYS[i];
                 const day = businessHours[String(i)] ?? { closed: false, open: "09:00", close: "18:00" };
                 return (
-                  <div key={i} className={`flex items-center gap-3 px-4 py-3 ${day.closed ? "bg-gray-50" : "bg-white"}`}>
-                    <span className={`w-6 text-sm font-medium shrink-0 ${day.closed ? "text-gray-300" : "text-gray-700"}`}>
+                  <div key={i} className={`flex items-center gap-3 px-0 md:px-4 py-3 bg-white ${day.closed ? "md:bg-gray-50" : ""}`}>
+                    <span className={`order-1 w-6 text-sm font-medium shrink-0 ${day.closed ? "text-gray-300" : "text-gray-700"}`}>
                       {label}
                     </span>
+                    {/* 영업/휴무 글자 — 모바일은 휴무일 때만 요일 옆에, PC는 스위치 오른쪽에 항상 */}
+                    <span className={`order-2 md:order-3 text-xs shrink-0 w-6 ${day.closed ? "text-gray-300" : "hidden md:inline text-gray-400"}`}>
+                      {day.closed ? "휴무" : "영업"}
+                    </span>
+                    {/* 스위치 — 모바일은 시간 오른쪽(줄 끝), PC는 요일 바로 옆. 휴무면 모바일에서 시간이 없어 스스로 오른쪽 끝으로 */}
                     <button
                       type="button"
                       onClick={() => updateDay(i, { closed: !day.closed })}
-                      className={`shrink-0 w-12 h-6 rounded-full transition-colors relative ${
+                      className={`order-4 md:order-2 ${day.closed ? "ml-auto" : ""} md:ml-0 shrink-0 w-12 h-6 rounded-full transition-colors relative ${
                         day.closed ? "bg-gray-200" : "bg-gold-500"
                       }`}
                     >
@@ -266,13 +274,12 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
                         }`}
                       />
                     </button>
-                    <span className={`text-xs shrink-0 w-6 ${day.closed ? "text-gray-300" : "text-gray-400"}`}>
-                      {day.closed ? "휴무" : "영업"}
-                    </span>
                     {day.closed ? (
-                      <span className="text-sm text-gray-300 ml-auto">—</span>
+                      // 휴무 표시 '—'는 PC에서만 (모바일은 요일 옆 '휴무'로 충분)
+                      <span className="order-4 hidden md:inline text-sm text-gray-300 ml-auto">—</span>
                     ) : (
-                      <div className="flex items-center gap-2 ml-auto">
+                      // 모바일: 스위치 바로 왼쪽 / PC: 줄 오른쪽 끝
+                      <div className="order-3 md:order-4 flex items-center gap-2 ml-auto">
                         <TimeSelect value={day.open} onChange={(v) => updateDay(i, { open: v })} />
                         <span className="text-gray-300 text-sm">~</span>
                         <TimeSelect value={day.close} onChange={(v) => updateDay(i, { close: v })} />
@@ -284,6 +291,11 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
             </div>
           </div>
 
+        </div>
+      </div>
+
+      <div className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:p-6">
+        <div className="max-w-lg space-y-6">
           {/* 특정 휴무일 */}
           <div className="space-y-3">
             <h3 className="text-sm font-medium text-gray-700">휴무일 설정</h3>
@@ -319,6 +331,13 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
             )}
           </div>
 
+        </div>
+      </div>
+
+      {/* 마지막 카드 — 아래 저장 줄과 붙여서 한 카드처럼 보이게 아래 모서리는 각지게.
+          Tailwind v4의 space-y는 앞 요소 아래 여백(margin-bottom)으로 간격을 두므로 !mb-0으로 틈을 없앤다 */}
+      <div className="!mb-0 bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:rounded-b-none md:p-6">
+        <div className="max-w-lg space-y-6">
           {/* 특정 날짜 영업시간 변경 */}
           <div className="space-y-3">
             <h3 className="text-sm font-medium text-gray-700">영업시간 변경</h3>
@@ -363,13 +382,15 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
             )}
           </div>
 
-          <div className="sticky bottom-0 bg-white border-t border-gray-100 -mx-0 pt-4 pb-1 flex items-center gap-3">
-            <SaveButton
-              onSave={handleSave}
-              className="text-sm font-medium text-white bg-gold-500 hover:bg-gold-600"
-            />
-          </div>
         </div>
+      </div>
+
+      {/* 저장 — 카드 밖에 두어 어느 섹션을 보고 있어도 화면 아래에 붙어 있게 하고, 위 카드와는 옅은 회색 선으로만 구분 */}
+      <div className="sticky bottom-0 z-10 bg-white border-t border-gray-100 -mx-4 md:mx-0 px-4 md:px-6 py-3 md:rounded-b-2xl flex items-center gap-3">
+        <SaveButton
+          onSave={handleSave}
+          className="text-sm font-medium text-white bg-gold-500 hover:bg-gold-600"
+        />
       </div>
     </div>
   );

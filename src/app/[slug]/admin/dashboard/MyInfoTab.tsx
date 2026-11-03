@@ -124,7 +124,8 @@ export default function MyInfoTab({ slug, email, isOAuth, profileName, profilePh
   };
 
   return (
-    <div className="space-y-4">
+    // 섹션마다 흰 카드로 나눠 회색 바탕이 굵은 구분선처럼 보이게 한다 (영업·판매 설정과 같은 방식)
+    <div className="space-y-3">
       <h2 className="text-xl font-medium text-gray-900">내 정보</h2>
       <div className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:p-6">
         <div className="max-w-md">
@@ -154,8 +155,13 @@ export default function MyInfoTab({ slug, email, isOAuth, profileName, profilePh
             </div>
           </div>
 
+        </div>
+      </div>
+
+      <div className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:p-6">
+        <div className="max-w-md">
           {/* 소셜 계정 연결 */}
-          <div className="mt-8 pt-8 border-t border-gray-100">
+          <div>
             <h3 className="text-sm font-medium text-gray-900 mb-1">소셜 계정 연결</h3>
             <p className="text-xs text-gray-400 mb-4">연결하면 해당 계정으로도 로그인할 수 있습니다.</p>
             {linkError && (
@@ -193,8 +199,14 @@ export default function MyInfoTab({ slug, email, isOAuth, profileName, profilePh
             </div>
           </div>
 
-          {/* 비밀번호 변경 — OAuth 로그인은 숨김 */}
-          {!isOAuth && <div className="mt-8 pt-8 border-t border-gray-100">
+        </div>
+      </div>
+
+      {/* 비밀번호 변경 — OAuth 로그인은 카드째 숨김 */}
+      {!isOAuth && (
+      <div className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:p-6">
+        <div className="max-w-md">
+          <div>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-medium text-gray-900">비밀번호 변경</h3>
               {!showPwForm && (
@@ -266,10 +278,15 @@ export default function MyInfoTab({ slug, email, isOAuth, profileName, profilePh
                 </div>
               </form>
             )}
-          </div>}
+          </div>
+        </div>
+      </div>
+      )}
 
+      <div className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:p-6">
+        <div className="max-w-md">
           {/* 로그인 2단계 인증 */}
-          <div className="mt-8 pt-8 border-t border-gray-100">
+          <div>
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-medium text-gray-900">로그인 2단계 인증</h3>

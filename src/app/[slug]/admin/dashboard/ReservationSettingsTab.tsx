@@ -122,68 +122,96 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
         </div>
       </div>
     )}
-    <div className="space-y-4">
+    {/* 섹션마다 흰 카드로 나눠 회색 바탕이 굵은 구분선처럼 보이게 한다 (영업 설정과 같은 방식) */}
+    <div className="space-y-3">
       <h2 className="text-xl font-medium text-gray-900">판매 설정</h2>
-      <div className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:p-6">
+      {/* 모바일은 목록 박스가 없어 마지막 줄 아래 카드 여백을 없앤다 (마지막 줄 자체 여백으로 끝) */}
+      <div className="bg-white -mx-4 md:mx-0 pt-5 pb-0 px-4 md:rounded-2xl md:p-6">
         <div className="max-w-lg space-y-4">
           {error && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
           )}
 
-          {/* 맞춤 주문 기능 활성화 */}
-          {consultApplyStatus !== "approved" ? (
-            <div className="p-4 border border-gray-200 rounded-xl bg-gray-50 text-sm text-gray-500">
-              {consultApplyStatus === "pending" && "운영자 검토 중입니다. 승인 후 활성화할 수 있습니다."}
-              {consultApplyStatus === "rejected" && (
-                <span>맞춤 주문 신청이 반려되었습니다.{" "}
-                  <button type="button" onClick={onGoToOrderSettings} className="underline text-gold-600 hover:text-gold-700">판매 신청 탭</button>에서 재신청해주세요.
-                </span>
-              )}
-              {!consultApplyStatus && (
-                <span>맞춤 주문을 사용하려면{" "}
-                  <button type="button" onClick={onGoToOrderSettings} className="underline text-gold-600 hover:text-gold-700">판매 신청 탭</button>에서 신청해주세요.
-                </span>
-              )}
-            </div>
-          ) : (
-            <div className="p-4 border border-gray-200 rounded-xl bg-white">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-800">판매 기능</p>
-                  <p className="text-xs text-gray-400 mt-0.5">판매 기능을 활성화하고 맞춤 주문하기 버튼을 표시합니다.</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (mailOrderBlocked) {
-                      setShowMailOrderWarning(true);
-                      return;
-                    }
-                    if (!consultEnabled && !hasBankInfo) {
-                      setShowBankWarning(true);
-                      return;
-                    }
-                    setConsultEnabled((prev) => !prev);
-                  }}
-                  className={`shrink-0 w-12 h-6 rounded-full transition-colors relative ${
-                    consultEnabled ? "bg-gold-500" : "bg-gray-200"
-                  } ${mailOrderBlocked ? "opacity-40 cursor-not-allowed" : ""}`}
-                >
-                  <span
-                    className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${
-                      consultEnabled ? "left-6" : "left-0.5"
-                    }`}
-                  />
-                </button>
+          {/* 기능 설정 (판매 기능 · 배송 기능) — 추가 옵션 설정처럼 제목 아래 한 카드에 줄로 나눠 묶는다 */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium text-gray-700">기능 설정</h3>
+            <div className="border-t border-gray-100 md:border md:border-gray-200 md:rounded-xl overflow-hidden divide-y divide-gray-100">
+            {/* 맞춤 주문 기능 활성화 */}
+            {consultApplyStatus !== "approved" ? (
+              <div className="px-0 md:px-4 py-3.5 md:bg-gray-50 text-sm text-gray-500">
+                {consultApplyStatus === "pending" && "운영자 검토 중입니다. 승인 후 활성화할 수 있습니다."}
+                {consultApplyStatus === "rejected" && (
+                  <span>맞춤 주문 신청이 반려되었습니다.{" "}
+                    <button type="button" onClick={onGoToOrderSettings} className="underline text-gold-600 hover:text-gold-700">판매 신청 탭</button>에서 재신청해주세요.
+                  </span>
+                )}
+                {!consultApplyStatus && (
+                  <span>맞춤 주문을 사용하려면{" "}
+                    <button type="button" onClick={onGoToOrderSettings} className="underline text-gold-600 hover:text-gold-700">판매 신청 탭</button>에서 신청해주세요.
+                  </span>
+                )}
               </div>
-              {mailOrderBlocked && (
-                <p className="text-xs text-red-500 mt-2">
-                  통신판매업 미신고 상태로 50개를 판매해 판매 기능이 정지되었습니다.{" "}
-                  <button type="button" onClick={onGoToOrderSettings} className="underline text-red-600 hover:text-red-700">판매 신청 탭</button>에서 신고번호를 등록해주세요.
-                </p>
-              )}
+            ) : (
+              <div className="px-0 md:px-4 py-3.5 bg-white">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">판매 기능</p>
+                    <p className="text-xs text-gray-400 mt-0.5">판매 기능을 활성화하고 맞춤 주문하기 버튼을 표시합니다.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (mailOrderBlocked) {
+                        setShowMailOrderWarning(true);
+                        return;
+                      }
+                      if (!consultEnabled && !hasBankInfo) {
+                        setShowBankWarning(true);
+                        return;
+                      }
+                      setConsultEnabled((prev) => !prev);
+                    }}
+                    className={`shrink-0 w-12 h-6 rounded-full transition-colors relative ${
+                      consultEnabled ? "bg-gold-500" : "bg-gray-200"
+                    } ${mailOrderBlocked ? "opacity-40 cursor-not-allowed" : ""}`}
+                  >
+                    <span
+                      className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${
+                        consultEnabled ? "left-6" : "left-0.5"
+                      }`}
+                    />
+                  </button>
+                </div>
+                {mailOrderBlocked && (
+                  <p className="text-xs text-red-500 mt-2">
+                    통신판매업 미신고 상태로 50개를 판매해 판매 기능이 정지되었습니다.{" "}
+                    <button type="button" onClick={onGoToOrderSettings} className="underline text-red-600 hover:text-red-700">판매 신청 탭</button>에서 신고번호를 등록해주세요.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* 배송 기능 */}
+            <div className="flex items-center justify-between gap-3 px-0 md:px-4 py-3.5 bg-white">
+              <div>
+                <p className="text-sm font-medium text-gray-800">배송 기능</p>
+                <p className="text-xs text-gray-400 mt-0.5">활성화 시 맞춤 주문에서 배송 선택이 추가됩니다.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!deliveryEnabled) {
+                    if (!deliveryFees["0-1"]) { setShowDeliveryFeeWarning(true); return; }
+                  }
+                  setDeliveryEnabled((prev) => !prev);
+                }}
+                className={`shrink-0 w-12 h-6 rounded-full transition-colors relative ${deliveryEnabled ? "bg-gold-500" : "bg-gray-200"}`}
+              >
+                <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${deliveryEnabled ? "left-6" : "left-0.5"}`} />
+              </button>
             </div>
-          )}
+            </div>
+          </div>
 
           {/* 통신판매업 미신고 30개 초과 경고 팝업 */}
           {showMailOrderWarning && (
@@ -247,12 +275,18 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
             </div>
           )}
 
+        </div>
+      </div>
+
+      {/* 모바일은 목록 박스가 없어 마지막 줄 아래 카드 여백을 없앤다 (마지막 줄 자체 여백으로 끝) */}
+      <div className="bg-white -mx-4 md:mx-0 pt-5 pb-0 px-4 md:rounded-2xl md:p-6">
+        <div className="max-w-lg space-y-4">
           {/* 추가 옵션 설정 (메시지 카드 · 쇼핑백 · 생화 수명연장제) — 배송비 설정처럼 제목 아래 한 카드에 줄로 나눠 묶는다 */}
           <div className="space-y-3">
             <h3 className="text-sm font-medium text-gray-700">추가 옵션 설정</h3>
-            <div className="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
+            <div className="border-t border-gray-100 md:border md:border-gray-200 md:rounded-xl overflow-hidden divide-y divide-gray-100">
               {/* 메시지 카드 */}
-              <div className="flex items-center justify-between gap-3 px-4 py-3.5 bg-white">
+              <div className="flex items-center justify-between gap-3 px-0 md:px-4 py-3.5 bg-white">
                 <div>
                   <p className="text-sm font-medium text-gray-800">메시지 카드</p>
                   <p className="text-xs text-gray-400 mt-0.5">예약 추가 시 메시지 카드 옵션을 표시합니다.</p>
@@ -282,7 +316,7 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
               </div>
 
               {/* 쇼핑백 */}
-              <div className="flex items-center justify-between gap-3 px-4 py-3.5 bg-white">
+              <div className="flex items-center justify-between gap-3 px-0 md:px-4 py-3.5 bg-white">
                 <div>
                   <p className="text-sm font-medium text-gray-800">쇼핑백</p>
                   <p className="text-xs text-gray-400 mt-0.5">예약 추가 시 쇼핑백 옵션을 표시합니다.</p>
@@ -312,7 +346,7 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
               </div>
 
               {/* 생화 수명연장제 */}
-              <div className="flex items-center justify-between gap-3 px-4 py-3.5 bg-white">
+              <div className="flex items-center justify-between gap-3 px-0 md:px-4 py-3.5 bg-white">
                 <div>
                   <p className="text-sm font-medium text-gray-800">생화 수명연장제</p>
                   <p className="text-xs text-gray-400 mt-0.5">예약 추가 시 생화 수명연장제 옵션을 표시합니다.</p>
@@ -343,26 +377,12 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
             </div>
           </div>
 
-          {/* 배송 기능 */}
-          <div className="flex items-center justify-between p-4 border border-gray-200 rounded-xl bg-white">
-            <div>
-              <p className="text-sm font-medium text-gray-800">배송 기능</p>
-              <p className="text-xs text-gray-400 mt-0.5">활성화 시 맞춤 주문에서 배송 선택이 추가됩니다.</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                if (!deliveryEnabled) {
-                  if (!deliveryFees["0-1"]) { setShowDeliveryFeeWarning(true); return; }
-                }
-                setDeliveryEnabled((prev) => !prev);
-              }}
-              className={`shrink-0 w-12 h-6 rounded-full transition-colors relative ${deliveryEnabled ? "bg-gold-500" : "bg-gray-200"}`}
-            >
-              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${deliveryEnabled ? "left-6" : "left-0.5"}`} />
-            </button>
-          </div>
+        </div>
+      </div>
 
+      {/* 모바일은 목록 박스가 없어 마지막 줄 아래 카드 여백을 없앤다 (마지막 줄 자체 여백으로 끝) */}
+      <div className="bg-white -mx-4 md:mx-0 pt-5 pb-0 px-4 md:rounded-2xl md:p-6">
+        <div className="max-w-lg space-y-4">
           {/* 배송비 미설정 경고 */}
           {showDeliveryFeeWarning && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={() => setShowDeliveryFeeWarning(false)}>
@@ -405,7 +425,7 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
               </div>
               <p className="text-xs text-gray-400 mt-0.5">거리별 배송비를 설정합니다. 비워두면 해당 구간은 표시되지 않습니다.</p>
             </div>
-            <div className="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
+            <div className="border-t border-gray-100 md:border md:border-gray-200 md:rounded-xl overflow-hidden divide-y divide-gray-100">
               {[
                 { key: "0-1",   label: "1km 이내"   },
                 { key: "1-3",   label: "1 ~ 3km"   },
@@ -414,7 +434,7 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
                 { key: "10-15", label: "10 ~ 15km" },
                 { key: "15-20", label: "15 ~ 20km" },
               ].map(({ key, label }) => (
-                <div key={key} className="flex items-center justify-between px-4 py-3 bg-white">
+                <div key={key} className="flex items-center justify-between px-0 md:px-4 py-3 bg-white">
                   <span className="text-sm text-gray-700">{label}</span>
                   <div className="flex items-center gap-1.5">
                     <input
@@ -432,6 +452,13 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
             </div>
           </div>
 
+        </div>
+      </div>
+
+      {/* 마지막 카드 — 아래 저장 줄과 붙여서 한 카드처럼 보이게 아래 모서리는 각지게.
+          Tailwind v4의 space-y는 앞 요소 아래 여백(margin-bottom)으로 간격을 두므로 !mb-0으로 틈을 없앤다 */}
+      <div className="!mb-0 bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:rounded-b-none md:p-6">
+        <div className="max-w-lg space-y-4">
           {/* 예약 확인 안내 문구 — 손님이 결제 직전 마지막 확인 화면에서 보는 글이라 맨 아래(저장 버튼 위) */}
           <div className="space-y-2">
             <div className="flex items-center gap-1.5">
@@ -452,13 +479,6 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
               className="block w-full border border-gray-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-gray-400 resize-none bg-white"
             />
             <p className="text-xs text-gray-400 text-right">{consultNotice.length}/500</p>
-          </div>
-
-          <div className="sticky bottom-0 bg-white border-t border-gray-100 -mx-0 pt-4 pb-1 flex items-center gap-3">
-            <SaveButton
-              onSave={handleSave}
-              className="text-sm font-medium text-white bg-gold-500 hover:bg-gold-600"
-            />
           </div>
 
           {/* 배송비 참고 이미지 모달 */}
@@ -483,6 +503,14 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
             </div>
           )}
         </div>
+      </div>
+
+      {/* 저장 — 카드 밖에 두어 어느 섹션을 보고 있어도 화면 아래에 붙어 있게 하고, 위 카드와는 옅은 회색 선으로만 구분 */}
+      <div className="sticky bottom-0 z-10 bg-white border-t border-gray-100 -mx-4 md:mx-0 px-4 md:px-6 py-3 md:rounded-b-2xl flex items-center gap-3">
+        <SaveButton
+          onSave={handleSave}
+          className="text-sm font-medium text-white bg-gold-500 hover:bg-gold-600"
+        />
       </div>
     </div>
     </>
