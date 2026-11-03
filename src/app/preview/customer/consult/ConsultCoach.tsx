@@ -20,7 +20,7 @@ const STEP1: CoachStep[] = [
     pad: 0,
     onEnter: openSection(1, 0),
     title: "선물 목적",
-    body: "손님이 기념·축하·감사처럼 어떤 날인지 골라요.\n사장님은 예약에서 선물 목적을 보고\n그날에 어울리게 꽃을 제작할 수 있어요.",
+    body: "기념·축하·감사처럼 선물 목적을 선택하면\n사장님은 손님이 고른 상품을 바탕으로\n선물 목적에 맞게 제작할 수 있어요.",
   },
   {
     selectors: ['[data-coach="consult1-1"]'],
@@ -104,19 +104,12 @@ const STEP4: CoachStep[] = [
     body: "사장님이 설정에 적어둔 안내 문구가 보여요.\n손님이 '확인했습니다'에 체크해야 결제할 수 있어서\n꼭 알려야 할 내용을 확실히 전할 수 있어요.",
   },
   {
-    selectors: ['[data-coach="consult4-orderer"]'],
-    radius: 0,
-    pad: 0,
-    title: "예약자 정보",
-    body: "손님이 이름과 휴대전화 번호를 입력해요.\n예약이 확정·취소되면 이 번호로\n카카오 알림톡이 자동으로 발송돼요.",
-  },
-  {
     selectors: ['[data-coach="consult4-delivery"]'],
     radius: 0,
     pad: 0,
     onEnter: action("delivery"),
     title: "수령 방법",
-    body: "손님이 픽업과 배송 중에 골라요.\n배송을 고르면 매장에서 배송지까지 거리를 재서\n사장님이 정한 거리별 배송비가 자동으로 붙어요.",
+    body: "손님이 픽업과 배송 중에 선택해요.\n배송을 고르면 매장에서 배송지까지 거리를 재서\n사장님이 정한 거리별 배송비를 참고해\n자동으로 배송비를 추가해요.",
   },
   {
     selectors: ['[data-coach="consult4-date"]'],
@@ -140,29 +133,18 @@ const STEP4: CoachStep[] = [
     body: "메시지 카드·쇼핑백·수명연장제 중\n사장님이 활성화한 옵션을 손님이 추가해요.\n옵션 가격도 사장님이 정할 수 있어요.",
   },
   {
-    selectors: ['[data-coach="consult4-requests"]'],
-    radius: 0,
-    pad: 0,
-    onEnter: action("requests"),
-    title: "요청 사항",
-    body: "손님이 전하고 싶은 요청을 자유롭게 적어요.\n사장님은 예약 정보에서 바로 확인할 수 있어요.",
-  },
-  {
-    // 결제 금액 요약은 PC 오른쪽 패널에만 있다 — 모바일에서는 건너뛴다
-    selectors: ['[data-coach="consult4-summary"]'],
-    radius: 0,
-    pad: 0,
-    optional: true,
-    title: "결제 금액",
-    body: "상품 가격에 손님이 추가한 옵션과\n거리별 배송비까지 합쳐 총 결제금액을 보여줘요.\n손님이 결제 전에 한눈에 확인할 수 있어요.",
-  },
-  {
     selectors: ['[data-coach="consult4-agree"]'],
-    // 동의 문구는 글자 한 줄이라 딱 붙으면 답답해서 여백을 둔다
-    radius: 0,
-    pad: 10,
+    // 반짝이는 점이 동의 문구 끝 글자를 가려서 오른쪽 위로 비켜 놓는다
+    dotShift: [8, -10],
+    // 동의 문구는 글자 한 줄이라 딱 붙으면 답답해서 여백을 두고 둥글게
+    radius: 12,
+    pad: 14,
+    // 모바일: 네모, 좌우는 카드 여백(16px)만큼 넓혀 화면 끝까지
+    mobileRadius: 0,
+    mobilePad: 10,
+    mobilePadX: 16,
     title: "맞춤 제작 상품 동의",
-    body: "제작 착수 후에는 취소·환불이 어렵다는 점을\n결제 단계에서 고객에게 미리 동의받아\n주문 취소 분쟁을 예방해요",
+    body: "제작 착수 후에는 취소·환불이 어렵다는 점을\n결제 단계에서 고객에게 미리 동의받아요.",
   },
 ];
 
@@ -190,7 +172,7 @@ const RESERVE_STEP1: CoachStep[] = [
     pad: 0,
     onEnter: openSection(1, 0),
     title: "선물 목적",
-    body: "손님이 기념·축하·감사처럼 어떤 날인지 골라요.\n사장님은 손님이 고른 상품을 바탕으로\n선물 목적에 맞게 제작할 수 있어요.",
+    body: "기념·축하·감사처럼 선물 목적을 선택하면\n사장님은 손님이 고른 상품을 바탕으로\n선물 목적에 맞게 제작할 수 있어요.",
   },
   {
     selectors: ['[data-coach="consult1-1"]'],
@@ -308,3 +290,32 @@ export default function ConsultCoach({ preselected = false }: { preselected?: bo
   const sharedKey = step === 1 ? SHARED_COACH.gift : step === 4 ? SHARED_COACH.consultConfirm : undefined;
   return <PreviewCoach key={step} storageKey={`preview_coach_customer_${preselected ? "reserve" : "consult"}${step}`} sharedKey={sharedKey} {...coach} />;
 }
+
+// 미리보기에서 뺀 주문서 설명(주문 상품·주문자·요청 사항·결제 금액 등) — 나중에 다시 쓸 수 있게 남겨 둠
+export const CONSULT_CONFIRM_EXTRA_STEPS: CoachStep[] = [
+  {
+    selectors: ['[data-coach="consult4-orderer"]'],
+    radius: 0,
+    pad: 0,
+    title: "예약자 정보",
+    body: "손님이 이름과 휴대전화 번호를 입력해요.\n예약이 확정·취소되면 이 번호로\n카카오 알림톡이 자동으로 발송돼요.",
+  },
+  {
+    selectors: ['[data-coach="consult4-requests"]'],
+    radius: 0,
+    pad: 0,
+    onEnter: action("requests"),
+    title: "요청 사항",
+    body: "손님이 전하고 싶은 요청을 자유롭게 적어요.\n사장님은 예약 정보에서 바로 확인할 수 있어요.",
+  },
+  {
+    // 결제 금액 요약은 PC 오른쪽 패널에만 있다 — 모바일에서는 건너뛴다
+    selectors: ['[data-coach="consult4-summary"]'],
+    noDot: true,
+    radius: 0,
+    pad: 0,
+    optional: true,
+    title: "결제 금액",
+    body: "상품 가격에 손님이 추가한 옵션과\n거리별 배송비까지 합쳐 총 결제금액을 보여줘요.\n손님이 결제 전에 한눈에 확인할 수 있어요.",
+  },
+];

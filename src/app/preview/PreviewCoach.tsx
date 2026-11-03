@@ -11,6 +11,12 @@ export interface CoachStep {
   body: string;
   /** 설명이 끝난 뒤 반짝이는 점을 찍을 요소 — 없으면 강조한 영역의 오른쪽 위 */
   dot?: string[];
+  /** 설명이 끝난 뒤 이 단계에는 반짝이는 점을 찍지 않는다 (누를 곳이 아닌 안내용 영역) */
+  noDot?: boolean;
+  /** dot 요소의 오른쪽 위 '안쪽' 모서리에 점을 찍는다 (사진처럼 큰 요소) — 없으면 바깥쪽에 찍는다 */
+  dotInside?: boolean;
+  /** 반짝이는 점 위치를 [오른쪽, 아래] px만큼 옮긴다 — 글자를 가릴 때 살짝 비켜 놓기 */
+  dotShift?: [number, number];
   /** 화면에 대상이 없으면 건너뛰는 단계 (예: PC에만 있는 영역) */
   optional?: boolean;
   /** 이 단계에 들어올 때 화면을 바꿀 일 (예: 접힌 항목 펼치기) */
@@ -254,10 +260,15 @@ export default function PreviewCoach({ storageKey, intro, steps: allSteps, outro
         const inset = stickyTopInset();
         const next = steps
           .map((s) => {
+            if (s.noDot) return null;
             const dotEl = s.dot ? findVisible(s.dot) : null;
             const target = dotEl ?? findVisible(s.selectors);
             let r: Rect | null;
-            if (dotEl) {
+            if (dotEl && s.dotInside) {
+              // 사진 같은 큰 요소는 오른쪽 위 모서리 안쪽에 찍는다
+              const b = dotEl.getBoundingClientRect();
+              r = { top: b.top + 10, left: b.left - 12, width: b.width, height: b.height };
+            } else if (dotEl) {
               // 글자 같은 작은 요소는 겹치지 않게 오른쪽 위 바깥에 찍는다
               const b = dotEl.getBoundingClientRect();
               r = { top: b.top - 8, left: b.left + 10, width: b.width, height: b.height };
@@ -265,6 +276,7 @@ export default function PreviewCoach({ storageKey, intro, steps: allSteps, outro
             if (r && target && !isPinned(target) && r.top - 4 < inset) return null;
             // 접힌 메뉴 안(넘치는 부분을 잘라 숨기는 영역 밖)에 있는 요소의 점은 숨긴다
             if (target && isClipped(target)) return null;
+            if (r && s.dotShift) r = { ...r, left: r.left + s.dotShift[0], top: r.top + s.dotShift[1] };
             return r;
           })
           .filter((r): r is Rect => !!r)
@@ -277,18 +289,7 @@ export default function PreviewCoach({ storageKey, intro, steps: allSteps, outro
     return () => cancelAnimationFrame(raf);
   }, [stepIndex, dotsVisible, steps]);
 
-  // 반짝이는 점은 설명한 버튼 중 하나를 누르면 사라진다
-  useEffect(() => {
-    if (!dotsVisible) return;
-    const onClick = (e: MouseEvent) => {
-      const target = e.target as Node;
-      if (steps.some((s) => s.selectors.some((sel) => Array.from(document.querySelectorAll(sel)).some((el) => el.contains(target))))) {
-        setDotsVisible(false);
-      }
-    };
-    document.addEventListener("click", onClick, true);
-    return () => document.removeEventListener("click", onClick, true);
-  }, [dotsVisible, steps]);
+  // 반짝이는 점은 설명한 버튼을 눌러도 사라지지 않고 계속 남는다 (어디를 눌러볼지 계속 안내)
 
   const finish = () => {
     try {
@@ -394,7 +395,8 @@ export default function PreviewCoach({ storageKey, intro, steps: allSteps, outro
         onClick={() => go(phase + 1)}
         className="text-[13px] font-semibold px-4 py-2 rounded-full bg-gray-900 text-white hover:bg-gray-700 transition-colors"
       >
-        {phase === 0 ? "시작하기" : phase === total + 1 ? "둘러보기" : "다음"}
+        {/* 단계 설명이 없는 화면은 소개 카드만 보여주고 바로 둘러보게 한다 */}
+        {phase === 0 ? (allSteps.length === 0 ? "둘러보기" : "시작하기") : phase === total + 1 ? "둘러보기" : "다음"}
       </button>
     </div>
   );

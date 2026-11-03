@@ -2,10 +2,13 @@
 
 import PreviewCoach, { type CoachStep } from "../PreviewCoach";
 
+// 통계는 눌러볼 버튼이 없어서 설명이 끝난 뒤 반짝이는 점을 남기지 않는다(noDot)
 // 모바일은 통계 카드가 화면 양 끝까지 꽉 차서 네모(mobileRadius: 0), PC는 둥근 모서리
-const STEPS: CoachStep[] = [
+// 항목별 설명 — 미리보기에서는 소개 카드만 보여주고 단계 설명은 쓰지 않는다 (나중에 온보딩에서 다시 쓸 수 있게 남겨 둠)
+export const STATS_STEPS: CoachStep[] = [
   {
     selectors: ['[data-coach="st-summary"]'],
+    noDot: true,
     pad: 0,
     mobileRadius: 0,
     title: "이번 달 요약",
@@ -13,6 +16,7 @@ const STEPS: CoachStep[] = [
   },
   {
     selectors: ['[data-coach="st-yearly"]'],
+    noDot: true,
     pad: 0,
     mobileRadius: 0,
     title: "전년 대비 월별 매출",
@@ -20,6 +24,7 @@ const STEPS: CoachStep[] = [
   },
   {
     selectors: ['[data-coach="st-time"]'],
+    noDot: true,
     pad: 0,
     mobileRadius: 0,
     title: "주문 시간 분포",
@@ -27,6 +32,7 @@ const STEPS: CoachStep[] = [
   },
   {
     selectors: ['[data-coach="st-traffic"]'],
+    noDot: true,
     pad: 0,
     mobileRadius: 0,
     title: "유입 분석",
@@ -34,6 +40,7 @@ const STEPS: CoachStep[] = [
   },
   {
     selectors: ['[data-coach="st-types"]'],
+    noDot: true,
     pad: 0,
     mobileRadius: 0,
     title: "상품 유형 순위",
@@ -41,6 +48,7 @@ const STEPS: CoachStep[] = [
   },
   {
     selectors: ['[data-coach="st-budget"]'],
+    noDot: true,
     pad: 0,
     mobileRadius: 0,
     title: "예산대별 분포",
@@ -48,6 +56,7 @@ const STEPS: CoachStep[] = [
   },
   {
     selectors: ['[data-coach="st-best"]'],
+    noDot: true,
     pad: 0,
     mobileRadius: 0,
     title: "베스트셀러 Top 5",
@@ -64,7 +73,8 @@ export default function StatsCoach() {
         title: "통계 화면이에요",
         body: "사장님이 데이터를 보고 전략적으로\n매장을 운영할 수 있도록\n매출·주문·손님 데이터를 모아 보여드려요.",
       }}
-      steps={STEPS}
+      // 단계 설명 없이 소개 카드만 — 버튼은 '둘러보기'
+      steps={[]}
       outro={{
         title: "직접 둘러보세요",
         body: "기간과 보기 방식을 바꿔가며 살펴보세요.\n지금 보이는 숫자는 잘 되는 매장을 가정한 예시예요.",

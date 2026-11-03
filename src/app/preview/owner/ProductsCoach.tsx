@@ -30,6 +30,33 @@ const STEPS: CoachStep[] = [
     body: "상품 정보를 넣고 어울리는 분류를 골라요.\n고른 분류는 손님 메뉴판의 필터와\n맞춤주문 추천에 그대로 쓰여요.",
   },
   {
+    selectors: ['[data-coach="pd-toggle"]'],
+    // 반짝이는 점이 노출 스위치와 겹쳐서 오른쪽 위로 비켜 놓는다
+    dotShift: [6, -8],
+    onEnter: () => send(false),
+    title: "노출 켜기 · 끄기",
+    body: "끄면 손님 메뉴판에서 바로 숨겨져요.\n재료가 떨어지거나 시즌이 지난 상품을\n지우지 않고 잠깐 내릴 때 써요.",
+  },
+];
+
+// 미리보기에서 뺀 설명 — 가입 후 온보딩에서 다시 쓸 수 있게 남겨 둠
+export const PRODUCT_EXTRA_STEPS: CoachStep[] = [
+  {
+    // 뱃지 줄만 강조 — 추가 옵션('추가 불가')은 미리보기에서 설명하지 않는다
+    selectors: ['[data-coach="pd-badge"]'],
+    radius: 0,
+    pad: 12,
+    onEnter: () => {
+      send(true);
+      setTimeout(() => {
+        const el = Array.from(document.querySelectorAll<HTMLElement>('[data-coach="pd-badge"]')).find((e) => e.getBoundingClientRect().width > 0);
+        el?.scrollIntoView({ block: "center" });
+      }, 200);
+    },
+    title: "인기 · 추천 배지",
+    body: "인기·추천 배지를 달아 팔고 싶은 상품을 메뉴판에서 강조할 수 있어요.",
+  },
+  {
     selectors: ['[data-coach="pd-options"]'],
     radius: 0,
     pad: 0,
@@ -43,18 +70,6 @@ const STEPS: CoachStep[] = [
     },
     title: "뱃지 · 추가 옵션 설정",
     body: "인기·추천 배지를 달아 메뉴판에서 강조할 수 있어요.\n이미 포함됐거나 필요 없는 옵션은\n'추가 불가'로 손님이 고르지 못하게 해요.",
-  },
-  {
-    selectors: ['[data-coach="pd-filter"]'],
-    onEnter: () => send(false),
-    title: "필터",
-    body: "상품이 많아도 필터와 정렬로\n원하는 상품을 쉽게 찾을 수 있어요.",
-  },
-  {
-    selectors: ['[data-coach="pd-toggle"]'],
-    onEnter: () => send(false),
-    title: "노출 켜기 · 끄기",
-    body: "끄면 손님 메뉴판에서 바로 숨겨져요.\n재료가 떨어지거나 시즌이 지난 상품을\n지우지 않고 잠깐 내릴 때 써요.",
   },
 ];
 

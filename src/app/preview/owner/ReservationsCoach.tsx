@@ -13,6 +13,8 @@ export const RV_PAYLINK_EVENT = "preview-rv-paylink";
 export const RV_ADD_EVENT = "preview-rv-add";
 /** 오늘 detail 시간 예약자의 손님 정보 창을 연다 (null이면 닫는다) */
 export const RV_PROFILE_EVENT = "preview-rv-profile";
+/** 상태 필터·검색·보는 달을 처음(이번 달 전체)으로 되돌린다 — 대시보드 예약 현황 숫자로 걸러진 채 들어와도 설명이 같은 화면에서 진행되게 */
+export const RV_RESET_EVENT = "preview-rv-reset";
 
 const send = (name: string, detail?: unknown) => window.dispatchEvent(new CustomEvent(name, { detail }));
 const isMobile = () => window.innerWidth < 768;
@@ -52,9 +54,58 @@ const openAdd = (coach: string) => () => {
   revealInside(coach);
 };
 
+// 반짝이는 점은 버튼·글자를 가리지 않게 모두 오른쪽 위로 조금씩 비켜 놓는다(dotShift)
 const STEPS: CoachStep[] = [
   {
+    selectors: ['[data-coach="rv-confirm"]'],
+    dotShift: [6, -8],
+    // 첫 단계 — 걸려 있던 상태 필터를 풀고 이번 달 전체 보기로 되돌린 뒤 시작
+    onEnter: () => {
+      send(RV_RESET_EVENT);
+      openAndReveal("18:00", "rv-confirm")();
+    },
+    title: "예약 확정 · 취소",
+    body: "새 예약은 알림톡으로 알려드려요.\n예약을 확정하면 손님에게 알림톡이 자동으로 가요.\n취소할 때 사유를 적으면 자동으로 환불되고,\n그 사유가 손님에게 알림톡으로 전달돼요.",
+  },
+  {
+    selectors: ['[data-coach="rv-paylink"]'],
+    dotShift: [6, -8],
+    onEnter: openAndReveal("15:30", "rv-paylink"),
+    title: "링크 결제",
+    body: "전화·카카오톡·매장에서 받은 주문처럼\n손님이 아직 결제하지 않은 예약에 사용해요.\n예약 추가할 때 결제 상태를 '미결제'로 두면\n링크 결제 만들기 버튼이 생겨요.\n(링크 결제 완료 시 사장님께 알림톡으로 알려드려요)",
+  },
+  {
+    // 오후 3시 30분 류현우 예약의 이름 버튼 — PC는 표의 이름, 모바일은 예약 상세 창 위쪽 이름
+    selectors: ['[data-coach="rv-profile-name"][data-rv-time="15:30"]', '[data-coach="rv-profile-name-m"]'],
+    dotShift: [6, -8],
+    radius: 0,
+    pad: 10,
+    // 모바일: 이름 버튼 모양대로 둥근 모서리, 여백 없이
+    mobileRadius: 8,
+    mobilePad: 0,
+    onEnter: () => {
+      resetView();
+      send(RV_OPEN_EVENT, "15:30");
+    },
+    title: "단골 손님 정보",
+    body: "예약자 이름을 누르면 그 손님이 지금까지\n몇 번 주문했는지 볼 수 있어요.\n손님 취향을 메모해 두면 다음 주문 때 참고할 수 있어요",
+  },
+  {
+    selectors: ['[data-coach="add-paste"]'],
+    dotShift: [6, -8],
+    radius: 0,
+    pad: 0,
+    onEnter: openAdd("add-paste"),
+    title: "네이버 예약 자동 입력",
+    body: "네이버 예약 내용을 복사해 붙여 넣으면\n예약자·날짜·상품 같은 항목이 자동으로 채워져요.\n하나하나 옮겨 적지 않아도 돼요.",
+  },
+];
+
+// 미리보기에서 뺀 설명 — 가입을 고민하는 사장님에게 꼭 필요한 4가지만 남기고 뺐다. 가입 후 온보딩에서 다시 쓸 수 있게 남겨 둠
+export const RESERVATION_EXTRA_STEPS: CoachStep[] = [
+  {
     selectors: ['[data-coach="rv-unconfirmed"]'],
+    dotShift: [6, -8],
     radius: 0,
     pad: 0,
     onEnter: resetView,
@@ -62,14 +113,9 @@ const STEPS: CoachStep[] = [
     body: "손님이 결제를 마친 예약은 '미확인'상태로 들어와\n빨간 줄로 표시되고 목록 맨 위로 올라와요.\n카카오 알림톡으로도 바로 알려드려요.",
   },
   {
-    selectors: ['[data-coach="rv-confirm"]'],
-    onEnter: openAndReveal("18:00", "rv-confirm"),
-    title: "예약 확정 · 취소",
-    body: "예약을 확인하고 확정하면 손님에게\n확정 알림톡이 자동으로 가요.\n취소할 때는 사유를 적으면 자동으로 환불되고,\n그 사유가 손님에게 알림톡으로 전달돼요.",
-  },
-  {
     // 주문자 정보부터 배송 정보까지 (PC는 왼쪽 상품 사진 칸도 함께)
     selectors: ['[data-coach="rv-detail"]'],
+    noDot: true,
     also: ['[data-coach="rv-detail-image"]'],
     // 글자 덩어리라 딱 붙으면 답답해서 여백을 넉넉히
     radius: 0,
@@ -79,87 +125,18 @@ const STEPS: CoachStep[] = [
     body: "제작에 필요한 주문 정보가 한곳에 모여요.\n복사 버튼으로 바로 옮겨 적을 수 있어요.",
   },
   {
-    selectors: ['[data-coach="rv-paylink"]'],
-    onEnter: openAndReveal("15:30", "rv-paylink"),
-    title: "링크 결제",
-    body: "전화·카카오톡·매장에서 받은 주문처럼\n손님이 아직 결제하지 않은 예약에 사용해요.\n예약 추가할 때 결제 상태를 '미결제'로 두면\n링크 결제 만들기 버튼이 생겨요.",
-  },
-  {
-    selectors: ['[data-coach="rv-paylink-modal"]'],
-    pad: 0,
-    onEnter: () => {
-      openAndReveal("15:30", "rv-paylink")();
-      setTimeout(() => send(RV_PAYLINK_EVENT, { time: "15:30", open: true }), 50);
-    },
-    title: "결제 링크 만들기",
-    body: "링크 만료 시간을 고르고 '링크 생성'을 누르면\n결제 금액이 담긴 결제 링크가 만들어져요.\n카카오톡·문자로 보내면 손님이 쉽게 결제하고,\n결제되면 자동으로 결제완료로 바뀌며 알림톡이 와요.",
-  },
-  {
     selectors: ['[data-coach="rv-status"]'],
+    dotShift: [6, -8],
     onEnter: openAndReveal("15:30", "rv-status"),
     title: "상태 변경",
     body: "확정한 예약은 준비중 → 제작완료 →\n픽업/배송완료로 진행 상황에 맞게 변경할 수 있어요.",
   },
   {
-    selectors: ['[data-coach="rv-legend"]'],
-    onEnter: resetView,
-    title: "상태 색 안내",
-    body: "예약 줄의 색만 봐도 예약 상태를 알 수 있어요.",
-  },
-  {
-    selectors: ['[data-coach="rv-month"]'],
-    onEnter: resetView,
-    title: "월 이동 · 지난 예약",
-    body: "달을 넘기며 예약을 확인해요.\n'지난 예약 보기'로 지난 예약도 볼 수 있어요.",
-  },
-  {
-    selectors: ['[data-coach="rv-search"]'],
-    onEnter: resetView,
-    title: "예약자 검색",
-    body: "이름이나 전화번호로 지난 주문까지 찾아요.",
-  },
-  {
-    // 상세가 펼쳐져 있는 오후 3시 30분 류현우 예약의 이름 버튼 — PC 표에만 있어서 모바일에서는 건너뛴다
-    selectors: ['[data-coach="rv-profile-name"][data-rv-time="15:30"]'],
-    radius: 0,
-    pad: 10,
-    optional: true,
-    onEnter: () => {
-      resetView();
-      send(RV_OPEN_EVENT, "15:30");
-    },
-    title: "단골 손님 정보",
-    body: "예약자 이름을 누르면 그 손님이 지금까지\n몇 번 주문했는지 볼 수 있어요.\n손님 취향을 메모해 두면 다음 주문 때 참고할 수 있어요",
-  },
-  {
     selectors: ['[data-coach="rv-add"]'],
+    dotShift: [6, -8],
     onEnter: resetView,
     title: "예약 추가",
     body: "전화·카카오톡·매장에서 받은 예약도\n여기서 직접 등록해서 한곳에서 관리할 수 있어요.",
-  },
-  {
-    selectors: ['[data-coach="add-paste"]'],
-    radius: 0,
-    pad: 0,
-    onEnter: openAdd("add-paste"),
-    title: "네이버 예약 자동 입력",
-    body: "네이버 예약 내용을 복사해 붙여 넣으면\n예약자·날짜·상품 같은 항목이 자동으로 채워져요.\n하나하나 옮겨 적지 않아도 돼요.",
-  },
-  {
-    selectors: ['[data-coach="add-orderer"]'],
-    radius: 0,
-    pad: 0,
-    onEnter: openAdd("add-orderer"),
-    title: "예약 정보 입력",
-    body: "아래로 내려가며 예약 내용을 차례대로 입력해요.\n손님이 보낸 참고 사진도 함께 올릴 수 있어요.\n(직접 예약 추가는 손님에게 알림톡이 가지 않아요)",
-  },
-  {
-    selectors: ['[data-coach="add-paid"]'],
-    radius: 0,
-    pad: 0,
-    onEnter: openAdd("add-paid"),
-    title: "결제 상태",
-    body: "이미 계좌이체·현장 결제를 받았다면 '결제 완료',\n아직이라면 '미결제'로 두세요. '미결제'로 두면\n예약 상세에서 결제 링크를 만들 수 있어요.",
   },
 ];
 
@@ -170,7 +147,7 @@ export default function ReservationsCoach() {
       storageKey="preview_coach_owner_reservations"
       intro={{
         title: "예약 관리 화면이에요",
-        body: "손님 예약이 들어오면 여기서 확인하고\n확정부터 완료까지 처리해요.\n오늘(11월 10일) 예약으로 순서대로 알려드릴게요.",
+        body: "온라인 주문은 물론 전화·카톡·매장 예약까지\n여기 한곳에서 확인하고 처리해요.\n오늘(11월 10일) 예약으로 하나씩 알려드릴게요.",
       }}
       steps={STEPS}
       outro={{

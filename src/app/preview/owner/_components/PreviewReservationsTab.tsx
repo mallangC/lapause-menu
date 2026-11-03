@@ -8,7 +8,7 @@ import Pagination from "@/components/admin/Pagination";
 import PreviewReservationDetail from "./PreviewReservationDetail";
 import PreviewAddReservationModal from "./PreviewAddReservationModal";
 import PreviewCustomerProfileModal from "./PreviewCustomerProfileModal";
-import { RV_ADD_EVENT, RV_CLOSE_EVENT, RV_OPEN_EVENT, RV_PROFILE_EVENT } from "../ReservationsCoach";
+import { RV_ADD_EVENT, RV_CLOSE_EVENT, RV_OPEN_EVENT, RV_PROFILE_EVENT, RV_RESET_EVENT } from "../ReservationsCoach";
 import { MOCK_CUSTOMER_MEMOS, MOCK_MESSAGE_CARD_PRICE, MOCK_SHOPPING_BAG_PRICE, PREVIEW_TODAY } from "../_mockReservations";
 
 const ACTION_WIDTH = 116;
@@ -239,11 +239,23 @@ export default function PreviewReservationsTab({ allReservations, setAllReservat
       const target = time ? allReservations.find((r) => r.desired_date === today && r.desired_time === time) : null;
       setProfileModal(target?.customer_profile_id ? { profileId: target.customer_profile_id, name: target.orderer_name, phone: target.orderer_phone } : null);
     };
+    // 설명 시작 — 상태 필터·검색을 풀고 이번 달(오늘 이후) 보기로 되돌린다
+    const onReset = () => {
+      setStatusFilter(undefined);
+      setShowPast(false);
+      setSearchOpen(false);
+      setSearchQuery("");
+      setSearchIds(null);
+      setViewYear(PREVIEW_TODAY.getFullYear());
+      setViewMonth(PREVIEW_TODAY.getMonth() + 1);
+    };
+    window.addEventListener(RV_RESET_EVENT, onReset);
     window.addEventListener(RV_OPEN_EVENT, onOpen);
     window.addEventListener(RV_CLOSE_EVENT, onClose);
     window.addEventListener(RV_ADD_EVENT, onAdd);
     window.addEventListener(RV_PROFILE_EVENT, onProfile);
     return () => {
+      window.removeEventListener(RV_RESET_EVENT, onReset);
       window.removeEventListener(RV_OPEN_EVENT, onOpen);
       window.removeEventListener(RV_CLOSE_EVENT, onClose);
       window.removeEventListener(RV_ADD_EVENT, onAdd);
@@ -366,7 +378,12 @@ export default function PreviewReservationsTab({ allReservations, setAllReservat
         <PreviewAddReservationModal
           onClose={() => setShowAddModal(false)}
           onSaved={(added) => {
-            setAllReservations((prev) => [added, ...prev]);
+            // 직접 추가한 예약도 손님 정보(메모)를 쓸 수 있게 손님을 묶는다 — 같은 전화번호의 손님이 있으면 그 손님, 없으면 새 손님
+            setAllReservations((prev) => {
+              const same = prev.find((r) => r.orderer_phone && r.orderer_phone === added.orderer_phone && r.customer_profile_id);
+              const profileId = same?.customer_profile_id ?? `cp-new-${added.orderer_phone || added.id}`;
+              return [{ ...added, customer_profile_id: profileId }, ...prev];
+            });
             setShowAddModal(false);
             onNotice("예약이 목록에 추가됐어요.\n미리보기라 실제로 저장되지는 않아요.");
           }}
@@ -385,7 +402,20 @@ export default function PreviewReservationsTab({ allReservations, setAllReservat
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 shrink-0">
               <div className="flex items-center gap-2">
                 <span className={`w-2.5 h-2.5 rounded-full ${STATUS_DOT[mobileDetailReservation.status] ?? "bg-gray-300"}`} />
-                <span className="text-sm font-semibold text-gray-900">{mobileDetailReservation.orderer_name}</span>
+                {/* 예약자 이름 — 단골 손님이면 눌러서 손님 정보(주문 횟수·메모)를 연다 (PC 표의 이름 버튼과 같은 기능) */}
+                {mobileDetailReservation.customer_profile_id ? (
+                  <button
+                    type="button"
+                    onClick={() => setProfileModal({ profileId: mobileDetailReservation.customer_profile_id!, name: mobileDetailReservation.orderer_name, phone: mobileDetailReservation.orderer_phone })}
+                    data-coach="rv-profile-name-m"
+                    // 버튼처럼 테두리를 둘러 누를 수 있다는 걸 보여준다
+                    className="px-2.5 py-0.5 rounded-lg border border-gray-300 text-sm font-semibold text-gray-900 active:bg-gray-100 transition-colors"
+                  >
+                    {mobileDetailReservation.orderer_name}
+                  </button>
+                ) : (
+                  <span className="text-sm font-semibold text-gray-900">{mobileDetailReservation.orderer_name}</span>
+                )}
                 <span className="text-xs text-gray-400">{formatDateHeader(mobileDetailReservation.desired_date)}</span>
                 {/* 수령 방법 배지 — 목록 카드와 같은 모양 (상세 본문에서는 뺐다) */}
                 <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${mobileDetailReservation.delivery_type === "배송" ? "border border-blue-400 text-blue-500" : "border border-gray-400 text-gray-500"}`}>

@@ -5,6 +5,7 @@ import PreviewCoach, { type CoachStep } from "../PreviewCoach";
 const STEPS: CoachStep[] = [
   {
     selectors: ['[data-coach="mi-social"]'],
+    noDot: true,
     pad: 16,
     // 모바일: 네모, 좌우 화면 끝까지
     mobileRadius: 0,

@@ -18,7 +18,7 @@ const STEPS: CoachStep[] = [
     pad: 0,
     onEnter: openGiftSection(0),
     title: "선물 목적",
-    body: "손님이 기념·축하·감사처럼 어떤 날인지 골라요.\n사장님은 손님이 고른 상품을 바탕으로\n선물 목적에 맞게 제작할 수 있어요.",
+    body: "기념·축하·감사처럼 선물 목적을 선택하면\n사장님은 손님이 고른 상품을 바탕으로\n선물 목적에 맞게 제작할 수 있어요.",
   },
   {
     selectors: ['[data-gift-section="1"]'],
@@ -58,20 +58,6 @@ const STEP2: CoachStep[] = [
     body: "사장님이 설정에 적어둔 안내 문구가 보여요.\n손님이 '확인했습니다'에 체크해야 결제할 수 있어서\n꼭 알려야 할 내용을 확실히 전할 수 있어요.",
   },
   {
-    selectors: ['[data-coach="checkout-items"]'],
-    radius: 0,
-    pad: 0,
-    title: "주문 상품",
-    body: "손님이 여러 상품을 함께 주문해도\n상품별 수량과 고른 옵션, 금액이 한곳에 정리돼요.",
-  },
-  {
-    selectors: ['[data-coach="checkout-orderer"]'],
-    radius: 0,
-    pad: 0,
-    title: "주문자 정보",
-    body: "손님이 이름과 휴대전화 번호를 입력해요.\n예약이 확정·취소되면 이 번호로 카카오 알림톡이\n자동으로 발송돼요.",
-  },
-  {
     selectors: ['[data-coach="checkout-delivery"]'],
     radius: 0,
     pad: 0,
@@ -93,23 +79,13 @@ const STEP2: CoachStep[] = [
     body: "사장님이 정한 영업시간 내에서\n손님이 수령 시간을 선택할 수 있어요.",
   },
   {
-    selectors: ['[data-coach="checkout-requests"]'],
-    radius: 0,
-    pad: 0,
-    title: "요청 사항",
-    body: "손님이 전하고 싶은 요청을 자유롭게 적어요.\n사장님은 예약 정보에서 바로 확인할 수 있어요.",
-  },
-  {
-    selectors: ['[data-coach="checkout-summary"]'],
-    radius: 0,
-    pad: 0,
-    title: "결제 금액",
-    body: "상품과 옵션 금액에 거리별 배송비까지 합쳐\n총 결제금액을 보여줘요.",
-  },
-  {
     selectors: ['[data-coach="checkout-agree"]'],
-    radius: 0,
-    pad: 0,
+    // 동의 문구는 글자 한 줄이라 여백을 두고 둥글게
+    radius: 12,
+    pad: 10,
+    // 모바일: 네모, 좌우는 카드 여백(16px)만큼 넓혀 화면 끝까지
+    mobileRadius: 0,
+    mobilePadX: 16,
     title: "맞춤 제작 상품 동의",
     body: "제작 착수 후에는 취소·환불이 어렵다는 점을\n결제 단계에서 고객에게 미리 동의받아요.",
   },
@@ -190,3 +166,37 @@ export default function CheckoutCoach({ direct, step }: { direct: boolean; step:
     />
   );
 }
+
+// 미리보기에서 뺀 주문서 설명(주문 상품·주문자·요청 사항·결제 금액 등) — 나중에 다시 쓸 수 있게 남겨 둠
+export const CHECKOUT_EXTRA_STEPS: CoachStep[] = [
+  {
+    selectors: ['[data-coach="checkout-items"]'],
+    noDot: true,
+    radius: 0,
+    pad: 0,
+    title: "주문 상품",
+    body: "손님이 여러 상품을 함께 주문해도\n상품별 수량과 고른 옵션, 금액이 한곳에 정리돼요.",
+  },
+  {
+    selectors: ['[data-coach="checkout-orderer"]'],
+    radius: 0,
+    pad: 0,
+    title: "주문자 정보",
+    body: "손님이 이름과 휴대전화 번호를 입력해요.\n예약이 확정·취소되면 이 번호로 카카오 알림톡이\n자동으로 발송돼요.",
+  },
+  {
+    selectors: ['[data-coach="checkout-requests"]'],
+    radius: 0,
+    pad: 0,
+    title: "요청 사항",
+    body: "손님이 전하고 싶은 요청을 자유롭게 적어요.\n사장님은 예약 정보에서 바로 확인할 수 있어요.",
+  },
+  {
+    selectors: ['[data-coach="checkout-summary"]'],
+    noDot: true,
+    radius: 0,
+    pad: 0,
+    title: "결제 금액",
+    body: "상품과 옵션 금액에 거리별 배송비까지 합쳐\n총 결제금액을 보여줘요.",
+  },
+];

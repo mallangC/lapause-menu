@@ -7,6 +7,8 @@ const STEPS: CoachStep[] = [
     // 상품명·가격부터 꽃 색상·포장지·시즌, 수량까지 한 번에 감싼다
     selectors: ['[data-coach="detail-info"]'],
     also: ['[data-coach="detail-qty"]'],
+    // 가격·설명은 누르는 곳이 아니라 반짝이는 점을 남기지 않는다
+    noDot: true,
     // 네모 + 글자에 닿지 않게 여백을 넉넉히 (기본 6px → 14px)
     radius: 0,
     pad: 14,
@@ -27,6 +29,9 @@ const STEPS: CoachStep[] = [
     // 제목 + 첫 줄 상품만 감싼다 (모바일에서 영역이 너무 길어지지 않게)
     selectors: ['[data-coach="detail-suggest"] h2'],
     also: ['[data-coach="detail-suggest-item"]'],
+    // 반짝이는 점은 첫 번째 추천 상품 사진의 오른쪽 위 모서리에
+    dot: ['[data-coach="detail-suggest-img"]'],
+    dotInside: true,
     radius: 0,
     title: "이런 상품은 어떠세요?",
     body: "가격대와 꽃 색상이 비슷한 상품을 자동으로 추천해요.\n사장님의 다른 상품도 자연스럽게 둘러보게 돼요.",

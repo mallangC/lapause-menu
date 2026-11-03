@@ -40,18 +40,6 @@ const STEPS: CoachStep[] = [
     body: "오늘 수령 예정인 예약을 시간순으로 보여줘요.\n아직 확인하지 않은 예약과 준비 중인 예약을\n상태별 색으로 바로 구분할 수 있어요.",
   },
   {
-    selectors: ['[data-coach="own-counts"]'],
-    pad: 0,
-    title: "예약 현황",
-    body: "이번 달 예약을 상태별로 나눠 보여줘요.\n숫자를 누르면 그 상태의 예약만 모아서\n바로 확인할 수 있어요.",
-  },
-  {
-    selectors: ['[data-coach="own-features"]'],
-    pad: 0,
-    title: "기능 현황",
-    body: "주요 기능이 켜져 있는지 한눈에 확인해요.\n설정을 누르면 바로 켜고 끌 수 있어요.",
-  },
-  {
     selectors: tab("reservations"),
     pad: 0,
     onEnter: () => revealTab("reservations"),
@@ -72,6 +60,27 @@ const STEPS: CoachStep[] = [
     title: "통계",
     body: "매출과 손님이 들어온 경로 등을 숫자로 확인해요.",
   },
+];
+
+// 미리보기에서 뺀 대시보드 설명(예약 현황·기능 현황) — 가입 후 온보딩에서 다시 쓸 수 있게 남겨 둠
+export const DASHBOARD_EXTRA_STEPS: CoachStep[] = [
+  {
+    selectors: ['[data-coach="own-counts"]'],
+    pad: 0,
+    title: "예약 현황",
+    body: "이번 달 예약을 상태별로 나눠 보여줘요.\n숫자를 누르면 그 상태의 예약만 모아서\n바로 확인할 수 있어요.",
+  },
+  {
+    selectors: ['[data-coach="own-features"]'],
+    noDot: true,
+    pad: 0,
+    title: "기능 현황",
+    body: "주요 기능이 켜져 있는지 한눈에 확인해요.\n설정을 누르면 바로 켜고 끌 수 있어요.",
+  },
+];
+
+// 설정 메뉴 설명 — 미리보기에서는 설정 메뉴를 열지 않아 빼 두었다. 가입 후 온보딩에서 다시 쓸 예정
+export const SETTINGS_STEPS: CoachStep[] = [
   {
     selectors: tab("business"),
     pad: 0,

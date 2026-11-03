@@ -252,7 +252,8 @@ export default function PreviewProductDetailClient({
                 className="cursor-pointer group bg-white"
                 onClick={() => router.push(`/${slug}/products/${p.id}`)}
               >
-                <div className="relative aspect-square bg-beige-100 overflow-hidden">
+                {/* 상품 사진 — 설명이 끝난 뒤 첫 번째 사진 오른쪽 위에 반짝이는 점을 찍는다 */}
+                <div data-coach="detail-suggest-img" className="relative aspect-square bg-beige-100 overflow-hidden">
                   {p.image_url ? (
                     <Image
                       src={p.image_url}

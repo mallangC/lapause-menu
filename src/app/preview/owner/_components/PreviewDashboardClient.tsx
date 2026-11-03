@@ -56,9 +56,37 @@ export default function PreviewDashboardClient() {
     if (key === "settlement") return showNotice("실제 관리자 화면에서는 정산 페이지로 연결돼요.\n미리보기라 이동하지 않아요.");
     if (key === "plan") return showNotice("실제 관리자 화면에서는 요금제 페이지로 연결돼요.\n미리보기라 이동하지 않아요.");
     if (key === "company") return showNotice("실제 관리자 화면에서는 매장 정보 페이지로 연결돼요.\n미리보기라 이동하지 않아요.");
-    setActiveTab(key);
+    // 설정 하위 화면(영업 설정·판매 설정 등)도 열지 않는다 — 대시보드 기능 현황의 '설정' 버튼 등에서 들어오는 경우 포함
+    if (SETTINGS_CLOSED && settingsTabs.some((t) => t.key === key)) return showSettingsNotice();
+    goTab(key);
   };
+  // 탭 이동을 주소(?tab=)와 방문 기록에 남긴다 — 실제 관리자 화면과 같이 뒤로가기로 이전 탭에 돌아온다
+  const goTab = (key: Tab) => {
+    setActiveTab(key);
+    const url = new URL(window.location.href);
+    if (key === "dashboard") url.searchParams.delete("tab");
+    else url.searchParams.set("tab", key);
+    if (url.href !== window.location.href) window.history.pushState(null, "", url);
+  };
+  // 주소의 탭 — 미리보기에서 열 수 있는 탭만 (정산·요금제·매장 정보·설정 화면은 막혀 있어 대시보드로)
+  const OPEN_TABS: Tab[] = ["dashboard", "reservations", "products", "stats"];
+  const tabFromUrl = (): Tab => {
+    const v = new URLSearchParams(window.location.search).get("tab");
+    return v && (OPEN_TABS as string[]).includes(v) ? (v as Tab) : "dashboard";
+  };
+  // 처음 열 때 주소의 탭으로, 뒤로가기·앞으로가기 때도 주소의 탭으로 맞춘다
+  // (미리보기 페이지는 정적 페이지라 useSearchParams 대신 마운트 후 주소를 읽는다)
+  useEffect(() => {
+    setActiveTab(tabFromUrl());
+    const onPop = () => setActiveTab(tabFromUrl());
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const showGuideNotice = () => showNotice("실제 관리자 화면에서는 사용법 페이지로 연결돼요.\n미리보기라 이동하지 않아요.");
+  // 미리보기 — 설정 메뉴는 열지 않고 안내만 띄운다 (설정 화면·설명은 나중에 가입 후 온보딩에서 쓸 예정이라 코드는 남겨 둔다)
+  const SETTINGS_CLOSED = true;
+  const showSettingsNotice = () => showNotice("실제 관리자 화면에서는 설정 메뉴가 열려요.\n미리보기라 이동하지 않아요.");
 
   // 목업 예약 (9~12월, 오늘 = 2026-11-10 고정) — 대시보드 요약과 예약 관리가 같은 데이터를 쓴다
   const [reservations, setReservations] = useState(() => makeMockReservations());
@@ -134,7 +162,7 @@ export default function PreviewDashboardClient() {
           ))}
           {/* 설정 탭 */}
           <button
-            onClick={() => setShowSettingsDropdown((v) => !v)}
+            onClick={() => (SETTINGS_CLOSED ? showSettingsNotice() : setShowSettingsDropdown((v) => !v))}
             className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap flex items-center gap-1 ${
               isSettingsTab ? "border-gold-500 text-gold-500" : "border-transparent text-gray-400 hover:text-gray-700"
             }`}
@@ -196,7 +224,7 @@ export default function PreviewDashboardClient() {
             {/* 설정 드롭다운 */}
             <li>
               <button
-                onClick={() => setShowSettingsDropdown((v) => !v)}
+                onClick={() => (SETTINGS_CLOSED ? showSettingsNotice() : setShowSettingsDropdown((v) => !v))}
                 className={`w-full text-left px-4 py-2.5 rounded-lg text-sm transition-colors flex items-center justify-between ${
                   isSettingsTab ? "bg-gold-500 text-white font-medium" : "text-gray-700 hover:bg-gray-100"
                 }`}
@@ -290,7 +318,7 @@ export default function PreviewDashboardClient() {
 
           {activeTab === "reservation" && (
             <>
-              <PreviewReservationSettingsTab onNotice={showNotice} onGoToOrderSettings={() => setActiveTab("ordersettings")} />
+              <PreviewReservationSettingsTab onNotice={showNotice} onGoToOrderSettings={() => goTab("ordersettings")} />
               <SalesSettingsCoach />
             </>
           )}

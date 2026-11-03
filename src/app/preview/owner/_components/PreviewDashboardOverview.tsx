@@ -109,6 +109,8 @@ export default function PreviewDashboardOverview({ reservations, onNavigate }: P
   const [showCopyModal, setShowCopyModal] = useState(false);
   const [customChannel, setCustomChannel] = useState("");
   const [showCustomInput, setShowCustomInput] = useState(false);
+  // 창 안에서 방금 복사한 항목 — 창을 닫지 않고 그 버튼에 '복사됨 ✓'를 보여준다 (다른 채널 링크도 이어서 복사할 수 있게)
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [showQrModal, setShowQrModal] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   // 미리보기는 매장 링크 대신 Flo.Aide 미리보기 주소로 고정한다 (복사·QR로 바로 열어볼 수 있게)
@@ -120,15 +122,23 @@ export default function PreviewDashboardOverview({ reservations, onNavigate }: P
   const openCopyModal = () => {
     setCustomChannel("");
     setShowCustomInput(false);
+    setCopiedKey(null);
     setShowCopyModal(true);
   };
 
-  const copyLink = (url: string) => {
+  // 복사해도 창은 열어 둔다 — 누른 버튼이 '복사됨 ✓'로 바뀌고, 닫으면 바깥 버튼도 잠깐 '복사됨 ✓'
+  const copyLink = (url: string, key: string) => {
     navigator.clipboard.writeText(url);
-    setShowCopyModal(false);
+    setCopiedKey(key);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  // 채널 버튼 모양 — 방금 복사한 버튼은 초록 테두리
+  const channelBtnCls = (key: string) =>
+    `py-2.5 rounded-xl border text-sm transition-colors ${
+      copiedKey === key ? "border-green-400 bg-green-50 text-green-700 font-medium" : "border-gray-200 text-gray-700 hover:border-gold-400 hover:bg-gold-50"
+    }`;
 
   // 기타 채널 이름은 영문 소문자·숫자·-·_ 만 (통계에서 같은 채널끼리 묶이도록)
   const customValid = /^[a-z0-9_-]{1,30}$/.test(customChannel);
@@ -208,8 +218,19 @@ export default function PreviewDashboardOverview({ reservations, onNavigate }: P
       {/* URL 복사 — 링크를 올릴 곳을 고르면 출처(?utm_source=)가 붙은 주소를 복사 */}
       {showCopyModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setShowCopyModal(false)}>
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-xs p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
-            <div>
+          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-xs p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+            {/* 닫기 — 복사해도 창이 닫히지 않아 직접 닫는다 (바깥을 눌러도 닫힘) */}
+            <button
+              type="button"
+              onClick={() => setShowCopyModal(false)}
+              aria-label="닫기"
+              className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <div className="pr-6">
               <h3 className="text-sm font-semibold text-gray-900">링크를 올릴 곳을 선택해주세요</h3>
               <p className="text-xs text-gray-600 mt-1 leading-relaxed">
                 이 주소로 들어온 손님만 통계 탭 &lsquo;유입 분석&rsquo;에 채널별 방문·주문으로 집계돼요. 기본 주소로 들어오면 &lsquo;직접 유입&rsquo;으로만 잡혀요.
@@ -226,18 +247,18 @@ export default function PreviewDashboardOverview({ reservations, onNavigate }: P
                 <button
                   key={source}
                   type="button"
-                  onClick={() => copyLink(channelUrl(source))}
-                  className="py-2.5 rounded-xl border border-gray-200 text-sm text-gray-700 hover:border-gold-400 hover:bg-gold-50 transition-colors"
+                  onClick={() => copyLink(channelUrl(source), source)}
+                  className={channelBtnCls(source)}
                 >
-                  {label}
+                  {copiedKey === source ? "복사됨 ✓" : label}
                 </button>
               ))}
               <button
                 type="button"
-                onClick={() => copyLink(menuUrl)}
-                className="py-2.5 rounded-xl border border-gray-200 text-sm text-gray-700 hover:border-gold-400 hover:bg-gold-50 transition-colors"
+                onClick={() => copyLink(menuUrl, "base")}
+                className={channelBtnCls("base")}
               >
-                기본 주소
+                {copiedKey === "base" ? "복사됨 ✓" : "기본 주소"}
               </button>
               <button
                 type="button"
@@ -255,7 +276,7 @@ export default function PreviewDashboardOverview({ reservations, onNavigate }: P
                     type="text"
                     value={customChannel}
                     onChange={(e) => setCustomChannel(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
-                    onKeyDown={(e) => { if (e.key === "Enter" && customValid) copyLink(channelUrl(customChannel)); }}
+                    onKeyDown={(e) => { if (e.key === "Enter" && customValid) copyLink(channelUrl(customChannel), `custom:${customChannel}`); }}
                     placeholder="예) youtube, band"
                     maxLength={30}
                     autoFocus
@@ -263,11 +284,13 @@ export default function PreviewDashboardOverview({ reservations, onNavigate }: P
                   />
                   <button
                     type="button"
-                    onClick={() => copyLink(channelUrl(customChannel))}
+                    onClick={() => copyLink(channelUrl(customChannel), `custom:${customChannel}`)}
                     disabled={!customValid}
-                    className="px-3 py-2 rounded-lg bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors disabled:opacity-40"
+                    className={`px-3 py-2 rounded-lg text-white text-sm font-medium transition-colors disabled:opacity-40 whitespace-nowrap ${
+                      copiedKey === `custom:${customChannel}` ? "bg-green-500" : "bg-gold-500 hover:bg-gold-600"
+                    }`}
                   >
-                    복사
+                    {copiedKey === `custom:${customChannel}` ? "복사됨 ✓" : "복사"}
                   </button>
                 </div>
                 <p className="text-[11px] text-gray-400">영어 소문자·숫자로 입력해주세요. (한글·띄어쓰기는 입력되지 않아요)</p>

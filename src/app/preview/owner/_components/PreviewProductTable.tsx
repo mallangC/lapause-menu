@@ -184,8 +184,9 @@ export default function PreviewProductTable({ products, onEdit, onDelete, onStat
       {/* 필터 행 */}
       <div className="flex items-center gap-2" data-coach="pd-filter">
 
-        {/* 정렬 — 고정 */}
+        {/* 정렬 — 고정 (설명이 끝난 뒤 반짝이는 점을 이 버튼 오른쪽 위에 찍는다) */}
         <button
+          data-coach="pd-sort"
           onClick={() => { setSortKey(SORT_OPTIONS[(sortIdx + 1) % SORT_OPTIONS.length].key); resetPage(); }}
           className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border border-gray-300 bg-white text-gray-700 hover:border-gray-500 transition-colors whitespace-nowrap"
         >

@@ -481,7 +481,8 @@ export default function PreviewProductForm({ initialData, onSubmit, onCancel }: 
           <p className={sectionLabelCls}>뱃지 & 옵션</p>
         </div>
         <div className="px-5 py-4 space-y-4">
-          <div>
+          {/* 뱃지 — 코치마크가 이 줄만 설명한다 */}
+          <div data-coach="pd-badge">
             <label className={fieldLabelCls}>뱃지</label>
             <div className="flex p-1 bg-gray-100 rounded-xl">
               {[

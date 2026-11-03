@@ -23,6 +23,17 @@ const STEPS: CoachStep[] = [
     body: "손님이 선물 목적·분위기·예산을 고르면\n사장님 상품 중 어울리는 꽃을 추천해 줘요.\n상담 없이도 예약·결제까지 받을 수 있어요.",
   },
   {
+    selectors: ['[data-coach="home-footer"]'],
+    // 설명이 끝난 뒤 점은 유튜브 버튼 오른쪽 위에 (푸터 전체 오른쪽 끝은 너무 멀다)
+    dot: ['[data-coach="home-footer-dot"]'],
+    title: "매장 링크 · 사업자 정보",
+    body: "사장님의 매장과 관련된 링크가 버튼으로 보여요.\n손님은 버튼을 눌러서 길을 찾거나 문의할 수 있어요.\n사업자 정보와 환불 정책도 자동으로 들어가요.",
+  },
+];
+
+// 미리보기에서 뺀 설명(장바구니·메뉴) — 나중에 다시 쓸 수 있게 남겨 둠
+export const CUSTOMER_HOME_EXTRA_STEPS: CoachStep[] = [
+  {
     selectors: ['header a[href$="/cart"]'],
     title: "장바구니",
     body: "손님이 여러 상품을 담아 한 번에 주문해요.\n사장님은 예약 한 건으로 모아서 받아요.",
@@ -31,13 +42,6 @@ const STEPS: CoachStep[] = [
     selectors: ['button[aria-label="메뉴 열기"]'],
     title: "메뉴",
     body: "꽃다발·꽃바구니 같은 종류별, 시즌별로\n상품이 자동으로 나뉘어 보여요.\n사장님이 메뉴를 따로 만들 필요가 없어요.",
-  },
-  {
-    selectors: ['[data-coach="home-footer"]'],
-    // 설명이 끝난 뒤 점은 유튜브 버튼 오른쪽 위에 (푸터 전체 오른쪽 끝은 너무 멀다)
-    dot: ['[data-coach="home-footer-dot"]'],
-    title: "매장 링크 · 사업자 정보",
-    body: "사장님의 매장과 관련된 링크가 버튼으로 보여요.\n손님은 버튼을 눌러서 길을 찾거나 문의할 수 있어요.\n사업자 정보와 환불 정책도 자동으로 들어가요.",
   },
 ];
 
@@ -48,7 +52,7 @@ export default function CustomerHomeCoach() {
       storageKey="preview_coach_customer_home"
       intro={{
         title: "손님이 보는 메뉴판이에요",
-        body: "사장님 매장의 손님이 보게 될 화면이에요.\n손님은 앱 설치 없이 링크 하나로 들어와요.\n주요 기능 6가지를 알려드릴게요.",
+        body: "사장님 매장의 손님이 보게 될 화면이에요.\n손님은 앱 설치 없이 링크 하나로 들어와요.\n주요 기능 4가지를 알려드릴게요.",
       }}
       steps={STEPS}
       outro={{

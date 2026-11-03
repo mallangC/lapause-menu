@@ -23,6 +23,7 @@ const STEPS: CoachStep[] = [
   },
   {
     selectors: ['[data-coach="ds-preview"]'],
+    noDot: true,
     pad: 0,
     title: "미리보기",
     body: "고른 색이 메뉴판에서 어떻게 보이는지\n간단히 확인할 수 있어요.",

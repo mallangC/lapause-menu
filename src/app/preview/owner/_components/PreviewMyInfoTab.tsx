@@ -31,7 +31,8 @@ export default function PreviewMyInfoTab({ onNotice }: Props) {
   const twoFactorLoading = false;
   const twoFactorError: string | null = null;
   // 미리보기 — Google은 연결된 상태
-  const [identities, setIdentities] = useState<UserIdentity[]>([{ identity_id: "g", provider: "google" }]);
+  // 미리보기 — Google 계정이 연결된 상태로 고정 (연결·해제는 안내만)
+  const identities: UserIdentity[] = [{ identity_id: "g", provider: "google" }];
   const linkingProvider: string | null = null;
   const [linkError, setLinkError] = useState<string | null>(null);
 
@@ -40,13 +41,10 @@ export default function PreviewMyInfoTab({ onNotice }: Props) {
     onNotice(`실제 화면에서는 ${provider === "google" ? "Google" : "카카오"} 로그인 창이 열려요.\n미리보기라 연결되지는 않아요.`);
   };
 
+  // 미리보기 — 해제하지 않고 연결하기와 같은 방식으로 안내만 띄운다
   const handleUnlinkIdentity = async (identity: UserIdentity) => {
-    if (identities.length <= 1) {
-      setLinkError("최소 하나의 로그인 방법은 남아있어야 합니다.");
-      return;
-    }
     setLinkError(null);
-    setIdentities((prev) => prev.filter((i) => i.identity_id !== identity.identity_id));
+    onNotice(`실제 화면에서는 ${identity.provider === "google" ? "Google" : "카카오"} 계정 연결이 해제돼요.\n미리보기라 해제되지는 않아요.`);
   };
 
   const handleToggleTwoFactor = async () => {
