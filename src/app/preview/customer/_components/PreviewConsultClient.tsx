@@ -940,7 +940,7 @@ export default function PreviewConsultClient({ logoNode, slug, companyName, logo
               </label>
               <label className={`flex items-start gap-3 text-sm cursor-pointer ${s4fe.cancellation ? "text-red-500" : "text-gray-500"}`} data-coach="consult4-agree">
                 <AgreementCheckbox checked={cancellationAgreed} onChange={(v) => { setCancellationAgreed(v); if (s4fe.cancellation) setS4fe(p => ({ ...p, cancellation: false })); }} />
-                <span>맞춤 제작 상품으로 제작 착수 후 취소·환불 불가.{" "}<PreviewPolicyLink label="환불 정책" /> 동의 <span className="text-red-400">*</span></span>
+                <span>맞춤 제작 상품으로 제작 착수 후<br />취소·환불 불가.{" "}<PreviewPolicyLink label="환불 정책" /> 동의 <span className="text-red-400">*</span></span>
               </label>
               <p className="text-xs text-gray-400">예약이 확정되거나 취소되면 입력하신 번호로 카카오톡 알림톡을 보내드립니다.</p>
             </div>
