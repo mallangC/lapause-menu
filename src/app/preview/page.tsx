@@ -17,7 +17,7 @@ const PATHS = [
     title: "손님 화면",
     desc: "링크 하나로 메뉴판을 보고\n맞춤 주문부터 결제까지",
     points: ["전자 메뉴판", "맞춤 주문 추천", "장바구니 · 결제"],
-    img: "/landing/screen-menu1.webp",
+    img: "/preview/cover-customer.webp",
     alt: "손님이 보는 메뉴판 화면",
   },
   {
@@ -26,7 +26,7 @@ const PATHS = [
     title: "사장님 화면",
     desc: "들어온 예약을 확인하고\n매출과 정산까지 한눈에",
     points: ["예약 확정 · 상태 관리", "통계 · 유입 분석", "정산"],
-    img: "/landing/screen-reservation1-m.webp",
+    img: "/preview/cover-owner.webp",
     alt: "사장님이 쓰는 예약 관리 화면",
   },
 ];
@@ -108,10 +108,10 @@ export default function PreviewPage() {
               {/* 휴대폰 화면 미리보기 — 아래쪽은 카드 밖으로 잘림 */}
               <div className="relative mt-7 h-[230px] md:h-[300px] flex justify-center">
                 <div
-                  className="absolute top-0 w-[190px] md:w-[230px] rounded-t-[28px] overflow-hidden transition-transform duration-500 group-hover:-translate-y-2"
+                  className="absolute top-0 w-[190px] md:w-[230px] rounded-t-[18px] overflow-hidden transition-transform duration-500 group-hover:-translate-y-2"
                   style={{ border: "6px solid #2a2219", borderBottom: "none", boxShadow: "0 24px 60px rgba(0,0,0,0.45)" }}
                 >
-                  <Image src={p.img} alt={p.alt} width={414} height={895} className="w-full h-auto block" />
+                  <Image src={p.img} alt={p.alt} width={391} height={686} className="w-full h-auto block" />
                 </div>
                 <div className="absolute inset-x-0 bottom-0 h-20 pointer-events-none" style={{ background: "linear-gradient(to bottom, transparent, rgba(24,19,14,0.85))" }} />
               </div>
