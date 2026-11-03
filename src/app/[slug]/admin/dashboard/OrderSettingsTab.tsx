@@ -385,6 +385,7 @@ export default function OrderSettingsTab({ companyId, plan: _plan, settings, onS
                     placeholder="예: 홍길동"
                     className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
                   />
+                  <p className="text-xs text-gray-400 mt-1.5">계좌번호를 잘못 적어서 생기는 불이익은 책임지지 않습니다.</p>
                 </div>
 
                 {/* 통장사본 — 계좌 정보 바로 아래 (같은 카드) */}
@@ -409,7 +410,6 @@ export default function OrderSettingsTab({ companyId, plan: _plan, settings, onS
                   <input ref={bankImageInputRef} type="file" accept="image/*,application/pdf" onChange={handleBankImageUpload} className="hidden" />
                 </div>
               </div>
-              <p className="text-xs text-gray-400 mt-3">계좌번호를 잘못 적어서 생기는 불이익은 책임지지 않습니다.</p>
             </div>
 
         </div>
