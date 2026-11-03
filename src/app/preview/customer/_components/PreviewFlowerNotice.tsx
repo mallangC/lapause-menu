@@ -41,8 +41,9 @@ export default function PreviewFlowerNotice({ onConfirm, onClose }: Props) {
           <p className="text-[13px] leading-relaxed text-white/85">
             손님이 상품을 예약하기 전에 이 안내가 자동으로 떠요.
             <br />
-            결제 전에 손님이 안내를 확인하도록 해 손님이 꽃의 특성을 이해하고
-            &lsquo;사진과 달라요&rsquo; 같은 분쟁을 줄여줘요.
+            손님은 결제 전에 아래와 같은 안내 사항을 확인하고
+            <br />
+            사장님은 반복되는 내용을 별도로 안내하지 않아도 돼요.
           </p>
         </div>
 
@@ -53,8 +54,8 @@ export default function PreviewFlowerNotice({ onConfirm, onClose }: Props) {
         >
           <div className="text-sm text-gray-700 leading-relaxed text-center">
             <p>생화는 계절과 입고 상황이 매번 다르기 때문에</p>
-            <p>사진과 똑같은 구성으로 제작할 수 없습니다.</p>
-            <p>이미지를 참고해 비슷한 분위기로 제작해드립니다.</p>
+            <p>사진과 똑같은 구성으로 제작이 어렵습니다.</p>
+            <p>이미지를 참고해 비슷한 분위기로 준비해 드릴게요.</p>
           </div>
           <button
             type="button"

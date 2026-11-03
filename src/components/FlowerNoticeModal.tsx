@@ -24,8 +24,8 @@ export default function FlowerNoticeModal({ onConfirm, onClose }: Props) {
       >
         <div className="text-sm text-gray-700 leading-relaxed text-center">
           <p>생화는 계절과 입고 상황이 매번 다르기 때문에</p>
-          <p>사진과 똑같은 구성으로 제작할 수 없습니다.</p>
-          <p>이미지를 참고해 비슷한 분위기로 제작해드립니다.</p>
+          <p>사진과 똑같은 구성으로 제작이 어렵습니다.</p>
+          <p>이미지를 참고해 비슷한 분위기로 준비해 드릴게요.</p>
         </div>
         <button
           type="button"
