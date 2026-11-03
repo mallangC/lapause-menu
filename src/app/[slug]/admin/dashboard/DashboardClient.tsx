@@ -26,6 +26,9 @@ import DashboardOverviewTab from "./DashboardOverviewTab";
 import { notifyMenuChanged } from "@/lib/menuCacheClient";
 
 type Tab = "dashboard" | "reservations" | "products" | "stats" | "settlement" | "company" | "ordersettings" | "business" | "reservation" | "menusettings" | "settings" | "plan" | "myinfo";
+const TABS: Tab[] = ["dashboard", "reservations", "products", "stats", "settlement", "company", "ordersettings", "business", "reservation", "menusettings", "settings", "plan", "myinfo"];
+// 주소의 ?tab= 값을 탭으로 — 없거나 모르는 값이면 대시보드
+const toTab = (v: string | null): Tab => (v && (TABS as string[]).includes(v) ? (v as Tab) : "dashboard");
 
 interface Props {
   slug: string;
@@ -62,8 +65,26 @@ interface Props {
 
 export default function DashboardClient({ slug, userId, userEmail, isOAuth, profileName, profilePhone, twoFactorEnabled, companyId, companyName, logoImage, themeBg, themeAccent, initialProducts, locationUrl, kakaoChannelUrl, instagramUrl, youtubeUrl, companyPhone, hiddenProductTypes, hiddenSeasons, consultEnabled, plan, subscriptionPlan, cancelAtPeriodEnd, trialEndsAt, planExpiresAt, hasBillingKey, appliedPromo, initialSettings }: Props) {
   const searchParams = useSearchParams();
-  const initialTab = (searchParams.get("tab") as Tab | null) ?? "dashboard";
+  const initialTab = toTab(searchParams.get("tab"));
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
+  // 탭 이동을 주소(?tab=)와 방문 기록에 남긴다 — 뒤로가기로 이전 탭에 돌아오고, 새로고침해도 그 탭으로 열린다.
+  // Next 페이지 이동(router.push)은 서버 데이터를 다시 받아와서, 브라우저 기록만 바꾸는 history API를 쓴다.
+  // replace: 기록을 쌓지 않고 바꾸기만 (예: 판매 기능을 꺼서 통계 탭이 사라질 때)
+  const goTab = (tab: Tab, replace = false) => {
+    setActiveTab(tab);
+    const url = new URL(window.location.href);
+    if (tab === "dashboard") url.searchParams.delete("tab");
+    else url.searchParams.set("tab", tab);
+    if (url.href === window.location.href) return;
+    if (replace) window.history.replaceState(null, "", url);
+    else window.history.pushState(null, "", url);
+  };
+  // 뒤로가기·앞으로가기 — 주소의 탭으로 화면을 맞춘다
+  useEffect(() => {
+    const onPop = () => setActiveTab(toTab(new URLSearchParams(window.location.search).get("tab")));
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
   // 한 번 연 탭은 숨기기만 하고 유지 — 탭을 오갈 때마다 다시 마운트되며 DB를 재조회하지 않도록
   const [visitedTabs, setVisitedTabs] = useState<Set<Tab>>(() => new Set([initialTab]));
   useEffect(() => {
@@ -189,7 +210,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
 
   const handleConsultToggle = (enabled: boolean) => {
     setCurrentConsultEnabled(enabled);
-    if (!enabled && (activeTab === "stats" || activeTab === "settlement")) setActiveTab("reservations");
+    if (!enabled && (activeTab === "stats" || activeTab === "settlement")) goTab("reservations", true);
   };
 
   const mainTabs: { key: Tab; label: string; statsOnly?: boolean }[] = [
@@ -236,7 +257,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
               className={`overflow-hidden transition-all duration-300 shrink-0 ${tab.statsOnly && !currentConsultEnabled ? "max-w-0 opacity-0 pointer-events-none" : "max-w-[120px] opacity-100"}`}
             >
               <button
-                onClick={() => { setActiveTab(tab.key); setShowForm(false); setEditingProduct(null); setError(null); setShowSettingsDropdown(false); }}
+                onClick={() => { goTab(tab.key); setShowForm(false); setEditingProduct(null); setError(null); setShowSettingsDropdown(false); }}
                 className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                   activeTab === tab.key ? "border-gold-500 text-gold-500" : "border-transparent text-gray-400 hover:text-gray-700"
                 }`}
@@ -264,7 +285,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
             {settingsTabs.map((tab) => (
               <button
                 key={tab.key}
-                onClick={() => { setActiveTab(tab.key); setShowForm(false); setEditingProduct(null); setError(null); }}
+                onClick={() => { goTab(tab.key); setShowForm(false); setEditingProduct(null); setError(null); }}
                 className={`px-4 py-2.5 text-xs font-medium transition-colors whitespace-nowrap border-b-2 ${
                   activeTab === tab.key ? "border-gold-500 text-gold-500" : "border-transparent text-gray-400 hover:text-gray-600"
                 }`}
@@ -300,7 +321,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
                 className={`overflow-hidden transition-all duration-300 ${tab.statsOnly && !currentConsultEnabled ? "max-h-0 opacity-0" : "max-h-12 opacity-100"}`}
               >
                 <button
-                  onClick={() => { setActiveTab(tab.key); setShowForm(false); setEditingProduct(null); setError(null); }}
+                  onClick={() => { goTab(tab.key); setShowForm(false); setEditingProduct(null); setError(null); }}
                   className={`w-full text-left px-4 py-2.5 rounded-lg text-sm transition-colors ${
                     activeTab === tab.key ? "bg-gold-500 text-white font-medium" : "text-gray-700 hover:bg-gray-100"
                   }`}
@@ -327,7 +348,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
                   {settingsTabs.map((tab) => (
                     <li key={tab.key}>
                       <button
-                        onClick={() => { setActiveTab(tab.key); setShowForm(false); setEditingProduct(null); setError(null); }}
+                        onClick={() => { goTab(tab.key); setShowForm(false); setEditingProduct(null); setError(null); }}
                         className={`w-full text-left px-4 py-2 rounded-lg text-sm transition-colors ${
                           activeTab === tab.key ? "bg-gold-500/10 text-gold-600 font-medium" : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
                         }`}
@@ -424,7 +445,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
                 plan={plan}
                 onNavigate={(tab, statusFilter) => {
                   setReservationStatusFilter(statusFilter);
-                  setActiveTab(tab as Tab);
+                  goTab(toTab(tab));
                 }}
               />
             </div>
@@ -533,7 +554,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
                 settings={companySettings}
                 onSettingsSaved={handleSettingsSaved}
                 onConsultToggle={handleConsultToggle}
-                onGoToOrderSettings={() => setActiveTab("ordersettings")}
+                onGoToOrderSettings={() => goTab("ordersettings")}
               />
             </div>
           )}
