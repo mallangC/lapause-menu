@@ -709,8 +709,9 @@ export default function CheckoutClient({
           </div>
 
           {/* ── 오른쪽: 고정 사이드 패널 (PC 전용) ── */}
-          <div className="hidden md:block w-80 shrink-0">
-            <div className="sticky top-[100px] bg-white border border-gray-100 overflow-hidden">
+          {/* 맞춤주문 결제 화면과 같은 방식 — 패널 자체를 sticky로, top은 헤더(80px) + 단계 표시 바(약 49px) 아래 */}
+          <div className="hidden md:flex md:flex-col md:w-80 md:shrink-0 md:self-start md:sticky md:top-[150px]">
+            <div className="bg-white border border-gray-100 overflow-hidden">
               {/* 결제 금액 요약 */}
               <div className="px-5 py-4 border-b border-gray-100 space-y-2">
                 <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">결제 금액</p>
