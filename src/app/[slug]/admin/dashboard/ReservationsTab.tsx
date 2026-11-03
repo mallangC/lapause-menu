@@ -440,7 +440,19 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 shrink-0">
               <div className="flex items-center gap-2">
                 <span className={`w-2.5 h-2.5 rounded-full ${STATUS_DOT[mobileDetailReservation.status] ?? "bg-gray-300"}`} />
-                <span className="text-sm font-semibold text-gray-900">{mobileDetailReservation.orderer_name}</span>
+                {/* 예약자 이름 — 손님 정보가 있으면 버튼으로 눌러 손님 정보(주문 횟수·메모)를 연다 (PC 표의 이름 버튼과 같은 기능) */}
+                {mobileDetailReservation.customer_profile_id ? (
+                  <button
+                    type="button"
+                    onClick={() => setProfileModal({ profileId: mobileDetailReservation.customer_profile_id!, name: mobileDetailReservation.orderer_name, phone: mobileDetailReservation.orderer_phone })}
+                    // 버튼처럼 테두리를 둘러 누를 수 있다는 걸 보여준다
+                    className="px-2.5 py-0.5 rounded-lg border border-gray-300 text-sm font-semibold text-gray-900 active:bg-gray-100 transition-colors"
+                  >
+                    {mobileDetailReservation.orderer_name}
+                  </button>
+                ) : (
+                  <span className="text-sm font-semibold text-gray-900">{mobileDetailReservation.orderer_name}</span>
+                )}
                 <span className="text-xs text-gray-400">{formatDateHeader(mobileDetailReservation.desired_date)}</span>
                 {/* 수령 방법 배지 — 목록 카드와 같은 모양 (상세 본문에는 수령 방법 줄이 없다) */}
                 <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${mobileDetailReservation.delivery_type === "배송" ? "border border-blue-400 text-blue-500" : "border border-gray-400 text-gray-500"}`}>
