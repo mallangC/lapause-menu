@@ -4,6 +4,7 @@ import { PREVIEW_PRICES, PREVIEW_PRODUCTS, PREVIEW_THEME_VARS } from "../../_moc
 import { brandFont } from "../../brandFont";
 import PreviewCartClient from "../_components/PreviewCartClient";
 import CartCoach from "./CartCoach";
+import DirectOrderCoach from "./DirectOrderCoach";
 
 export const metadata: Metadata = {
   title: "손님 화면 미리보기 | Flo.Aide",
@@ -46,7 +47,8 @@ export default async function PreviewCartPage({ searchParams }: Props) {
         slug="preview/customer"
         initialItems={initialItems}
         direct={direct}
-        initialExpanded={direct ? null : initialItems[0]?.productId ?? null}
+        // 옵션 칸을 펼쳐 두고 시작 (설명이 옵션을 가리킨다)
+        initialExpanded={initialItems[0]?.productId ?? null}
         companyName="Brand Name"
         logoImage={null}
         logoNode={<span className={`${brandFont.className} text-[22px] md:text-[30px] text-gray-900 tracking-wide`}>Brand Name</span>}
@@ -60,8 +62,8 @@ export default async function PreviewCartPage({ searchParams }: Props) {
         messageCardEnabled
         messageCardPrice={PREVIEW_PRICES.messageCard}
       />
-      {/* 코치마크는 장바구니 설명용 (바로 예약 화면에는 띄우지 않는다) */}
-      {!direct && <CartCoach />}
+      {/* 코치마크 — 장바구니와 바로 예약은 설명 문구가 달라 따로 띄운다 */}
+      {direct ? <DirectOrderCoach /> : <CartCoach />}
     </>
   );
 }

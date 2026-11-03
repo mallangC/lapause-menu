@@ -17,6 +17,8 @@ const STEPS: CoachStep[] = [
   {
     // 상품 유형 ~ 시즌 묶음만 강조 (추가 창 전체를 덮지 않게)
     selectors: ['[data-coach="pd-classify"]'],
+    radius: 0,
+    pad: 0,
     onEnter: () => {
       send(true);
       setTimeout(() => {
@@ -25,10 +27,12 @@ const STEPS: CoachStep[] = [
       }, 200);
     },
     title: "상품 정보 입력",
-    body: "사진·이름·가격을 넣고 종류, 꽃 색상, 포장지,\n분위기, 시즌을 골라요. 고른 분류는 손님 메뉴판의\n필터와 맞춤주문 추천에 그대로 쓰여요.",
+    body: "상품 정보를 넣고 어울리는 분류를 골라요.\n고른 분류는 손님 메뉴판의 필터와\n맞춤주문 추천에 그대로 쓰여요.",
   },
   {
     selectors: ['[data-coach="pd-options"]'],
+    radius: 0,
+    pad: 0,
     onEnter: () => {
       send(true);
       // 추가 창 안에서 아래쪽 '뱃지 & 옵션' 칸이 보이도록 창 안을 스크롤
@@ -38,13 +42,13 @@ const STEPS: CoachStep[] = [
       }, 200);
     },
     title: "뱃지 · 추가 옵션 설정",
-    body: "원하는 상품에 인기·추천 배지를 달아\n메뉴판에서 눈에 띄게 할 수 있어요.\n추가 옵션 '추가 불가'를 체크해\n손님이 해당 옵션을 추가하지 못하게 막아요.\n(쇼핑백이 포함된 상품, 메시지카드를 활용 불가, 생화 수명 연장제가 불필요한 상황을 위한 설정)",
+    body: "인기·추천 배지를 달아 메뉴판에서 강조할 수 있어요.\n이미 포함됐거나 필요 없는 옵션은\n'추가 불가'로 손님이 고르지 못하게 해요.",
   },
   {
     selectors: ['[data-coach="pd-filter"]'],
     onEnter: () => send(false),
     title: "필터",
-    body: "상품이 많아도 종류·인기·추천·노출 여부로\n골라 보고, 최신순·가격순으로 정렬해\n원하는 상품을 쉽게 찾을 수 있어요.",
+    body: "상품이 많아도 필터와 정렬로\n원하는 상품을 쉽게 찾을 수 있어요.",
   },
   {
     selectors: ['[data-coach="pd-toggle"]'],

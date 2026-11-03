@@ -5,17 +5,19 @@ import PreviewCoach, { type CoachStep } from "../PreviewCoach";
 const STEPS: CoachStep[] = [
   {
     selectors: ['[data-coach="mi-social"]'],
+    pad: 16,
+    // 모바일: 네모, 좌우 화면 끝까지
+    mobileRadius: 0,
+    mobilePadX: 16,
     title: "소셜 계정 연결",
-    body: "이메일로 가입 후에도\nGoogle·카카오 계정을 연결하면\n해당 계정으로도 소셜 로그인을 사용할 수 있어요.\n(같은 이메일의 계정만 연결할 수 있어요.)",
-  },
-  {
-    selectors: ['[data-coach="mi-password"]'],
-    optional: true,
-    title: "비밀번호 변경",
-    body: "이메일로 가입했다면 여기서 비밀번호를 바꿔요.\n바꾸고 나면 안전하게 다시 로그인해요.",
+    body: "이메일로 가입 후에도 Google·카카오 계정을 연결하면\n해당 계정으로도 소셜 로그인을 사용할 수 있어요.\n(같은 이메일의 계정만 연결할 수 있어요.)",
   },
   {
     selectors: ['[data-coach="mi-2fa"]'],
+    pad: 16,
+    // 모바일: 네모, 좌우 화면 끝까지
+    mobileRadius: 0,
+    mobilePadX: 16,
     title: "로그인 2단계 인증",
     body: "켜두면 새 기기에서 로그인할 때\n이메일로 받은 인증번호를 한 번 더 입력해요.\n인증한 기기는 최대 30일 동안 다시 묻지 않아요.",
   },

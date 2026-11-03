@@ -16,18 +16,24 @@ const action = (name: "delivery" | "requests") => () =>
 const STEP1: CoachStep[] = [
   {
     selectors: ['[data-coach="consult1-0"]'],
+    radius: 0,
+    pad: 0,
     onEnter: openSection(1, 0),
     title: "선물 목적",
     body: "손님이 기념·축하·감사처럼 어떤 날인지 골라요.\n사장님은 예약에서 선물 목적을 보고\n그날에 어울리게 꽃을 제작할 수 있어요.",
   },
   {
     selectors: ['[data-coach="consult1-1"]'],
+    radius: 0,
+    pad: 0,
     onEnter: openSection(1, 1),
     title: "성별",
     body: "손님이 받는 분의 성별을 골라요.\n사장님은 이를 참고해 색감과 구성을\n정할 수 있어요.",
   },
   {
     selectors: ['[data-coach="consult1-2"]'],
+    radius: 0,
+    pad: 0,
     onEnter: openSection(1, 2),
     title: "받는 분 연령대",
     body: "손님이 받는 분의 연령대를 골라요.\n연령대마다 좋아하는 스타일이 달라서\n사장님이 제작할 때 참고할 수 있어요.",
@@ -44,18 +50,24 @@ const STEP1: CoachStep[] = [
 const STEP2: CoachStep[] = [
   {
     selectors: ['[data-coach="consult2-0"]'],
+    radius: 0,
+    pad: 0,
     onEnter: openSection(2, 0),
     title: "상품 형태",
     body: "손님이 꽃다발·꽃바구니 같은 형태를 골라요.\n사장님이 등록한 상품 중 같은 형태의 상품이 추천돼요.",
   },
   {
     selectors: ['[data-coach="consult2-1"]'],
+    radius: 0,
+    pad: 0,
     onEnter: openSection(2, 1),
     title: "선호하는 분위기",
     body: "손님이 원하는 색감·분위기를 골라요.\n상품을 등록할 때 정한 분위기와 맞는 상품이\n먼저 추천되고, 사장님은 제작할 때 참고해요.",
   },
   {
     selectors: ['[data-coach="consult2-2"]'],
+    radius: 0,
+    pad: 0,
     onEnter: openSection(2, 2),
     title: "희망 예산",
     body: "손님이 원하는 예산을 골라요.\n예산에 딱 맞는 상품과 조금 더 풍성한 상품을\n함께 보여줘서 손님의 선택 폭이 넓어져요.",
@@ -72,9 +84,11 @@ const STEP2: CoachStep[] = [
 // 3단계(상품 선택) 설명
 const STEP3: CoachStep[] = [
   {
-    // 제목 + 첫 줄 상품만 감싼다 (모바일에서 영역이 너무 길어지지 않게)
-    selectors: ['[data-coach="consult3-title"]'],
+    // 맨 위 줄 상품 2개만 딱 맞는 네모로 감싼다 (2열 격자라 첫 줄 = 위 2개)
+    selectors: ['[data-coach="consult3-item"]'],
     also: ['[data-coach="consult3-item"]'],
+    radius: 0,
+    pad: 0,
     title: "추천 상품",
     body: "2단계에서 고른 상품 형태·분위기·예산을 토대로\n사장님 상품 중 어울리는 상품을 자동으로 추천해요.\n손님은 이 중 마음에 드는 상품을 하나 골라요.",
   },
@@ -84,37 +98,51 @@ const STEP3: CoachStep[] = [
 const STEP4: CoachStep[] = [
   {
     selectors: ['[data-coach="consult4-notice"]'],
+    radius: 0,
+    pad: 0,
     title: "안내 사항",
     body: "사장님이 설정에 적어둔 안내 문구가 보여요.\n손님이 '확인했습니다'에 체크해야 결제할 수 있어서\n꼭 알려야 할 내용을 확실히 전할 수 있어요.",
   },
   {
     selectors: ['[data-coach="consult4-orderer"]'],
+    radius: 0,
+    pad: 0,
     title: "예약자 정보",
     body: "손님이 이름과 휴대전화 번호를 입력해요.\n예약이 확정·취소되면 이 번호로\n카카오 알림톡이 자동으로 발송돼요.",
   },
   {
     selectors: ['[data-coach="consult4-delivery"]'],
+    radius: 0,
+    pad: 0,
     onEnter: action("delivery"),
     title: "수령 방법",
     body: "손님이 픽업과 배송 중에 골라요.\n배송을 고르면 매장에서 배송지까지 거리를 재서\n사장님이 정한 거리별 배송비가 자동으로 붙어요.",
   },
   {
     selectors: ['[data-coach="consult4-date"]'],
+    radius: 0,
+    pad: 0,
     title: "수령 희망 날짜",
     body: "사장님이 정한 휴무일과 상품별 준비 시간을 반영해\n손님은 예약 가능한 날짜만 고를 수 있어요.\n임시 휴무일도 사장님이 직접 지정할 수 있어요.",
   },
   {
     selectors: ['[data-coach="consult4-time"]'],
+    radius: 0,
+    pad: 0,
     title: "수령 희망 시간",
     body: "사장님이 정한 영업시간 안에서만\n손님이 수령 시간을 고를 수 있어요.\n날짜별로 시간을 다르게 정할 수도 있어요.",
   },
   {
     selectors: ['[data-coach="consult4-options"]'],
+    radius: 0,
+    pad: 0,
     title: "추가 옵션",
-    body: "메시지 카드·쇼핑백·수명연장제 중 사장님이\n켜둔 옵션을 손님이 추가해요.\n옵션 가격도 사장님이 정할 수 있어요.",
+    body: "메시지 카드·쇼핑백·수명연장제 중\n사장님이 활성화한 옵션을 손님이 추가해요.\n옵션 가격도 사장님이 정할 수 있어요.",
   },
   {
     selectors: ['[data-coach="consult4-requests"]'],
+    radius: 0,
+    pad: 0,
     onEnter: action("requests"),
     title: "요청 사항",
     body: "손님이 전하고 싶은 요청을 자유롭게 적어요.\n사장님은 예약 정보에서 바로 확인할 수 있어요.",
@@ -122,12 +150,17 @@ const STEP4: CoachStep[] = [
   {
     // 결제 금액 요약은 PC 오른쪽 패널에만 있다 — 모바일에서는 건너뛴다
     selectors: ['[data-coach="consult4-summary"]'],
+    radius: 0,
+    pad: 0,
     optional: true,
     title: "결제 금액",
     body: "상품 가격에 손님이 추가한 옵션과\n거리별 배송비까지 합쳐 총 결제금액을 보여줘요.\n손님이 결제 전에 한눈에 확인할 수 있어요.",
   },
   {
     selectors: ['[data-coach="consult4-agree"]'],
+    // 동의 문구는 글자 한 줄이라 딱 붙으면 답답해서 여백을 둔다
+    radius: 0,
+    pad: 10,
     title: "맞춤 제작 상품 동의",
     body: "제작 착수 후에는 취소·환불이 어렵다는 점을\n결제 단계에서 고객에게 미리 동의받아\n주문 취소 분쟁을 예방해요",
   },
@@ -137,13 +170,15 @@ const STEP4: CoachStep[] = [
 const DONE: CoachStep[] = [
   {
     selectors: ['[data-coach="done-header"]'],
+    pad: 0,
     title: "결제 완료",
-    body: "결제가 끝나면 예약이 사장님께 들어가고,\n사장님이 내용을 확인한 뒤 확정 또는 취소해요.\n예약이 확정·취소되면 카카오 알림톡으로 알려드려요.",
+    body: "결제가 끝나면 예약이 사장님께 들어가고,\n사장님이 내용을 확인한 뒤 확정 또는 취소할 수 있어요.\n예약이 확정·취소되면 손님에게 자동으로\n카카오 알림톡이 발송돼요.",
   },
   {
     selectors: ['[data-coach="done-info"]'],
+    pad: 0,
     title: "주문 내용 확인",
-    body: "상품, 주문자·받는 분, 수령 날짜·시간,\n옵션과 결제 금액을 한 번에 보여줘요.\n손님이 주문한 내용을 마지막으로 다시 확인해요.",
+    body: "주문 정보와 결제 금액을 한 번에 보여줘요.\n손님이 주문한 내용을 마지막으로 다시 확인해요.",
   },
 ];
 
@@ -151,18 +186,24 @@ const DONE: CoachStep[] = [
 const RESERVE_STEP1: CoachStep[] = [
   {
     selectors: ['[data-coach="consult1-0"]'],
+    radius: 0,
+    pad: 0,
     onEnter: openSection(1, 0),
     title: "선물 목적",
-    body: "손님이 기념·축하·감사처럼 어떤 날인지 골라요.\n사장님은 고른 상품을 바탕으로\n그날 분위기에 맞게 제작할 수 있어요.",
+    body: "손님이 기념·축하·감사처럼 어떤 날인지 골라요.\n사장님은 손님이 고른 상품을 바탕으로\n선물 목적에 맞게 제작할 수 있어요.",
   },
   {
     selectors: ['[data-coach="consult1-1"]'],
+    radius: 0,
+    pad: 0,
     onEnter: openSection(1, 1),
     title: "성별",
     body: "손님이 받는 분의 성별을 골라요.\n여성분이면 더 화사하게, 남성분이면 차분하게\n색감을 조절하는 데 참고할 수 있어요.",
   },
   {
     selectors: ['[data-coach="consult1-2"]'],
+    radius: 0,
+    pad: 0,
     onEnter: openSection(1, 2),
     title: "받는 분 연령대",
     body: "손님이 받는 분의 연령대를 골라요.\n연령대마다 좋아하는 스타일이 달라서\n사장님이 제작할 때 참고할 수 있어요.",
@@ -225,7 +266,7 @@ const COACHES: Record<number, CoachConfig> = {
   4: {
     intro: {
       title: "4단계 · 예약 확인",
-      body: "손님이 받는 방법과 날짜·시간을 정하고\n결제하는 마지막 단계예요.\n주요 항목을 차례로 알려드릴게요.",
+      body: "손님이 수령 방법과 날짜·시간을 정하고\n결제하는 마지막 단계예요.\n주요 항목을 차례로 알려드릴게요.",
     },
     steps: STEP4,
     outro: {
@@ -242,7 +283,7 @@ const COACHES: Record<number, CoachConfig> = {
     steps: DONE,
     outro: {
       title: "맞춤주문 둘러보기 끝",
-      body: "손님이 맞춤주문으로 예약하는 흐름을 모두 봤어요.\n아래 버튼으로 손님 홈이나 처음 화면으로\n돌아갈 수 있어요.",
+      body: "손님이 맞춤주문으로 예약하는 흐름을 모두 확인했어요.\n아래 버튼으로 손님 홈이나 처음 화면으로\n돌아갈 수 있어요.",
     },
   },
 };

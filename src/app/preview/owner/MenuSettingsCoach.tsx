@@ -5,8 +5,10 @@ import PreviewCoach, { type CoachStep } from "../PreviewCoach";
 const STEPS: CoachStep[] = [
   {
     selectors: ['[data-coach="mn-all"]'],
+    pad: 0,
+    mobileRadius: 0,
     title: "상품 유형 · 시즌 메뉴",
-    body: "손님 메뉴판에 보이는 상품 유형과 시즌 메뉴를\n우리 매장에 맞게 직접 만들 수 있어요.\n+로 자유롭게 추가하고 ×로 삭제하며,\n기본으로 들어 있는 항목도 지울 수 있어요.",
+    body: "손님 메뉴판에 보이는 상품 유형과 시즌 메뉴를\n우리 매장에 맞게 직접 만들 수 있어요.\n+로 자유롭게 추가하고 ×로 삭제할 수 있어요.",
   },
 ];
 

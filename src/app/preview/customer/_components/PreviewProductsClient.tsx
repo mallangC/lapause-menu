@@ -303,7 +303,8 @@ export default function PreviewProductsClient({
 
       {/* 푸터 — 아래에 미리보기 이동 바가 떠 있어서 사업자 정보가 가리지 않게 아래 여백을 더 둔다 */}
       <div className="bg-white border-t border-gray-100 pb-12">
-        <div data-coach="home-footer" className="max-w-4xl mx-auto px-4 py-8 flex flex-col items-center gap-8">
+        {/* w-fit — 내용 너비만큼만 차지해서 설명 하이라이트가 좌우로 길게 퍼지지 않는다 (가운데 정렬은 mx-auto로 그대로) */}
+        <div data-coach="home-footer" className="w-fit max-w-4xl mx-auto px-4 py-8 flex flex-col items-center gap-8">
           {/* 미리보기 — 사장님이 링크를 등록했을 때처럼 네 버튼을 모두 보여주고, 누르면 이동 대신 안내만 띄운다 */}
           {(
             <div className="flex flex-row gap-8 justify-center">

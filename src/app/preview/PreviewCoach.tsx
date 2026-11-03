@@ -15,6 +15,18 @@ export interface CoachStep {
   optional?: boolean;
   /** 이 단계에 들어올 때 화면을 바꿀 일 (예: 접힌 항목 펼치기) */
   onEnter?: () => void;
+  /** 강조 구멍 모서리 둥글기(px) — 없으면 16. 0이면 네모 */
+  radius?: number;
+  /** 모바일(768px 미만)에서만 쓸 모서리 둥글기 — 없으면 radius를 그대로 쓴다 */
+  mobileRadius?: number;
+  /** 모바일에서만 쓸 강조 여백 — 없으면 pad를 그대로 쓴다 */
+  mobilePad?: number;
+  /** 모바일에서만 좌우 여백을 따로 줄 때 — 없으면 mobilePad(→ pad)와 같다 */
+  mobilePadX?: number;
+  /** 모바일에서만 강조 영역을 이 요소 아래 끝까지로 줄인다 (긴 목록이 설명 창과 겹칠 때 앞부분만 보여주기) */
+  mobileTo?: string[];
+  /** 강조 구멍을 요소보다 얼마나 넓게 뚫을지(px) — 없으면 PAD. 0이면 요소에 딱 맞게 */
+  pad?: number;
 }
 
 interface Props {
@@ -113,7 +125,11 @@ function stepRect(step: CoachStep): Rect | null {
   }
   const top = Math.min(...rects.map((r) => r.top));
   const left = Math.min(...rects.map((r) => r.left));
-  const bottom = Math.max(...rects.map((r) => r.bottom));
+  let bottom = Math.max(...rects.map((r) => r.bottom));
+  if (step.mobileTo && window.innerWidth < 768) {
+    const end = findVisible(step.mobileTo);
+    if (end) bottom = Math.min(bottom, end.getBoundingClientRect().bottom);
+  }
   const right = Math.max(...rects.map((r) => r.right));
   return { top, left, width: right - left, height: bottom - top };
 }
@@ -337,6 +353,12 @@ export default function PreviewCoach({ storageKey, intro, steps: allSteps, outro
   // 옮기는 중에는 이전 단계 내용을 보여준다 (사라지는 동안 글자가 먼저 바뀌지 않게)
   const contentPhase = settling && shownPhase !== null && shownPhase >= 1 && shownPhase <= total ? shownPhase : phase;
   const card = contentPhase === 0 ? intro : contentPhase === total + 1 ? outro : steps[contentPhase - 1];
+  // 강조 구멍 모양 — 옮기는 중(구멍이 닫히는 동안)에는 이전 단계 모양을 유지하고, 다 닫힌 뒤 새 단계 모양으로 열린다
+  const holeStep = contentPhase !== null && contentPhase >= 1 && contentPhase <= total ? steps[contentPhase - 1] : undefined;
+  const isMobileView = typeof window !== "undefined" && window.innerWidth < 768;
+  const holePad = (isMobileView ? holeStep?.mobilePad : undefined) ?? holeStep?.pad ?? PAD;
+  const holePadX = (isMobileView ? holeStep?.mobilePadX : undefined) ?? holePad;
+  const holeRadius = (isMobileView ? holeStep?.mobileRadius : undefined) ?? holeStep?.radius ?? 16;
 
   // 말풍선 위치 — 요소 아래 공간이 넉넉하면 아래, 아니면 위
   let tooltipStyle: React.CSSProperties = {};
@@ -345,11 +367,12 @@ export default function PreviewCoach({ storageKey, intro, steps: allSteps, outro
     const width = Math.min(TOOLTIP_W, vw - 32);
     const left = Math.min(Math.max(rect.left + rect.width / 2 - width / 2, 16), vw - width - 16);
     const vh = window.innerHeight;
-    if (rect.top + rect.height + 230 < vh) tooltipStyle = { width, left, top: rect.top + rect.height + PAD + 12 };
-    else if (rect.top > 230) tooltipStyle = { width, left, bottom: vh - rect.top + PAD + 12 };
+    // 말풍선은 강조 구멍 바깥에서 12px 띄운다 — 구멍 여백(holePad)이 단계마다 달라서 기본 PAD가 아니라 그 값을 쓴다
+    if (rect.top + rect.height + holePad + 230 < vh) tooltipStyle = { width, left, top: rect.top + rect.height + holePad + 12 };
+    else if (rect.top - holePad > 230) tooltipStyle = { width, left, bottom: vh - rect.top + holePad + 12 };
     // 위아래 모두 자리가 없으면(큰 영역) 옆에 자리가 있을 때 오른쪽에, 없으면 화면 아래에 붙인다
-    else if (vw - (rect.left + rect.width) > width + PAD + 32)
-      tooltipStyle = { width, left: rect.left + rect.width + PAD + 16, top: Math.min(Math.max(rect.top, 96), vh - 280) };
+    else if (vw - (rect.left + rect.width) > width + holePadX + 32)
+      tooltipStyle = { width, left: rect.left + rect.width + holePadX + 16, top: Math.min(Math.max(rect.top, 96), vh - 280) };
     else tooltipStyle = { width, left, bottom: 16 };
   }
 
@@ -387,11 +410,11 @@ export default function PreviewCoach({ storageKey, intro, steps: allSteps, outro
             <rect width="100%" height="100%" fill="white" />
             {!isCard && (
               <rect
-                x={(rect?.left ?? 0) - PAD}
-                y={(rect?.top ?? 0) - PAD}
-                width={(rect?.width ?? 0) + PAD * 2}
-                height={(rect?.height ?? 0) + PAD * 2}
-                rx={16}
+                x={(rect?.left ?? 0) - holePadX}
+                y={(rect?.top ?? 0) - holePad}
+                width={(rect?.width ?? 0) + holePadX * 2}
+                height={(rect?.height ?? 0) + holePad * 2}
+                rx={holeRadius}
                 fill="black"
                 style={{ opacity: settling || !rect ? 0 : 1, transition: `opacity ${settling ? 150 : 200}ms ease-out` }}
               />

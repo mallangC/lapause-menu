@@ -209,9 +209,10 @@ export default function PreviewStatsTab() {
       <h2 className="text-xl font-medium text-gray-900">통계</h2>
 
       {/* 이번 달 요약 */}
-      <section data-coach="st-summary">
+      <section>
         <h3 className="text-sm font-semibold text-gray-500 mb-3 uppercase tracking-wide">이번 달 요약</h3>
-        <div className="grid grid-cols-2 gap-2 -mx-4 md:mx-0 md:gap-3">
+        {/* 코치마크는 '이번 달 요약' 제목을 빼고 숫자 카드만 감싼다 */}
+        <div data-coach="st-summary" className="grid grid-cols-2 gap-2 -mx-4 md:mx-0 md:gap-3">
           <StatCard
             label="총 매출"
             value={`${totalRevenue.toLocaleString()}원`}

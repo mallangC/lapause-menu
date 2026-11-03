@@ -5,18 +5,27 @@ import PreviewCoach, { type CoachStep } from "../PreviewCoach";
 const STEPS: CoachStep[] = [
   {
     selectors: ['[data-coach="ds-bg"]'],
+    pad: 12,
+    // 모바일: 네모, 좌우는 카드 여백(16px)만큼 넓혀 화면 끝까지
+    mobileRadius: 0,
+    mobilePadX: 16,
     title: "배경색",
-    body: "손님 메뉴판 전체의 바탕 색이에요.\n색 하나만 고르면 카드·태그·구분선 색까지\n자동으로 어울리게 맞춰져요.",
+    body: "손님 메뉴판 전체의 바탕 색이에요.\n색 하나만 고르면 나머지 색도\n자동으로 어울리게 맞춰져요.",
   },
   {
     selectors: ['[data-coach="ds-accent"]'],
+    pad: 12,
+    // 모바일: 네모, 좌우는 카드 여백(16px)만큼 넓혀 화면 끝까지
+    mobileRadius: 0,
+    mobilePadX: 16,
     title: "포인트색",
     body: "버튼과 강조 글씨에 쓰이는 색이에요.\n매장 간판이나 로고 색을 넣으면\n메뉴판이 한눈에 우리 매장처럼 보여요.",
   },
   {
     selectors: ['[data-coach="ds-preview"]'],
+    pad: 0,
     title: "미리보기",
-    body: "고른 색이 메뉴판에서 어떻게 보이는지\n바탕·버튼·강조 글씨로 바로 확인해요.",
+    body: "고른 색이 메뉴판에서 어떻게 보이는지\n간단히 확인할 수 있어요.",
   },
   {
     selectors: ['[data-coach="ds-reset"]'],

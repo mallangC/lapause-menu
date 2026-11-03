@@ -25,80 +25,94 @@ const openSettings = (key: string) => () => {
   revealTab(key);
 };
 
+// 탭 설명은 한 줄로 짧게 — 각 탭에 들어가면 그 화면 설명이 따로 나온다
 const STEPS: CoachStep[] = [
   {
     selectors: ['[data-coach="own-link"]'],
+    pad: 0,
     title: "링크 공유",
     body: "손님에게 보낼 우리 매장 메뉴판 주소예요.\nURL 복사 버튼을 눌러 카카오톡·인스타그램 등\n올릴 곳을 고르면 어느 채널에서 손님이 왔는지\n통계에서 볼 수 있어요.",
   },
   {
     selectors: ['[data-coach="own-today"]'],
+    pad: 0,
     title: "오늘 처리할 예약",
     body: "오늘 수령 예정인 예약을 시간순으로 보여줘요.\n아직 확인하지 않은 예약과 준비 중인 예약을\n상태별 색으로 바로 구분할 수 있어요.",
   },
   {
     selectors: ['[data-coach="own-counts"]'],
+    pad: 0,
     title: "예약 현황",
-    body: "이번 달 예약을 미확인·준비중·완료·취소로\n나눠 보여줘요. 숫자를 누르면 그 상태의\n예약만 모아서 바로 확인할 수 있어요.",
+    body: "이번 달 예약을 상태별로 나눠 보여줘요.\n숫자를 누르면 그 상태의 예약만 모아서\n바로 확인할 수 있어요.",
   },
   {
     selectors: ['[data-coach="own-features"]'],
+    pad: 0,
     title: "기능 현황",
-    body: "맞춤 주문·배송·메시지 카드·쇼핑백·수명연장제\n설정이 켜져 있는지 한눈에 확인해요.\n설정을 누르면 바로 켜고 끌 수 있어요.",
+    body: "주요 기능이 켜져 있는지 한눈에 확인해요.\n설정을 누르면 바로 켜고 끌 수 있어요.",
   },
   {
     selectors: tab("reservations"),
+    pad: 0,
     onEnter: () => revealTab("reservations"),
     title: "예약 관리",
-    body: "들어온 예약을 달력과 목록으로 보고\n확인한 뒤 확정하거나 취소해요.\n확정·취소하면 손님에게 알림톡이 자동으로 가고,\n전화로 받은 예약도 직접 추가할 수 있어요.",
+    body: "들어온 예약을 한곳에서 관리해요.",
   },
   {
     selectors: tab("products"),
+    pad: 0,
     onEnter: () => revealTab("products"),
     title: "상품 관리",
-    body: "메뉴판에 올릴 상품을 사진·가격과 함께 등록하고\n수정해요. 노출·숨김 상태를 바꾸면\n손님 메뉴판에 바로 반영돼요.",
+    body: "메뉴판에 올릴 상품을 등록하고 관리해요.",
   },
   {
     selectors: tab("stats"),
+    pad: 0,
     onEnter: () => revealTab("stats"),
     title: "통계",
-    body: "월별 매출 추이, 잘 팔리는 상품, 선물 목적·예산대, \n유입 채널별 방문·주문까지 한눈에 봐요.\n전략적으로 숫자를 보고 다음 달에 어떤 상품을 늘리고\n어디에 홍보할지 정해 보세요.",
+    body: "매출과 손님이 들어온 경로 등을 숫자로 확인해요.",
   },
   {
     selectors: tab("business"),
+    pad: 0,
     onEnter: openSettings("business"),
     title: "설정 · 영업 설정",
-    body: "요일별 영업시간과 휴무일, 특정 날짜의 영업시간,\n상품 유형별 최소 준비 시간을 정해요.\n손님은 이 안에서만 예약 날짜·시간을 고를 수 있어요.",
+    body: "손님이 예약할 수 있는 날짜와 시간을 정해요.",
   },
   {
     selectors: tab("ordersettings"),
+    pad: 0,
     onEnter: openSettings("ordersettings"),
     title: "설정 · 판매 신청",
-    body: "결제를 받으려면 매장 연락처·주소, 계좌·통장사본,\n사업자 정보를 입력해 판매를 신청해요.\n승인되면 판매 설정에서 기능을 켤 수 있어요.",
+    body: "온라인 주문·결제를 위해 플로에이드에 판매 신청해요.",
   },
   {
     selectors: tab("reservation"),
+    pad: 0,
     onEnter: openSettings("reservation"),
     title: "설정 · 판매 설정",
-    body: "맞춤 주문 판매를 켜고 끄고, 배송과 거리별 배송비,\n메시지 카드·쇼핑백·수명연장제 옵션과 가격,\n결제 전 손님에게 보여줄 안내 문구를 정해요.",
+    body: "손님 주문·판매에 필요한 기능을 설정해요.",
   },
   {
     selectors: tab("menusettings"),
+    pad: 0,
     onEnter: openSettings("menusettings"),
     title: "설정 · 메뉴 설정",
-    body: "메뉴판의 상품 종류·계절 분류를\n우리 매장에 맞게 직접 추가하거나 삭제해요.",
+    body: "메뉴판을 우리 매장에 맞게 구성해요.",
   },
   {
     selectors: tab("settings"),
+    pad: 0,
     onEnter: openSettings("settings"),
     title: "설정 · 디자인",
-    body: "메뉴판의 배경색과 포인트색을 골라\n우리 매장 분위기에 맞게 꾸며요.\n고른 색은 손님 메뉴판 전체에 바로 반영돼요.",
+    body: "메뉴판을 우리 매장 분위기에 맞게 꾸며요.",
   },
   {
     selectors: tab("myinfo"),
+    pad: 0,
     onEnter: openSettings("myinfo"),
     title: "설정 · 내 정보",
-    body: "전화번호와 비밀번호를 바꾸고, 소셜 계정 연결과\n로그인 2단계 인증으로 계정을 안전하게 지켜요.",
+    body: "계정 정보와 로그인 보안을 관리해요.",
   },
 ];
 
