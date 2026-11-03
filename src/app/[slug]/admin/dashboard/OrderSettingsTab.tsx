@@ -37,11 +37,6 @@ export default function OrderSettingsTab({ companyId, plan: _plan, settings, onS
   const [businessStatus, setBusinessStatus] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
   const [verifyError, setVerifyError] = useState<string | null>(null);
-  const [residentNumberMasked, setResidentNumberMasked] = useState<string | null>(null);
-  const [editingResident, setEditingResident] = useState(false);
-  const [residentFront, setResidentFront] = useState("");
-  const [residentBack, setResidentBack] = useState("");
-  const [residentError, setResidentError] = useState<string | null>(null);
   const [consultApplyStatus, setConsultApplyStatus] = useState<"pending" | "approved" | "rejected" | null>(null);
   const [consultRejectReason, setConsultRejectReason] = useState<string | null>(null);
   const [applying, setApplying] = useState(false);
@@ -89,9 +84,6 @@ export default function OrderSettingsTab({ companyId, plan: _plan, settings, onS
       .then(({ data }) => {
         if (data?.phone) setPhone(formatPhone(data.phone));
       });
-    fetch(`/api/company/resident-number?company_id=${companyId}`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => { if (data?.masked) setResidentNumberMasked(data.masked); });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId]);
 
@@ -216,14 +208,6 @@ export default function OrderSettingsTab({ companyId, plan: _plan, settings, onS
 
   const handleSave = async () => {
     setError(null);
-    setResidentError(null);
-
-    // 주민등록번호를 새로 입력 중인 경우, 둘 다 채워졌는지 먼저 확인
-    const residentTouched = editingResident || (!residentNumberMasked && (residentFront || residentBack));
-    if (residentTouched && (residentFront.length !== 6 || residentBack.length !== 7)) {
-      setResidentError("대표자 주민등록번호를 모두 입력해주세요.");
-      return false;
-    }
 
     const consultFieldsChanged =
       bankName !== initialConsultFields.current.bankName ||
@@ -242,19 +226,12 @@ export default function OrderSettingsTab({ companyId, plan: _plan, settings, onS
       address: address ? (addressDetail ? `${address} ${addressDetail}` : address) : null,
       ...(shouldResetConsult ? { consult_apply_status: null, consult_enabled: false } : {}),
       };
-    const [{ error: companiesError }, { error: settingsError }, residentResult] = await Promise.all([
+    const [{ error: companiesError }, { error: settingsError }] = await Promise.all([
       supabase.from("companies").update({ phone: parsePhone(phone) || null }).eq("id", companyId),
       supabase.from("company_settings").update(settingsPatch).eq("company_id", companyId),
-      residentTouched
-        ? fetch("/api/company/resident-number", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ company_id: companyId, front: residentFront, back: residentBack }),
-          }).then((res) => res.json().then((data) => ({ ok: res.ok, data })))
-        : Promise.resolve(null),
     ]);
 
-    const combinedError = companiesError || settingsError || (residentResult && !residentResult.ok ? new Error(residentResult.data?.error ?? "주민등록번호 저장에 실패했습니다.") : null);
+    const combinedError = companiesError || settingsError;
     if (combinedError) {
       setError(combinedError.message);
       return false;
@@ -267,19 +244,16 @@ export default function OrderSettingsTab({ companyId, plan: _plan, settings, onS
       setConsultEnabled(false);
       initialConsultFields.current = { bankName, bankAccount, bankHolder, businessNumber };
     }
-    if (residentResult?.ok) {
-      setResidentNumberMasked(residentResult.data.masked);
-      setEditingResident(false);
-      setResidentFront("");
-      setResidentBack("");
-    }
   };
 
   const disabledByConsult = consultEnabled;
 
   return (
-    <div className="space-y-4">
+    // 섹션마다 흰 카드로 나눠 회색 바탕이 굵은 구분선처럼 보이게 한다 (영업·판매 설정과 같은 방식)
+    <div className="space-y-3">
       <h2 className="text-xl font-medium text-gray-900">판매 신청</h2>
+      <form onSubmit={(e) => { e.preventDefault(); saveBtnRef.current?.trigger(); }} className="space-y-3">
+      {/* 예약 알림 정보 — 통신판매업 안내·오류 문구도 이 첫 카드 맨 위에 */}
       <div className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:p-6">
         <div className="max-w-md">
           {!mailOrderNumber && (
@@ -300,12 +274,11 @@ export default function OrderSettingsTab({ companyId, plan: _plan, settings, onS
             </div>
           )}
 
-          <form onSubmit={(e) => { e.preventDefault(); saveBtnRef.current?.trigger(); }} className="space-y-5">
             {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
+              <div className="mb-5 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
             )}
 
-            <div className="border border-gray-200 rounded-xl p-4">
+            <div>
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="text-sm font-semibold text-gray-800">예약 알림 정보</h3>
                 {consultEnabled && (
@@ -417,8 +390,13 @@ export default function OrderSettingsTab({ companyId, plan: _plan, settings, onS
               <p className="text-xs text-gray-400 mt-3">계좌번호를 잘못 적어서 생기는 불이익은 책임지지 않습니다.</p>
             </div>
 
-            {/* 통장사본 */}
-            <div className={`border border-gray-200 rounded-xl p-4${disabledByConsult ? " opacity-50 pointer-events-none select-none" : ""}`}>
+        </div>
+      </div>
+
+      {/* 통장사본 */}
+      <div className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:p-6">
+        <div className="max-w-md">
+            <div className={disabledByConsult ? "opacity-50 pointer-events-none select-none" : ""}>
               <h3 className="text-sm font-semibold text-gray-800 mb-1">통장사본</h3>
               <p className="text-xs text-gray-400 mb-3">정산 처리를 위해 계좌 확인용으로 사용됩니다.</p>
               {bankAccountImageUrl ? (
@@ -439,8 +417,13 @@ export default function OrderSettingsTab({ companyId, plan: _plan, settings, onS
               <input ref={bankImageInputRef} type="file" accept="image/*,application/pdf" onChange={handleBankImageUpload} className="hidden" />
             </div>
 
-            {/* 사업자 정보 */}
-            <div className={`border border-gray-200 rounded-xl p-4${disabledByConsult ? " opacity-50 pointer-events-none select-none" : ""}`}>
+        </div>
+      </div>
+
+      {/* 사업자 정보 */}
+      <div className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:p-6">
+        <div className="max-w-md">
+            <div className={disabledByConsult ? "opacity-50 pointer-events-none select-none" : ""}>
               <h3 className="text-sm font-semibold text-gray-800 mb-3">사업자 정보</h3>
               <div className="space-y-3">
                 <div>
@@ -478,60 +461,6 @@ export default function OrderSettingsTab({ companyId, plan: _plan, settings, onS
                     </div>
                   )}
                   {verifyError && <p className="mt-2 text-xs text-red-500">{verifyError}</p>}
-                </div>
-
-                {/* 대표자 주민등록번호 */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">대표자 주민등록번호</label>
-                  <p className="text-xs text-gray-400 mb-2">세금계산서 발행 등 세무 처리를 위해 필요하며, 암호화되어 저장됩니다. 저장 후에는 일부만 마스킹되어 표시됩니다.</p>
-
-                  {residentNumberMasked && !editingResident ? (
-                    <div className="flex items-center gap-3">
-                      <span className="font-mono text-sm text-gray-700">{residentNumberMasked}</span>
-                      <button
-                        type="button"
-                        onClick={() => setEditingResident(true)}
-                        className="text-xs text-gray-400 hover:text-gray-700 underline"
-                      >
-                        수정
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        value={residentFront}
-                        onChange={(e) => setResidentFront(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                        placeholder="앞 6자리"
-                        maxLength={6}
-                        className="w-24 border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500 text-center"
-                      />
-                      <span className="text-gray-400">-</span>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        value={residentBack}
-                        onChange={(e) => setResidentBack(e.target.value.replace(/\D/g, "").slice(0, 7))}
-                        placeholder="뒤 7자리"
-                        maxLength={7}
-                        className="w-28 border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500 text-center"
-                      />
-                      {residentNumberMasked && (
-                        <button
-                          type="button"
-                          onClick={() => { setEditingResident(false); setResidentFront(""); setResidentBack(""); setResidentError(null); }}
-                          className="text-xs text-gray-400 hover:text-gray-700"
-                        >
-                          취소
-                        </button>
-                      )}
-                    </div>
-                  )}
-                  {(editingResident || (!residentNumberMasked && (residentFront || residentBack))) && !residentError && (
-                    <p className="mt-2 text-xs text-gray-400">아래 &lsquo;저장&rsquo; 버튼을 눌러야 함께 저장됩니다.</p>
-                  )}
-                  {residentError && <p className="mt-2 text-xs text-red-500">{residentError}</p>}
                 </div>
 
                 {/* 사업자등록증 */}
@@ -574,8 +503,14 @@ export default function OrderSettingsTab({ companyId, plan: _plan, settings, onS
               </div>
             </div>
 
-            {/* 판매 신청 */}
-            <div className="border border-gray-200 rounded-xl p-4">
+        </div>
+      </div>
+
+      {/* 판매 신청 — 마지막 카드: 아래 저장 줄과 붙여 한 카드처럼 보이게 아래 모서리는 각지게.
+          Tailwind v4의 space-y는 앞 요소 아래 여백(margin-bottom)으로 간격을 두므로 !mb-0으로 틈을 없앤다 */}
+      <div className="!mb-0 bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:rounded-b-none md:p-6">
+        <div className="max-w-md">
+            <div>
               <h3 className="text-sm font-semibold text-gray-800 mb-1">판매 신청</h3>
               <p className="text-xs text-gray-400 mb-3">통신판매업 신고번호를 제외한 모든 항목을 입력·업로드해야 신청할 수 있습니다.</p>
               {consultApplyStatus === "pending" && (
@@ -619,16 +554,18 @@ export default function OrderSettingsTab({ companyId, plan: _plan, settings, onS
               })()}
             </div>
 
-            <div className="sticky bottom-0 bg-white border-t border-gray-100 -mx-0 pt-4 pb-1 md:pb-6 flex items-center gap-3">
-              <SaveButton
-                ref={saveBtnRef}
-                onSave={handleSave}
-                className="text-sm font-medium text-white bg-gold-500 hover:bg-gold-600"
-              />
-            </div>
-          </form>
         </div>
       </div>
+
+      {/* 저장 — 카드 밖(폼 안)에 두어 어느 섹션을 보고 있어도 화면 아래에 붙어 있게 하고, 위 카드와는 옅은 회색 선으로만 구분 */}
+      <div className="sticky bottom-0 z-10 bg-white border-t border-gray-100 -mx-4 md:mx-0 px-4 md:px-6 py-3 md:rounded-b-2xl flex items-center gap-3">
+        <SaveButton
+          ref={saveBtnRef}
+          onSave={handleSave}
+          className="text-sm font-medium text-white bg-gold-500 hover:bg-gold-600"
+        />
+      </div>
+      </form>
     </div>
   );
 }

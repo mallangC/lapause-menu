@@ -4,8 +4,8 @@
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type CompanySettings = Record<string, any>;
 
-// 브라우저로 내려보내지 않는 컬럼 (암호화된 주민번호 등)
-export const SERVER_ONLY_SETTINGS_KEYS = ["resident_number_enc"];
+// 브라우저로 내려보내지 않는 컬럼 — 지금은 없음 (예전 암호화 주민번호 컬럼은 수집 중단으로 삭제)
+export const SERVER_ONLY_SETTINGS_KEYS: string[] = [];
 
 export function toClientSettings(row: Record<string, unknown> | null | undefined): CompanySettings {
   const settings: CompanySettings = { ...(row ?? {}) };
