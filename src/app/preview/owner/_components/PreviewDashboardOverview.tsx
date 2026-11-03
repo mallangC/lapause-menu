@@ -331,11 +331,11 @@ export default function PreviewDashboardOverview({ reservations, onNavigate }: P
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-transparent -mx-4 md:gap-4 md:mx-0">
 
-        {/* 오늘 처리할 예약 */}
+        {/* 오늘 예약 정보 */}
         <div data-coach="own-today" className="bg-white py-4 px-4 md:rounded-2xl md:px-5 md:col-span-2">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <h3 className="text-sm font-semibold text-gray-700">오늘 처리할 예약</h3>
+              <h3 className="text-sm font-semibold text-gray-700">오늘 예약 정보</h3>
               <p className="text-xs text-gray-400 mt-0.5">
                 {todayItems.length === 0
                   ? "오늘 예정된 예약이 없습니다"
