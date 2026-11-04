@@ -25,20 +25,17 @@ export default function PreviewFlowerNotice({ onConfirm, onClose }: Props) {
       <div className="relative w-full max-w-sm">
         {/* 사장님용 설명 카드 */}
         <div
-          className="absolute bottom-full left-0 right-0 mb-3 rounded-2xl px-5 py-4 shadow-2xl"
-          style={{
-            background: "rgba(24,19,14,0.94)",
-            border: "1px solid rgba(201,169,110,0.4)",
-          }}
+          // 흰 바탕 — 아래 안내 팝업과 같은 톤
+          className="absolute bottom-full left-0 right-0 mb-3 rounded-2xl px-5 py-4 shadow-xl bg-white"
           onClick={(e) => e.stopPropagation()}
         >
           <p
-            className="text-[11px] tracking-[0.2em] uppercase font-semibold mb-1.5"
+            className="text-xs tracking-[0.2em] uppercase font-semibold mb-2"
             style={{ color: "#c9a96e" }}
           >
             사장님께
           </p>
-          <p className="text-[13px] leading-relaxed text-white/85">
+          <p className="text-sm leading-relaxed text-gray-600">
             손님이 상품을 예약하기 전에 이 안내가 자동으로 떠요.
             <br />
             손님은 결제 전에 아래와 같은 안내 사항을 확인하고

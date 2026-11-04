@@ -153,6 +153,8 @@ export default function ReservationsCoach() {
         body: "온라인 주문은 물론 전화·카톡·매장 예약까지\n여기 한곳에서 확인하고 처리해요.\n오늘(11월 10일) 예약으로 하나씩 알려드릴게요.",
       }}
       steps={STEPS}
+      // 설명이 끝나면(마지막 '네이버 예약 자동 입력' 단계에서 열어 둔) 예약 추가 창·상세 창을 닫는다
+      onFinish={() => { closeModals(); send(RV_CLOSE_EVENT); }}
       outro={{
         title: "직접 눌러보세요",
         body: "예약을 눌러 펼치고 상태를 바꿔보세요.\n미리보기라 손님에게 알림이 가거나\n실제로 저장되지는 않아요.",

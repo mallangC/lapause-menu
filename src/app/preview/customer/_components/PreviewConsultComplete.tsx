@@ -97,7 +97,8 @@ export default function PreviewConsultComplete({ slug, companyName, logoImage, l
         )}
 
         {/* 주문자 & 수령 정보 */}
-        <div className="bg-white rounded-2xl overflow-hidden">
+        {/* data-coach — 모바일 설명이 '주문 정보' 카드만 강조 */}
+        <div data-coach="done-order-info" className="bg-white rounded-2xl overflow-hidden">
           <p className="px-4 pt-4 pb-3 text-sm font-semibold text-gray-400 border-b border-gray-100">주문 정보</p>
           <Row label="주문자" value={`${name} · ${phone}`} />
           <Row label="수령 방법" value={form.deliveryType} />

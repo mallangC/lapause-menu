@@ -244,7 +244,8 @@ export default function PreviewCheckoutClient({
             ))}
           </div>
 
-          <div className="bg-white rounded-2xl overflow-hidden">
+          {/* data-coach — 모바일 설명이 '주문 정보' 카드만 강조 */}
+          <div data-coach="done-order-info" className="bg-white rounded-2xl overflow-hidden">
             <p className="px-4 pt-4 pb-3 text-sm font-semibold text-gray-400 border-b border-gray-100">주문 정보</p>
             <Row label="주문자" value={`${name} · ${phone}`} />
             <Row label="수령 방법" value={deliveryType} />
@@ -366,7 +367,8 @@ export default function PreviewCheckoutClient({
 
   return (
     // 미리보기 — 결제 단계는 아래 이동 바(처음·손님 홈·설명 다시 보기)에 결제 버튼이 가리지 않게 아래 여백을 더 둔다
-    <div className={`min-h-screen bg-gray-100 ${orderStep === 2 ? "pb-16" : ""}`} style={themeVars}>
+    // 미리보기 — 1단계(선물 정보)는 선택지를 펼치면 맨 아래 '건너뛰기·다음' 버튼이 이동 바에 가려져서 아래 여백을 더 크게(80px).
+    <div className={`min-h-screen bg-gray-100 ${orderStep === 1 ? "pb-20" : orderStep === 2 ? "pb-16" : ""}`} style={themeVars}>
       <PreviewStoreHeader slug={slug} companyName={companyName} logoImage={logoImage} logoNode={logoNode} productTypeList={[]} seasonList={[]} consultEnabled={consultEnabled} />
       <OrderStepBar step={orderStep} onBack={() => goStep(1)} />
       <CheckoutCoach key={orderStep} direct={direct} step={orderStep} />
@@ -437,8 +439,10 @@ export default function PreviewCheckoutClient({
               </div>
               <div className="divide-y divide-gray-100">
                 {["픽업", ...(deliveryEnabled ? ["배송"] : [])].map((type) => (
-                  <div key={type}>
+                  // data-coach — 모바일 설명이 '픽업'부터 '받는 분 연락처'까지만 강조
+                  <div key={type} data-coach={type === "픽업" ? "checkout-pickup" : undefined}>
                     <button
+                      data-delivery-opt={type}
                       onClick={() => { setDeliveryType(type); setFieldErrors(p => ({ ...p, deliveryType: false })); }}
                       className={`w-full flex items-center justify-between px-4 py-3.5 text-left transition-colors ${deliveryType === type ? "bg-beige-50" : "hover:bg-gray-50"}`}
                     >
@@ -459,7 +463,7 @@ export default function PreviewCheckoutClient({
                             <label className={`block text-xs mb-1 ${fieldErrors.deliveryInfo && !recipientName ? "text-red-500 font-medium" : "text-gray-500"}`}>받는 분 이름</label>
                             <input value={recipientName} onChange={(e) => { setRecipientName(e.target.value); if (fieldErrors.deliveryInfo) setFieldErrors(p => ({ ...p, deliveryInfo: false })); }} placeholder="홍길동" className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none bg-gray-50 placeholder:text-gray-300 ${fieldErrors.deliveryInfo && !recipientName ? "border-red-400 focus:border-red-400" : "border-gray-200 focus:border-gold-400"}`} />
                           </div>
-                          <div>
+                          <div data-coach="checkout-rphone">
                             <label className={`block text-xs mb-1 ${fieldErrors.deliveryInfo && !recipientPhone ? "text-red-500 font-medium" : "text-gray-500"}`}>받는 분 연락처</label>
                             <input value={recipientPhone} onChange={(e) => { setRecipientPhone(formatPhone(e.target.value)); if (fieldErrors.deliveryInfo) setFieldErrors(p => ({ ...p, deliveryInfo: false })); }} placeholder="010-0000-0000" inputMode="numeric" className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none bg-gray-50 placeholder:text-gray-300 ${fieldErrors.deliveryInfo && !recipientPhone ? "border-red-400 focus:border-red-400" : "border-gray-200 focus:border-gold-400"}`} />
                           </div>

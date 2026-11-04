@@ -4,7 +4,7 @@ import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "미리보기 | Flo.Aide",
-  description: "손님이 보는 메뉴판과 사장님이 쓰는 관리 화면을 직접 눌러보며 둘러보세요.",
+  description: "손님이 보는 메뉴판과 사장님이 쓰는 관리 화면을 미리 체험해보세요",
   alternates: { canonical: "/preview" },
 };
 
@@ -66,9 +66,9 @@ export default function PreviewPage() {
             Preview
           </div>
           <h1 className="text-white font-semibold leading-[1.18] mb-4" style={{ fontSize: "clamp(1.9rem,5.5vw,3.4rem)" }}>
-            직접 눌러보며
+            플로에이드를
             <br />
-            둘러보세요
+            미리 체험해보세요
           </h1>
           <p className="text-[14px] md:text-[15px] leading-relaxed" style={{ color: "rgba(255,255,255,0.5)" }}>
             실제 화면 그대로, 단계별 설명과 함께 보여드려요.

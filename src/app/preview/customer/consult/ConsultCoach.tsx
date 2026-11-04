@@ -16,6 +16,10 @@ const action = (name: "delivery" | "requests") => () =>
 const STEP1: CoachStep[] = [
   {
     selectors: ['[data-coach="consult1-0"]'],
+    // 모바일: 선택지 '위로'까지만 강조 (아래 선택지는 잘라 설명 창과 겹치지 않게)
+    mobileTo: ['[data-coach="consult1-0"] [data-gift-opt="위로"]'],
+    // 모바일: 설명 창은 화면 아래 고정, 강조 영역은 헤더 바로 아래로 (넘치면 설명 창 위에서 자름)
+    mobileSheet: true,
     radius: 0,
     pad: 0,
     onEnter: openSection(1, 0),
@@ -24,6 +28,8 @@ const STEP1: CoachStep[] = [
   },
   {
     selectors: ['[data-coach="consult1-1"]'],
+    // 모바일: 설명 창은 화면 아래 고정, 강조 영역은 헤더 바로 아래로 (넘치면 설명 창 위에서 자름)
+    mobileSheet: true,
     radius: 0,
     pad: 0,
     onEnter: openSection(1, 1),
@@ -32,6 +38,10 @@ const STEP1: CoachStep[] = [
   },
   {
     selectors: ['[data-coach="consult1-2"]'],
+    // 모바일: 선택지 '10대'까지만 강조 (아래 선택지는 잘라 설명 창과 겹치지 않게)
+    mobileTo: ['[data-coach="consult1-2"] [data-gift-opt="10대"]'],
+    // 모바일: 설명 창은 화면 아래 고정, 강조 영역은 헤더 바로 아래로 (넘치면 설명 창 위에서 자름)
+    mobileSheet: true,
     radius: 0,
     pad: 0,
     onEnter: openSection(1, 2),
@@ -40,6 +50,8 @@ const STEP1: CoachStep[] = [
   },
   {
     selectors: ['[data-coach="consult1-skip"]'],
+    // 모바일: 설명 창은 화면 아래 고정, 강조 영역은 헤더 바로 아래로 (넘치면 설명 창 위에서 자름)
+    mobileSheet: true,
     dot: ['[data-coach="consult1-skip"] span'],
     title: "건너뛰기",
     body: "선물 정보는 선택 사항이라\n손님이 원하지 않으면 바로 넘어갈 수 있어요.\n부담 없이 주문을 이어가게 해줘요.",
@@ -105,6 +117,11 @@ const STEP4: CoachStep[] = [
   },
   {
     selectors: ['[data-coach="consult4-delivery"]'],
+    // PC: '배송' 줄(+배송 정보)에 '픽업' 줄까지 함께 감싼다
+    also: ['[data-coach="consult4-pickup"]'],
+    // 모바일: '픽업'·'배송' 선택 줄만 (아래 배송 정보 칸은 제외)
+    mobileSelectors: ['[data-coach="consult4-pickup"]'],
+    mobileTo: ['[data-delivery-opt="배송"]'],
     radius: 0,
     pad: 0,
     onEnter: action("delivery"),
@@ -113,6 +130,13 @@ const STEP4: CoachStep[] = [
   },
   {
     selectors: ['[data-coach="consult4-date"]'],
+    // 모바일: '수령 날짜' 제목 줄은 빼고 달력부터
+    mobileSelectors: ['[data-coach="consult4-date"] .large-datepicker'],
+    // 모바일: 날짜 섹션을 단계 표시 바 바로 아래로 딱 붙여 올려 아래 설명 창 자리를 확보
+    mobileScrollFlush: true,
+    // 모바일: 달력은 28일이 있는 줄까지만 (아래 줄은 잘라 설명 창과 겹치지 않게)
+    mobileTo: ['[data-coach="consult4-date"] .react-datepicker__day--028:not(.react-datepicker__day--outside-month)'],
+    mobilePadBottom: 2,
     radius: 0,
     pad: 0,
     title: "수령 희망 날짜",
@@ -159,6 +183,8 @@ const DONE: CoachStep[] = [
   {
     selectors: ['[data-coach="done-info"]'],
     pad: 0,
+    // 모바일: '주문 정보' 카드만 (화면을 다 차지해 설명 창과 겹치지 않게)
+    mobileSelectors: ['[data-coach="done-order-info"]'],
     title: "주문 내용 확인",
     body: "주문 정보와 결제 금액을 한 번에 보여줘요.\n손님이 주문한 내용을 마지막으로 다시 확인해요.",
   },
@@ -168,6 +194,10 @@ const DONE: CoachStep[] = [
 const RESERVE_STEP1: CoachStep[] = [
   {
     selectors: ['[data-coach="consult1-0"]'],
+    // 모바일: 선택지 '위로'까지만 강조 (아래 선택지는 잘라 설명 창과 겹치지 않게)
+    mobileTo: ['[data-coach="consult1-0"] [data-gift-opt="위로"]'],
+    // 모바일: 설명 창은 화면 아래 고정, 강조 영역은 헤더 바로 아래로 (넘치면 설명 창 위에서 자름)
+    mobileSheet: true,
     radius: 0,
     pad: 0,
     onEnter: openSection(1, 0),
@@ -176,6 +206,8 @@ const RESERVE_STEP1: CoachStep[] = [
   },
   {
     selectors: ['[data-coach="consult1-1"]'],
+    // 모바일: 설명 창은 화면 아래 고정, 강조 영역은 헤더 바로 아래로 (넘치면 설명 창 위에서 자름)
+    mobileSheet: true,
     radius: 0,
     pad: 0,
     onEnter: openSection(1, 1),
@@ -184,6 +216,10 @@ const RESERVE_STEP1: CoachStep[] = [
   },
   {
     selectors: ['[data-coach="consult1-2"]'],
+    // 모바일: 선택지 '10대'까지만 강조 (아래 선택지는 잘라 설명 창과 겹치지 않게)
+    mobileTo: ['[data-coach="consult1-2"] [data-gift-opt="10대"]'],
+    // 모바일: 설명 창은 화면 아래 고정, 강조 영역은 헤더 바로 아래로 (넘치면 설명 창 위에서 자름)
+    mobileSheet: true,
     radius: 0,
     pad: 0,
     onEnter: openSection(1, 2),

@@ -10,6 +10,9 @@ const send = (open: boolean) => window.dispatchEvent(new CustomEvent(PD_FORM_EVE
 const STEPS: CoachStep[] = [
   {
     selectors: ['[data-coach="pd-add"]'],
+    pad: 0,
+    // 버튼 모서리(rounded-lg, 8px)와 같은 둥글기
+    radius: 8,
     onEnter: () => send(false),
     title: "상품 추가",
     body: "메뉴판에 올릴 상품을 여기서 등록해요.\n등록하자마자 손님 메뉴판에 바로 보여요.",
@@ -17,13 +20,28 @@ const STEPS: CoachStep[] = [
   {
     // 상품 유형 ~ 시즌 묶음만 강조 (추가 창 전체를 덮지 않게)
     selectors: ['[data-coach="pd-classify"]'],
+    // 모바일: '꽃 색상'부터 '분위기'까지
+    mobileSelectors: ['[data-coach="pd-color"]'],
+    mobileTo: ['[data-coach="pd-mood"]'],
+    // 모바일: 좌우는 분류 칸 안쪽 여백(20px)만큼 넓혀 추가 창 양 끝까지, 위아래는 12px 여유
+    mobilePadX: 20,
+    mobilePad: 12,
+    // 모바일: 설명 창은 화면 아래에 붙인다
+    mobileSheet: true,
     radius: 0,
     pad: 0,
     onEnter: () => {
       send(true);
       setTimeout(() => {
-        const el = Array.from(document.querySelectorAll<HTMLElement>('[data-coach="pd-classify"]')).find((e) => e.getBoundingClientRect().width > 0);
-        el?.scrollIntoView({ block: "center" });
+        // 모바일은 강조하는 '꽃 색상~분위기'를 창 위쪽에, PC는 분류 묶음 전체를 창 가운데
+        const mobile = window.innerWidth < 768;
+        const key = mobile ? "pd-color" : "pd-classify";
+        const el = Array.from(document.querySelectorAll<HTMLElement>(`[data-coach="${key}"]`)).find((e) => e.getBoundingClientRect().width > 0);
+        // 모바일은 창 안을 더 내려 강조 칸을 창 위쪽에 둔다 — 아래에 설명 창 자리가 남는다 (위 여백 12px만큼 띄워서)
+        if (mobile && el) {
+          el.style.scrollMarginTop = "152px";
+          el.scrollIntoView({ block: "start" });
+        } else el?.scrollIntoView({ block: "center" });
       }, 200);
     },
     title: "상품 정보 입력",

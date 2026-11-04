@@ -129,10 +129,10 @@ export default function PreviewDashboardClient() {
     <div className="min-h-screen bg-gray-100 flex flex-col" style={themeVars as React.CSSProperties}>
       <header className="border-b border-gray-200 bg-white shrink-0 sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          {/* 실제 화면은 매장 메뉴판으로 이동 — 미리보기는 손님 화면 미리보기로 */}
-          <Link href="/preview/customer" className="text-lg font-medium text-gray-900 hover:text-gray-600 transition-colors">
+          {/* 실제 화면은 매장 메뉴판으로 이동 — 미리보기는 눌러도 아무 반응 없는 글자 */}
+          <span className="text-lg font-medium text-gray-900">
             {MOCK_COMPANY_NAME} — 관리자
-          </Link>
+          </span>
           {/* 미리보기라 로그아웃 대신 미리보기 처음으로 */}
           <Link href="/preview" className="text-sm text-gray-400 hover:text-gray-700 transition-colors">
             로그아웃

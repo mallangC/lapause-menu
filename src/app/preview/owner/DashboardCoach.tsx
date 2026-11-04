@@ -29,12 +29,16 @@ const openSettings = (key: string) => () => {
 const STEPS: CoachStep[] = [
   {
     selectors: ['[data-coach="own-link"]'],
+    // 모바일: 카드가 화면 양 끝까지 차 있어 네모로 (여백 0이라 좌우도 화면 끝까지)
+    mobileRadius: 0,
     pad: 0,
     title: "링크 공유",
     body: "손님에게 보낼 우리 매장 메뉴판 주소예요.\n사장님이 사용하는 온라인 채널에\nURL 복사해서 사용하면 \n손님 유입 경로를 '통계'에서 확인할 수 있어요",
   },
   {
     selectors: ['[data-coach="own-today"]'],
+    // 모바일: 카드가 화면 양 끝까지 차 있어 네모로 (여백 0이라 좌우도 화면 끝까지)
+    mobileRadius: 0,
     pad: 0,
     title: "오늘 예약 정보",
     body: "오늘 수령 예정인 예약을 시간순으로 보여줘요.\n아직 확인하지 않은 예약과 준비 중인 예약을\n예약 상태별로 구분해서 확인해요.",
@@ -132,7 +136,7 @@ export default function DashboardCoach() {
       storageKey="preview_coach_owner_dashboard"
       intro={{
         title: "사장님 관리자 화면이에요",
-        body: "들어온 예약 확인부터 상품·매장 설정까지\n여기서 모두 관리해요.\n지금 보이는 매장과 예약은 모두 예시예요.",
+        body: "들어온 예약 확인부터 상품·매장 설정까지\n여기서 모두 관리해요.\n지금 보이는 화면은 모두 테스트 화면이예요",
       }}
       steps={STEPS}
       outro={{

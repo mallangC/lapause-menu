@@ -14,6 +14,10 @@ const openGiftSection = (index: number) => () => {
 const STEPS: CoachStep[] = [
   {
     selectors: ['[data-gift-section="0"]'],
+    // 모바일: 선택지 '위로'까지만 강조 (아래 선택지는 잘라 설명 창과 겹치지 않게)
+    mobileTo: ['[data-gift-section="0"] [data-gift-opt="위로"]'],
+    // 모바일: 설명 창은 화면 아래 고정, 강조 영역은 헤더 바로 아래로 (넘치면 설명 창 위에서 자름)
+    mobileSheet: true,
     radius: 0,
     pad: 0,
     onEnter: openGiftSection(0),
@@ -22,6 +26,8 @@ const STEPS: CoachStep[] = [
   },
   {
     selectors: ['[data-gift-section="1"]'],
+    // 모바일: 설명 창은 화면 아래 고정, 강조 영역은 헤더 바로 아래로 (넘치면 설명 창 위에서 자름)
+    mobileSheet: true,
     radius: 0,
     pad: 0,
     onEnter: openGiftSection(1),
@@ -30,6 +36,10 @@ const STEPS: CoachStep[] = [
   },
   {
     selectors: ['[data-gift-section="2"]'],
+    // 모바일: 선택지 '10대'까지만 강조 (아래 선택지는 잘라 설명 창과 겹치지 않게)
+    mobileTo: ['[data-gift-section="2"] [data-gift-opt="10대"]'],
+    // 모바일: 설명 창은 화면 아래 고정, 강조 영역은 헤더 바로 아래로 (넘치면 설명 창 위에서 자름)
+    mobileSheet: true,
     radius: 0,
     pad: 0,
     onEnter: openGiftSection(2),
@@ -39,6 +49,8 @@ const STEPS: CoachStep[] = [
   {
     // 이미 하나라도 골랐으면 '다음' 버튼으로 바뀌어 건너뛰기가 없다 — 그때는 이 설명을 건너뛴다
     selectors: ["[data-gift-skip]"],
+    // 모바일: 설명 창은 화면 아래 고정, 강조 영역은 헤더 바로 아래로 (넘치면 설명 창 위에서 자름)
+    mobileSheet: true,
     dot: ["[data-gift-skip] span"],
     optional: true,
     title: "건너뛰기",
@@ -59,6 +71,9 @@ const STEP2: CoachStep[] = [
   },
   {
     selectors: ['[data-coach="checkout-delivery"]'],
+    // 모바일: '픽업'·'배송' 선택 줄만 (아래 배송 정보 칸은 제외)
+    mobileSelectors: ['[data-coach="checkout-pickup"]'],
+    mobileTo: ['[data-delivery-opt="배송"]'],
     radius: 0,
     pad: 0,
     title: "수령 방법",
@@ -66,6 +81,13 @@ const STEP2: CoachStep[] = [
   },
   {
     selectors: ['[data-coach="checkout-date"]'],
+    // 모바일: '수령 날짜' 제목 줄은 빼고 달력부터
+    mobileSelectors: ['[data-coach="checkout-date"] .large-datepicker'],
+    // 모바일: 날짜 섹션을 단계 표시 바 바로 아래로 딱 붙여 올려 아래 설명 창 자리를 확보
+    mobileScrollFlush: true,
+    // 모바일: 달력은 28일이 있는 줄까지만 (아래 줄은 잘라 설명 창과 겹치지 않게)
+    mobileTo: ['[data-coach="checkout-date"] .react-datepicker__day--028:not(.react-datepicker__day--outside-month)'],
+    mobilePadBottom: 2,
     radius: 0,
     pad: 0,
     title: "수령 희망 날짜",
@@ -102,6 +124,8 @@ const DONE: CoachStep[] = [
   {
     selectors: ['[data-coach="done-info"]'],
     pad: 0,
+    // 모바일: '주문 정보' 카드만 (화면을 다 차지해 설명 창과 겹치지 않게)
+    mobileSelectors: ['[data-coach="done-order-info"]'],
     title: "주문 내용 확인",
     body: "주문 정보와 결제 금액을 한 번에 보여줘요.\n손님이 주문한 내용을 마지막으로 다시 확인해요.",
   },

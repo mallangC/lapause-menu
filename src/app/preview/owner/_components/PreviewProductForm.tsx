@@ -392,7 +392,7 @@ export default function PreviewProductForm({ initialData, onSubmit, onCancel }: 
             />
           </div>
 
-          <div ref={colorFieldRef}>
+          <div ref={colorFieldRef} data-coach="pd-color">
             <label className={fieldErrors.includes("색상") ? "block text-xs text-red-500 mb-1" : fieldLabelCls}>
               색상 <span className="text-red-500">*</span> <span className="text-gray-400 font-normal">(다중 선택 가능)</span>
             </label>
@@ -409,7 +409,7 @@ export default function PreviewProductForm({ initialData, onSubmit, onCancel }: 
             />
           </div>
 
-          <div>
+          <div data-coach="pd-wrap">
             <label className={fieldLabelCls}>포장지 색상</label>
             <div className="flex p-1 bg-gray-100 rounded-xl">
               {WRAPPING_COLORS.map((wc) => (
@@ -429,7 +429,7 @@ export default function PreviewProductForm({ initialData, onSubmit, onCancel }: 
             </div>
           </div>
 
-          <div>
+          <div data-coach="pd-mood">
             <label className={fieldLabelCls}>분위기</label>
             <div className="grid grid-cols-2 gap-2">
               {MOODS.map((m) => (

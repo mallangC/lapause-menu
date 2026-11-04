@@ -477,8 +477,8 @@ export default function PreviewConsultClient({ logoNode, slug, companyName, logo
   }
 
   return (
-    // 미리보기 — 추천 상품·결제 단계는 아래 이동 바(처음·손님 홈·설명 다시 보기)에 버튼이 가리지 않게 아래 여백을 더 둔다
-    <div className={`min-h-screen bg-gray-100 ${step >= 3 ? "pb-16" : ""}`}>
+    // 미리보기 — 1·2단계(선물 정보·취향과 예산)는 선택지를 펼치면 맨 아래 '건너뛰기·다음' 버튼이 이동 바에 가려져서 아래 여백을 더 크게(80px). 추천 상품·결제 단계는 아래 이동 바(처음·손님 홈·설명 다시 보기)에 버튼이 가리지 않게 아래 여백을 더 둔다
+    <div className={`min-h-screen bg-gray-100 ${step <= 2 ? "pb-20" : "pb-16"}`}>
       {/* Header */}
       <PreviewStoreHeader
         slug={slug}
@@ -619,6 +619,7 @@ export default function PreviewConsultClient({ logoNode, slug, companyName, logo
                           {section.options.map((opt) => (
                             <button
                               key={opt}
+                              data-gift-opt={opt}
                               type="button"
                               onClick={() => section.onSelect(opt)}
                               className={`w-full flex items-center justify-between pl-8 pr-4 py-3.5 text-left transition-colors ${section.selected === opt ? "bg-beige-50" : "hover:bg-gray-50"}`}
@@ -1018,9 +1019,11 @@ export default function PreviewConsultClient({ logoNode, slug, companyName, logo
                   </div>
                   <div className="divide-y divide-gray-100">
                     {(deliveryEnabled ? ["픽업", "배송"] : ["픽업"]).map((v) => (
-                      <div key={v} data-coach={v === "배송" ? "consult4-delivery" : undefined}>
+                      // data-coach — consult4-pickup·consult4-rphone: 모바일 설명이 '픽업'부터 '받는 분 연락처'까지만 강조
+                      <div key={v} data-coach={v === "배송" ? "consult4-delivery" : "consult4-pickup"}>
                         <button
                           type="button"
+                          data-delivery-opt={v}
                           onClick={() => { set("deliveryType", v); setS4fe(p => ({ ...p, deliveryType: false })); }}
                           className={`w-full flex items-center justify-between px-4 py-3.5 text-left transition-colors ${form.deliveryType === v ? "bg-beige-50" : "hover:bg-gray-50"}`}
                         >
@@ -1040,7 +1043,7 @@ export default function PreviewConsultClient({ logoNode, slug, companyName, logo
                           <label className={`block text-xs mb-1 ${s4fe.deliveryInfo && !recipientName ? "text-red-500 font-medium" : "text-gray-600"}`}>받는 분 이름</label>
                           <input type="text" placeholder="홍길동" value={recipientName} onChange={(e) => { setRecipientName(e.target.value); if (s4fe.deliveryInfo) setS4fe(p => ({ ...p, deliveryInfo: false })); }} className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none bg-gray-50 placeholder:text-gray-300 ${s4fe.deliveryInfo && !recipientName ? "border-red-400 focus:border-red-400" : "border-gray-200 focus:border-gray-400"}`} />
                         </div>
-                        <div>
+                        <div data-coach="consult4-rphone">
                           <label className={`block text-xs mb-1 ${s4fe.deliveryInfo && !recipientPhone ? "text-red-500 font-medium" : "text-gray-600"}`}>받는 분 전화번호</label>
                           <input type="tel" placeholder="010-1234-5678" value={recipientPhone} onChange={(e) => { setRecipientPhone(formatPhone(e.target.value)); if (s4fe.deliveryInfo) setS4fe(p => ({ ...p, deliveryInfo: false })); }} className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none bg-gray-50 placeholder:text-gray-300 ${s4fe.deliveryInfo && !recipientPhone ? "border-red-400 focus:border-red-400" : "border-gray-200 focus:border-gray-400"}`} />
                         </div>

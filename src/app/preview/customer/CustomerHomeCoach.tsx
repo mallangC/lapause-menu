@@ -10,15 +10,20 @@ const STEPS: CoachStep[] = [
     radius: 0,
     pad: 0,
     title: "상품 보기",
-    body: "사장님이 등록한 상품이 사진과 함께 보여요.\n손님은 상품을 눌러 자세히 보고\n바로 예약까지 할 수 있어요.",
+    body: "사장님이 등록한 상품이 사진과 함께 보여요.\n손님은 상품을 눌러 자세히 보고 바로 예약 할 수 있어요.",
   },
   {
-    selectors: ['button[aria-label="필터"]'],
+    // 모바일은 동그라미 버튼만(글자 제외), PC는 필터 버튼 — 모바일 동그라미는 PC에서 숨겨져 있어 PC는 다음 후보로 넘어간다
+    selectors: ['[data-coach="home-filter-circle"]', 'button[aria-label="필터"]'],
+    mobileRadius: 9999,
+    mobilePad: 0,
     title: "필터",
     body: "상품을 등록할 때 넣은 꽃 색상·포장지·분위기로\n손님이 원하는 꽃만 골라볼 수 있어요.",
   },
   {
-    selectors: ['a[aria-label="맞춤주문"]', 'header a[href$="/consult"]'],
+    selectors: ['[data-coach="home-consult-circle"]', 'a[aria-label="맞춤주문"]', 'header a[href$="/consult"]'],
+    mobileRadius: 9999,
+    mobilePad: 0,
     title: "맞춤주문",
     body: "손님이 선물 목적·분위기·예산을 고르면\n사장님 상품 중 어울리는 꽃을 추천해 줘요.\n상담 없이도 예약·결제까지 받을 수 있어요.",
   },
@@ -55,6 +60,8 @@ export default function CustomerHomeCoach() {
         body: "사장님 매장의 손님이 보게 될 화면이에요.\n손님은 앱 설치 없이 링크 하나로 들어와요.\n주요 기능 4가지를 알려드릴게요.",
       }}
       steps={STEPS}
+      // 마지막 설명(푸터)까지 보고 나면 메뉴판 맨 위로 돌아간다
+      onFinish={() => window.scrollTo({ top: 0, behavior: "smooth" })}
       outro={{
         title: "이제 직접 눌러보세요",
         body: "손님이 된 것처럼 반짝이는 곳을 눌러보세요.\n아래 버튼으로 언제든 처음으로 돌아올 수 있어요.",
