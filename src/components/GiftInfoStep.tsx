@@ -102,6 +102,7 @@ export default function GiftInfoStep({ value, onChange, onNext }: Props) {
                     {section.options.map((opt) => (
                       <button
                         key={opt}
+                        data-gift-opt={opt}
                         type="button"
                         onClick={() => section.onSelect(opt)}
                         className={`w-full flex items-center justify-between pl-8 pr-4 py-3.5 text-left transition-colors ${section.selected === opt ? "bg-[color-mix(in_srgb,var(--color-gold-500)_8%,#fff)]" : "hover:bg-gray-50"}`}
