@@ -102,6 +102,32 @@ interface Props {
   onClearStatusFilter?: () => void;
 }
 
+// 추가 옵션 뱃지 — 저장 값은 주문 방식마다 달라서('추가' / '1장'·'2개' / '미포함' / '서비스') 뱃지에는 세 가지로만 보여준다
+//  · 하나라도 넣었으면 '추가'(초록) · 상품에 포함이면 '서비스'(보라) · 그 외 '없음'
+// 단, 같은 상품을 2개 이상 산 줄은 옵션도 몇 개인지가 의미 있으니 '2개'·'1장'처럼 개수로 보여준다
+function optionBadge(v?: string | null): "추가" | "서비스" | "없음" {
+  if (!v || v === "없음" || v === "미포함") return "없음";
+  if (v === "서비스") return "서비스";
+  if (v === "추가") return "추가";
+  const n = Number(v.match(/^(\d+)/)?.[1] ?? 0);
+  return n > 0 ? "추가" : "없음";
+}
+const OptionBadge = ({ v, qty = 1 }: { v?: string | null; qty?: number }) => {
+  const b = optionBadge(v);
+  // 수량 2개 이상인 줄 — 저장된 개수(예: 2개, 1장)를 그대로
+  const label = b === "추가" && qty >= 2 && v && /^\d/.test(v) ? v : b;
+  return b === "없음" ? (
+    <span className="text-xs text-gray-300">없음</span>
+  ) : (
+    <span className={`text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${b === "추가" ? "border border-green-500 text-green-600" : "border border-purple-400 text-purple-500"}`}>{label}</span>
+  );
+};
+/** 상품 이름 — 같은 상품 2개 이상이면 '× 2' */
+const itemLabel = (item?: { name?: string; type?: string; quantity?: number }, fallback = "—") => {
+  const name = item?.name || item?.type || fallback;
+  return item?.quantity && item.quantity >= 2 ? `${name} × ${item.quantity}` : name;
+};
+
 export default function ReservationsTab({ companyId, allReservations, setAllReservations, loading, onRefresh, onMonthChange, settings, initialStatusFilter, onClearStatusFilter }: Props) {
   const [page, setPage] = useState(1);
   const sortKey: SortKey = "desired_date";
@@ -691,7 +717,7 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
               const isCancelled = r.status === "취소";
               const productSummary = r.items?.length > 1
                 ? `${r.items[0]?.name || r.items[0]?.type || "상품"} 외 ${r.items.length - 1}건`
-                : r.items?.[0]?.name || r.items?.[0]?.type || "—";
+                : itemLabel(r.items?.[0]);
               return (
                 <SwipeableReservationCard
                   key={r.id}
@@ -720,14 +746,14 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
                         {r.final_price ? `${r.final_price.toLocaleString()}원` : "—"}
                       </span>
                       <div className="flex items-center gap-2">
-                        {!isCancelled && r.items?.some((item) => item.shopping_bag && item.shopping_bag !== "없음") && (
+                        {!isCancelled && r.items?.some((item) => optionBadge(item.shopping_bag) !== "없음") && (
                           <span style={{ color: "#22c55e" }}>
                             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007Z" />
                             </svg>
                           </span>
                         )}
-                        {!isCancelled && r.items?.some((item) => item.message_card && item.message_card !== "없음") && (
+                        {!isCancelled && r.items?.some((item) => optionBadge(item.message_card) !== "없음") && (
                           <span style={{ color: "#22c55e" }}>
                             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
@@ -816,23 +842,13 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
                         ) : (
                           <>
                             <td className="py-3 pr-3 text-gray-600 max-w-40 truncate text-center text-sm">
-                              {r.items?.[0]?.name || r.items?.[0]?.type || "—"}
+                              {itemLabel(r.items?.[0])}
                             </td>
                             <td className="py-3 pr-3 text-center">
-                              {(() => {
-                                const val = r.items?.[0]?.shopping_bag;
-                                return val && val !== "없음" ? (
-                                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${val === "추가" ? "border border-green-500 text-green-600" : "border border-purple-400 text-purple-500"}`}>{val}</span>
-                                ) : <span className="text-xs text-gray-300">없음</span>;
-                              })()}
+                              <OptionBadge v={r.items?.[0]?.shopping_bag} qty={r.items?.[0]?.quantity} />
                             </td>
                             <td className="py-3 pr-3 text-center">
-                              {(() => {
-                                const val = r.items?.[0]?.message_card;
-                                return val && val !== "없음" ? (
-                                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${val === "추가" ? "border border-green-500 text-green-600" : "border border-purple-400 text-purple-500"}`}>{val}</span>
-                                ) : <span className="text-xs text-gray-300">없음</span>;
-                              })()}
+                              <OptionBadge v={r.items?.[0]?.message_card} qty={r.items?.[0]?.quantity} />
                             </td>
                           </>
                         )}
@@ -863,22 +879,14 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
                             <td className="py-2 pr-3 text-center">
                               <span className="text-xs text-gray-500 flex items-center justify-center gap-1.5">
                                 <span className={`w-1 h-1 rounded-full shrink-0 inline-block ${itemDone ? "bg-yellow-400" : "bg-gray-300"}`} />
-                                {item.name || item.type || "—"}
+                                {itemLabel(item)}
                               </span>
                             </td>
                             <td className="py-2 pr-3 text-center">
-                              {item.shopping_bag !== "없음" ? (
-                                <span className={`text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${item.shopping_bag === "추가" ? "border border-green-500 text-green-600" : "border border-purple-400 text-purple-500"}`}>
-                                  {item.shopping_bag}
-                                </span>
-                              ) : <span className="text-xs text-gray-300">없음</span>}
+                              <OptionBadge v={item.shopping_bag} qty={item.quantity} />
                             </td>
                             <td className="py-2 pr-3 text-center">
-                              {item.message_card !== "없음" ? (
-                                <span className={`text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${item.message_card === "추가" ? "border border-green-500 text-green-600" : "border border-purple-400 text-purple-500"}`}>
-                                  {item.message_card}
-                                </span>
-                              ) : <span className="text-xs text-gray-300">없음</span>}
+                              <OptionBadge v={item.message_card} qty={item.quantity} />
                             </td>
                             <td className="py-2" />
                           </tr>

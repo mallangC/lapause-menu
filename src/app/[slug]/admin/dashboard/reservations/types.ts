@@ -9,6 +9,8 @@ export interface ReservationItem {
   memo: string | null;
   status?: string;
   product_id?: string | null;
+  /** 같은 상품을 여러 개 주문했을 때 개수 (장바구니·수량 2개 이상 바로 예약) — 없으면 1 */
+  quantity?: number;
 }
 
 export interface Reservation {

@@ -34,8 +34,8 @@ interface Props {
   onSaveDeliveryFee: (r: Reservation, fee: string) => void;
   onEdit: (r: Reservation) => void;
   onDelete: (id: string) => void;
-  /** 계좌이체 입금 확인 → 결제완료로 */
-  onMarkPaid?: (r: Reservation) => void;
+  /** 계좌이체 입금 확인 → 결제완료로 (끝날 때까지 버튼에 로딩) */
+  onMarkPaid?: (r: Reservation) => Promise<void> | void;
   messageCardPrice?: number;
   shoppingBagPrice?: number;
   preservativePrice?: number;
@@ -217,6 +217,8 @@ export default function ReservationDetail({
   const payAmount = r.final_price ?? 0;
   // 계좌이체 주문 (현금영수증 신청·입금 확인)
   const isTransfer = r.payment_method === "transfer";
+  // 입금 확인 처리 중 — 눌렀는지 모르게 멈춰 보이지 않도록 버튼에 로딩을 보여준다
+  const [markingPaid, setMarkingPaid] = useState(false);
   const productsTotal = payAmount - deliveryFeeAmount;
 
   return (
@@ -530,6 +532,8 @@ export default function ReservationDetail({
                         <div className="flex-1 min-w-0">
                           <span className="text-gray-800">
                             {item.name || item.type}
+                            {/* 같은 상품 2개 이상 */}
+                            {(item.quantity ?? 1) >= 2 && <span className="ml-1 font-medium">× {item.quantity}</span>}
                             {item.name && item.type && item.name !== item.type && (
                               <span className="text-gray-400 ml-1">({item.type})</span>
                             )}
@@ -555,12 +559,17 @@ export default function ReservationDetail({
                         </div>
                         {(() => {
                           const addon = messageCardPrice * addonCount(item.message_card) + shoppingBagPrice * addonCount(item.shopping_bag) + preservativePrice * addonCount(item.preservative);
-                          const total = item.price + addon;
+                          // 같은 상품 여러 개면 상품가 × 개수
+                          const qty = item.quantity ?? 1;
+                          const total = item.price * qty + addon;
                           return (
                             <div className="pt-1.5 border-t border-gray-100 sm:border-t-0 sm:pt-0 text-right shrink-0">
                               <span className="font-medium text-gray-800">{total.toLocaleString()}원</span>
-                              {addon > 0 && (
-                                <p className="text-[11px] text-gray-400">상품 {item.price.toLocaleString()}원 + 옵션 {addon.toLocaleString()}원</p>
+                              {(addon > 0 || qty >= 2) && (
+                                <p className="text-[11px] text-gray-400">
+                                  상품 {item.price.toLocaleString()}원{qty >= 2 ? ` × ${qty}` : ""}
+                                  {addon > 0 ? ` + 옵션 ${addon.toLocaleString()}원` : ""}
+                                </p>
                               )}
                             </div>
                           );
@@ -662,10 +671,20 @@ export default function ReservationDetail({
                 // 계좌이체 — 입금을 확인하면 결제완료로 바꾼다
                 <button
                   type="button"
-                  onClick={(e) => { e.stopPropagation(); onMarkPaid(r); }}
-                  className="w-full text-sm font-medium py-2 rounded-lg bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 transition-colors"
+                  disabled={markingPaid}
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    setMarkingPaid(true);
+                    try {
+                      await onMarkPaid(r);
+                    } finally {
+                      setMarkingPaid(false);
+                    }
+                  }}
+                  className="w-full inline-flex items-center justify-center gap-2 text-sm font-medium py-2 rounded-lg bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 disabled:opacity-70 disabled:cursor-wait transition-colors"
                 >
-                  입금 확인했어요 (결제완료로 바꾸기)
+                  {markingPaid && <span className="w-4 h-4 rounded-full border-2 border-green-600 border-t-transparent animate-spin" />}
+                  {markingPaid ? "결제완료로 변경 중..." : "입금 확인 (결제완료로 변경)"}
                 </button>
               )}
               <div className="flex justify-between text-sm text-gray-600">
