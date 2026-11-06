@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getMenuData } from "@/lib/menuCache";
 import { generateThemeVars, DEFAULT_THEME_BG, DEFAULT_THEME_ACCENT } from "@/lib/theme";
+import { activeSizeTiers } from "@/lib/sizeTiers";
 import ProductDetailClient from "./ProductDetailClient";
 
 interface Props {
@@ -54,6 +55,7 @@ export default async function ProductDetailPage({ params }: Props) {
       hiddenSeasons={[...((s.hidden_seasons as string[] | null) ?? []), ...hiddenCustomSeasons]}
       customProductTypes={customProductTypes}
       customSeasons={customSeasons}
+      sizeTiers={activeSizeTiers(s.size_tiers)}
     />
   );
 }

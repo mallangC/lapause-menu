@@ -7,6 +7,6 @@ interface Props {
 export default async function ProductsPage({ params }: Props) {
   const { slug } = await params;
 
-  // searchParams가 없는 경우 /[slug]로 리다이렉트
-  redirect(`/${slug}`);
+  // 예전 /products 주소는 메뉴판(/[slug]/menu)으로
+  redirect(`/${slug}/menu`);
 }

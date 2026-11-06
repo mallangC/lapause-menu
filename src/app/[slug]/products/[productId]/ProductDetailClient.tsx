@@ -8,6 +8,8 @@ import { FLOWER_COLOR_MAP, BADGE_COLORS, PRODUCT_TYPES, SEASONS } from "@/lib/co
 import FlowerNoticeModal from "@/components/FlowerNoticeModal";
 import StoreHeader from "@/components/main/StoreHeader";
 import { useCart, startDirectOrder } from "@/hooks/useCart";
+import SizeGuideButton from "@/components/SizeGuideButton";
+import { sizeForPrice, type SizeTier } from "@/lib/sizeTiers";
 
 interface ProductDetailClientProps {
   slug: string;
@@ -21,6 +23,8 @@ interface ProductDetailClientProps {
   hiddenSeasons: string[];
   customProductTypes: string[];
   customSeasons: string[];
+  /** 크기 기준 (가격 기준을 넣은 단계만) — 상품 가격으로 크기를 보여준다 */
+  sizeTiers?: SizeTier[];
 }
 
 export default function ProductDetailClient({
@@ -35,7 +39,10 @@ export default function ProductDetailClient({
   hiddenSeasons,
   customProductTypes,
   customSeasons,
+  sizeTiers = [],
 }: ProductDetailClientProps) {
+  // 상품 가격으로 정해지는 크기 (사장님이 크기 기준을 넣었을 때만)
+  const size = product.price ? sizeForPrice(sizeTiers, product.price) : null;
   const router = useRouter();
   const [noticeOpen, setNoticeOpen] = useState(false);
   const [quantity, setQuantity] = useState(1);
@@ -145,6 +152,13 @@ export default function ProductDetailClient({
                 <p className="text-2xl font-bold text-gray-900">
                   {product.price ? `${product.price.toLocaleString()}원` : "가격 문의"}
                 </p>
+                {size && (
+                  // 가격에 맞는 크기 — (?)를 누르면 크기 참고 사진
+                  <div className="mt-2 flex items-center gap-1.5 text-sm text-gray-600">
+                    크기 <b className="font-semibold text-gold-600">{size.name}</b>
+                    <SizeGuideButton name={size.name} image={size.image} />
+                  </div>
+                )}
               </div>
 
               {/* 상세 속성 */}
