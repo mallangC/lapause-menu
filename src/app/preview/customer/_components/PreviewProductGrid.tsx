@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Product } from "@/types";
 import PreviewProductCard from "./PreviewProductCard";
 
@@ -15,6 +16,15 @@ export default function PreviewProductGrid({ products, consultEnabled, slug }: P
       <div className="flex-1 flex flex-col items-center justify-center py-20 text-beige-400">
         <p className="text-lg">해당 조건의 상품이 없습니다.</p>
         <p className="text-sm mt-1">필터를 변경해 보세요.</p>
+        {/* 원하는 상품을 못 찾은 순간 — 맞춤주문으로 이어준다 */}
+        {consultEnabled && slug && (
+          <Link
+            href={`/${slug}/consult`}
+            className="mt-6 inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors"
+          >
+            원하는 느낌으로 추천받기 →
+          </Link>
+        )}
       </div>
     );
   }
