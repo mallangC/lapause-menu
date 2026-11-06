@@ -10,6 +10,8 @@ import "react-datepicker/dist/react-datepicker.css";
 import { notifyMenuChanged } from "@/lib/menuCacheClient";
 import type { CompanySettings } from "./companySettings";
 import { useSettingsSync } from "./useSettingsSync";
+import { DEFAULT_COLOR_LEAD_DAYS } from "@/lib/todayColors";
+import { AFTER_HOURS_END_OPTIONS, AFTER_HOURS_START_OPTIONS, DEFAULT_AFTER_HOURS_END, DEFAULT_AFTER_HOURS_START } from "@/lib/afterHours";
 
 registerLocale("ko", ko);
 
@@ -95,6 +97,12 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
   const [overrideOpen, setOverrideOpen] = useState("09:00");
   const [overrideClose, setOverrideClose] = useState("18:00");
   const [minLeadTimes, setMinLeadTimes] = useState<Record<string, string>>({});
+  // 색 맞춤 가능 일수 — 이보다 가까운 날짜 주문은 그날 매장에 있는 색으로 준비
+  const [colorLeadDays, setColorLeadDays] = useState(String(DEFAULT_COLOR_LEAD_DAYS));
+  // 영업시간 외 수령 — 켜면 이 범위 중 영업시간 앞뒤도 손님이 수령 시간으로 고를 수 있다 (추가 요금 없음)
+  const [afterHoursEnabled, setAfterHoursEnabled] = useState(false);
+  const [afterHoursStart, setAfterHoursStart] = useState(DEFAULT_AFTER_HOURS_START);
+  const [afterHoursEnd, setAfterHoursEnd] = useState(DEFAULT_AFTER_HOURS_END);
   const [error, setError] = useState<string | null>(null);
 
   const supabase = createClient();
@@ -106,6 +114,10 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
     if (data.closed_dates) setClosedDates(data.closed_dates);
     if (data.date_overrides && typeof data.date_overrides === "object")
       setDateOverrides(pruneOverrides(data.date_overrides as DateOverrides));
+    if (typeof data.color_lead_days === "number") setColorLeadDays(String(data.color_lead_days));
+    if (typeof data.after_hours_enabled === "boolean") setAfterHoursEnabled(data.after_hours_enabled);
+    if (typeof data.after_hours_start === "string") setAfterHoursStart(data.after_hours_start);
+    if (typeof data.after_hours_end === "string") setAfterHoursEnd(data.after_hours_end);
     if (data.min_lead_times && typeof data.min_lead_times === "object")
       setMinLeadTimes(
         Object.fromEntries(
@@ -164,6 +176,10 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
 
   const handleSave = async () => {
     setError(null);
+    if (afterHoursEnabled && afterHoursStart >= afterHoursEnd) {
+      setError("영업시간 외 수령: 끝나는 시간이 시작 시간보다 늦어야 해요.");
+      return false;
+    }
     const prunedOverrides = pruneOverrides(dateOverrides);
     setDateOverrides(prunedOverrides);
     const patch = {
@@ -173,6 +189,10 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
         min_lead_times: Object.fromEntries(
           Object.entries(minLeadTimes).map(([k, v]) => [k, Number(v) || 0])
         ),
+        color_lead_days: Number(colorLeadDays) || 0,
+        after_hours_enabled: afterHoursEnabled,
+        after_hours_start: afterHoursStart,
+        after_hours_end: afterHoursEnd,
       };
     const { error: err } = await supabase
       .from("company_settings")
@@ -240,6 +260,37 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
         </div>
       </div>
 
+      {/* 색 맞춤 가능 일수 — 당일 예약 시간처럼 '얼마나 미리 주문해야 하나'를 정하는 값이라 바로 아래에 */}
+      <div className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:p-6">
+        <div className="max-w-lg space-y-3">
+          <div>
+            <h3 className="text-sm font-medium text-gray-700">색 맞춤 가능 일수</h3>
+            <p className="text-xs text-gray-400 mt-0.5 break-keep">
+              원하는 색 꽃을 따로 들여오려면 며칠이 필요한지 입력하세요. 이보다 가까운 날짜의 주문은 대시보드에서 고른 &lsquo;오늘 들어온 꽃 색상&rsquo; 중에서 손님이 고르게 돼요.
+            </p>
+          </div>
+          <div className="flex items-center justify-between border-t border-gray-100 md:border md:border-gray-200 md:rounded-xl px-0 md:px-4 py-3">
+            <span className="text-sm text-gray-700">원하는 색으로 준비 가능</span>
+            <div className="flex items-center gap-1.5">
+              <input
+                type="text"
+                inputMode="numeric"
+                value={colorLeadDays}
+                onChange={(e) => {
+                  const digits = e.target.value.replace(/\D/g, "").slice(0, 2);
+                  setColorLeadDays(digits === "" ? "" : String(Math.min(30, Number(digits))));
+                }}
+                onBlur={() => {
+                  if (colorLeadDays === "") setColorLeadDays("0");
+                }}
+                className="w-16 border border-gray-200 rounded-lg px-2 py-1 text-sm text-center focus:outline-none focus:border-gray-400 bg-white"
+              />
+              <span className="text-xs text-gray-400">일 전 주문부터</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:p-6">
         <div className="max-w-lg space-y-6">
           {/* 요일별 영업 시간 */}
@@ -291,6 +342,63 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
             </div>
           </div>
 
+        </div>
+      </div>
+
+      {/* 영업시간 외 수령 — 요일별 영업 시간 바로 아래 (영업시간 앞뒤로 얼마나 더 받을지) */}
+      <div className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:p-6">
+        <div className="max-w-lg space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-medium text-gray-700">영업시간 외 수령</h3>
+              <p className="text-xs text-gray-400 mt-0.5 break-keep">
+                받을 수 있는 시간을 정하면 그중 영업시간 앞뒤도 손님이 수령 시간으로 고를 수 있어요. 추가 요금은 없고, 다른 예약처럼 확인 후 확정·취소하면 돼요.
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={afterHoursEnabled}
+              onClick={() => setAfterHoursEnabled((v) => !v)}
+              className={`shrink-0 w-12 h-6 rounded-full transition-colors relative ${afterHoursEnabled ? "bg-gold-500" : "bg-gray-200"}`}
+            >
+              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${afterHoursEnabled ? "left-6" : "left-0.5"}`} />
+            </button>
+          </div>
+          {afterHoursEnabled && (
+            <div className="space-y-2">
+              {/* 받을 수 있는 시간 범위 — 영업시간과 겹쳐도 된다 (겹친 부분은 원래 영업시간) */}
+              <div className="flex items-center justify-between border-t border-gray-100 md:border md:border-gray-200 md:rounded-xl px-0 md:px-4 py-3">
+                <span className="text-sm text-gray-700">받을 수 있는 시간</span>
+                <div className="flex items-center gap-2">
+                  {[
+                    { value: afterHoursStart, set: setAfterHoursStart, options: AFTER_HOURS_START_OPTIONS },
+                    { value: afterHoursEnd, set: setAfterHoursEnd, options: AFTER_HOURS_END_OPTIONS },
+                  ].map((f, i) => (
+                    <span key={i} className="flex items-center gap-2">
+                      {i > 0 && <span className="text-gray-300 text-sm">~</span>}
+                      <select
+                        value={f.value}
+                        onChange={(e) => f.set(e.target.value)}
+                        className="min-w-[92px] border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 bg-white focus:outline-none focus:border-gray-400 cursor-pointer"
+                      >
+                        {f.options.map((t) => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
+                      </select>
+                    </span>
+                  ))}
+                </div>
+              </div>
+              {afterHoursStart >= afterHoursEnd ? (
+                <p className="text-xs text-red-500">끝나는 시간이 시작 시간보다 늦어야 해요.</p>
+              ) : (
+                <p className="text-xs text-gray-400 break-keep">
+                  예) 영업 09:00~19:00, 받을 수 있는 시간 04:00~24:00 → 04:00~08:30, 19:30~24:00이 영업시간 외 수령으로 열려요.
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

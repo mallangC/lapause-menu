@@ -280,6 +280,13 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
     ));
   };
 
+  // 계좌이체 입금 확인 → 결제완료
+  const markPaid = async (r: Reservation) => {
+    const res = await patchReservation(r.id, { paid: true });
+    if (!res.ok) return;
+    setAllReservations((prev) => prev.map((item) => (item.id === r.id ? { ...item, paid: true } : item)));
+  };
+
   const saveMemo = async (id: string, memo: string) => {
     const trimmed = memo.trim() || null;
     await patchReservation(id, { admin_memo: trimmed });
@@ -474,6 +481,7 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
                 onSaveDeliveryFee={saveDeliveryFee}
                 onEdit={(r) => { setMobileDetailId(null); setEditingReservation(r); }}
                 onDelete={(id) => { setMobileDetailId(null); handleDeleteReservation(id); }}
+                onMarkPaid={markPaid}
                 messageCardPrice={messageCardPrice}
                 shoppingBagPrice={shoppingBagPrice}
                 preservativePrice={preservativePrice}
@@ -888,6 +896,7 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
                               onSaveDeliveryFee={saveDeliveryFee}
                               onEdit={setEditingReservation}
                               onDelete={handleDeleteReservation}
+                              onMarkPaid={markPaid}
                               messageCardPrice={messageCardPrice}
                               shoppingBagPrice={shoppingBagPrice}
                               preservativePrice={preservativePrice}

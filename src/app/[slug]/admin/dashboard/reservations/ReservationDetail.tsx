@@ -34,6 +34,8 @@ interface Props {
   onSaveDeliveryFee: (r: Reservation, fee: string) => void;
   onEdit: (r: Reservation) => void;
   onDelete: (id: string) => void;
+  /** 계좌이체 입금 확인 → 결제완료로 */
+  onMarkPaid?: (r: Reservation) => void;
   messageCardPrice?: number;
   shoppingBagPrice?: number;
   preservativePrice?: number;
@@ -45,6 +47,10 @@ function addonCount(value?: string | null) {
   const m = value.match(/^(\d+)/);
   return m ? Number(m[1]) : 0;
 }
+
+// 현금영수증 번호 보기 좋게
+const formatReceiptPhone = (v?: string | null) => (v ? v.replace(/^(\d{3})(\d{3,4})(\d{4})$/, "$1-$2-$3") : "-");
+const formatBizNo = (v?: string | null) => (v ? v.replace(/^(\d{3})(\d{2})(\d{5})$/, "$1-$2-$3") : "-");
 
 function SectionCard({ children }: { children: React.ReactNode }) {
   return (
@@ -73,6 +79,7 @@ export default function ReservationDetail({
   messageCardPrice = 0,
   shoppingBagPrice = 0,
   preservativePrice = 0,
+  onMarkPaid,
 }: Props) {
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
   const statusDropdownRef = useRef<HTMLDivElement>(null);
@@ -208,6 +215,8 @@ export default function ReservationDetail({
   // 배송인데 배송비를 아직 정하지 않음 — 링크 금액은 만드는 순간 고정되므로 미리 알려준다
   const deliveryFeeMissing = isDelivery && r.delivery_fee == null;
   const payAmount = r.final_price ?? 0;
+  // 계좌이체 주문 (현금영수증 신청·입금 확인)
+  const isTransfer = r.payment_method === "transfer";
   const productsTotal = payAmount - deliveryFeeAmount;
 
   return (
@@ -560,6 +569,20 @@ export default function ReservationDetail({
                     </div>
                   </div>
                 ))}
+              {r.prepared_color && (
+                // 오늘 매장에 있는 색 중에서 손님이 고른 색 — 만들 때 꼭 봐야 해서 요청 사항 바로 위에
+                <div className="pt-2 border-t border-gray-50">
+                  <Row label="꽃 색상">
+                    <span className="inline-flex items-center gap-1.5 text-gray-800">
+                      {/* 색 동그라미 — '사장님께 맡길게요'는 색이 없어 동그라미 없이 */}
+                      {FLOWER_COLOR_MAP[r.prepared_color] && (
+                        <span className="w-3.5 h-3.5 rounded-full border border-black/10 shrink-0" style={{ background: FLOWER_COLOR_MAP[r.prepared_color] }} />
+                      )}
+                      {r.prepared_color}
+                    </span>
+                  </Row>
+                </div>
+              )}
               {r.requests && (
                 <div className="pt-2 border-t border-gray-50">
                   <Row label="요청 사항"><span className="whitespace-pre-wrap">{r.requests}</span></Row>
@@ -611,14 +634,40 @@ export default function ReservationDetail({
               </SectionCard>
             )}
 
-            {/* 결제 — 상품 합계 + 배송비 = 결제 금액을 영수증처럼 쌓고, 결제 링크는 그 금액 바로 아래에서 만든다 */}
+            {/* 결제 — 상품 합계 + 배송비 = 총 금액을 영수증처럼 쌓고, 결제 링크는 그 금액 바로 아래에서 만든다 */}
             <SectionCard>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-400">결제</span>
-                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${r.paid ? "bg-green-50 text-green-600" : "bg-gray-100 text-gray-400"}`}>
-                  {r.paid ? "결제완료" : "미결제"}
+                <span className="flex items-center gap-1.5">
+                  {/* 결제 방법 — 계좌이체만 저장되고, 비어 있으면 카드·간편결제 */}
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${isTransfer ? "bg-amber-50 text-amber-700" : "bg-gray-50 text-gray-500"}`}>
+                    {isTransfer ? "계좌이체" : "카드·간편결제"}
+                  </span>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${r.paid ? "bg-green-50 text-green-600" : "bg-gray-100 text-gray-400"}`}>
+                    {r.paid ? "결제완료" : isTransfer ? "입금 대기" : "미결제"}
+                  </span>
                 </span>
               </div>
+              {isTransfer && (
+                <div className="flex justify-between text-sm text-gray-600">
+                  <span>현금영수증</span>
+                  <span className="text-right">
+                    {r.cash_receipt_type && r.cash_receipt_type !== "신청 안 함"
+                      ? `${r.cash_receipt_type} · ${r.cash_receipt_type === "소득공제" ? formatReceiptPhone(r.cash_receipt_number) : formatBizNo(r.cash_receipt_number)}`
+                      : "신청 안 함"}
+                  </span>
+                </div>
+              )}
+              {isTransfer && !r.paid && onMarkPaid && (
+                // 계좌이체 — 입금을 확인하면 결제완료로 바꾼다
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onMarkPaid(r); }}
+                  className="w-full text-sm font-medium py-2 rounded-lg bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 transition-colors"
+                >
+                  입금 확인했어요 (결제완료로 바꾸기)
+                </button>
+              )}
               <div className="flex justify-between text-sm text-gray-600">
                 <span>상품 합계 <span className="text-xs text-gray-400">(옵션 포함)</span></span>
                 <span>{productsTotal.toLocaleString()}원</span>
@@ -630,10 +679,11 @@ export default function ReservationDetail({
                 </div>
               )}
               <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-700">결제 금액</span>
+                {/* 이미 결제됐을 수도, 아직일 수도 있어 '결제 금액' 대신 '총 금액' */}
+                <span className="text-sm font-medium text-gray-700">총 금액</span>
                 <span className="text-base font-bold text-gray-900">{payAmount.toLocaleString()}원</span>
               </div>
-              {!r.paid && (
+              {!r.paid && !isTransfer && (
                 <>
                   {deliveryFeeMissing && (
                     <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2">배송비가 아직 없어요. 결제 링크를 만들기 전에 위에서 배송비를 넣어주세요.</p>

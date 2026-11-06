@@ -16,17 +16,23 @@ interface Props {
   initialInstagramUrl: string | null;
   initialYoutubeUrl: string | null;
   initialPhone: string | null;
+  /** 주차 가능 여부 */
+  initialParking: string | null;
   plan: "monthly" | "annual" | "none" | "free";
+  /** 공유 매장 설정 갱신 (대시보드 '손님 문의 줄이기'가 바로 반영되게) */
+  onSettingsSaved?: (patch: Record<string, unknown>) => void;
   onSave: (name: string, logo: string | null, locationUrl: string | null, kakaoChannelUrl: string | null, instagramUrl: string | null, youtubeUrl: string | null) => void;
 }
 
-export default function CompanyInfoTab({ companyId, initialName, initialLogo, slug, initialNaverTalkUrl, initialKakaoChannelUrl, initialInstagramUrl, initialYoutubeUrl, onSave }: Props) {
+export default function CompanyInfoTab({ companyId, initialName, initialLogo, slug, initialNaverTalkUrl, initialKakaoChannelUrl, initialInstagramUrl, initialYoutubeUrl, initialParking, onSettingsSaved, onSave }: Props) {
   const [name, setName] = useState(initialName);
   const [logoUrl, setLogoUrl] = useState<string | null>(initialLogo);
   const [locationUrl, setNaverTalkUrl] = useState(initialNaverTalkUrl ?? "");
   const [kakaoChannelUrl, setKakaoChannelUrl] = useState(initialKakaoChannelUrl ?? "");
   const [instagramUrl, setInstagramUrl] = useState(initialInstagramUrl ?? "");
   const [youtubeUrl, setYoutubeUrl] = useState(initialYoutubeUrl ?? "");
+  // 주차 가능 여부 — 매장 위치처럼 손님이 찾아올 때 보는 정보라 여기에 (언제든 바꿀 수 있다)
+  const [parking, setParking] = useState(initialParking ?? "");
   const [uploading, setUploading] = useState(false);
   // 바로가기 버튼 i 팁 — 메뉴판에서 버튼이 보이는 위치 예시 이미지
   const [showLinksInfo, setShowLinksInfo] = useState(false);
@@ -68,6 +74,7 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
         kakao_channel_url: kakaoChannelUrl || null,
         instagram_url: instagramUrl || null,
         youtube_url: youtubeUrl || null,
+        parking: parking || null,
       }).eq("company_id", companyId),
     ]);
 
@@ -77,6 +84,7 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
       return false;
     }
     notifyMenuChanged();
+    onSettingsSaved?.({ location_url: locationUrl || null, kakao_channel_url: kakaoChannelUrl || null, instagram_url: instagramUrl || null, youtube_url: youtubeUrl || null, parking: parking || null, logo_image: logoUrl });
     onSave(name, logoUrl, locationUrl || null, kakaoChannelUrl || null, instagramUrl || null, youtubeUrl || null);
   };
 
@@ -240,6 +248,28 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
                   className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
                 />
               </div>
+              </div>
+            </div>
+
+            {/* 주차 가능 여부 */}
+            <div className="space-y-3">
+              <div>
+                <h3 className="text-sm font-medium text-gray-700">주차 가능 여부</h3>
+                <p className="text-xs text-gray-400 mt-0.5">손님이 매장에 찾아올 때 자주 묻는 정보예요.</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {["주차 가능", "잠시 주차 가능", "주차 불가"].map((opt) => (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => setParking(parking === opt ? "" : opt)}
+                    className={`px-3.5 py-2 rounded-lg border text-sm transition-colors ${
+                      parking === opt ? "border-gold-500 bg-gold-500/10 text-gold-600 font-medium" : "border-gray-300 text-gray-600 bg-white hover:border-gray-400"
+                    }`}
+                  >
+                    {opt}
+                  </button>
+                ))}
               </div>
             </div>
 

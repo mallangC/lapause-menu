@@ -7,6 +7,8 @@ import SaveButton from "@/components/admin/SaveButton";
 import { notifyMenuChanged } from "@/lib/menuCacheClient";
 import type { CompanySettings } from "./companySettings";
 import { useSettingsSync } from "./useSettingsSync";
+import SizeTiersEditor from "@/components/admin/SizeTiersEditor";
+import { normalizeSizeTiers, sizeTierOrderErrors, type SizeTier } from "@/lib/sizeTiers";
 
 interface Props {
   companyId: string;
@@ -39,6 +41,8 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
   const [soldCount, setSoldCount] = useState(0);
   const [showMailOrderWarning, setShowMailOrderWarning] = useState(false);
   const [showNoticeInfo, setShowNoticeInfo] = useState(false);
+  // 크기 기준 (미니 ~ 프리미엄) — 가격에 따라 크기가 정해진다
+  const [sizeTiers, setSizeTiers] = useState<SizeTier[]>(() => normalizeSizeTiers([]));
 
   const supabase = createClient();
   const mailOrderBlocked = !mailOrderNumber && soldCount >= 50;
@@ -58,6 +62,7 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
     setSoldCount(data.sold_count ?? 0);
     if (data.consult_notice) setConsultNotice(data.consult_notice);
     setDeliveryEnabled(data.delivery_enabled ?? false);
+    setSizeTiers(normalizeSizeTiers(data.size_tiers));
     if (data.delivery_fees && typeof data.delivery_fees === "object") {
       const fees = data.delivery_fees as Record<string, number>;
       setDeliveryFees({
@@ -75,6 +80,10 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
 
   const handleSave = async () => {
     setError(null);
+    if (sizeTierOrderErrors(sizeTiers).length > 0) {
+      setError("크기 기준: 큰 크기일수록 가격이 더 높아야 해요.");
+      return false;
+    }
     const patch = {
         consult_enabled: mailOrderBlocked ? false : consultEnabled,
         message_card_enabled: messageCardEnabled,
@@ -88,6 +97,7 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
         delivery_fees: Object.fromEntries(
           Object.entries(deliveryFees).map(([k, v]) => [k, v === "" ? null : parseMoney(v)])
         ),
+        size_tiers: sizeTiers,
       };
     const { error: err } = await supabase
       .from("company_settings")
@@ -380,6 +390,55 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
         </div>
       </div>
 
+      {/* 예약 확인 안내 문구 — 추가 옵션 설정 바로 아래 */}
+      <div className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:p-6">
+        <div className="max-w-lg space-y-4">
+          {/* 예약 확인 안내 문구 — 손님이 결제 직전 마지막 확인 화면에서 보는 글 */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5">
+              <p className="text-sm font-medium text-gray-800">예약 확인 안내 문구</p>
+              <button type="button" onClick={() => setShowNoticeInfo(true)}>
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600 transition-colors" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
+                </svg>
+              </button>
+            </div>
+            <p className="text-xs text-gray-400 -mt-1">고객이 예약을 완료하기 직전 확인 화면 상단에 표시됩니다.</p>
+            <textarea
+              value={consultNotice}
+              onChange={(e) => setConsultNotice(e.target.value.slice(0, 500))}
+              placeholder={"예) 주문 후 입금 완료 시 예약이 확정됩니다.\n당일 취소는 불가하오니 신중히 주문해주세요."}
+              rows={6}
+              maxLength={500}
+              className="block w-full border border-gray-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-gray-400 resize-none bg-white"
+            />
+            <p className="text-xs text-gray-400 text-right">{consultNotice.length}/500</p>
+          </div>
+
+          {/* 배송비 참고 이미지 모달 */}
+          {showDeliveryFeeTip && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4" onClick={() => setShowDeliveryFeeTip(false)}>
+              <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm md:max-w-lg flex flex-col max-h-[85vh]" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
+                  <h3 className="text-sm font-semibold text-gray-900">배송비 설정 참고</h3>
+                  <button type="button" onClick={() => setShowDeliveryFeeTip(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="p-5 overflow-y-auto">
+                  <p className="text-xs text-gray-500 mb-3 leading-relaxed">
+                    고객이 배송 주소를 입력하면 매장 주소와의 거리가 자동으로 측정되고, 그 거리 구간에 맞춰 여기서 설정한 배송비가 최종 금액에 자동으로 추가됩니다.
+                  </p>
+                  <img src="/delivery-fee-tip.png" alt="배송비 설정 참고 이미지" className="w-full rounded-xl border border-gray-100" />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* 모바일은 목록 박스가 없어 마지막 줄 아래 카드 여백을 없앤다 (마지막 줄 자체 여백으로 끝) */}
       <div className="bg-white -mx-4 md:mx-0 pt-5 pb-0 px-4 md:rounded-2xl md:p-6">
         <div className="max-w-lg space-y-4">
@@ -455,53 +514,12 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
         </div>
       </div>
 
-      {/* 마지막 카드 — 아래 저장 줄과 붙여서 한 카드처럼 보이게 아래 모서리는 각지게.
+      {/* 크기 기준 — 가격에 따라 정해지는 크기와 참고 사진.
+          마지막 카드라 아래 저장 줄과 붙여 한 카드처럼 보이게 아래 모서리는 각지게.
           Tailwind v4의 space-y는 앞 요소 아래 여백(margin-bottom)으로 간격을 두므로 !mb-0으로 틈을 없앤다 */}
       <div className="!mb-0 bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:rounded-b-none md:p-6">
-        <div className="max-w-lg space-y-4">
-          {/* 예약 확인 안내 문구 — 손님이 결제 직전 마지막 확인 화면에서 보는 글이라 맨 아래(저장 버튼 위) */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-1.5">
-              <p className="text-sm font-medium text-gray-800">예약 확인 안내 문구</p>
-              <button type="button" onClick={() => setShowNoticeInfo(true)}>
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600 transition-colors" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
-                </svg>
-              </button>
-            </div>
-            <p className="text-xs text-gray-400 -mt-1">고객이 예약을 완료하기 직전 확인 화면 상단에 표시됩니다.</p>
-            <textarea
-              value={consultNotice}
-              onChange={(e) => setConsultNotice(e.target.value.slice(0, 500))}
-              placeholder={"예) 주문 후 입금 완료 시 예약이 확정됩니다.\n당일 취소는 불가하오니 신중히 주문해주세요."}
-              rows={6}
-              maxLength={500}
-              className="block w-full border border-gray-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-gray-400 resize-none bg-white"
-            />
-            <p className="text-xs text-gray-400 text-right">{consultNotice.length}/500</p>
-          </div>
-
-          {/* 배송비 참고 이미지 모달 */}
-          {showDeliveryFeeTip && (
-            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4" onClick={() => setShowDeliveryFeeTip(false)}>
-              <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm md:max-w-lg flex flex-col max-h-[85vh]" onClick={(e) => e.stopPropagation()}>
-                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
-                  <h3 className="text-sm font-semibold text-gray-900">배송비 설정 참고</h3>
-                  <button type="button" onClick={() => setShowDeliveryFeeTip(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-                <div className="p-5 overflow-y-auto">
-                  <p className="text-xs text-gray-500 mb-3 leading-relaxed">
-                    고객이 배송 주소를 입력하면 매장 주소와의 거리가 자동으로 측정되고, 그 거리 구간에 맞춰 여기서 설정한 배송비가 최종 금액에 자동으로 추가됩니다.
-                  </p>
-                  <img src="/delivery-fee-tip.png" alt="배송비 설정 참고 이미지" className="w-full rounded-xl border border-gray-100" />
-                </div>
-              </div>
-            </div>
-          )}
+        <div className="max-w-lg">
+          <SizeTiersEditor value={sizeTiers} onChange={setSizeTiers} />
         </div>
       </div>
 

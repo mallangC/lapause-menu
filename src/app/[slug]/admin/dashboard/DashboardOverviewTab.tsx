@@ -5,6 +5,8 @@ import Link from "next/link";
 import QRCode from "qrcode";
 import { createClient } from "@/lib/supabase/client";
 import type { CompanySettings } from "./companySettings";
+import { TodayColorsCard } from "./TodayColors";
+import InquiryChecklist from "./InquiryChecklist";
 
 interface Props {
   companyId: string;
@@ -14,6 +16,8 @@ interface Props {
   settings: CompanySettings;
   /** 예약이 바뀔 때마다 증가 — 바뀌었을 때만 예약 집계를 다시 불러온다 */
   refreshKey: number;
+  /** 오늘 꽃 색상 저장 → 공유 설정 갱신 */
+  onSettingsSaved: (patch: CompanySettings) => void;
 }
 
 interface Settings {
@@ -55,17 +59,6 @@ const consultApplyLabels: Record<string, { label: string; color: string }> = {
   rejected: { label: "반려됨", color: "text-red-500 bg-red-50 border-red-200" },
 };
 
-function StatusBadge({ on, label }: { on: boolean; label: string }) {
-  return (
-    <div className="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-0">
-      <span className="text-sm text-gray-600">{label}</span>
-      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${on ? "bg-green-50 text-green-600" : "bg-gray-100 text-gray-400"}`}>
-        {on ? "ON" : "OFF"}
-      </span>
-    </div>
-  );
-}
-
 function CheckItem({ ok, label, tab, onNavigate }: { ok: boolean; label: string; tab: string; onNavigate: (t: string) => void }) {
   return (
     <button
@@ -91,7 +84,7 @@ function CheckItem({ ok, label, tab, onNavigate }: { ok: boolean; label: string;
   );
 }
 
-export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate, settings: sharedSettings, refreshKey }: Props) {
+export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate, settings: sharedSettings, refreshKey, onSettingsSaved }: Props) {
   // 매장 설정·전화번호는 대시보드가 받아둔 공유 값을 사용 (DB 재조회 없음, 다른 탭에서 저장하면 바로 반영)
   const settings = sharedSettings as Settings;
   const companyPhone = (sharedSettings.company_phone as string | null) ?? null;
@@ -198,7 +191,6 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
   const hasBusinessVerified = !!settings?.business_verified_at;
 
   const consultStatus = settings?.consult_apply_status ?? null;
-  const consultEnabled = settings?.consult_enabled ?? false;
   const isPro = plan !== "none";
 
   const applyBadge = consultStatus ? consultApplyLabels[consultStatus] : null;
@@ -208,6 +200,7 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
   return (
     <div className="space-y-3">
       <h2 className="text-xl font-bold text-gray-900">대시보드</h2>
+
 
       {/* 통신판매업 미신고 경고 */}
       {!mailOrderNumber && (
@@ -459,23 +452,11 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
           </div>
         </div>
 
-        {/* 기능 ON/OFF */}
-        <div className="bg-white py-4 px-4 md:rounded-2xl md:px-5">
-          <div className="flex items-center justify-between mb-1">
-            <h3 className="text-sm font-semibold text-gray-700">기능 현황</h3>
-            <button
-              onClick={() => onNavigate("reservation")}
-              className="text-xs text-gray-400 hover:text-gold-500 transition-colors"
-            >
-              설정 →
-            </button>
-          </div>
-          <StatusBadge on={consultEnabled} label="맞춤 주문" />
-          <StatusBadge on={settings?.delivery_enabled ?? false} label="배송" />
-          <StatusBadge on={settings?.message_card_enabled ?? false} label="메시지 카드" />
-          <StatusBadge on={settings?.shopping_bag_enabled ?? false} label="쇼핑백" />
-          <StatusBadge on={settings?.preservative_enabled ?? false} label="생화 수명연장제" />
-        </div>
+        {/* 오늘 들어온 꽃 색상 — 예약 현황 옆 (예전 '기능 현황' 자리). 기능 켜기·끄기는 판매 설정에서 본다 */}
+        <TodayColorsCard companyId={companyId} settings={sharedSettings} onSaved={onSettingsSaved} inGrid />
+
+        {/* 손님 문의 줄이기 — 켜면 사라지는 질문과 함께 (예전 '기능 현황'을 대신) */}
+        <InquiryChecklist settings={sharedSettings} onNavigate={(tab) => onNavigate(tab)} />
 
         {/* 맞춤 주문 신청 상태 */}
         <div className="bg-white py-4 px-4 md:col-span-2 md:rounded-2xl md:px-5">

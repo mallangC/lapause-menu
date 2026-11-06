@@ -23,6 +23,7 @@ import SettlementTab from "./SettlementTab";
 import PlanTab from "./PlanTab";
 import type { AppliedPromo } from "@/lib/appliedPromo";
 import DashboardOverviewTab from "./DashboardOverviewTab";
+import { TodayColorsPrompt } from "./TodayColors";
 import { notifyMenuChanged } from "@/lib/menuCacheClient";
 
 type Tab = "dashboard" | "reservations" | "products" | "stats" | "settlement" | "company" | "ordersettings" | "business" | "reservation" | "menusettings" | "settings" | "plan" | "myinfo";
@@ -247,6 +248,9 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
         </div>
       </header>
 
+      {/* 오늘 꽃 색상을 아직 안 정했으면 그날 첫 접속 때 묻는다 (접속마다 한 번, 어느 탭에서든) */}
+      <TodayColorsPrompt companyId={companyId} settings={companySettings} onSaved={handleSettingsSaved} />
+
       {/* 모바일 탭 내비게이션 */}
       <div className="md:hidden bg-white border-b border-gray-100 sticky top-[61px] z-30">
         {/* 메인 탭 행 */}
@@ -440,6 +444,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
               <DashboardOverviewTab
                 companyId={companyId}
                 settings={companySettings}
+                onSettingsSaved={handleSettingsSaved}
                 refreshKey={reservationsVersion}
                 slug={slug}
                 plan={plan}
@@ -522,6 +527,8 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
                 initialInstagramUrl={currentInstagramUrl}
                 initialYoutubeUrl={currentYoutubeUrl}
                 initialPhone={companyPhone}
+                initialParking={(companySettings.parking as string | null) ?? null}
+                onSettingsSaved={handleSettingsSaved}
                 plan={plan}
                 onSave={(name, logo, naver, kakao, instagram, youtube) => {
                   setCurrentCompanyName(name);
