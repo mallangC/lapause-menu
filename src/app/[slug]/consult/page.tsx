@@ -2,15 +2,21 @@ import { notFound } from "next/navigation";
 import { getMenuData } from "@/lib/menuCache";
 import { PRODUCT_TYPES, SEASONS } from "@/lib/constants";
 import ConsultClient from "./ConsultClient";
+import { parseStyleOrder } from "@/lib/styleOrder";
+import { DEFAULT_COLOR_LEAD_DAYS, todayColorsFor } from "@/lib/todayColors";
+import { readAfterHours } from "@/lib/afterHours";
 
 interface Props {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ productId?: string; paymentKey?: string; orderId?: string; quantity?: string }>;
+  searchParams: Promise<Record<string, string | undefined>>;
 }
 
 export default async function ConsultPage({ params, searchParams }: Props) {
   const { slug } = await params;
-  const { productId, paymentKey, orderId, quantity } = await searchParams;
+  const sp = await searchParams;
+  const { productId, paymentKey, orderId, quantity } = sp;
+  // 첫 화면 대화('사장님 스타일로 알아서')에서 넘어온 주문 — 상품 고르기 없이 바로 예약 확인으로
+  const styleOrder = productId ? null : parseStyleOrder(sp);
   // 메뉴판 캐시 공유 — 매장·설정·상품·카테고리가 모두 들어 있어 캐시 적중 시 DB 조회 0회 (예전엔 매번 3번 순서대로 조회해 화면 전환이 느렸다)
   const menu = await getMenuData(slug);
   const raw = menu?.company;
@@ -36,7 +42,7 @@ export default async function ConsultPage({ params, searchParams }: Props) {
 
   return (
     <ConsultClient
-      key={`${productId ?? "none"}_${quantity ?? "1"}`}
+      key={`${productId ?? (styleOrder ? "style" : "none")}_${quantity ?? "1"}`}
       slug={slug}
       companyName={raw.name ?? slug}
       logoImage={(s.logo_image as string | null) ?? null}
@@ -60,6 +66,12 @@ export default async function ConsultPage({ params, searchParams }: Props) {
       preservativePrice={(s.preservative_price as number) ?? 500}
       isDemo={raw.is_demo ?? false}
       preselectedProduct={preselectedProduct}
+      styleOrder={styleOrder}
+      todayColors={todayColorsFor(s as { today_colors?: string[]; today_colors_date?: string })}
+      colorLeadDays={(s.color_lead_days as number | undefined) ?? DEFAULT_COLOR_LEAD_DAYS}
+      afterHours={readAfterHours(s)}
+      // 계좌이체 — 매장 계좌(은행·계좌번호·예금주)가 모두 등록돼 있어야 받는다
+      transferAvailable={!!(s.bank_name && s.bank_account && s.bank_holder)}
       initialQuantity={quantity ? Math.max(1, parseInt(quantity)) : 1}
       initialPaymentId={paymentKey ?? orderId ?? null}
     />

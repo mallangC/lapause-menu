@@ -3,6 +3,12 @@
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import PreparedColorPicker from "@/components/PreparedColorPicker";
+import { needsPreparedColor } from "@/lib/todayColors";
+import TimeSlotGrid from "@/components/TimeSlotGrid";
+import PaymentMethodSection from "@/components/PaymentMethodSection";
+import { cashReceiptError, type CashReceipt, type PaymentMethod } from "@/lib/payment";
+import { afterHoursSlots, type AfterHours } from "@/lib/afterHours";
 import { LazyDatePicker, LazyDaumPostcode, preloadOrderInputs } from "@/components/LazyOrderInputs";
 import StoreHeader from "@/components/main/StoreHeader";
 import OrderCompleteHeader from "@/components/OrderCompleteHeader";
@@ -39,6 +45,14 @@ interface CheckoutClientProps {
   minLeadTimes: Record<string, number>;
   /** 사장님 안내 사항 — 있으면 확인 체크를 받아야 결제할 수 있다 */
   consultNotice: string | null;
+  /** 오늘 매장에 있는 꽃 색상 (사장님이 오늘 알려준 경우만) */
+  todayColors: string[];
+  /** 색 맞춤 가능 일수 */
+  colorLeadDays: number;
+  /** 영업시간 외 수령 가능 범위 (꺼져 있으면 범위 없음) */
+  afterHours: AfterHours;
+  /** 계좌이체를 받을 수 있는지 (매장 계좌가 등록돼 있을 때) */
+  transferAvailable: boolean;
   /** 상품 상세 바로 예약(수량 2개 이상) — 장바구니 대신 바로 예약 저장소를 쓰고 주문 경로를 product_detail로 남긴다 */
   direct: boolean;
   isDemo: boolean;
@@ -61,6 +75,8 @@ interface DraftData {
   desiredDate: string;
   desiredTime: string;
   requests: string;
+  /** 오늘 있는 색으로 준비되는 날짜일 때 고른 색 */
+  preparedColor?: string;
   finalPrice: number;
   privacyAgreed: boolean;
   noticeAgreed?: boolean;
@@ -95,7 +111,7 @@ export default function CheckoutClient({
   storeAddress, deliveryEnabled, deliveryFees,
   businessHours, closedDates, dateOverrides = {},
   shoppingBagEnabled, shoppingBagPrice, preservativeEnabled, preservativePrice, messageCardEnabled, messageCardPrice,
-  notificationEmail, minLeadTimes, consultNotice, direct, isDemo,
+  notificationEmail, minLeadTimes, consultNotice, todayColors, colorLeadDays, afterHours, transferAvailable, direct, isDemo,
   initialPaymentKey, initialOrderId, initialAmount, failCode, failMessage,
 }: CheckoutClientProps) {
   const { items: cartItems, clearCart } = useCart(slug, direct ? "direct" : "cart");
@@ -114,6 +130,13 @@ export default function CheckoutClient({
   const [selectedDate, setSelectedDate] = useState<Date | null>(() => new Date());
   const [desiredTime, setDesiredTime] = useState("");
   const [requests, setRequests] = useState("");
+  // 받는 날이 색 맞춤 가능 일수 안쪽이면 오늘 있는 색에서 고른다
+  const [preparedColor, setPreparedColor] = useState("");
+  // 결제 방법 — 카드·간편결제(토스) / 계좌이체(결제 없이 접수 → 입금 확인 후 확정)
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
+  const [cashReceipt, setCashReceipt] = useState<CashReceipt>({ type: "소득공제", number: "" });
+  const [transferBank, setTransferBank] = useState<{ bankName: string | null; bankAccount: string | null; bankHolder: string | null } | null>(null);
+  const refPayment = useRef<HTMLDivElement>(null);
   const [privacyAgreed, setPrivacyAgreed] = useState(false);
   const [cancellationAgreed, setCancellationAgreed] = useState(false);
   const [noticeAgreed, setNoticeAgreed] = useState(false);
@@ -149,6 +172,8 @@ export default function CheckoutClient({
   const desiredDate = selectedDate
     ? selectedDate.toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" }).replace(/\. /g, "-").replace(".", "").trim()
     : "";
+
+  const needsColor = needsPreparedColor(todayColors, colorLeadDays, desiredDate);
 
   const itemsTotal = checkedItems.reduce((sum, i) => {
     let p = i.price * i.quantity;
@@ -199,7 +224,7 @@ export default function CheckoutClient({
           setDeliveryType(draft.deliveryType); setRecipientName(draft.recipientName);
           if (draft.recipientPhone) setRecipientPhone(formatPhone(draft.recipientPhone));
           setAddress(draft.address); setAddressDetail(draft.addressDetail);
-          setDesiredTime(draft.desiredTime); setRequests(draft.requests);
+          setDesiredTime(draft.desiredTime); setRequests(draft.requests); setPreparedColor(draft.preparedColor ?? "");
           setPrivacyAgreed(draft.privacyAgreed);
           if (draft.noticeAgreed !== undefined) setNoticeAgreed(draft.noticeAgreed);
           if (draft.gift) setGift(draft.gift);
@@ -234,6 +259,7 @@ export default function CheckoutClient({
             delivery: draft.deliveryType === "배송" ? { recipientName: draft.recipientName, recipientPhone: draft.recipientPhone, address: draft.address, addressDetail: draft.addressDetail } : null,
             desiredDate: draft.desiredDate, desiredTime: draft.desiredTime,
             requests: draft.requests, finalPrice: draft.finalPrice,
+            preparedColor: draft.preparedColor ?? "",
             paymentKey: initialPaymentKey, paymentOrderId: initialOrderId, paymentAmount: initialAmount,
             // 이번 방문에서 기억해 둔 유입 출처 (?utm_source= / ?from=)
             trafficSource: readTrafficSource(slug),
@@ -247,7 +273,7 @@ export default function CheckoutClient({
         setDeliveryType(draft.deliveryType); setRecipientName(draft.recipientName);
         if (draft.recipientPhone) setRecipientPhone(formatPhone(draft.recipientPhone));
         setAddress(draft.address); setAddressDetail(draft.addressDetail);
-        setDesiredTime(draft.desiredTime); setRequests(draft.requests);
+        setDesiredTime(draft.desiredTime); setRequests(draft.requests); setPreparedColor(draft.preparedColor ?? "");
         setSubmittedItems(draft.items);
         if (draft.gift) setGift(draft.gift);
         setFinalPriceSnapshot(draft.finalPrice);
@@ -273,8 +299,48 @@ export default function CheckoutClient({
       items: checkedItems, name, phone: parsePhone(phone),
       deliveryType, recipientName, recipientPhone: parsePhone(recipientPhone),
       address, addressDetail, desiredDate, desiredTime, requests,
+      // 날짜를 바꿔 범위를 벗어났으면 비운다
+      preparedColor: needsColor ? preparedColor : "",
       finalPrice, privacyAgreed, noticeAgreed, gift,
     };
+    // 계좌이체 — 토스 결제 없이 바로 주문을 저장하고, 완료 화면에서 입금 계좌를 안내한다
+    if (paymentMethod === "transfer") {
+      try {
+        const res = await fetch("/api/order", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            slug, companyName, notificationEmail,
+            items: draft.items,
+            orderer: { name: draft.name, phone: draft.phone },
+            deliveryType: draft.deliveryType,
+            delivery: draft.deliveryType === "배송" ? { recipientName: draft.recipientName, recipientPhone: draft.recipientPhone, address: draft.address, addressDetail: draft.addressDetail } : null,
+            desiredDate: draft.desiredDate, desiredTime: draft.desiredTime,
+            requests: draft.requests, finalPrice: draft.finalPrice,
+            preparedColor: draft.preparedColor ?? "",
+            paymentMethod: "transfer",
+            cashReceipt: cashReceipt.type === "신청 안 함" ? { type: "신청 안 함", number: "" } : cashReceipt,
+            trafficSource: readTrafficSource(slug),
+            orderPath: direct ? "product_detail" : "cart",
+            gift: draft.gift ?? null,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? "주문 저장 실패");
+        setSubmittedItems(draft.items);
+        setFinalPriceSnapshot(draft.finalPrice);
+        setTransferBank({ bankName: data.bankName ?? null, bankAccount: data.bankAccount ?? null, bankHolder: data.bankHolder ?? null });
+        clearCart();
+        setSubmitted(true);
+        window.scrollTo(0, 0);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "예약 중 오류가 발생했습니다.");
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
     sessionStorage.setItem(draftKey, JSON.stringify(draft));
 
     try {
@@ -301,12 +367,14 @@ export default function CheckoutClient({
     if (deliveryType === "배송" && (!recipientName || !recipientPhone || !address)) fe.deliveryInfo = true;
     if (!desiredDate) fe.date = true;
     if (desiredDate && !desiredTime) fe.time = true;
+    if (needsColor && !preparedColor) fe.color = true;
+    if (paymentMethod === "transfer" && cashReceipt.type !== "신청 안 함" && cashReceiptError(cashReceipt)) fe.receipt = true;
     if (!privacyAgreed) fe.privacy = true;
     if (!cancellationAgreed) fe.cancellation = true;
 
     if (Object.keys(fe).length > 0) {
       setFieldErrors(fe);
-      const firstRef = fe.notice ? refNotice : fe.name ? refName : fe.phone ? refPhone : fe.deliveryType ? refDeliveryType : fe.deliveryInfo ? refDeliveryInfo : fe.date ? refDate : fe.time ? refTime : refAgreement;
+      const firstRef = fe.notice ? refNotice : fe.name ? refName : fe.phone ? refPhone : fe.deliveryType ? refDeliveryType : fe.deliveryInfo ? refDeliveryInfo : fe.date || fe.color ? refDate : fe.time ? refTime : fe.receipt ? refPayment : refAgreement;
       firstRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
@@ -351,7 +419,7 @@ export default function CheckoutClient({
         <StoreHeader slug={slug} companyName={companyName} logoImage={logoImage} productTypeList={[]} seasonList={[]} consultEnabled={consultEnabled} />
         <div className="max-w-lg mx-auto px-4 py-6 space-y-3">
           {/* 완료 헤더 (맞춤 주문 결제 완료와 공통) */}
-          <OrderCompleteHeader />
+          <OrderCompleteHeader transfer={transferBank ? { ...transferBank, amount: finalPriceSnapshot } : null} />
 
           <div className="bg-white rounded-2xl overflow-hidden">
             <p className="px-4 pt-4 pb-3 text-sm font-semibold text-gray-400 border-b border-gray-100">주문 상품</p>
@@ -386,6 +454,7 @@ export default function CheckoutClient({
             )}
             <Row label="수령 날짜" value={desiredDate} />
             {desiredTime && <Row label="수령 시간" value={desiredTime} />}
+            {preparedColor && <Row label="꽃 색상" value={preparedColor} />}
             {giftInfoText(gift) && <Row label="선물 정보" value={giftInfoText(gift)} />}
             {requests && <Row label="요청 사항" value={requests} />}
           </div>
@@ -441,7 +510,7 @@ export default function CheckoutClient({
       <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center gap-4" style={themeVars}>
         <p className="text-gray-400">선택된 상품이 없습니다.</p>
         {direct ? (
-          <Link href={`/${slug}`} className="px-6 py-2.5 rounded-full bg-gold-500 text-white text-sm font-medium">상품 보러가기</Link>
+          <Link href={`/${slug}/menu`} className="px-6 py-2.5 rounded-full bg-gold-500 text-white text-sm font-medium">상품 보러가기</Link>
         ) : (
           <Link href={`/${slug}/cart`} className="px-6 py-2.5 rounded-full bg-gold-500 text-white text-sm font-medium">장바구니로 돌아가기</Link>
         )}
@@ -475,6 +544,10 @@ export default function CheckoutClient({
       timeSlots.push(`${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`);
     }
   }
+  // 영업시간 외 수령 — 오늘이면 준비 시간 이후만
+  const extraSlots = selectedDate && !leadOverflow
+    ? afterHoursSlots(dayInfo, afterHours, minTimeDate ? Math.ceil((minH * 60 + minM) / 30) * 30 : null)
+    : [];
 
   const agreementJsx = (
     <div ref={refAgreement} className="space-y-4">
@@ -649,6 +722,16 @@ export default function CheckoutClient({
                   filterDate={(d) => !isDateDisabled(d)}
                 />
               </div>
+              {/* 오늘 있는 색으로 준비되는 날짜면 바로 아래에서 색 고르기 (장바구니 상품은 모두 사진이 있다) */}
+              {needsColor && (
+                <PreparedColorPicker
+                  todayColors={todayColors}
+                  value={preparedColor}
+                  onChange={(v) => { setPreparedColor(v); if (fieldErrors.color) setFieldErrors((p) => ({ ...p, color: false })); }}
+                  error={fieldErrors.color}
+                  hasPhoto
+                />
+              )}
             </div>
 
             {/* 수령 시간 */}
@@ -661,17 +744,17 @@ export default function CheckoutClient({
                 <p className="text-xs text-gray-400 px-1">날짜를 먼저 선택해주세요.</p>
               ) : !dayInfo || dayInfo.closed ? (
                 <p className="text-xs text-gray-400 px-1">해당 날짜는 휴무입니다.</p>
-              ) : timeSlots.length === 0 ? (
+              ) : timeSlots.length === 0 && extraSlots.length === 0 ? (
                 <p className="text-xs text-gray-400 px-1">선택 가능한 시간이 없습니다.</p>
               ) : (
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                  {timeSlots.map((slot) => (
-                    <button key={slot} onClick={() => { setDesiredTime(slot); if (fieldErrors.time) setFieldErrors(p => ({ ...p, time: false })); }}
-                      className={`py-3 rounded-lg text-sm font-medium transition-colors ${desiredTime === slot ? "bg-gold-500 text-white" : fieldErrors.time ? "bg-red-50 border border-red-200 text-gray-700 hover:bg-red-100" : "bg-[color-mix(in_srgb,var(--color-gold-500)_8%,#fff)] text-gray-700 hover:bg-[color-mix(in_srgb,var(--color-gold-500)_18%,#fff)]"}`}>
-                      {slot}
-                    </button>
-                  ))}
-                </div>
+                // 영업시간·영업시간 외 시간을 한 격자에 합쳐서 (영업시간 외는 점선)
+                <TimeSlotGrid
+                  slots={timeSlots}
+                  extraSlots={extraSlots}
+                  value={desiredTime}
+                  onSelect={(slot) => { setDesiredTime(slot); if (fieldErrors.time) setFieldErrors(p => ({ ...p, time: false })); }}
+                  error={fieldErrors.time}
+                />
               )}
             </div>
 
@@ -679,6 +762,22 @@ export default function CheckoutClient({
             <div className="bg-white px-4 py-4 space-y-3">
               <h3 className="text-sm font-medium text-gray-700 pb-3 border-b border-gray-100">요청 사항</h3>
               <textarea value={requests} onChange={(e) => setRequests(e.target.value)} placeholder="매장에 전달할 내용을 입력해주세요 (선택)" rows={3} className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none focus:border-gold-400 bg-gray-50 placeholder:text-gray-300" />
+            </div>
+
+            {/* 결제 방법 — 모바일은 동의·예약하기 버튼 바로 위 (PC는 오른쪽 결제 상자 안) */}
+            <div ref={refPayment} className="md:hidden">
+              <PaymentMethodSection
+                method={paymentMethod}
+                onMethod={(m) => {
+                  setPaymentMethod(m);
+                  // 소득공제 번호는 주문자 연락처로 미리 채운다
+                  if (m === "transfer" && cashReceipt.type === "소득공제" && !cashReceipt.number) setCashReceipt({ type: "소득공제", number: parsePhone(phone) });
+                }}
+                receipt={cashReceipt}
+                onReceipt={(r) => { setCashReceipt(r); if (fieldErrors.receipt) setFieldErrors((p) => ({ ...p, receipt: false })); }}
+                receiptError={fieldErrors.receipt}
+                transferAvailable={transferAvailable}
+              />
             </div>
 
             {/* 모바일 전용: 결제금액 + 동의 + 버튼 */}
@@ -702,8 +801,8 @@ export default function CheckoutClient({
               {error && (
                 <p className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
               )}
-              <button onClick={handleConfirm} disabled={submitting || !widgetReady} className="w-full bg-gold-500 text-white py-3.5 rounded-xl font-medium hover:bg-gold-600 disabled:opacity-50 transition-colors">
-                {submitting ? "결제 중..." : `${finalPrice.toLocaleString()}원 결제하기`}
+              <button onClick={handleConfirm} disabled={submitting || (paymentMethod === "card" && !widgetReady)} className="w-full bg-gold-500 text-white py-3.5 rounded-xl font-medium hover:bg-gold-600 disabled:opacity-50 transition-colors">
+                {submitting ? (paymentMethod === "transfer" ? "예약 중..." : "결제 중...") : paymentMethod === "transfer" ? `${finalPrice.toLocaleString()}원 예약하기` : `${finalPrice.toLocaleString()}원 결제하기`}
               </button>
             </div>
           </div>
@@ -731,14 +830,29 @@ export default function CheckoutClient({
                 </div>
               </div>
 
+              {/* 결제 방법 — PC는 결제 금액 아래, 결제/예약하기 버튼 바로 위 */}
+              <PaymentMethodSection
+                method={paymentMethod}
+                onMethod={(m) => {
+                  setPaymentMethod(m);
+                  // 소득공제 번호는 주문자 연락처로 미리 채운다
+                  if (m === "transfer" && cashReceipt.type === "소득공제" && !cashReceipt.number) setCashReceipt({ type: "소득공제", number: parsePhone(phone) });
+                }}
+                receipt={cashReceipt}
+                onReceipt={(r) => { setCashReceipt(r); if (fieldErrors.receipt) setFieldErrors((p) => ({ ...p, receipt: false })); }}
+                receiptError={fieldErrors.receipt}
+                transferAvailable={transferAvailable}
+                inSidebar
+              />
+
               {/* 동의 + 버튼 */}
               <div className="px-5 py-4 space-y-4">
                 {agreementJsx}
                 {error && (
                   <p className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
                 )}
-                <button onClick={handleConfirm} disabled={submitting || !widgetReady} className="w-full bg-gold-500 text-white py-3.5 rounded-xl font-medium hover:bg-gold-600 disabled:opacity-50 transition-colors">
-                  {submitting ? "결제 중..." : `${finalPrice.toLocaleString()}원 결제하기`}
+                <button onClick={handleConfirm} disabled={submitting || (paymentMethod === "card" && !widgetReady)} className="w-full bg-gold-500 text-white py-3.5 rounded-xl font-medium hover:bg-gold-600 disabled:opacity-50 transition-colors">
+                  {submitting ? (paymentMethod === "transfer" ? "예약 중..." : "결제 중...") : paymentMethod === "transfer" ? `${finalPrice.toLocaleString()}원 예약하기` : `${finalPrice.toLocaleString()}원 결제하기`}
                 </button>
               </div>
             </div>

@@ -17,6 +17,13 @@ import FlowerNoticeModal from "@/components/FlowerNoticeModal";
 import StoreHeader from "@/components/main/StoreHeader";
 import OrderCompleteHeader from "@/components/OrderCompleteHeader";
 import { readTrafficSource } from "@/lib/trafficSource";
+import PreparedColorPicker from "@/components/PreparedColorPicker";
+import { needsPreparedColor } from "@/lib/todayColors";
+import TimeSlotGrid from "@/components/TimeSlotGrid";
+import PaymentMethodSection from "@/components/PaymentMethodSection";
+import { cashReceiptError, type CashReceipt, type PaymentMethod } from "@/lib/payment";
+import { AFTER_HOURS_OFF, afterHoursSlots, type AfterHours } from "@/lib/afterHours";
+import { PHOTO_PRODUCT_ID, isVirtualProductId, makeStyleProduct, photoOrderKey, readPhotoOrder, type StyleOrder } from "@/lib/styleOrder";
 
 registerLocale("ko", ko);
 
@@ -40,6 +47,8 @@ interface ConsultForm {
   desiredDate: string;
   desiredTime: string;
   requests: string;
+  /** 받는 날이 색 맞춤 가능 일수 안쪽일 때 고른 준비 색 (오늘 매장에 있는 색 또는 '사장님께 맡길게요') */
+  preparedColor?: string;
 }
 
 const EMPTY_FORM: ConsultForm = {
@@ -120,6 +129,16 @@ interface Props {
   preservativePrice?: number;
   isDemo?: boolean;
   preselectedProduct?: Product | null;
+  /** 첫 화면 대화('사장님 스타일로 알아서')에서 정한 주문 — 있으면 상품 고르기 없이 바로 예약 확인 */
+  styleOrder?: StyleOrder | null;
+  /** 오늘 매장에 있는 꽃 색상 (사장님이 오늘 알려준 경우만) */
+  todayColors?: string[];
+  /** 색 맞춤 가능 일수 */
+  colorLeadDays?: number;
+  /** 영업시간 외 수령 가능 범위 (꺼져 있으면 범위 없음) */
+  afterHours?: AfterHours;
+  /** 계좌이체를 받을 수 있는지 (매장 계좌가 등록돼 있을 때) */
+  transferAvailable?: boolean;
   initialQuantity?: number;
   initialPaymentId?: string | null;
 }
@@ -256,10 +275,45 @@ function scoreProducts(products: Product[], form: ConsultForm): Product[] {
   return result;
 }
 
-export default function ConsultClient({ slug, companyName, logoImage = null, productTypeList = [], seasonList = [], notificationEmail, products, businessHours, closedDates, dateOverrides = {}, minLeadTimes = {}, consultNotice, storeAddress = null, deliveryEnabled = false, deliveryFees = {}, messageCardEnabled = false, messageCardPrice = 2000, shoppingBagEnabled = false, shoppingBagPrice = 2000, preservativeEnabled = false, preservativePrice = 500, isDemo = false, preselectedProduct = null, initialQuantity = 1, initialPaymentId = null }: Props) {
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
-  const [form, setForm] = useState<ConsultForm>(EMPTY_FORM);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(preselectedProduct);
+export default function ConsultClient({ slug, companyName, logoImage = null, productTypeList = [], seasonList = [], notificationEmail, products, businessHours, closedDates, dateOverrides = {}, minLeadTimes = {}, consultNotice, storeAddress = null, deliveryEnabled = false, deliveryFees = {}, messageCardEnabled = false, messageCardPrice = 2000, shoppingBagEnabled = false, shoppingBagPrice = 2000, preservativeEnabled = false, preservativePrice = 500, isDemo = false, preselectedProduct = null, styleOrder = null, todayColors = [], colorLeadDays = 0, afterHours = AFTER_HOURS_OFF, transferAvailable = false, initialQuantity = 1, initialPaymentId = null }: Props) {
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(styleOrder ? 4 : 1);
+  // 사장님 스타일 주문 — 대화에서 받은 선물 정보·취향·예산을 채워 둔다 (예산은 '기타 n만원'으로)
+  const [form, setForm] = useState<ConsultForm>(() =>
+    styleOrder
+      ? {
+          ...EMPTY_FORM,
+          purpose: styleOrder.purpose,
+          purposeCustom: styleOrder.purpose === "기타" ? "기타" : "",
+          recipientGender: styleOrder.gender,
+          recipientAge: styleOrder.age,
+          productType: styleOrder.productType,
+          mood: styleOrder.mood,
+          budget: "기타",
+          budgetCustom: String(styleOrder.budget / 10000),
+        }
+      : EMPTY_FORM
+  );
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(preselectedProduct ?? (styleOrder ? makeStyleProduct(styleOrder) : null));
+  // 찾아본 사진 주문 — 이 탭에 보관해 둔 손님 사진을 상품 사진 자리에 넣는다 (서버 화면에선 읽을 수 없어 화면에 뜬 뒤 채운다)
+  useEffect(() => {
+    if (styleOrder?.kind !== "photo") return;
+    const data = readPhotoOrder(slug);
+    if (data) setSelectedProduct((p) => (p && p.id === PHOTO_PRODUCT_ID ? { ...p, image_url: data } : p));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 결제 후 돌아왔을 때 저장해 둔 상품을 되살린다 — 사장님 스타일 주문은 목록에 없는 가상 상품이라 다시 만든다
+  const restoreProduct = (draft: DraftData): Product | null =>
+    isVirtualProductId(draft.product.id)
+      ? makeStyleProduct({
+          kind: draft.product.id === PHOTO_PRODUCT_ID ? "photo" : "style",
+          productType: draft.form.productType,
+          mood: draft.form.mood,
+          budget: draft.product.price,
+          // 찾아본 사진은 이 탭에 보관해 둔 사진으로
+          refImage: draft.product.id === PHOTO_PRODUCT_ID ? readPhotoOrder(slug) : null,
+        })
+      : products.find((p) => p.id === draft.product.id) ?? null;
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [recipientName, setRecipientName] = useState("");
@@ -276,6 +330,11 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
   const [submitted, setSubmitted] = useState(false);
   const [reservationId, setReservationId] = useState<string | null>(null);
   const [bankInfo, setBankInfo] = useState<{ bankName: string | null; bankAccount: string | null; bankHolder: string | null } | null>(null);
+  // 결제 방법 — 카드·간편결제(토스) / 계좌이체(결제 없이 접수 → 입금 확인 후 확정)
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
+  const [cashReceipt, setCashReceipt] = useState<CashReceipt>({ type: "소득공제", number: "" });
+  const [transferDone, setTransferDone] = useState(false);
+  const s4RefPayment = useRef<HTMLDivElement>(null);
   const [paidConfirmed, setPaidConfirmed] = useState(false);
   const [payLoading, setPayLoading] = useState(false);
   const [finalPriceSnapshot, setFinalPriceSnapshot] = useState(0);
@@ -344,16 +403,16 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
 
     if (!returnedPaymentKey && !returnedOrderId) return;
 
-    window.history.replaceState({}, "", `/${slug}/consult`);
+    // 결제 관련 값만 주소에서 지운다 — 사장님 스타일·사진 주문 정보(?style=…)는 남겨야 새로고침해도 그 주문 그대로
+    const keep = new URLSearchParams(window.location.search);
+    ["paymentKey", "orderId", "amount", "code", "message", "paymentType"].forEach((k) => keep.delete(k));
+    const keepQs = keep.toString();
+    window.history.replaceState({}, "", `/${slug}/consult${keepQs ? `?${keepQs}` : ""}`);
 
-    if (failCode) {
-      // 결제 실패 — 드래프트에서 폼 복원 후 step 4로 이동
-      const saved = sessionStorage.getItem(`consult_draft_${slug}`);
-      if (saved) {
-        try {
-          const draft: DraftData = JSON.parse(saved);
+    // 임시 저장해 둔 주문 내용을 화면에 되살리고 예약 확인 단계로 (결제 실패·예약 저장 실패 때)
+    const restoreToStep4 = (draft: DraftData) => {
           setForm(draft.form);
-          setSelectedProduct(products.find(p => p.id === draft.product.id) ?? null);
+          setSelectedProduct(restoreProduct(draft));
           setName(draft.name);
           setPhone(formatPhone(draft.phone));
           setRecipientName(draft.recipientName);
@@ -368,6 +427,14 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
           if (draft.preservativeCount !== undefined) setPreservativeCount(draft.preservativeCount);
           if (draft.messageCardContents !== undefined) setMessageCardContents(draft.messageCardContents);
           setStep(4);
+    };
+
+    if (failCode) {
+      // 결제 실패 — 드래프트에서 폼 복원 후 step 4로 이동
+      const saved = sessionStorage.getItem(`consult_draft_${slug}`);
+      if (saved) {
+        try {
+          restoreToStep4(JSON.parse(saved));
         } catch { /* 파싱 실패 시 step 1 유지 */ }
         sessionStorage.removeItem(`consult_draft_${slug}`);
       }
@@ -395,6 +462,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
     sessionStorage.removeItem(`consult_draft_${slug}`);
 
     const run = async () => {
+      // (저장이 실패하면 아래 catch에서 이 draft로 예약 확인 단계를 되살린다)
       setSubmitting(true);
       setError(null);
       try {
@@ -420,6 +488,8 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
             paymentAmount: returnedAmount,
             trafficSource: draft.source ?? null,
             orderPath: draft.orderPath ?? "consult",
+            // 찾아본 사진 — 이 탭에 보관해 둔 사진을 결제 승인 뒤 서버가 저장한다
+            referenceImageData: draft.product.id === PHOTO_PRODUCT_ID ? readPhotoOrder(slug) : null,
           }),
         });
         const data = await res.json();
@@ -429,7 +499,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
         setFinalPriceSnapshot(draft.finalPrice);
         // 완료 페이지 표시용 상태 복원
         setForm(draft.form);
-        setSelectedProduct(products.find((p) => p.id === draft.product.id) ?? null);
+        setSelectedProduct(restoreProduct(draft));
         setName(draft.name);
         setPhone(formatPhone(draft.phone));
         setRecipientName(draft.recipientName);
@@ -441,8 +511,13 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
           if (draft.preservativeCount !== undefined) setPreservativeCount(draft.preservativeCount);
         if (draft.messageCardContents !== undefined) setMessageCardContents(draft.messageCardContents);
         setSubmitted(true);
+        // 주문이 끝났으니 보관해 둔 사진은 비운다
+        try { sessionStorage.removeItem(photoOrderKey(slug)); } catch { /* 무시 */ }
         setPaidConfirmed(true);
       } catch (err) {
+        // 예약 저장 실패 — 처음(1단계)으로 돌아가지 않고 입력한 내용 그대로 예약 확인 단계에서 오류를 보여준다
+        // (결제는 서버가 이미 취소했다)
+        restoreToStep4(draft);
         setError(err instanceof Error ? err.message : "예약 중 오류가 발생했습니다.");
       } finally {
         setSubmitting(false);
@@ -481,6 +556,11 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
 
   const handleSubmit = async () => {
     if (!selectedProduct) return;
+    // 찾아본 사진 주문인데 보관된 사진이 없으면 (다른 탭·기기에서 열었을 때) 결제 전에 막는다
+    if (selectedProduct.id === PHOTO_PRODUCT_ID && !readPhotoOrder(slug)) {
+      setError("보내주신 사진이 없어요. 처음 화면에서 사진을 다시 보내주세요.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
 
@@ -493,6 +573,8 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
       messageCardContent: messageCardContents.filter(Boolean).join("\n[카드 구분]\n") || form.messageCardContent,
       shoppingBag: effectiveBagCount > 0 ? "추가" : "없음",
       preservative: effectivePreservativeCount > 0 ? "추가" : "없음",
+      // 오늘 있는 색으로 준비되는 날짜일 때만 고른 색을 보낸다 (날짜를 바꿔 범위를 벗어났으면 비운다)
+      preparedColor: needsPreparedColor(todayColors, colorLeadDays, form.desiredDate) ? form.preparedColor ?? "" : "",
     };
 
     const finalPrice = selectedProduct.price +
@@ -500,6 +582,56 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
       (shoppingBagEnabled && !selectedProduct.bag_included ? effectiveBagCount * shoppingBagPrice : 0) +
       (preservativeEnabled ? effectivePreservativeCount * preservativePrice : 0) +
       (form.deliveryType === "배송" && deliveryFee !== null ? deliveryFee : 0);
+
+    // 계좌이체 — 토스 결제 없이 바로 예약을 저장하고, 완료 화면에서 입금 계좌를 안내한다
+    if (paymentMethod === "transfer") {
+      try {
+        const res = await fetch("/api/reservation", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            slug,
+            companyName,
+            notificationEmail,
+            form: submittedForm,
+            product: {
+              id: selectedProduct.id,
+              name: selectedProduct.name,
+              price: selectedProduct.price,
+              product_type: selectedProduct.product_type,
+              image_url: isVirtualProductId(selectedProduct.id) ? null : selectedProduct.image_url,
+              bag_included: selectedProduct.bag_included ?? false,
+            },
+            orderer: { name, phone: parsePhone(phone) },
+            delivery: submittedForm.deliveryType === "배송" ? { recipientName, recipientPhone: parsePhone(recipientPhone), address, addressDetail } : null,
+            finalPrice,
+            paymentMethod: "transfer",
+            cashReceipt: cashReceipt.type === "신청 안 함" ? { type: "신청 안 함", number: "" } : cashReceipt,
+            trafficSource: readTrafficSource(slug),
+            orderPath: preselectedProduct ? "product_detail" : "consult",
+            referenceImageData: selectedProduct.id === PHOTO_PRODUCT_ID ? readPhotoOrder(slug) : null,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? "예약 저장 실패");
+        setReservationId(data.reservationId ?? null);
+        setFinalPriceSnapshot(finalPrice);
+        setForm(submittedForm);
+        setMessageCardCount(effectiveMsgCardCount);
+        setShoppingBagCount(effectiveBagCount);
+        setPreservativeCount(effectivePreservativeCount);
+        setBankInfo({ bankName: data.bankName ?? null, bankAccount: data.bankAccount ?? null, bankHolder: data.bankHolder ?? null });
+        setTransferDone(true);
+        setSubmitted(true);
+        try { sessionStorage.removeItem(photoOrderKey(slug)); } catch { /* 무시 */ }
+        window.scrollTo(0, 0);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "예약 중 오류가 발생했습니다.");
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
 
     try {
       // 리다이렉트 복귀 대비 폼 데이터 임시 저장
@@ -515,7 +647,8 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
           name: selectedProduct.name,
           price: selectedProduct.price,
           product_type: selectedProduct.product_type,
-          image_url: selectedProduct.image_url,
+          // 가상 상품의 사진(손님 사진)은 크기가 커서 임시 저장에 넣지 않는다 — 따로 보관해 둔 것을 쓴다
+          image_url: isVirtualProductId(selectedProduct.id) ? null : selectedProduct.image_url,
           bag_included: selectedProduct.bag_included ?? false,
         },
         name,
@@ -535,8 +668,9 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
       await widgetRef.current?.requestPayment({
         orderId: paymentOrderId,
         orderName: `${companyName} 맞춤 주문`,
-        successUrl: `${window.location.origin}/${slug}/consult`,
-        failUrl: `${window.location.origin}/${slug}/consult`,
+        // 지금 주소 그대로 돌아온다 — 사장님 스타일·사진 주문 정보(?style=…)가 결제창에 다녀와도 남도록
+        successUrl: `${window.location.origin}${window.location.pathname}${window.location.search}`,
+        failUrl: `${window.location.origin}${window.location.pathname}${window.location.search}`,
         customerName: name,
         customerMobilePhone: parsePhone(phone),
       });
@@ -594,16 +728,19 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
         <div className="max-w-lg mx-auto px-4 py-6 space-y-3">
 
           {/* 완료 헤더 (장바구니 결제 완료와 공통) */}
-          <OrderCompleteHeader />
+          <OrderCompleteHeader transfer={transferDone && bankInfo ? { ...bankInfo, amount: finalPriceSnapshot } : null} />
 
           {/* 상품 정보 */}
           {selectedProduct && (
             <div className="bg-white rounded-2xl overflow-hidden">
               <p className="px-4 pt-4 pb-3 text-sm font-semibold text-gray-400 border-b border-gray-100">상품 정보</p>
               <div className="flex items-center gap-3 px-4 py-4">
-                {selectedProduct.image_url && (
+                {selectedProduct.image_url ? (
                   <Image src={selectedProduct.image_url} alt={selectedProduct.name} width={72} height={72} className="w-18 h-18 rounded-xl object-cover shrink-0" />
-                )}
+                ) : selectedProduct.id === PHOTO_PRODUCT_ID ? (
+                  // 찾아본 사진을 불러오는 동안 같은 자리를 비워 둔다 (글자가 밀리지 않게)
+                  <div className="w-18 h-18 rounded-xl bg-beige-200 shrink-0" />
+                ) : null}
                 <div className="min-w-0 space-y-1">
                   <p className="text-sm text-gray-400">{selectedProduct.product_type}</p>
                   <p className="text-base font-semibold text-gray-900">{selectedProduct.name}</p>
@@ -626,6 +763,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
             )}
             <Row label="수령 날짜" value={form.desiredDate} />
             {form.desiredTime && <Row label="수령 시간" value={form.desiredTime} />}
+            {form.preparedColor && <Row label="꽃 색상" value={form.preparedColor} />}
             {msgCardAmt > 0 && <Row label="메시지 카드" value="추가" />}
             {form.messageCard === "추가" && form.messageCardContent && (
               <Row label="카드 내용" value={form.messageCardContent} />
@@ -702,7 +840,9 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
       {/* Step indicator */}
       <div className="sticky top-14 md:top-20 z-30 border-b border-gray-100 bg-white">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-center gap-2">
-          {(preselectedProduct
+          {(styleOrder
+            ? [{ num: 1 as const, label: "선물 · 취향" }, { num: 4 as const, label: "예약 확인" }]
+            : preselectedProduct
             ? [{ num: 1 as const, label: "선물 정보" }, { num: 4 as const, label: "예약 확인" }]
             : [{ num: 1 as const, label: "선물 정보" }, { num: 2 as const, label: "취향 & 예산" }, { num: 3 as const, label: "상품 선택" }, { num: 4 as const, label: "예약 확인" }]
           ).map(({ num, label }, i) => (
@@ -710,10 +850,13 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
               {i > 0 && <div className="flex-1 h-px bg-gray-200 w-8" />}
               <button
                 type="button"
-                onClick={() => step > num && setStep(num)}
+                // 사장님 스타일 주문은 선물·취향을 대화에서 정했으니 앞 단계로 돌아가지 않는다
+                onClick={() => !styleOrder && step > num && setStep(num)}
                 className={`flex items-center gap-1.5 ${
                   step === num
                     ? "text-gold-500"
+                    : styleOrder && step > num
+                    ? "text-gray-400 cursor-default"
                     : step > num
                     ? "text-gray-400 cursor-pointer hover:text-gold-400"
                     : "text-gray-300 cursor-default"
@@ -1116,6 +1259,9 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
               (form.deliveryType === "배송" && deliveryFee !== null ? deliveryFee : 0)
             : 0;
 
+          // 받는 날이 색 맞춤 가능 일수 안쪽이면 오늘 있는 색에서 고른다
+          const needsColor = needsPreparedColor(todayColors, colorLeadDays, form.desiredDate);
+
           const handleConfirm = () => {
             const fe: Record<string, boolean> = {};
             if (consultNotice && !noticeAgreed) fe.notice = true;
@@ -1125,12 +1271,14 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
             if (form.deliveryType === "배송" && (!recipientName || !recipientPhone || !address)) fe.deliveryInfo = true;
             if (!form.desiredDate) fe.date = true;
             if (form.desiredDate && !form.desiredTime) fe.time = true;
+            if (needsColor && !form.preparedColor) fe.color = true;
+            if (paymentMethod === "transfer" && cashReceipt.type !== "신청 안 함" && cashReceiptError(cashReceipt)) fe.receipt = true;
             if (!privacyAgreed) fe.privacy = true;
             if (!cancellationAgreed) fe.cancellation = true;
 
             if (Object.keys(fe).length > 0) {
               setS4fe(fe);
-              const firstRef = fe.notice ? s4RefNotice : fe.name ? s4RefName : fe.phone ? s4RefPhone : fe.deliveryType ? s4RefDeliveryType : fe.deliveryInfo ? s4RefDeliveryInfo : fe.date ? s4RefDate : fe.time ? s4RefTime : s4RefAgreement;
+              const firstRef = fe.notice ? s4RefNotice : fe.name ? s4RefName : fe.phone ? s4RefPhone : fe.deliveryType ? s4RefDeliveryType : fe.deliveryInfo ? s4RefDeliveryInfo : fe.date || fe.color ? s4RefDate : fe.time ? s4RefTime : fe.receipt ? s4RefPayment : s4RefAgreement;
               firstRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
               return;
             }
@@ -1205,9 +1353,12 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                   <div className="bg-white px-4 py-4 space-y-3">
                     <h3 className="text-sm font-medium text-gray-700 pb-3 border-b border-gray-100">상품 정보</h3>
                     <div className="flex items-center gap-4">
-                      {selectedProduct.image_url && (
+                      {selectedProduct.image_url ? (
                         <Image src={selectedProduct.image_url} alt={selectedProduct.name} width={80} height={80} className="w-20 h-20 rounded-xl object-cover shrink-0" />
-                      )}
+                      ) : selectedProduct.id === PHOTO_PRODUCT_ID ? (
+                        // 찾아본 사진을 불러오는 동안 같은 자리를 비워 둔다 (글자가 밀리지 않게)
+                        <div className="w-20 h-20 rounded-xl bg-beige-200 shrink-0" />
+                      ) : null}
                       <div className="min-w-0 flex-1 space-y-0.5">
                         <p className="text-xs text-gray-400">{selectedProduct.product_type}</p>
                         <p className="text-sm font-medium text-gray-900 leading-snug">{selectedProduct.name}</p>
@@ -1353,6 +1504,16 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                       excludeDates={closedDates.map((d) => new Date(d + "T00:00:00"))}
                     />
                   </div>
+                  {/* 오늘 있는 색으로 준비되는 날짜면 바로 아래에서 색 고르기 */}
+                  {needsColor && (
+                    <PreparedColorPicker
+                      todayColors={todayColors}
+                      value={form.preparedColor ?? ""}
+                      onChange={(v) => { set("preparedColor", v); if (s4fe.color) setS4fe((p) => ({ ...p, color: false })); }}
+                      error={s4fe.color}
+                      hasPhoto={!!selectedProduct?.image_url}
+                    />
+                  )}
                 </div>
 
                 {/* 수령 희망 시간 */}
@@ -1393,6 +1554,10 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                       slots.push(`${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`);
                     }
                   }
+                  // 영업시간 외 수령 — 오늘이면 준비 시간 이후만
+                  const extraSlots = selectedDate && !leadOverflow
+                    ? afterHoursSlots(day, afterHours, minTimeDate ? Math.ceil((minH * 60 + minM) / 30) * 30 : null)
+                    : [];
                   return (
                     <div ref={s4RefTime} className="bg-white px-4 py-4 space-y-3">
                       <h3 className={`text-sm font-medium flex items-center gap-2 pb-3 border-b ${s4fe.time ? "text-red-500 border-red-200" : "text-gray-700 border-gray-100"}`}>
@@ -1402,27 +1567,17 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                       </h3>
                       {!selectedDate ? (
                         <p className="text-xs text-gray-400 px-1">날짜를 먼저 선택해주세요.</p>
-                      ) : slots.length === 0 ? (
+                      ) : slots.length === 0 && extraSlots.length === 0 ? (
                         <p className="text-xs text-gray-400 px-1">선택 가능한 시간이 없습니다.</p>
                       ) : (
-                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                          {slots.map((slot) => (
-                            <button
-                              key={slot}
-                              type="button"
-                              onClick={() => { set("desiredTime", slot); if (s4fe.time) setS4fe(p => ({ ...p, time: false })); }}
-                              className={`py-3 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                                form.desiredTime === slot
-                                  ? "bg-gold-500 text-white"
-                                  : s4fe.time
-                                  ? "bg-red-50 border border-red-200 text-gray-700 hover:bg-red-100"
-                                  : "bg-[color-mix(in_srgb,var(--color-gold-500)_8%,#fff)] text-gray-700 hover:bg-[color-mix(in_srgb,var(--color-gold-500)_18%,#fff)]"
-                              }`}
-                            >
-                              {slot}
-                            </button>
-                          ))}
-                        </div>
+                        // 영업시간·영업시간 외 시간을 한 격자에 합쳐서 (영업시간 외는 점선)
+                        <TimeSlotGrid
+                          slots={slots}
+                          extraSlots={extraSlots}
+                          value={form.desiredTime}
+                          onSelect={(slot) => { set("desiredTime", slot); if (s4fe.time) setS4fe(p => ({ ...p, time: false })); }}
+                          error={s4fe.time}
+                        />
                       )}
                     </div>
                   );
@@ -1674,6 +1829,22 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                   </div>
                 </div>
 
+                {/* 결제 방법 — 모바일은 동의·예약하기 버튼 바로 위 (PC는 오른쪽 결제 상자 안) */}
+                <div ref={s4RefPayment} className="md:hidden">
+                  <PaymentMethodSection
+                    method={paymentMethod}
+                    onMethod={(m) => {
+                      setPaymentMethod(m);
+                      // 소득공제 번호는 주문자 연락처로 미리 채운다
+                      if (m === "transfer" && cashReceipt.type === "소득공제" && !cashReceipt.number) setCashReceipt({ type: "소득공제", number: parsePhone(phone) });
+                    }}
+                    receipt={cashReceipt}
+                    onReceipt={(r) => { setCashReceipt(r); if (s4fe.receipt) setS4fe((p) => ({ ...p, receipt: false })); }}
+                    receiptError={s4fe.receipt}
+                    transferAvailable={transferAvailable}
+                  />
+                </div>
+
                 {/* 모바일: 동의 + 버튼 */}
                 <div className="md:hidden bg-white px-4 py-4 space-y-3">
                   {agreementJsx}
@@ -1683,10 +1854,10 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                   <button
                     type="button"
                     onClick={handleConfirm}
-                    disabled={submitting || !widgetReady}
+                    disabled={submitting || (paymentMethod === "card" && !widgetReady)}
                     className="w-full bg-gold-500 text-white py-3.5 rounded-xl font-medium hover:bg-gold-600 disabled:opacity-50 transition-colors"
                   >
-                    {submitting ? "결제 중..." : "결제하기"}
+                    {submitting ? (paymentMethod === "transfer" ? "예약 중..." : "결제 중...") : paymentMethod === "transfer" ? "예약하기" : "결제하기"}
                   </button>
                 </div>
               </div>
@@ -1734,6 +1905,21 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                     </div>
                   )}
 
+                  {/* 결제 방법 — PC는 결제 금액 아래, 결제/예약하기 버튼 바로 위 */}
+                  <PaymentMethodSection
+                    method={paymentMethod}
+                    onMethod={(m) => {
+                      setPaymentMethod(m);
+                      // 소득공제 번호는 주문자 연락처로 미리 채운다
+                      if (m === "transfer" && cashReceipt.type === "소득공제" && !cashReceipt.number) setCashReceipt({ type: "소득공제", number: parsePhone(phone) });
+                    }}
+                    receipt={cashReceipt}
+                    onReceipt={(r) => { setCashReceipt(r); if (s4fe.receipt) setS4fe((p) => ({ ...p, receipt: false })); }}
+                    receiptError={s4fe.receipt}
+                    transferAvailable={transferAvailable}
+                    inSidebar
+                  />
+
                   {/* 동의 + 버튼 */}
                   <div className="px-5 py-4 space-y-4">
                     {agreementJsx}
@@ -1743,10 +1929,10 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                     <button
                       type="button"
                       onClick={handleConfirm}
-                      disabled={submitting || !widgetReady}
+                      disabled={submitting || (paymentMethod === "card" && !widgetReady)}
                       className="w-full bg-gold-500 text-white py-3.5 rounded-xl font-medium hover:bg-gold-600 disabled:opacity-50 transition-colors"
                     >
-                      {submitting ? "결제 중..." : "결제하기"}
+                      {submitting ? (paymentMethod === "transfer" ? "예약 중..." : "결제 중...") : paymentMethod === "transfer" ? "예약하기" : "결제하기"}
                     </button>
                   </div>
                 </div>
