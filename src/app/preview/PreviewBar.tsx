@@ -31,7 +31,7 @@ export default function PreviewBar({ homeHref, homeLabel }: Props) {
 
   return (
     <div
-      className={`fixed z-[46] ${pathname === "/preview/customer" ? "left-4" : "left-1/2 -translate-x-1/2"} md:left-1/2 md:-translate-x-1/2 flex items-center gap-0.5 p-1 rounded-full shadow-xl backdrop-blur-md`}
+      className={`fixed z-[46] ${pathname === "/preview/customer/menu" ? "left-4" : "left-1/2 -translate-x-1/2"} md:left-1/2 md:-translate-x-1/2 flex items-center gap-0.5 p-1 rounded-full shadow-xl backdrop-blur-md`}
       style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)", background: "rgba(24,19,14,0.88)", border: "1px solid rgba(201,169,110,0.3)" }}
     >
       <Link href="/preview" className={itemCls} aria-label="미리보기 처음으로">

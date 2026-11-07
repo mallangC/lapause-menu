@@ -109,7 +109,7 @@ const STEP2: CoachStep[] = [
     mobileRadius: 0,
     mobilePadX: 16,
     title: "맞춤 제작 상품 동의",
-    body: "제작 착수 후에는 취소·환불이 어렵다는 점을\n결제 단계에서 고객에게 미리 동의받아요.",
+    body: "제작 착수 후에는 취소·환불이 어렵다는 점을\n결제할 때 고객에게 미리 동의받아요.",
   },
 ];
 
@@ -156,8 +156,9 @@ export default function CheckoutCoach({ direct, step }: { direct: boolean; step:
         storageKey={storageKey}
         sharedKey={SHARED_COACH.checkoutConfirm}
         intro={{
-          title: "2단계 · 예약 확인",
-          body: "손님이 수령 방법과 날짜·시간을 정하고\n결제하는 마지막 단계예요.\n주요 항목을 차례로 알려드릴게요.",
+          // 장바구니·바로 예약은 단계 말 없이 '무슨 화면인지'만
+          title: "주문 정보 화면이에요",
+          body: "손님이 수령 방법과 날짜·시간을 정하고\n결제하는 화면이에요.\n주요 항목을 차례로 알려드릴게요.",
         }}
         steps={STEP2}
         outro={{
@@ -175,11 +176,11 @@ export default function CheckoutCoach({ direct, step }: { direct: boolean; step:
         direct
           ? {
               title: "바로 예약 화면이에요",
-              body: "손님이 상품 상세에서 수량을 2개 이상 골라\n바로 예약할 때 보는 화면이에요.\n손님이 받는 분 정보를 선택하고,\n다음 단계에서 날짜·시간을 정해 결제까지 이어져요.",
+              body: "손님이 상품 상세에서 수량을 2개 이상 골라\n바로 예약할 때 보는 화면이에요.\n손님이 받는 분 정보를 선택하고,\n이어서 날짜·시간을 정해 결제까지 이어져요.",
             }
           : {
               title: "장바구니 주문 화면이에요",
-              body: "손님이 장바구니에서 고른 상품을 한 번에 예약해요.\n손님이 받는 분 정보를 선택하고,\n다음 단계에서 날짜·시간을 정해 결제까지 이어져요.",
+              body: "손님이 장바구니에서 고른 상품을 한 번에 예약해요.\n손님이 받는 분 정보를 선택하고,\n이어서 날짜·시간을 정해 결제까지 이어져요.",
             }
       }
       steps={STEPS}

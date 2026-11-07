@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import PreviewProductsClient from "./_components/PreviewProductsClient";
-import { PREVIEW_PRODUCTS, PREVIEW_STORE_ADDRESS, PREVIEW_THEME_VARS } from "../_mockStore";
-import { brandFont } from "../brandFont";
-import CustomerHomeCoach from "./CustomerHomeCoach";
+import PreviewProductsClient from "../_components/PreviewProductsClient";
+import { PREVIEW_PRODUCTS, PREVIEW_STORE_ADDRESS, PREVIEW_THEME_VARS } from "../../_mockStore";
+import { brandFont } from "../../brandFont";
+import CustomerHomeCoach from "../CustomerHomeCoach";
 
 export const metadata: Metadata = {
   title: "손님 화면 미리보기 | Flo.Aide",
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 // 미리보기 매장 주소 — 메뉴판 안의 링크(/{slug}/consult, /{slug}/cart …)가 미리보기 안으로 이어진다
 const PREVIEW_SLUG = "preview/customer";
 
-// 손님 화면 미리보기 — 목업 매장(기본 색·목업 상품)으로 실제 메뉴판 컴포넌트를 그린다 (실제·데모 매장 데이터 없음)
+// 손님 화면 미리보기 — 메뉴판 (/preview/customer/menu, 실제 /[slug]/menu 와 같은 자리). 목업 매장(기본 색·목업 상품)으로 실제 메뉴판 컴포넌트를 그린다 (실제·데모 매장 데이터 없음)
 export default function CustomerPreviewPage() {
   return (
     <Suspense>

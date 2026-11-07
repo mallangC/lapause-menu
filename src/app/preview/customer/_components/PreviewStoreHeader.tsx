@@ -117,7 +117,7 @@ export default function PreviewStoreHeader({
         {/* 메뉴 항목 */}
         <nav className="flex flex-col px-3 py-4 gap-1 overflow-y-auto">
           <Link
-            href={`/${slug}`}
+            href={`/${slug}/menu`}
             className="px-4 py-3.5 text-lg md:text-xl font-medium text-gray-800 hover:bg-gray-50 rounded-xl transition-colors"
             onClick={() => setMenuOpen(false)}
           >
@@ -126,7 +126,7 @@ export default function PreviewStoreHeader({
           {productTypeList.map((type) => (
             <Link
               key={type}
-              href={`/${slug}?type=${encodeURIComponent(type)}`}
+              href={`/${slug}/menu?type=${encodeURIComponent(type)}`}
               className="px-4 py-3.5 text-lg md:text-xl font-medium text-gray-800 hover:bg-gray-50 rounded-xl transition-colors"
               onClick={() => setMenuOpen(false)}
             >
@@ -139,7 +139,7 @@ export default function PreviewStoreHeader({
               {seasonList.map((season) => (
                 <Link
                   key={season}
-                  href={`/${slug}?tab=season`}
+                  href={`/${slug}/menu?tab=season`}
                   className="px-4 py-3.5 text-lg md:text-xl font-medium text-gray-800 hover:bg-gray-50 rounded-xl transition-colors"
                   onClick={() => setMenuOpen(false)}
                 >

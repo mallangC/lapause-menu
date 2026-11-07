@@ -236,7 +236,7 @@ const RESERVE_COACHES: Record<number, CoachConfig> = {
   1: {
     intro: {
       title: "바로 예약 화면이에요",
-      body: "손님이 상품 상세에서 고른 상품을 바로 예약해요.\n먼저 받는 분 정보를 받고, 다음 단계에서\n날짜·시간을 정해 결제까지 이어져요.",
+      body: "손님이 상품 상세에서 고른 상품을 바로 예약해요.\n먼저 받는 분 정보를 받고, 이어서\n날짜·시간을 정해 결제까지 이어져요.",
     },
     steps: RESERVE_STEP1,
     outro: {
@@ -321,7 +321,11 @@ export default function ConsultCoach({ preselected = false }: { preselected?: bo
   const base = COACHES[step];
   const coach: CoachConfig | undefined = !preselected
     ? base
-    : RESERVE_COACHES[step] ?? (step === 4 && base ? { ...base, intro: { ...base.intro, title: "2단계 · 예약 확인" } } : base);
+    : RESERVE_COACHES[step] ??
+      // 맞춤주문 버튼(4단계)이 아닌 흐름(바로 예약·첫 화면 대화)은 단계 말 없이 '무슨 화면인지'만
+      (step === 4 && base
+        ? { ...base, intro: { title: "주문 정보 화면이에요", body: "손님이 수령 방법과 날짜·시간을 정하고\n결제하는 화면이에요.\n주요 항목을 차례로 알려드릴게요." } }
+        : base);
   if (!coach) return null;
   const sharedKey = step === 1 ? SHARED_COACH.gift : step === 4 ? SHARED_COACH.consultConfirm : undefined;
   return <PreviewCoach key={step} storageKey={`preview_coach_customer_${preselected ? "reserve" : "consult"}${step}`} sharedKey={sharedKey} {...coach} />;

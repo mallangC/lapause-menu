@@ -316,7 +316,7 @@ export default function PreviewCheckoutClient({
       <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center gap-4" style={themeVars}>
         <p className="text-gray-400">선택된 상품이 없습니다.</p>
         {direct ? (
-          <Link href={`/${slug}`} className="px-6 py-2.5 rounded-full bg-gold-500 text-white text-sm font-medium">상품 보러가기</Link>
+          <Link href={`/${slug}/menu`} className="px-6 py-2.5 rounded-full bg-gold-500 text-white text-sm font-medium">상품 보러가기</Link>
         ) : (
           <Link href={`/${slug}/cart`} className="px-6 py-2.5 rounded-full bg-gold-500 text-white text-sm font-medium">장바구니로 돌아가기</Link>
         )}

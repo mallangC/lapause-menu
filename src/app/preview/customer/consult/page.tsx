@@ -7,6 +7,7 @@ import {
 import { brandFont } from "../../brandFont";
 import PreviewConsultClient from "../_components/PreviewConsultClient";
 import ConsultCoach from "./ConsultCoach";
+import { parseChatAnswers, parseStyleOrder } from "@/lib/styleOrder";
 
 export const metadata: Metadata = {
   title: "손님 화면 미리보기 | Flo.Aide",
@@ -15,11 +16,15 @@ export const metadata: Metadata = {
 
 // 손님 화면 미리보기 — 맞춤주문. 목업 매장 상품·설정으로 실제 맞춤주문 화면을 그린다 (결제·예약 저장 없음)
 interface Props {
-  searchParams: Promise<{ productId?: string; quantity?: string }>;
+  searchParams: Promise<Record<string, string | undefined>>;
 }
 
 export default async function PreviewConsultPage({ searchParams }: Props) {
-  const { productId, quantity } = await searchParams;
+  const sp = await searchParams;
+  const { productId, quantity } = sp;
+  // 첫 화면 대화에서 넘어온 주문 — 실제 맞춤주문과 같은 주소 값을 읽는다
+  const styleOrder = productId ? null : parseStyleOrder(sp);
+  const chatAnswers = productId ? parseChatAnswers(sp) : null;
   // 실제 맞춤주문 페이지처럼 가격 오름차순
   const products = [...PREVIEW_PRODUCTS].sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
   // 상품 상세에서 1개로 예약하기를 누른 경우 — 실제처럼 그 상품이 골라진 상태로 시작한다
@@ -28,8 +33,10 @@ export default async function PreviewConsultPage({ searchParams }: Props) {
   return (
     <>
       <PreviewConsultClient
-        key={`${productId ?? "none"}_${quantity ?? "1"}`}
+        key={`${productId ?? (styleOrder ? `style-${styleOrder.kind}` : "none")}${chatAnswers ? "_rec" : ""}_${quantity ?? "1"}`}
         preselectedProduct={preselectedProduct}
+        styleOrder={styleOrder}
+        chatAnswers={chatAnswers}
         initialQuantity={quantity ? Math.max(1, parseInt(quantity) || 1) : 1}
         slug="preview/customer"
         companyName="Brand Name"
@@ -60,7 +67,8 @@ export default async function PreviewConsultPage({ searchParams }: Props) {
         preservativePrice={PREVIEW_PRICES.preservative}
         isDemo
       />
-      <ConsultCoach preselected={!!preselectedProduct} />
+      {/* 대화에서 넘어온 주문도 바로 예약처럼 2단계(선물·취향 → 예약 확인)로 안내 */}
+      <ConsultCoach preselected={!!preselectedProduct || !!styleOrder || !!chatAnswers} />
     </>
   );
 }

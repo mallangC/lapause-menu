@@ -17,6 +17,7 @@ import PreviewStoreHeader from "./PreviewStoreHeader";
 import PreviewPolicyLink from "./PreviewPolicyLink";
 import PreviewConsultComplete from "./PreviewConsultComplete";
 import OrderCompleteHeader from "@/components/OrderCompleteHeader";
+import { PHOTO_PRODUCT_ID, makeStyleProduct, photoOrderKey, readPhotoOrder, type ChatAnswers, type StyleOrder } from "@/lib/styleOrder";
 
 registerLocale("ko", ko);
 
@@ -96,6 +97,10 @@ interface Props {
   preservativePrice?: number;
   isDemo?: boolean;
   preselectedProduct?: Product | null;
+  /** 첫 화면 대화('사장님 스타일'·'찾아본 사진')에서 정한 주문 — 바로 예약 확인 */
+  styleOrder?: StyleOrder | null;
+  /** 첫 화면 대화형 추천에서 상품을 고르고 온 경우의 대화 답 — 바로 예약 확인 */
+  chatAnswers?: ChatAnswers | null;
   initialQuantity?: number;
   initialPaymentId?: string | null;
   /** 로고 이미지 대신 직접 그릴 로고 (미리보기용) */
@@ -245,10 +250,34 @@ let currentConsultStep = 1;
 export const getConsultStep = () => currentConsultStep;
 
 // 미리보기 맞춤주문 — 실제 ConsultClient 복사본. 결제 요청·예약 저장·결제 복귀 처리는 하지 않는다
-export default function PreviewConsultClient({ logoNode, slug, companyName, logoImage = null, productTypeList = [], seasonList = [], notificationEmail, products, businessHours, closedDates, dateOverrides = {}, minLeadTimes = {}, consultNotice, storeAddress = null, deliveryEnabled = false, deliveryFees = {}, messageCardEnabled = false, messageCardPrice = 2000, shoppingBagEnabled = false, shoppingBagPrice = 2000, preservativeEnabled = false, preservativePrice = 500, isDemo = false, preselectedProduct = null, initialQuantity = 1, initialPaymentId = null }: Props) {
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
-  const [form, setForm] = useState<ConsultForm>(EMPTY_FORM);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(preselectedProduct);
+export default function PreviewConsultClient({ logoNode, slug, companyName, logoImage = null, productTypeList = [], seasonList = [], notificationEmail, products, businessHours, closedDates, dateOverrides = {}, minLeadTimes = {}, consultNotice, storeAddress = null, deliveryEnabled = false, deliveryFees = {}, messageCardEnabled = false, messageCardPrice = 2000, shoppingBagEnabled = false, shoppingBagPrice = 2000, preservativeEnabled = false, preservativePrice = 500, isDemo = false, preselectedProduct = null, styleOrder = null, chatAnswers = null, initialQuantity = 1, initialPaymentId = null }: Props) {
+  // 첫 화면 대화에서 선물 정보·취향을 이미 받고 온 주문 (실제 맞춤주문과 같은 방식)
+  const chat = styleOrder ?? chatAnswers;
+  const fromChat = !!chat;
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(fromChat ? 4 : 1);
+  const [form, setForm] = useState<ConsultForm>(() =>
+    chat
+      ? {
+          ...EMPTY_FORM,
+          purpose: chat.purpose,
+          purposeCustom: chat.purpose === "기타" ? "기타" : "",
+          recipientGender: chat.gender,
+          recipientAge: chat.age,
+          productType: chat.productType,
+          mood: chat.mood,
+          budget: "기타",
+          budgetCustom: String(chat.budget / 10000),
+        }
+      : EMPTY_FORM
+  );
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(preselectedProduct ?? (styleOrder ? makeStyleProduct(styleOrder) : null));
+  // 찾아본 사진 — 이 탭에 보관해 둔 손님 사진을 상품 사진 자리에 (미리보기는 어디에도 올리지 않는다)
+  useEffect(() => {
+    if (styleOrder?.kind !== "photo") return;
+    const data = readPhotoOrder(slug);
+    if (data) setSelectedProduct((p) => (p && p.id === PHOTO_PRODUCT_ID ? { ...p, image_url: data } : p));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // 미리보기 — 주문자·배송 정보는 예시 값으로 미리 채워 둔다
   const [name, setName] = useState("홍길동");
   const [phone, setPhone] = useState("010-1234-5678");
@@ -411,6 +440,8 @@ export default function PreviewConsultClient({ logoNode, slug, companyName, logo
     setPreservativeCount(effectivePreservativeCount);
     setFinalPriceSnapshot(finalPrice);
     setSubmitted(true);
+    // 보관해 둔 찾아본 사진은 비운다
+    try { sessionStorage.removeItem(photoOrderKey(slug)); } catch { /* 무시 */ }
     window.scrollTo(0, 0);
   };
 
@@ -493,7 +524,9 @@ export default function PreviewConsultClient({ logoNode, slug, companyName, logo
       {/* Step indicator */}
       <div className="sticky top-14 md:top-20 z-30 border-b border-gray-100 bg-white">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-center gap-2">
-          {(preselectedProduct
+          {(fromChat
+            ? [{ num: 1 as const, label: "선물 · 취향" }, { num: 4 as const, label: "예약 확인" }]
+            : preselectedProduct
             ? [{ num: 1 as const, label: "선물 정보" }, { num: 4 as const, label: "예약 확인" }]
             : [{ num: 1 as const, label: "선물 정보" }, { num: 2 as const, label: "취향 & 예산" }, { num: 3 as const, label: "상품 선택" }, { num: 4 as const, label: "예약 확인" }]
           ).map(({ num, label }, i) => (
@@ -501,10 +534,13 @@ export default function PreviewConsultClient({ logoNode, slug, companyName, logo
               {i > 0 && <div className="flex-1 h-px bg-gray-200 w-8" />}
               <button
                 type="button"
-                onClick={() => step > num && setStep(num)}
+                // 대화에서 선물·취향을 정하고 온 주문은 앞 단계로 돌아가지 않는다
+                onClick={() => !fromChat && step > num && setStep(num)}
                 className={`flex items-center gap-1.5 ${
                   step === num
                     ? "text-gold-500"
+                    : fromChat && step > num
+                    ? "text-gray-400 cursor-default"
                     : step > num
                     ? "text-gray-400 cursor-pointer hover:text-gold-400"
                     : "text-gray-300 cursor-default"
