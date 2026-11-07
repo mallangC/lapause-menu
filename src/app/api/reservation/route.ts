@@ -4,10 +4,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendReservationConfirmedOwner } from "@/lib/solapi";
 import { cancelTossPayment, consultMinimumTotal, isPastPickup, loadCompanyProducts, loadOptionPrices } from "@/lib/orderPricing";
 import { normalizeTrafficSource } from "@/lib/trafficSource";
-import { PHOTO_PRODUCT_ID, REF_DATA_PATTERN, STYLE_PRODUCT_TYPES, isValidStyleBudget, isVirtualProductId, styleProductName } from "@/lib/styleOrder";
+import { PHOTO_PRODUCT_ID, REF_DATA_PATTERN, isValidStyleBudget, isVirtualProductId, styleProductName } from "@/lib/styleOrder";
 import type { DbProduct } from "@/lib/orderPricing";
 import { isValidPreparedColor } from "@/lib/todayColors";
 import { parsePaymentChoice } from "@/lib/payment";
+import { isValidTypeName } from "@/lib/productTypes";
 
 interface ReservationBody {
   slug: string;
@@ -139,7 +140,7 @@ export async function POST(request: NextRequest) {
     let dbProduct: DbProduct | undefined;
     if (isStyleOrder) {
       const budget = Number(body.form?.budgetCustom) * 10000;
-      if (body.form?.budget !== "기타" || !isValidStyleBudget(budget) || !STYLE_PRODUCT_TYPES.includes(body.form?.productType)) {
+      if (body.form?.budget !== "기타" || !isValidStyleBudget(budget) || !isValidTypeName(body.form?.productType)) {
         return NextResponse.json({ error: "주문 정보가 올바르지 않습니다. 처음부터 다시 시도해주세요." }, { status: 400 });
       }
       dbProduct = {

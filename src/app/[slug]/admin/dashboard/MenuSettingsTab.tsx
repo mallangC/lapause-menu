@@ -4,12 +4,18 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { PRODUCT_TYPES, SEASONS } from "@/lib/constants";
 import { notifyMenuChanged } from "@/lib/menuCacheClient";
+import { STORAGE_BUCKET } from "@/lib/constants";
+import { normalizeSizeConfig, sizeConfigImages } from "@/lib/sizeTiers";
+import { removeStorageFiles } from "@/lib/storageCleanup";
+import { PRODUCT_TYPES_CHANGED } from "./useStoreProductTypes";
 
 interface Props {
   companyId: string;
   initialHiddenProductTypes: string[];
   initialHiddenSeasons: string[];
   onSave: (hiddenProductTypes: string[], hiddenSeasons: string[]) => void;
+  /** 유형 삭제로 정리한 매장 설정(당일 준비 시간·크기 기준)을 공유 설정에도 반영 */
+  onSettingsSaved?: (patch: Record<string, unknown>) => void;
 }
 
 type CustomCategory = { id: string; category_type: "product_type" | "season"; name: string; hidden: boolean };
@@ -17,7 +23,7 @@ type CustomCategory = { id: string; category_type: "product_type" | "season"; na
 const MAX_PRODUCT_TYPES = 10;
 const MAX_SEASONS = 5;
 
-export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, initialHiddenSeasons, onSave }: Props) {
+export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, initialHiddenSeasons, onSave, onSettingsSaved }: Props) {
   const [hiddenProductTypes, setHiddenProductTypes] = useState<string[]>(initialHiddenProductTypes);
   const [hiddenSeasons, setHiddenSeasons] = useState<string[]>(initialHiddenSeasons);
   const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
@@ -26,6 +32,9 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
   const [duplicateError, setDuplicateError] = useState<"product_type" | "season" | null>(null);
   const [showProductTypeForm, setShowProductTypeForm] = useState(false);
   const [showSeasonForm, setShowSeasonForm] = useState(false);
+  // 삭제하려는 유형에 연결된 상품이 있을 때 띄우는 안내 (상품은 지우지 않는다)
+  const [blockedDelete, setBlockedDelete] = useState<{ name: string; count: number } | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
@@ -33,6 +42,45 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
       if (data) setCustomCategories(data as CustomCategory[]);
     });
   }, [companyId]);
+
+  /**
+   * 상품 유형 삭제 — 이 유형으로 등록된 상품이 있으면 막고 안내한다.
+   * 지우면 그 유형의 유형별 설정(당일 준비 시간·크기 기준과 참고 사진)도 함께 정리한다. 상품은 건드리지 않는다.
+   */
+  const deleteProductType = async (name: string, remove: () => Promise<void>) => {
+    if (deleting) return;
+    setDeleting(name);
+    try {
+      const { count } = await supabase
+        .from("products")
+        .select("id", { count: "exact", head: true })
+        .eq("company_id", companyId)
+        .eq("product_type", name);
+      if ((count ?? 0) > 0) {
+        setBlockedDelete({ name, count: count ?? 0 });
+        return;
+      }
+      await remove();
+      // 유형별 설정 정리
+      const { data: row } = await supabase.from("company_settings").select("min_lead_times, size_tiers").eq("company_id", companyId).single();
+      const lead = { ...((row?.min_lead_times as Record<string, number> | null) ?? {}) };
+      const size = normalizeSizeConfig(row?.size_tiers);
+      const removedImages = size.byType[name] ? sizeConfigImages({ default: [], byType: { [name]: size.byType[name] } }) : [];
+      if (name in lead || size.byType[name]) {
+        delete lead[name];
+        delete size.byType[name];
+        const patch = { min_lead_times: lead, size_tiers: size };
+        const { error } = await supabase.from("company_settings").update(patch).eq("company_id", companyId);
+        if (!error) {
+          onSettingsSaved?.(patch);
+          removeStorageFiles(supabase, STORAGE_BUCKET, removedImages);
+        }
+      }
+      window.dispatchEvent(new Event(PRODUCT_TYPES_CHANGED));
+    } finally {
+      setDeleting(null);
+    }
+  };
 
   const toggleProductType = async (type: string) => {
     const next = hiddenProductTypes.includes(type)
@@ -72,6 +120,7 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
     if (!error && data) {
       notifyMenuChanged();
       setCustomCategories((prev) => [...prev, data as CustomCategory]);
+      if (type === "product_type") window.dispatchEvent(new Event(PRODUCT_TYPES_CHANGED));
       resetFn();
     }
   };
@@ -116,7 +165,8 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
                 <div key={type} className="relative flex items-center justify-center py-2 px-3 pr-7 rounded-lg border border-gray-200 text-sm text-gray-700">
                   <span className="truncate">{type}</span>
                   <button
-                    onClick={() => toggleProductType(type)}
+                    onClick={() => deleteProductType(type, () => toggleProductType(type))}
+                    disabled={deleting === type}
                     className="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors text-base leading-none"
                     title="삭제"
                   >
@@ -137,7 +187,8 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
                     {cat.hidden ? `${cat.name} (숨김)` : cat.name}
                   </button>
                   <button
-                    onClick={() => deleteCategory(cat.id)}
+                    onClick={() => deleteProductType(cat.name, () => deleteCategory(cat.id))}
+                    disabled={deleting === cat.name}
                     className="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors text-base leading-none"
                     title="삭제"
                   >
@@ -239,6 +290,27 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
           </div>
         </div>
       </div>
+
+      {/* 연결된 상품이 있어 유형을 지울 수 없을 때 */}
+      {blockedDelete && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/40" onClick={() => setBlockedDelete(null)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <div className="space-y-1.5">
+              <p className="text-base font-semibold text-gray-900">‘{blockedDelete.name}’ 유형을 삭제할 수 없어요</p>
+              <p className="text-sm text-gray-500 break-keep">
+                이 유형으로 등록된 상품이 {blockedDelete.count}개 있어요. 상품 관리에서 해당 상품의 유형을 다른 유형으로 바꾼 뒤 삭제해 주세요.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setBlockedDelete(null)}
+              className="w-full bg-gold-500 text-white py-3 rounded-xl font-medium text-sm hover:bg-gold-600 transition-colors"
+            >
+              확인
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

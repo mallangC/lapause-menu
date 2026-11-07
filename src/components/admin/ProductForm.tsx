@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { Product, ProductInput } from "@/types";
+import { removeStorageFiles } from "@/lib/storageCleanup";
 import { PRODUCT_TYPES, FLOWER_COLORS, WRAPPING_COLORS, FLOWER_COLOR_MAP, SEASONS, STORAGE_BUCKET, MOODS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
 
@@ -170,6 +171,9 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
       : DEFAULT_INPUT
   );
   const [uploading, setUploading] = useState(false);
+  // 고른 사진은 저장을 누를 때까지 브라우저에만 둔다 (저장 안 하고 닫으면 저장소에 아무것도 남지 않게)
+  const [pendingImage, setPendingImage] = useState<Blob | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<string[]>([]);
@@ -235,41 +239,41 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
     if (!file) return;
 
     setUploadError(null);
-    setUploading(true);
-
-    let uploadTarget: Blob;
+    let blob: Blob;
     try {
-      uploadTarget = await compressImage(file);
+      blob = await compressImage(file);
     } catch {
       setUploadError("이미지 압축에 실패했습니다. 다른 파일을 선택해 주세요.");
-      setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
-
-    const path = `${Date.now()}.webp`;
-
-    const { error } = await supabase.storage
-      .from(STORAGE_BUCKET)
-      .upload(path, uploadTarget, { upsert: false, contentType: "image/webp" });
-
-    if (error) {
-      setUploadError("업로드 실패: " + error.message);
-      setUploading(false);
-      return;
-    }
-
-    const { data: urlData } = supabase.storage
-      .from(STORAGE_BUCKET)
-      .getPublicUrl(path);
-
-    setData((prev) => ({ ...prev, image_url: urlData.publicUrl }));
-    setUploading(false);
+    // 아직 올리지 않고 미리보기만 — 저장할 때 올린다
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPendingImage(blob);
+    setPreviewUrl(URL.createObjectURL(blob));
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleRemoveImage = () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPendingImage(null);
+    setPreviewUrl(null);
     setData((prev) => ({ ...prev, image_url: null }));
     if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  /** 저장할 때 고른 사진을 올리고 주소를 돌려준다 (고른 사진이 없으면 지금 주소 그대로) */
+  const uploadPendingImage = async (): Promise<string | null | false> => {
+    if (!pendingImage) return data.image_url;
+    setUploading(true);
+    const path = `${Date.now()}.webp`;
+    const { error } = await supabase.storage.from(STORAGE_BUCKET).upload(path, pendingImage, { upsert: false, contentType: "image/webp" });
+    setUploading(false);
+    if (error) {
+      setUploadError("업로드 실패: " + error.message);
+      return false;
+    }
+    return supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path).data.publicUrl;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -286,7 +290,12 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
     setFieldErrors([]);
     setLoading(true);
     try {
-      await onSubmit(data);
+      const imageUrl = await uploadPendingImage();
+      if (imageUrl === false) return;
+      await onSubmit({ ...data, image_url: imageUrl });
+      // 사진을 바꾸거나 지웠으면 예전 사진은 저장소에서 정리
+      const oldUrl = initialData?.image_url ?? null;
+      if (oldUrl && oldUrl !== imageUrl) removeStorageFiles(supabase, STORAGE_BUCKET, [oldUrl]);
     } finally {
       setLoading(false);
     }
@@ -344,13 +353,15 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
           <div>
             <label className={fieldLabelCls}>이미지</label>
 
-            {data.image_url ? (
+            {previewUrl || data.image_url ? (
               <div className="relative w-24 h-24">
                 <div className="w-24 h-24 rounded-xl overflow-hidden border border-gray-200">
                   <Image
-                    src={data.image_url}
+                    src={(previewUrl ?? data.image_url)!}
                     alt="상품 이미지"
                     fill
+                    // 방금 고른 사진(아직 저장 전)은 브라우저 주소라 최적화 없이
+                    unoptimized={!!previewUrl}
                     className="object-cover"
                   />
                 </div>

@@ -575,7 +575,10 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
                 onSave={(types, seasons) => {
                   setCurrentHiddenProductTypes(types);
                   setCurrentHiddenSeasons(seasons);
+                  // 다른 탭(영업 설정·판매 설정)의 유형 목록도 바로 맞도록 공유 설정에 반영
+                  handleSettingsSaved({ hidden_product_types: types, hidden_seasons: seasons });
                 }}
+                onSettingsSaved={handleSettingsSaved}
               />
             </div>
           )}

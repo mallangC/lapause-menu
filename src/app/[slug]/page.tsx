@@ -4,7 +4,8 @@ import ServiceSuspended from "@/components/main/ServiceSuspended";
 import { generateThemeVars, DEFAULT_THEME_BG, DEFAULT_THEME_ACCENT } from "@/lib/theme";
 import StoreWelcomeClient from "./StoreWelcomeClient";
 import { formatPhone } from "@/lib/format";
-import { activeSizeTiers } from "@/lib/sizeTiers";
+import { normalizeSizeConfig } from "@/lib/sizeTiers";
+import { storeProductTypes } from "@/lib/productTypes";
 import type { Metadata } from "next";
 
 interface Props {
@@ -50,7 +51,25 @@ export default async function StoreWelcomePage({ params }: Props) {
   return (
     <StoreWelcomeClient
       photos={photos}
-      sizeTiers={activeSizeTiers(s.size_tiers)}
+      // 크기 기준 (기본 + 유형별) — 대화에서 고른 형태에 맞춰 쓴다
+      sizeConfig={normalizeSizeConfig(s.size_tiers)}
+      // 형태 질문의 답 — 매장 유형 중 손님에게 보이는 것
+      productTypes={storeProductTypes(s.hidden_product_types as string[] | null, menu.categories, true)}
+      // 대화형 추천에 쓸 상품 — 맞춤주문을 켠 매장만 (카드에 필요한 것만 넘긴다)
+      products={
+        s.consult_enabled
+          ? menu.products.map((p) => ({
+              id: p.id,
+              name: p.name,
+              price: p.price,
+              image_url: p.image_url,
+              product_type: p.product_type,
+              mood: p.mood,
+              is_recommended: p.is_recommended,
+              is_popular: p.is_popular,
+            }))
+          : []
+      }
       // 메뉴판과 같은 푸터 (바로가기 버튼·정책 링크·사업자 정보)
       footer={{
         companyName: raw.name ?? slug,

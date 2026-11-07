@@ -1,6 +1,6 @@
 "use client";
 
-import { activeSizeTiers } from "@/lib/sizeTiers";
+import { hasAnySizeTier, normalizeSizeConfig } from "@/lib/sizeTiers";
 import { isTodayColorsDecided } from "@/lib/todayColors";
 import type { CompanySettings } from "./companySettings";
 
@@ -25,7 +25,7 @@ function buildItems(s: CompanySettings): Item[] {
   return [
     { label: "배송 기능 · 배송비", question: "“배송 돼요? 배송비 얼마예요?”", on: !!s.delivery_enabled && hasFee, tab: "reservation" },
     { label: "맞춤 주문", question: "“이 예산으로 어떤 꽃이 돼요?”", on: !!s.consult_enabled, tab: "reservation" },
-    { label: "크기 기준", question: "“이거 크기 어느 정도예요?”", on: activeSizeTiers(s.size_tiers).length > 0, tab: "reservation" },
+    { label: "크기 기준", question: "“이거 크기 어느 정도예요?”", on: hasAnySizeTier(normalizeSizeConfig(s.size_tiers)), tab: "reservation" },
     { label: "오늘 들어온 꽃 색상", question: "“오늘 무슨 색 꽃 있어요?”", on: isTodayColorsDecided(s) && (s.today_colors ?? []).length > 0, tab: "dashboard" },
     { label: "추가 옵션 (카드·쇼핑백·연장제)", question: "“메시지 카드 써주세요? 쇼핑백 있어요?”", on: !!(s.message_card_enabled || s.shopping_bag_enabled || s.preservative_enabled), tab: "reservation" },
     { label: "영업시간 외 수령", question: "“일찍·늦게 찾아가도 돼요?”", on: !!s.after_hours_enabled, tab: "business" },

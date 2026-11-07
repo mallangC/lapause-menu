@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { removeStorageFiles } from "@/lib/storageCleanup";
 import DaumPostcodeEmbed from "react-daum-postcode";
 import { Reservation, ReservationItem } from "./reservations/types";
 import { formatPhone, parsePhone, formatMoney, parseMoney } from "@/lib/format";
@@ -440,9 +441,14 @@ export default function AddReservationModal({
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         setError(data.error ?? "수정 중 오류가 발생했습니다.");
+        // 이번에 올린 사진은 저장되지 않았으니 지운다
+        removeStorageFiles(supabase, "reservation-images", uploadedImages.filter((u) => !refImageUrls.includes(u)));
         setSaving(false);
         return;
       }
+      // 수정하면서 뺀 예전 참고 사진은 저장소에서 정리
+      const before = initialData?.reference_images?.filter(Boolean) ?? [];
+      removeStorageFiles(supabase, "reservation-images", before.filter((u) => !uploadedImages.includes(u)));
       onSaved();
       return;
     }
@@ -486,7 +492,13 @@ export default function AddReservationModal({
       reference_images: uploadedImages.length > 0 ? uploadedImages : null,
     });
 
-    if (insertError) { setError(insertError.message); setSaving(false); return; }
+    if (insertError) {
+      setError(insertError.message);
+      // 이번에 올린 사진은 저장되지 않았으니 지운다
+      removeStorageFiles(supabase, "reservation-images", uploadedImages);
+      setSaving(false);
+      return;
+    }
     onSaved();
   };
 

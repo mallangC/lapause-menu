@@ -3,11 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { photoOrderKey, PHOTO_MOOD_SAME, STYLE_MOODS, STYLE_MOOD_TRUST, styleOrderHref, type StyleKind } from "@/lib/styleOrder";
+import { BASE_MOODS, recommendOrderHref, photoOrderKey, PHOTO_MOOD_SAME, STYLE_MOODS, STYLE_MOOD_TRUST, styleOrderHref, type StyleKind } from "@/lib/styleOrder";
 import FlowerNoticeModal from "@/components/FlowerNoticeModal";
 import StoreFooter, { type StoreFooterProps } from "@/components/main/StoreFooter";
 import SizeGuideButton from "@/components/SizeGuideButton";
-import { sizeForPrice, type SizeTier } from "@/lib/sizeTiers";
+import { sizeForPrice, tiersForType, type SizeConfig, type SizeTier } from "@/lib/sizeTiers";
+import { recommendProducts } from "@/lib/recommend";
 
 interface Props {
   slug: string;
@@ -20,8 +21,31 @@ interface Props {
   /** 메뉴판과 같은 푸터 */
   footer: StoreFooterProps;
   /** 크기 기준 (가격 기준을 넣은 단계만) — 예산을 정하면 그에 맞는 크기를 알려준다 */
-  sizeTiers: SizeTier[];
+  sizeConfig: SizeConfig;
+  /** 매장 상품 유형 (손님에게 보이는 것만) — 형태 질문의 답 */
+  productTypes: string[];
+  /** 대화형 추천에 쓸 상품 (맞춤주문을 켠 매장만) */
+  products: RecProduct[];
+  /** 로고 이미지 대신 직접 그릴 로고 (미리보기용) */
+  logoNode?: React.ReactNode;
+  /** 모바일에서 대화 끝을 화면 바닥에서 얼마나 띄울지(px) — 미리보기는 아래 이동 바에 가리지 않게 더 띄운다 */
+  mobileBottomGap?: number;
 }
+
+/** 대화형 추천 상품 카드에 필요한 것만 */
+export interface RecProduct {
+  id: string;
+  name: string;
+  price: number;
+  image_url: string | null;
+  product_type: string;
+  mood: string | null;
+  is_recommended: boolean;
+  is_popular: boolean;
+}
+
+/** 대화 주문 종류 — 사장님 스타일 / 찾아본 사진 / 추천 */
+type Flow = StyleKind | "recommend";
 
 type Option = {
   // 손님 말투로 — 누르면 그대로 손님 말풍선이 된다
@@ -30,8 +54,10 @@ type Option = {
   reply: string;
   // 답한 뒤 넘어갈 곳
   href?: string;
-  // 이동 없이 이 대화창에서 질문을 이어가는 주문 (사장님 스타일 / 찾아본 사진)
-  flow?: StyleKind;
+  // 이동 없이 이 대화창에서 질문을 이어가는 주문 (사장님 스타일 / 찾아본 사진 / 추천)
+  flow?: Flow;
+  // 선택지 구분 (미리보기 설명이 버튼을 찾을 때)
+  key: "style" | "recommend" | "photo" | "menu";
 };
 
 type Question = {
@@ -56,10 +82,11 @@ const GIFT_QUESTIONS: Question[] = [
   { key: "gender", label: "받는 분", ask: "받는 분은 어떤 분이세요?", options: ["여성", "남성"], skippable: true },
   { key: "age", label: "연령대", ask: "연령대도 알려주시겠어요?", options: ["10대 이하", "10대", "20대", "30대", "40대", "50대 이상"], short: { "10대 이하": "10대↓", "50대 이상": "50대↑" }, skippable: true },
 ];
-const TYPE_OPTIONS = ["꽃다발", "꽃바구니", "센터피스", "화병꽂이", "기타"];
+
 const BUDGET_Q: Question = { key: "budget", label: "예산", ask: "얼마에 맞춰서 제작해드릴까요?", budget: true };
 
-const QUESTIONS: Record<StyleKind, Question[]> = {
+// 형태 질문의 답은 매장 유형 목록 + 기타 (매장마다 다르다)
+const makeQuestions = (TYPE_OPTIONS: string[]): Record<Flow, Question[]> => ({
   // 사장님 스타일 — 분위기도 맡길 수 있게 '사장님에게 맡길게요'를 맨 앞에
   style: [
     ...GIFT_QUESTIONS,
@@ -73,7 +100,14 @@ const QUESTIONS: Record<StyleKind, Question[]> = {
     { key: "type", label: "상품 형태", ask: "사진 속 꽃은 어떤 형태인가요?", options: TYPE_OPTIONS },
     BUDGET_Q,
   ],
-};
+  // 추천 — 맞춤주문 1·2단계와 같은 질문 (분위기는 기본 4가지), 답으로 상품을 골라 보여준다
+  recommend: [
+    ...GIFT_QUESTIONS,
+    { key: "type", label: "상품 형태", ask: "어떤 형태로 찾으세요?", options: TYPE_OPTIONS },
+    { key: "mood", label: "분위기", ask: "어떤 분위기를 좋아하세요?", options: BASE_MOODS },
+    { ...BUDGET_Q, ask: "예산은 어느 정도로 생각하세요?" },
+  ],
+});
 // 요약 카드에서 분위기를 맡긴 답은 짧게
 const SUMMARY_MOOD: Record<string, string> = { [STYLE_MOOD_TRUST]: "사장님 스타일", [PHOTO_MOOD_SAME]: "보낸 사진 분위기" };
 
@@ -97,35 +131,69 @@ async function shrinkToDataUrl(file: File, maxSide = 1600, quality = 0.85): Prom
 const BUDGET_STEPS = [10000, 50000, 100000];
 const won = (n: number) => `${n.toLocaleString("ko-KR")}원`;
 
-// 답 버튼 한 줄 — 넘치면 줄바꿈 대신 옆으로 밀어 본다 (넘칠 때만 오른쪽 끝을 흐리게 해 더 있다는 걸 알린다)
-function ChipRow({ children }: { children: React.ReactNode }) {
+// 옆으로 넘기는 한 줄 (답 버튼·추천 상품 카드) — 넘치면 줄바꿈 대신 옆으로 밀어 본다
+// · 휴대폰: 손가락으로 밀기
+// · PC: 마우스 휠을 돌려도 옆으로 넘어가고(끝에 닿으면 화면 스크롤로), 양옆 화살표 버튼으로도 넘긴다
+// · 더 있는 쪽 끝은 흐리게 해 넘길 게 있다는 걸 알린다
+function ChipRow({ children, align = "end", innerClassName = "gap-2" }: { children: React.ReactNode; align?: "end" | "start"; innerClassName?: string }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [overflow, setOverflow] = useState(false);
-  const [atEnd, setAtEnd] = useState(false);
+  const [canLeft, setCanLeft] = useState(false);
+  const [canRight, setCanRight] = useState(false);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     const check = () => {
-      setOverflow(el.scrollWidth > el.clientWidth + 1);
-      setAtEnd(el.scrollLeft + el.clientWidth >= el.scrollWidth - 2);
+      setCanLeft(el.scrollLeft > 2);
+      setCanRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
+    };
+    // 세로 휠 → 가로로 (넘길 게 남아 있을 때만, 끝이면 원래대로 화면이 움직이게)
+    const onWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+      const max = el.scrollWidth - el.clientWidth;
+      if (max <= 0) return;
+      const next = el.scrollLeft + e.deltaY;
+      if ((e.deltaY > 0 && el.scrollLeft >= max - 1) || (e.deltaY < 0 && el.scrollLeft <= 0)) return;
+      e.preventDefault();
+      el.scrollLeft = Math.max(0, Math.min(max, next));
     };
     check();
     const ro = new ResizeObserver(check);
     ro.observe(el);
     el.addEventListener("scroll", check, { passive: true });
+    el.addEventListener("wheel", onWheel, { passive: false });
     return () => {
       ro.disconnect();
       el.removeEventListener("scroll", check);
+      el.removeEventListener("wheel", onWheel);
     };
   }, []);
+  const go = (dir: 1 | -1) => ref.current?.scrollBy({ left: dir * ref.current.clientWidth * 0.7, behavior: "smooth" });
+  const mask = canLeft || canRight
+    ? `linear-gradient(to right, ${canLeft ? "transparent, #000 40px" : "#000"}, ${canRight ? "#000 calc(100% - 40px), transparent" : "#000"})`
+    : undefined;
+  const arrowCls =
+    "hidden md:flex absolute top-1/2 -translate-y-1/2 z-10 w-8 h-8 items-center justify-center rounded-full bg-white border border-beige-200 shadow-sm text-gray-500 hover:text-gold-600 hover:border-gold-400 transition-colors";
   return (
-    <div
-      ref={ref}
-      className="no-scrollbar -mx-4 md:-mx-5 px-4 md:px-5 overflow-x-auto"
-      style={overflow && !atEnd ? { maskImage: "linear-gradient(to right, #000 calc(100% - 40px), transparent)", WebkitMaskImage: "linear-gradient(to right, #000 calc(100% - 40px), transparent)" } : undefined}
-    >
-      {/* 다 들어가면 오른쪽(손님 쪽)에 붙고, 넘치면 왼쪽부터 시작해 밀어서 본다 */}
-      <div className="flex gap-2 w-max ml-auto">{children}</div>
+    <div className="relative">
+      <div
+        ref={ref}
+        className="no-scrollbar -mx-4 md:-mx-5 px-4 md:px-5 overflow-x-auto"
+        style={mask ? { maskImage: mask, WebkitMaskImage: mask } : undefined}
+      >
+        {/* 다 들어가면 오른쪽(손님 쪽)에 붙고, 넘치면 왼쪽부터 시작해 밀어서 본다 */}
+        <div className={`flex w-max ${align === "end" ? "ml-auto" : ""} ${innerClassName}`}>{children}</div>
+      </div>
+      {/* PC — 양옆 넘기기 버튼 */}
+      {canLeft && (
+        <button type="button" onClick={() => go(-1)} aria-label="왼쪽으로 넘기기" className={`${arrowCls} -left-3`}>
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" /></svg>
+        </button>
+      )}
+      {canRight && (
+        <button type="button" onClick={() => go(1)} aria-label="오른쪽으로 넘기기" className={`${arrowCls} -right-3`}>
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}><path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /></svg>
+        </button>
+      )}
     </div>
   );
 }
@@ -136,12 +204,12 @@ type Item =
   | { id: string; from: "shop"; photos: string[] }
   | { id: string; from: "shop"; summary: { label: string; value: string }[]; image?: string }
   | { id: string; from: "shop"; size: SizeTier; price: number }
-  | { id: string; from: "me"; text: string; onEdit?: () => void }
+  | { id: string; from: "me"; text: string; onEdit?: () => void; tight?: boolean }
   | { id: string; from: "me"; image: string };
 
 // 매장 첫 화면 — 꽃집과 메시지 나누듯 "어떤 방식으로 주문할지"부터 고른다.
 // 추천은 맞춤주문, 직접 고르기·사진 주문은 메뉴판으로 넘어가고, '사장님 스타일'은 이 대화창에서 질문을 이어간다
-export default function StoreWelcomeClient({ slug, companyName, logoImage, themeVars, consultEnabled, photos, footer, sizeTiers }: Props) {
+export default function StoreWelcomeClient({ slug, companyName, logoImage, themeVars, consultEnabled, photos, footer, sizeConfig, productTypes, products, logoNode, mobileBottomGap = 24 }: Props) {
   const router = useRouter();
 
   const menuHref = `/${slug}/menu`;
@@ -153,12 +221,14 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
             text: "사장님 스타일로 알아서 부탁드려요",
             reply: "네! 가장 예쁜 꽃들로\n신경 써서 제작해드릴게요 💐\n몇 가지만 여쭤볼게요.",
             flow: "style" as const,
+            key: "style" as const,
           },
-          { text: "잘 모르겠어요, 추천해주세요", reply: "네, 좋아요! 몇 가지만 여쭤보고\n딱 맞는 꽃으로 추천해드릴게요 💐", href: `/${slug}/consult` },
+          { text: "잘 모르겠어요, 추천해주세요", reply: "네, 좋아요! 몇 가지만 여쭤보고\n딱 맞는 꽃으로 추천해드릴게요 💐", flow: "recommend" as const, key: "recommend" as const },
           {
             text: "찾아본 사진이랑 비슷하게 하고 싶어요",
             reply: "좋아요! 보내주신 사진의 분위기와\n비슷하게 만들어드릴 수 있어요 📷\n찾아보신 사진을 보내주시겠어요?",
             flow: "photo" as const,
+            key: "photo" as const,
           },
         ]
       : [
@@ -167,9 +237,10 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
             text: "찾아본 사진이랑 비슷하게 하고 싶어요",
             reply: "사진으로 주문하는 방법은 곧 열릴 예정이에요!\n메뉴판에서 비슷한 분위기를 먼저 찾아봐 주세요 📷",
             href: menuHref,
+            key: "photo" as const,
           },
         ]),
-    { text: "사진 보고 직접 고를게요", reply: "네, 알겠습니다! 메뉴판 보여드릴게요.\n메뉴 보시고 주문해주세요 🌷", href: menuHref },
+    { text: "사진 보고 직접 고를게요", reply: "네, 알겠습니다! 메뉴판 보여드릴게요.\n메뉴 보시고 주문해주세요 🌷", href: menuHref, key: "menu" },
   ];
 
   // ── 대화 진행 상태 ──
@@ -206,8 +277,11 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
   const fileRef = useRef<HTMLInputElement>(null);
   // 생화 안내 — 사진 주문은 '이대로 주문할게요' 전에 한 번 보여준다
   const [showFlowerNotice, setShowFlowerNotice] = useState(false);
-  const flow: StyleKind = choice?.flow ?? "style";
-  const QS = QUESTIONS[flow];
+  const flow: Flow = choice?.flow ?? "style";
+  // 추천 — 상품 카드를 보여줬는지, 고른 상품
+  const [recShown, setRecShown] = useState(false);
+  const [pickedRec, setPickedRec] = useState<RecProduct | null>(null);
+  const QS = makeQuestions([...productTypes, "기타"])[flow];
 
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const later = (ms: number, fn: () => void) => {
@@ -252,7 +326,7 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
         // 답을 읽을 틈을 두고 넘어간다
         if (o.href) later(1400, () => router.push(o.href!));
         // 사장님 스타일 — 첫 질문을 이어서 (찾아본 사진은 사진을 받은 뒤에)
-        else if (o.flow === "style") later(500, () => shopSays(() => setAsked(1)));
+        else if (o.flow === "style" || o.flow === "recommend") later(500, () => shopSays(() => setAsked(1)));
       }, 750)
     );
   };
@@ -293,8 +367,11 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
     const next = [...answers.slice(0, asked - 1), v];
     setAnswers(next);
     if (asked < QS.length) later(200, () => shopSays(() => setAsked(asked + 1), 550));
+    // 추천 — 예산까지 받으면 '어울리는 꽃 찾는 중...' 뒤에 상품 카드
+    else if (flow === "recommend") later(200, () => shopSays(() => setRecShown(true), 1300, "어울리는 꽃 찾는 중"));
     // 예산(마지막 질문)을 정하면 — 크기 기준이 있으면 '크기 확인 중...' → 크기 안내 → 요약
-    else if (QS[asked - 1].budget && sizeForPrice(sizeTiers, Number(v.replace(/\D/g, "")))) {
+    // (크기 기준은 고른 형태의 기준 — 유형별로 정하지 않았으면 기본)
+    else if (QS[asked - 1].budget && sizeForPrice(tiersForType(sizeConfig, ans("type")), Number(v.replace(/\D/g, "")))) {
       later(200, () =>
         shopSays(() => {
           setSizeShown(true);
@@ -306,16 +383,27 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
 
   // 요약대로 주문 — 받은 답을 맞춤주문 마지막 단계(예약 확인·결제)로 넘긴다
   const CONFIRM_TEXT = "이대로 주문할게요";
+  // 질문 순서가 주문마다 달라 key로 답을 찾는다
+  const ans = (key: string) => {
+    const v = answers[QS.findIndex((q) => q.key === key)];
+    return v === SKIP ? "" : v ?? "";
+  };
   const confirm = () => {
     setShowFlowerNotice(false);
     setConfirmed(true);
-    // 질문 순서가 주문마다 달라 key로 답을 찾는다
-    const a = (key: string) => {
-      const v = answers[QS.findIndex((q) => q.key === key)];
-      return v === SKIP ? "" : v ?? "";
-    };
-    const href = styleOrderHref(slug, {
-      kind: flow,
+    const a = ans;
+    // 추천 — 고른 상품과 대화 답을 맞춤주문 마지막 단계로
+    const href = flow === "recommend" && pickedRec
+      ? recommendOrderHref(slug, pickedRec.id, {
+          purpose: a("purpose"),
+          gender: a("gender"),
+          age: a("age"),
+          productType: a("type"),
+          mood: a("mood"),
+          budget: Number(a("budget").replace(/\D/g, "")),
+        })
+      : styleOrderHref(slug, {
+      kind: flow === "photo" ? "photo" : "style",
       purpose: a("purpose"),
       gender: a("gender"),
       age: a("age"),
@@ -343,6 +431,8 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
     setSummaryShown(false);
     setSizeShown(false);
     setTypingLabel(null);
+    setRecShown(false);
+    setPickedRec(null);
     if (QS[qIdx].budget) {
       const prev = answers[qIdx];
       setBudget(prev ? Number(prev.replace(/\D/g, "")) : 0);
@@ -362,12 +452,15 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
   for (let i = 0; i < asked; i++) {
     const q = QS[i];
     items.push({ id: `q${i}`, from: "shop", text: q.ask });
-    if (answers[i] !== undefined) items.push({ id: `a${i}`, from: "me", text: q.budget ? `${answers[i]}에 맞춰주세요` : (q.short?.[answers[i]] ?? answers[i]), onEdit: confirmed ? undefined : () => editFrom(i) });
+    if (answers[i] !== undefined) items.push({ id: `a${i}`, from: "me", text: q.budget
+          ? // 추천은 예산을 묻는 말이라 '생각하고 있어요', 사장님 스타일·사진 주문은 제작 금액이라 '맞춰주세요'
+            flow === "recommend" ? `${answers[i]} 정도 생각하고 있어요` : `${answers[i]}에 맞춰주세요`
+          : (q.short?.[answers[i]] ?? answers[i]), onEdit: confirmed ? undefined : () => editFrom(i) });
   }
   // 예산에 맞는 크기
   const budgetIdx = QS.findIndex((q) => q.budget);
   const budgetValue = budgetIdx >= 0 && answers[budgetIdx] ? Number(answers[budgetIdx].replace(/\D/g, "")) : 0;
-  const size = budgetValue ? sizeForPrice(sizeTiers, budgetValue) : null;
+  const size = budgetValue ? sizeForPrice(tiersForType(sizeConfig, ans("type")), budgetValue) : null;
   if (sizeShown && size) items.push({ id: "size", from: "shop", size, price: budgetValue });
   if (summaryShown) {
     items.push({
@@ -387,7 +480,25 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
       image: flow === "photo" ? refPreview ?? undefined : undefined,
     });
   }
-  if (confirmed) items.push({ id: "confirm", from: "me", text: CONFIRM_TEXT });
+  // 추천 상품 카드
+  const budgetForRec = flow === "recommend" ? Number(ans("budget").replace(/\D/g, "")) : 0;
+  const recs = recShown ? recommendProducts(products, { productType: ans("type"), mood: ans("mood"), budget: budgetForRec }) : [];
+  if (recShown)
+    items.push({
+      id: "rec-intro",
+      from: "shop",
+      text: recs.length > 0 ? "이런 꽃은 어떠세요? 💐\n마음에 드는 걸 골라주세요." : "아직 추천해드릴 상품이 없어요 😢\n메뉴판에서 직접 둘러봐 주시겠어요?",
+    });
+  // 추천에서 고른 상품 — 그 사진을 손님 말풍선 위에 그대로
+  if (confirmed && flow === "recommend" && pickedRec?.image_url) items.push({ id: "confirm-img", from: "me", image: pickedRec.image_url });
+  if (confirmed)
+    items.push({
+      id: "confirm",
+      from: "me",
+      text: flow === "recommend" && pickedRec ? `‘${pickedRec.name}’ 이걸로 할게요` : CONFIRM_TEXT,
+      // 바로 위 사진과 붙여서 한 덩어리로
+      tight: flow === "recommend" && !!pickedRec?.image_url,
+    });
   if (byeShown) items.push({ id: "bye", from: "shop", text: "네! 이제 받으실 날짜와 정보만 알려주세요 🌷" });
 
   // 지금 답을 기다리는 질문
@@ -399,10 +510,11 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
   // 새 말이 붙으면 맨 아래가 보이게 (손님이 고르기 시작한 뒤부터)
   const endRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    // 대화 끝(지금 고를 답)이 화면 맨 아래가 아니라 위에서 2/3 지점에 오게 — 손가락이 닿기 쉬운 높이에 머문다
+    // 대화 끝(지금 고를 답)이 보이게 — PC는 위에서 2/3 지점에 머물게, 모바일은 화면 맨 아래까지 내린다
     const el = endRef.current;
     if (!choice || !el) return;
-    const top = el.getBoundingClientRect().top + window.scrollY - window.innerHeight * (2 / 3);
+    const mobile = window.innerWidth < 768;
+    const top = el.getBoundingClientRect().top + window.scrollY - (mobile ? window.innerHeight - mobileBottomGap : window.innerHeight * (2 / 3));
     if (top > 0) window.scrollTo({ top, behavior: "smooth" });
   }, [items.length, typing, current, choice]);
 
@@ -433,19 +545,30 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
         .welcome-in { animation: welcome-in .28s ease-out both; }
         @keyframes welcome-dot { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
         .welcome-dot { animation: welcome-dot 1.2s infinite; }
+        /* 모바일에서 화면을 끝까지 당겼을 때 헤더 위·푸터 아래로 보이는 바탕을 헤더·푸터와 같은 흰색으로 (이 화면에서만) */
+        html, body { background-color: #fff; }
       `}</style>
 
       {/* 상단 로고 */}
       <header className="h-16 md:h-24 flex items-center justify-center bg-white border-b border-gray-100 shrink-0">
-        {logoImage ? (
+        {/* 로고를 누르면 처음부터 다시 상담 (이 화면을 새로 연다) */}
+        <a href={`/${slug}`} aria-label="처음부터 다시 상담하기" className="flex items-center">
+        {logoNode ?? (logoImage ? (
           <Image src={logoImage} alt={companyName} width={240} height={48} className="object-contain h-12 w-auto md:h-14" priority />
         ) : (
           <span className="font-light tracking-widest text-gold-500 text-2xl md:text-3xl">{companyName}</span>
-        )}
+        ))}
+        </a>
       </header>
 
       {/* 대화 */}
-      <main className={`flex-1 w-full max-w-lg mx-auto px-4 md:px-5 pt-8 md:pt-14 ${choice ? "pb-[36dvh]" : "pb-16"}`}>
+      {/* 모바일 — 대화창처럼 보이도록 푸터는 손님이 직접 끝까지 내려야 보이게:
+          대화 칸을 최소 '큰 화면 높이(주소창이 접힌 높이, lvh) - 헤더 + 여유'로 잡고, 아래 여백도 넉넉히 둔다
+          (아이폰은 주소창이 접히면 화면이 길어져 dvh 기준이면 푸터가 살짝 보인다) */}
+      <main
+        className={`flex-1 w-full max-w-lg mx-auto px-4 md:px-5 pt-8 md:pt-14 min-h-[calc(100lvh-4rem+48px)] md:min-h-0 pb-[var(--chat-pb)] ${choice ? "md:pb-[36dvh]" : "md:pb-16"}`}
+        style={{ "--chat-pb": `${mobileBottomGap + 80}px` } as React.CSSProperties}
+      >
         <div className="flex flex-col gap-1.5">
           {items.map((m, i) =>
             m.from === "shop" ? (
@@ -496,7 +619,7 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
                 </div>
               </div>
             ) : (
-              <div key={m.id} className="welcome-in flex justify-end mt-4">
+              <div key={m.id} className={`welcome-in flex justify-end ${"tight" in m && m.tight ? "mt-1" : "mt-4"}`}>
                 {"image" in m ? (
                   // 손님이 보낸 사진
                   <div className="w-[200px] md:w-[240px] rounded-2xl rounded-br-md overflow-hidden bg-beige-200">
@@ -538,7 +661,7 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
           {showLanding && (
             <div className="flex flex-col items-end gap-2 mt-6">
               {options.map((o, i) => (
-                <button key={o.text} type="button" onClick={() => pick(o)} className={`max-w-[85%] text-right ${replyBtn}`} style={{ animationDelay: `${i * 0.07}s` }}>
+                <button key={o.text} type="button" data-coach={`welcome-opt-${o.key}`} onClick={() => pick(o)} className={`max-w-[85%] text-right ${replyBtn}`} style={{ animationDelay: `${i * 0.07}s` }}>
                   {o.text}
                 </button>
               ))}
@@ -635,6 +758,48 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
             </div>
           )}
 
+          {/* 추천 상품 — 옆으로 밀어서 보고, 고르면 생화 안내 후 주문으로 */}
+          {recShown && !typing && !confirmed && recs.length > 0 && (
+            <div className="welcome-in mt-3">
+              <ChipRow align="start" innerClassName="gap-3 pl-12 pr-1">
+                {recs.map((p) => (
+                  <div key={p.id} className="w-40 md:w-44 shrink-0 bg-white rounded-2xl overflow-hidden">
+                    <div className="relative w-full aspect-[4/5] bg-beige-200">
+                      {p.image_url && <Image src={p.image_url} alt={p.name} fill sizes="176px" className="object-cover" />}
+                    </div>
+                    <div className="p-3">
+                      <p className="text-xs text-gray-400">{p.product_type}</p>
+                      <p className="text-sm font-medium text-gray-900 truncate">{p.name}</p>
+                      <p className="text-sm font-bold text-gold-500 mt-0.5">{won(p.price)}</p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPickedRec(p);
+                          setShowFlowerNotice(true);
+                        }}
+                        className="mt-2.5 w-full py-2 rounded-xl bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 active:scale-[0.97] transition-all"
+                      >
+                        이걸로 할게요
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </ChipRow>
+            </div>
+          )}
+          {recShown && !typing && !confirmed && (
+            <div className="flex flex-col items-end gap-2 mt-4">
+              {recs.length > 0 ? (
+                <p className="welcome-in text-[13px] text-gray-400">보낸 답을 누르면 다시 고를 수 있어요</p>
+              ) : (
+                // 추천할 상품이 없을 때만 메뉴판으로
+                <a href={`/${slug}/menu`} className={replyBtn}>
+                  메뉴판 볼게요
+                </a>
+              )}
+            </div>
+          )}
+
           {/* 요약을 보고 주문으로 넘어가기 — 사진 주문은 생화 안내를 먼저 */}
           {summaryShown && !confirmed && !typing && (
             <div className="flex flex-col items-end gap-2 mt-5">
@@ -652,7 +817,15 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
       <StoreFooter {...footer} />
 
       {/* 생화 안내 — 사진과 똑같이는 어렵다는 것 (맞춤주문 상품 선택 뒤와 같은 안내) */}
-      {showFlowerNotice && <FlowerNoticeModal onConfirm={confirm} onClose={() => setShowFlowerNotice(false)} />}
+      {showFlowerNotice && (
+        <FlowerNoticeModal
+          onConfirm={confirm}
+          onClose={() => {
+            setShowFlowerNotice(false);
+            setPickedRec(null);
+          }}
+        />
+      )}
     </div>
   );
 }

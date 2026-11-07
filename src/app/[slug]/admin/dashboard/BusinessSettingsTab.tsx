@@ -11,6 +11,8 @@ import { notifyMenuChanged } from "@/lib/menuCacheClient";
 import type { CompanySettings } from "./companySettings";
 import { useSettingsSync } from "./useSettingsSync";
 import { DEFAULT_COLOR_LEAD_DAYS } from "@/lib/todayColors";
+import { DEFAULT_TYPE_KEY } from "@/lib/productTypes";
+import { useStoreProductTypes } from "./useStoreProductTypes";
 import { AFTER_HOURS_END_OPTIONS, AFTER_HOURS_START_OPTIONS, DEFAULT_AFTER_HOURS_END, DEFAULT_AFTER_HOURS_START } from "@/lib/afterHours";
 
 registerLocale("ko", ko);
@@ -97,6 +99,10 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
   const [overrideOpen, setOverrideOpen] = useState("09:00");
   const [overrideClose, setOverrideClose] = useState("18:00");
   const [minLeadTimes, setMinLeadTimes] = useState<Record<string, string>>({});
+  // 매장 유형 목록 (당일 예약 시간 줄)
+  const productTypes = useStoreProductTypes(companyId, settings.hidden_product_types);
+  // 기본 값 — 예전에 '기타'로 저장했으면 그 값을 기본으로
+  const defaultLead = minLeadTimes[DEFAULT_TYPE_KEY] ?? minLeadTimes["기타"] ?? "2";
   // 색 맞춤 가능 일수 — 이보다 가까운 날짜 주문은 그날 매장에 있는 색으로 준비
   const [colorLeadDays, setColorLeadDays] = useState(String(DEFAULT_COLOR_LEAD_DAYS));
   // 영업시간 외 수령 — 켜면 이 범위 중 영업시간 앞뒤도 손님이 수령 시간으로 고를 수 있다 (추가 요금 없음)
@@ -186,9 +192,13 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
         business_hours: businessHours,
         closed_dates: closedDates,
         date_overrides: prunedOverrides,
-        min_lead_times: Object.fromEntries(
-          Object.entries(minLeadTimes).map(([k, v]) => [k, Number(v) || 0])
-        ),
+        // 기본 + 값을 넣은 매장 유형만 (비운 유형은 기본을 따르고, 없어진 유형·예전 '기타'는 저장하지 않는다)
+        min_lead_times: {
+          [DEFAULT_TYPE_KEY]: Number(defaultLead) || 0,
+          ...Object.fromEntries(
+            productTypes.filter((t) => (minLeadTimes[t] ?? "") !== "").map((t) => [t, Number(minLeadTimes[t]) || 0])
+          ),
+        },
         color_lead_days: Number(colorLeadDays) || 0,
         after_hours_enabled: afterHoursEnabled,
         after_hours_start: afterHoursStart,
@@ -226,34 +236,38 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
           <div className="space-y-3">
             <div>
               <h3 className="text-sm font-medium text-gray-700">당일 예약 시간 설정</h3>
-              <p className="text-xs text-gray-400 mt-0.5">유형별로 제작에 최소 몇 시간이 필요한지 입력하세요. (기본값: 2시간)</p>
+              <p className="text-xs text-gray-400 mt-0.5 break-keep">제작에 최소 몇 시간이 필요한지 입력하세요. 유형을 비워 두면 기본 시간을 따라요.</p>
             </div>
-            {/* 모바일: 박스 없이 맨 위·줄 사이 모두 옅은 선, 줄 왼쪽 끝을 제목에 맞춤 / PC: 박스 */}
+            {/* 모바일: 박스 없이 맨 위·줄 사이 모두 옅은 선, 줄 왼쪽 끝을 제목에 맞춤 / PC: 박스
+                맨 위 '기본'은 따로 정하지 않은 유형이 따라가는 값, 그 아래는 매장 유형 (비워 두면 기본) */}
             <div className="border-t border-gray-100 md:border md:border-gray-200 md:rounded-xl overflow-hidden divide-y divide-gray-100">
-              {["꽃다발", "꽃바구니", "센터피스", "화병꽂이", "기타"].map((type) => (
-                <div key={type} className="flex items-center justify-between px-0 md:px-4 py-3 bg-white">
-                  <span className="text-sm text-gray-700">{type}</span>
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={minLeadTimes[type] ?? "2"}
-                      onChange={(e) => {
-                        const digits = e.target.value.replace(/\D/g, "").slice(0, 2);
-                        const clamped = digits === "" ? "" : String(Math.min(72, Number(digits)));
-                        setMinLeadTimes((prev) => ({ ...prev, [type]: clamped }));
-                      }}
-                      onBlur={() => {
-                        if ((minLeadTimes[type] ?? "") === "") {
-                          setMinLeadTimes((prev) => ({ ...prev, [type]: "0" }));
-                        }
-                      }}
-                      className="w-16 border border-gray-200 rounded-lg px-2 py-1 text-sm text-center focus:outline-none focus:border-gray-400 bg-white"
-                    />
-                    <span className="text-xs text-gray-400">시간</span>
+              {[DEFAULT_TYPE_KEY, ...productTypes].map((type) => {
+                const isDefault = type === DEFAULT_TYPE_KEY;
+                return (
+                  <div key={type} className="flex items-center justify-between px-0 md:px-4 py-3 bg-white">
+                    <span className={`text-sm ${isDefault ? "font-medium text-gray-800" : "text-gray-700"}`}>{type}</span>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={isDefault ? defaultLead : minLeadTimes[type] ?? ""}
+                        placeholder={isDefault ? "2" : defaultLead || "2"}
+                        onChange={(e) => {
+                          const digits = e.target.value.replace(/\D/g, "").slice(0, 2);
+                          const clamped = digits === "" ? "" : String(Math.min(72, Number(digits)));
+                          setMinLeadTimes((prev) => ({ ...prev, [type]: clamped }));
+                        }}
+                        onBlur={() => {
+                          // 기본은 비울 수 없다 (0시간이면 0) / 유형은 비우면 기본을 따른다
+                          if (isDefault && defaultLead === "") setMinLeadTimes((prev) => ({ ...prev, [DEFAULT_TYPE_KEY]: "0" }));
+                        }}
+                        className="w-16 border border-gray-200 rounded-lg px-2 py-1 text-sm text-center focus:outline-none focus:border-gray-400 bg-white placeholder:text-gray-300"
+                      />
+                      <span className="text-xs text-gray-400">시간</span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -266,7 +280,7 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
           <div>
             <h3 className="text-sm font-medium text-gray-700">색 맞춤 가능 일수</h3>
             <p className="text-xs text-gray-400 mt-0.5 break-keep">
-              원하는 색 꽃을 따로 들여오려면 며칠이 필요한지 입력하세요. 이보다 가까운 날짜의 주문은 대시보드에서 고른 &lsquo;오늘 들어온 꽃 색상&rsquo; 중에서 손님이 고르게 돼요.
+              원하는 색 꽃을 따로 들여오려면 며칠이 필요한지 입력하세요. 입력한 시간보다 가까운 날짜의 주문은<br />대시보드에서 고른 &lsquo;오늘 들어온 꽃 색상&rsquo; 중에서 손님이 고르게 돼요.
             </p>
           </div>
           <div className="flex items-center justify-between border-t border-gray-100 md:border md:border-gray-200 md:rounded-xl px-0 md:px-4 py-3">

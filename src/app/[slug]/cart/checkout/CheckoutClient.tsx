@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import PreparedColorPicker from "@/components/PreparedColorPicker";
 import { needsPreparedColor } from "@/lib/todayColors";
+import { leadHoursFor } from "@/lib/productTypes";
 import TimeSlotGrid from "@/components/TimeSlotGrid";
 import PaymentMethodSection from "@/components/PaymentMethodSection";
 import { cashReceiptError, type CashReceipt, type PaymentMethod } from "@/lib/payment";
@@ -524,7 +525,7 @@ export default function CheckoutClient({
     ? selectedDate.getFullYear() === now.getFullYear() && selectedDate.getMonth() === now.getMonth() && selectedDate.getDate() === now.getDate()
     : false;
   // 최소 준비 시간 — 주문 상품 유형 중 가장 오래 걸리는 것 기준 (맞춤주문과 같은 설정, 미설정이면 2시간)
-  const leadHours = Math.max(0, ...checkedItems.map((i) => minLeadTimes[i.product_type] ?? 2));
+  const leadHours = Math.max(0, ...checkedItems.map((i) => leadHoursFor(minLeadTimes, i.product_type)));
   const minTimeDate = isToday ? new Date(now.getTime() + leadHours * 60 * 60000) : null;
   // 준비 시간을 더했더니 다음 날로 넘어가면 오늘 슬롯은 없음 — 맞춤 주문(ConsultClient)과 같은 처리.
   // 이걸 안 하면 다음 날 00:xx를 기준으로 계산돼 이미 지난 오늘 영업시간이 전부 선택 가능해진다.

@@ -18,12 +18,14 @@ import StoreHeader from "@/components/main/StoreHeader";
 import OrderCompleteHeader from "@/components/OrderCompleteHeader";
 import { readTrafficSource } from "@/lib/trafficSource";
 import PreparedColorPicker from "@/components/PreparedColorPicker";
+import { recommendProducts } from "@/lib/recommend";
+import { leadHoursFor } from "@/lib/productTypes";
 import { needsPreparedColor } from "@/lib/todayColors";
 import TimeSlotGrid from "@/components/TimeSlotGrid";
 import PaymentMethodSection from "@/components/PaymentMethodSection";
 import { cashReceiptError, type CashReceipt, type PaymentMethod } from "@/lib/payment";
 import { AFTER_HOURS_OFF, afterHoursSlots, type AfterHours } from "@/lib/afterHours";
-import { PHOTO_PRODUCT_ID, isVirtualProductId, makeStyleProduct, photoOrderKey, readPhotoOrder, type StyleOrder } from "@/lib/styleOrder";
+import { PHOTO_PRODUCT_ID, isVirtualProductId, makeStyleProduct, photoOrderKey, readPhotoOrder, type ChatAnswers, type StyleOrder } from "@/lib/styleOrder";
 
 registerLocale("ko", ko);
 
@@ -131,6 +133,8 @@ interface Props {
   preselectedProduct?: Product | null;
   /** 첫 화면 대화('사장님 스타일로 알아서')에서 정한 주문 — 있으면 상품 고르기 없이 바로 예약 확인 */
   styleOrder?: StyleOrder | null;
+  /** 첫 화면 대화형 추천에서 상품을 고르고 온 경우 — 대화에서 받은 답 (있으면 바로 예약 확인) */
+  chatAnswers?: ChatAnswers | null;
   /** 오늘 매장에 있는 꽃 색상 (사장님이 오늘 알려준 경우만) */
   todayColors?: string[];
   /** 색 맞춤 가능 일수 */
@@ -206,14 +210,6 @@ function Section({ title, required, badge, children }: { title: string; required
 }
 
 
-const TYPE_MAP: Record<string, string> = {
-  꽃다발: "꽃다발",
-  꽃바구니: "꽃바구니",
-  센터피스: "센터피스",
-  화병꽂이: "화병꽂이",
-};
-
-
 const BUDGET_MAP: Record<string, number> = {
   "3만원": 30000,
   "5만원": 50000,
@@ -223,73 +219,30 @@ const BUDGET_MAP: Record<string, number> = {
   "15만원": 150000,
 };
 
+// 추천 계산은 첫 화면 대화형 추천과 같은 규칙 (src/lib/recommend.ts)
 function scoreProducts(products: Product[], form: ConsultForm): Product[] {
-  const budget =
-    form.budget === "기타"
-      ? parseInt(form.budgetCustom || "0") * 10000
-      : BUDGET_MAP[form.budget] ?? 0;
-
-  const mappedType = TYPE_MAP[form.productType];
-  const isHighBudget = budget >= 100000;
-  const tightUpper = isHighBudget ? 20000 : 10000;   // <10만원: +1만원 / >=10만원: +2만원
-  const wideUpper  = isHighBudget ? 50000 : 30000;   // <10만원: +3만원 / >=10만원: +5만원
-
-  const score = (p: Product) => {
-    let s = 0;
-    if (mappedType && p.product_type === mappedType) s += 4;
-    if (form.mood && p.mood === form.mood) s += 3;
-    if (p.is_recommended) s += 2;
-    if (p.is_popular) s += 1;
-    return s;
-  };
-
-  const typeMatch = (p: Product) => !mappedType || p.product_type === mappedType;
-
-  // 슬롯 1~2: budget ~ budget+tightUpper
-  const tight = budget > 0
-    ? products.filter((p) => typeMatch(p) && p.price >= budget && p.price <= budget + tightUpper)
-    : products.filter(typeMatch);
-  const tightTop = [...tight].sort((a, b) => score(b) - score(a)).slice(0, 2);
-  const usedIds = new Set(tightTop.map((p) => p.id));
-
-  // 슬롯 3~4: budget+tightUpper 초과 ~ budget+wideUpper
-  const wide = products.filter((p) => {
-    if (!typeMatch(p) || usedIds.has(p.id)) return false;
-    if (budget === 0) return true;
-    return p.price > budget + tightUpper && p.price <= budget + wideUpper;
-  });
-  const wideTop = [...wide].sort((a, b) => score(b) - score(a)).slice(0, 2);
-
-  const result = [...tightTop, ...wideTop];
-
-  // 4개 미만이면 전체에서 보충
-  if (result.length < 4) {
-    const allIds = new Set(result.map((p) => p.id));
-    const fallback = products
-      .filter((p) => !allIds.has(p.id))
-      .sort((a, b) => score(b) - score(a))
-      .slice(0, 4 - result.length);
-    result.push(...fallback);
-  }
-
-  return result;
+  const budget = form.budget === "기타" ? parseInt(form.budgetCustom || "0") * 10000 : BUDGET_MAP[form.budget] ?? 0;
+  return recommendProducts(products, { productType: form.productType, mood: form.mood, budget });
 }
 
-export default function ConsultClient({ slug, companyName, logoImage = null, productTypeList = [], seasonList = [], notificationEmail, products, businessHours, closedDates, dateOverrides = {}, minLeadTimes = {}, consultNotice, storeAddress = null, deliveryEnabled = false, deliveryFees = {}, messageCardEnabled = false, messageCardPrice = 2000, shoppingBagEnabled = false, shoppingBagPrice = 2000, preservativeEnabled = false, preservativePrice = 500, isDemo = false, preselectedProduct = null, styleOrder = null, todayColors = [], colorLeadDays = 0, afterHours = AFTER_HOURS_OFF, transferAvailable = false, initialQuantity = 1, initialPaymentId = null }: Props) {
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(styleOrder ? 4 : 1);
+export default function ConsultClient({ slug, companyName, logoImage = null, productTypeList = [], seasonList = [], notificationEmail, products, businessHours, closedDates, dateOverrides = {}, minLeadTimes = {}, consultNotice, storeAddress = null, deliveryEnabled = false, deliveryFees = {}, messageCardEnabled = false, messageCardPrice = 2000, shoppingBagEnabled = false, shoppingBagPrice = 2000, preservativeEnabled = false, preservativePrice = 500, isDemo = false, preselectedProduct = null, styleOrder = null, chatAnswers = null, todayColors = [], colorLeadDays = 0, afterHours = AFTER_HOURS_OFF, transferAvailable = false, initialQuantity = 1, initialPaymentId = null }: Props) {
+  // 첫 화면 대화에서 선물 정보·취향을 이미 받고 온 주문 (사장님 스타일·사진 주문·대화형 추천)
+  const chat = styleOrder ?? chatAnswers;
+  const fromChat = !!chat;
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(fromChat ? 4 : 1);
   // 사장님 스타일 주문 — 대화에서 받은 선물 정보·취향·예산을 채워 둔다 (예산은 '기타 n만원'으로)
   const [form, setForm] = useState<ConsultForm>(() =>
-    styleOrder
+    chat
       ? {
           ...EMPTY_FORM,
-          purpose: styleOrder.purpose,
-          purposeCustom: styleOrder.purpose === "기타" ? "기타" : "",
-          recipientGender: styleOrder.gender,
-          recipientAge: styleOrder.age,
-          productType: styleOrder.productType,
-          mood: styleOrder.mood,
+          purpose: chat.purpose,
+          purposeCustom: chat.purpose === "기타" ? "기타" : "",
+          recipientGender: chat.gender,
+          recipientAge: chat.age,
+          productType: chat.productType,
+          mood: chat.mood,
           budget: "기타",
-          budgetCustom: String(styleOrder.budget / 10000),
+          budgetCustom: String(chat.budget / 10000),
         }
       : EMPTY_FORM
   );
@@ -608,7 +561,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
             paymentMethod: "transfer",
             cashReceipt: cashReceipt.type === "신청 안 함" ? { type: "신청 안 함", number: "" } : cashReceipt,
             trafficSource: readTrafficSource(slug),
-            orderPath: preselectedProduct ? "product_detail" : "consult",
+            orderPath: preselectedProduct && !chatAnswers ? "product_detail" : "consult",
             referenceImageData: selectedProduct.id === PHOTO_PRODUCT_ID ? readPhotoOrder(slug) : null,
           }),
         });
@@ -662,7 +615,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
         noticeAgreed,
         finalPrice,
         source: readTrafficSource(slug),
-        orderPath: preselectedProduct ? "product_detail" : "consult",
+        orderPath: preselectedProduct && !chatAnswers ? "product_detail" : "consult",
       } satisfies DraftData));
 
       await widgetRef.current?.requestPayment({
@@ -840,7 +793,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
       {/* Step indicator */}
       <div className="sticky top-14 md:top-20 z-30 border-b border-gray-100 bg-white">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-center gap-2">
-          {(styleOrder
+          {(fromChat
             ? [{ num: 1 as const, label: "선물 · 취향" }, { num: 4 as const, label: "예약 확인" }]
             : preselectedProduct
             ? [{ num: 1 as const, label: "선물 정보" }, { num: 4 as const, label: "예약 확인" }]
@@ -851,11 +804,11 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
               <button
                 type="button"
                 // 사장님 스타일 주문은 선물·취향을 대화에서 정했으니 앞 단계로 돌아가지 않는다
-                onClick={() => !styleOrder && step > num && setStep(num)}
+                onClick={() => !fromChat && step > num && setStep(num)}
                 className={`flex items-center gap-1.5 ${
                   step === num
                     ? "text-gold-500"
-                    : styleOrder && step > num
+                    : fromChat && step > num
                     ? "text-gray-400 cursor-default"
                     : step > num
                     ? "text-gray-400 cursor-pointer hover:text-gold-400"
@@ -1523,7 +1476,8 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                   const isToday = selectedDate
                     ? selectedDate.getFullYear() === now.getFullYear() && selectedDate.getMonth() === now.getMonth() && selectedDate.getDate() === now.getDate()
                     : false;
-                  const leadMins = (minLeadTimes[form.productType] ?? 2) * 60;
+                  // 유형별 준비 시간 (따로 정하지 않은 유형은 기본)
+                  const leadMins = leadHoursFor(minLeadTimes, form.productType) * 60;
                   const minTimeDate = isToday ? new Date(now.getTime() + leadMins * 60000) : null;
 
                   // 리드타임 더했더니 날짜가 넘어간 경우 → 오늘 슬롯 없음

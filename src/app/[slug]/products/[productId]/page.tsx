@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { getMenuData } from "@/lib/menuCache";
 import { generateThemeVars, DEFAULT_THEME_BG, DEFAULT_THEME_ACCENT } from "@/lib/theme";
-import { activeSizeTiers } from "@/lib/sizeTiers";
+import { normalizeSizeConfig, tiersForType } from "@/lib/sizeTiers";
 import ProductDetailClient from "./ProductDetailClient";
 
 interface Props {
@@ -55,7 +55,8 @@ export default async function ProductDetailPage({ params }: Props) {
       hiddenSeasons={[...((s.hidden_seasons as string[] | null) ?? []), ...hiddenCustomSeasons]}
       customProductTypes={customProductTypes}
       customSeasons={customSeasons}
-      sizeTiers={activeSizeTiers(s.size_tiers)}
+      // 이 상품 유형의 크기 기준 (유형별로 정하지 않았으면 기본)
+      sizeTiers={tiersForType(normalizeSizeConfig(s.size_tiers), product.product_type)}
     />
   );
 }

@@ -1,4 +1,5 @@
 import type { Product } from "@/types";
+import { isValidTypeName } from "@/lib/productTypes";
 
 // 상품 없이 하는 주문 — 매장 첫 화면 대화에서 고른 내용으로 주문한다.
 //  · 사장님 스타일로 알아서 (style)
@@ -12,7 +13,6 @@ export const isVirtualProductId = (id: string | undefined) => id === STYLE_PRODU
 
 export type StyleKind = "style" | "photo";
 
-export const STYLE_PRODUCT_TYPES = ["꽃다발", "꽃바구니", "센터피스", "화병꽂이", "기타"];
 export const BASE_MOODS = ["깔끔한 화이트&그린", "화사한 파스텔톤", "선명한 비비드톤", "차분한 딥컬러"];
 /** 분위기도 사장님께 맡기는 답 — '사장님 스타일' 주문에서만 맨 앞에 보인다 */
 export const STYLE_MOOD_TRUST = "사장님에게 맡길게요";
@@ -98,10 +98,49 @@ export function parseStyleOrder(sp: Record<string, string | undefined>): StyleOr
   const productType = sp.type ?? "";
   const mood = sp.mood ?? "";
   const moods = kind === "photo" ? PHOTO_MOODS : STYLE_MOODS;
-  if (!isValidStyleBudget(budget) || !STYLE_PRODUCT_TYPES.includes(productType) || !moods.includes(mood)) return null;
+  if (!isValidStyleBudget(budget) || !isValidTypeName(productType) || !moods.includes(mood)) return null;
   const pick = (v: string | undefined, list: string[]) => (v && list.includes(v) ? v : "");
   return {
     kind,
+    purpose: pick(sp.purpose, STYLE_PURPOSES),
+    gender: pick(sp.gender, STYLE_GENDERS),
+    age: pick(sp.age, STYLE_AGES),
+    productType,
+    mood,
+    budget,
+  };
+}
+
+// ── 첫 화면 대화형 추천 ('잘 모르겠어요, 추천해주세요') ──
+// 대화에서 받은 답으로 상품을 추천하고, 고른 상품과 답을 맞춤주문 마지막 단계(예약 확인·결제)로 넘긴다.
+
+export interface ChatAnswers {
+  purpose: string;
+  gender: string;
+  age: string;
+  productType: string;
+  mood: string;
+  budget: number;
+}
+
+/** 추천에서 고른 상품으로 맞춤주문 마지막 단계로 가는 주소 */
+export function recommendOrderHref(slug: string, productId: string, a: ChatAnswers) {
+  const q = new URLSearchParams({ productId, rec: "1", type: a.productType, mood: a.mood, budget: String(a.budget) });
+  if (a.purpose) q.set("purpose", a.purpose);
+  if (a.gender) q.set("gender", a.gender);
+  if (a.age) q.set("age", a.age);
+  return `/${slug}/consult?${q.toString()}`;
+}
+
+/** 주소에서 읽어 검증 (rec=1 일 때만) */
+export function parseChatAnswers(sp: Record<string, string | undefined>): ChatAnswers | null {
+  if (sp.rec !== "1") return null;
+  const budget = Number(sp.budget);
+  const productType = sp.type ?? "";
+  const mood = sp.mood ?? "";
+  if (!isValidStyleBudget(budget) || !isValidTypeName(productType) || !BASE_MOODS.includes(mood)) return null;
+  const pick = (v: string | undefined, list: string[]) => (v && list.includes(v) ? v : "");
+  return {
     purpose: pick(sp.purpose, STYLE_PURPOSES),
     gender: pick(sp.gender, STYLE_GENDERS),
     age: pick(sp.age, STYLE_AGES),

@@ -7,8 +7,11 @@ import SaveButton from "@/components/admin/SaveButton";
 import { notifyMenuChanged } from "@/lib/menuCacheClient";
 import type { CompanySettings } from "./companySettings";
 import { useSettingsSync } from "./useSettingsSync";
-import SizeTiersEditor from "@/components/admin/SizeTiersEditor";
-import { normalizeSizeTiers, sizeTierOrderErrors, type SizeTier } from "@/lib/sizeTiers";
+import SizeTiersEditor, { sizeConfigOrderErrors } from "@/components/admin/SizeTiersEditor";
+import { normalizeSizeConfig, sizeConfigImages, type SizeConfig } from "@/lib/sizeTiers";
+import { STORAGE_BUCKET } from "@/lib/constants";
+import { removeStorageFiles } from "@/lib/storageCleanup";
+import { useStoreProductTypes } from "./useStoreProductTypes";
 
 interface Props {
   companyId: string;
@@ -41,8 +44,10 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
   const [soldCount, setSoldCount] = useState(0);
   const [showMailOrderWarning, setShowMailOrderWarning] = useState(false);
   const [showNoticeInfo, setShowNoticeInfo] = useState(false);
-  // 크기 기준 (미니 ~ 프리미엄) — 가격에 따라 크기가 정해진다
-  const [sizeTiers, setSizeTiers] = useState<SizeTier[]>(() => normalizeSizeTiers([]));
+  // 크기 기준 (미니 ~ 프리미엄) — 기본 + 유형별, 가격에 따라 크기가 정해진다
+  const [sizeConfig, setSizeConfig] = useState<SizeConfig>(() => normalizeSizeConfig(null));
+  // 매장 유형 목록 (크기 기준 탭)
+  const productTypes = useStoreProductTypes(companyId, settings.hidden_product_types);
 
   const supabase = createClient();
   const mailOrderBlocked = !mailOrderNumber && soldCount >= 50;
@@ -62,7 +67,7 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
     setSoldCount(data.sold_count ?? 0);
     if (data.consult_notice) setConsultNotice(data.consult_notice);
     setDeliveryEnabled(data.delivery_enabled ?? false);
-    setSizeTiers(normalizeSizeTiers(data.size_tiers));
+    setSizeConfig(normalizeSizeConfig(data.size_tiers));
     if (data.delivery_fees && typeof data.delivery_fees === "object") {
       const fees = data.delivery_fees as Record<string, number>;
       setDeliveryFees({
@@ -80,7 +85,7 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
 
   const handleSave = async () => {
     setError(null);
-    if (sizeTierOrderErrors(sizeTiers).length > 0) {
+    if (sizeConfigOrderErrors(sizeConfig).length > 0) {
       setError("크기 기준: 큰 크기일수록 가격이 더 높아야 해요.");
       return false;
     }
@@ -97,7 +102,8 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
         delivery_fees: Object.fromEntries(
           Object.entries(deliveryFees).map(([k, v]) => [k, v === "" ? null : parseMoney(v)])
         ),
-        size_tiers: sizeTiers,
+        // 없는 유형(삭제됨) 설정은 저장하지 않는다
+        size_tiers: { default: sizeConfig.default, byType: Object.fromEntries(Object.entries(sizeConfig.byType).filter(([t]) => productTypes.includes(t))) },
       };
     const { error: err } = await supabase
       .from("company_settings")
@@ -107,6 +113,10 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
       setError(err.message);
       return false;
     }
+    // 크기 참고 사진 — 지우거나 바꿔서 더 이상 쓰지 않는 사진은 저장소에서 정리
+    const before = sizeConfigImages(normalizeSizeConfig(settings.size_tiers));
+    const after = new Set(sizeConfigImages(normalizeSizeConfig(patch.size_tiers)));
+    removeStorageFiles(supabase, STORAGE_BUCKET, before.filter((u) => !after.has(u)));
     saveShared(patch);
     notifyMenuChanged();
     onConsultToggle?.(consultEnabled);
@@ -519,7 +529,7 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
           Tailwind v4의 space-y는 앞 요소 아래 여백(margin-bottom)으로 간격을 두므로 !mb-0으로 틈을 없앤다 */}
       <div className="!mb-0 bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:rounded-b-none md:p-6">
         <div className="max-w-lg">
-          <SizeTiersEditor value={sizeTiers} onChange={setSizeTiers} />
+          <SizeTiersEditor value={sizeConfig} onChange={setSizeConfig} types={productTypes} />
         </div>
       </div>
 
