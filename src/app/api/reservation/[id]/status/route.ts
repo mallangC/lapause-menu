@@ -142,7 +142,7 @@ export async function PATCH(
 
     const { data: companyRaw } = await supabase
       .from("companies")
-      .select("name, phone, is_demo, settings:company_settings(address)")
+      .select("name, phone, is_demo, settings:company_settings(address, parking)")
       .eq("id", reservation.company_id)
       .single();
 
@@ -153,6 +153,7 @@ export async function PATCH(
       name: companyRaw.name,
       phone: companyRaw.phone,
       address: (companyRaw.settings as { address?: string } | null)?.address ?? "",
+      parking: (companyRaw.settings as { parking?: string | null } | null)?.parking ?? null,
     } : null;
 
     const companyPhone = company?.phone ?? "";
@@ -172,6 +173,7 @@ export async function PATCH(
         desiredDateTime,
         companyPhone,
         companyAddress: company?.address ?? "",
+        parking: company?.parking ?? null,
       });
     } else if (status === "취소") {
       await sendReservationCancelled({

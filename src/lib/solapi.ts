@@ -4,6 +4,11 @@ import { SolapiMessageService } from "solapi";
 const TEMPLATES = {
   /** 고객 → 예약 확정 시 발송 */
   RESERVATION_RECEIVED: "KA01TP260326063623079sya42My8HXv",
+  /**
+   * 고객 → 예약 확정 시 발송 (매장 주소 아래 #{주차정보} 한 줄이 있는 새 템플릿)
+   * 검수 통과 후 ID를 넣으면 위 템플릿 대신 이걸로 보낸다. 비어 있으면 기존 템플릿.
+   */
+  RESERVATION_RECEIVED_WITH_PARKING: "KA01TP2611060039104717O6R5PkzREo",
   /** 사장님 → 새 예약 접수 시 발송 */
   RESERVATION_CONFIRMED_OWNER: "KA01TP260326133524843omlSt2W5DcZ",
   /** 고객 → 예약 취소 시 발송 */
@@ -59,6 +64,7 @@ export async function sendReservationReceived({
   desiredDateTime,
   companyPhone,
   companyAddress,
+  parking,
 }: {
   to: string;
   ordererName: string;
@@ -69,11 +75,17 @@ export async function sendReservationReceived({
   desiredDateTime: string;
   companyPhone: string;
   companyAddress: string;
+  /** 매장 주차 정보 ('주차 가능' | '잠시 주차 가능' | '주차 불가' | null) */
+  parking?: string | null;
 }) {
+  // 주차 정보 한 줄 — 매장이 입력하지 않았으면 빈 값 (줄 자체가 비어 보이게)
+  const PARKING_LINE: Record<string, string> = { "주차 가능": "주차 : 가능", "잠시 주차 가능": "주차 : 잠시 가능", "주차 불가": "주차 : 불가" };
+  const withParking = !!TEMPLATES.RESERVATION_RECEIVED_WITH_PARKING;
   return sendAlimtalk({
     to,
-    templateId: TEMPLATES.RESERVATION_RECEIVED,
+    templateId: withParking ? TEMPLATES.RESERVATION_RECEIVED_WITH_PARKING : TEMPLATES.RESERVATION_RECEIVED,
     variables: {
+      ...(withParking ? { "#{주차정보}": (parking && PARKING_LINE[parking]) || "" } : {}),
       "#{고객성함}": ordererName,
       "#{매장명}": companyName,
       "#{상품유형}": productType,
