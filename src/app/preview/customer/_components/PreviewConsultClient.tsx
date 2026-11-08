@@ -708,7 +708,8 @@ export default function PreviewConsultClient({ logoNode, slug, companyName, logo
               title: "상품 형태",
               selected: form.productType,
               displayValue: form.productType,
-              options: ["꽃다발", "꽃바구니", "센터피스", "화병꽂이", "기타"],
+              // 매장 상품 유형 (메뉴 설정에서 추가·삭제·숨김한 그대로) + 기타
+              options: [...productTypeList.filter((t) => t !== "기타"), "기타"],
               onSelect: (v: string) => { set("productType", v); setActiveSection2(1); },
               extra: null as React.ReactNode,
             },

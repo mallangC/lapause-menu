@@ -267,21 +267,6 @@ export default function PreviewProductsClient({
 
       {/* 상품 목록 — 남는 높이를 채워 푸터를 화면 바닥으로 민다 */}
       <div className="max-w-6xl mx-auto w-full flex-1 flex flex-col">
-        {/* 맞춤주문 안내 띠 — 크게 자리 차지하지 않게 한두 줄로, 상품 목록 바로 위에 */}
-        {consultEnabled && (
-          <Link
-            href={`/${slug}/consult`}
-            className="mx-4 md:mx-0 mt-3 mb-3 flex items-center justify-between gap-3 rounded-2xl bg-white border border-beige-200 px-4 py-3 hover:border-gold-400 transition-colors"
-          >
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-gray-900">어떤 꽃이 좋을지 고민되세요?</p>
-              <p className="text-xs text-gray-500 mt-0.5">목적·분위기·예산만 고르면 어울리는 꽃을 추천해드려요</p>
-            </div>
-            <span className="shrink-0 inline-flex items-center gap-1 px-5 py-2.5 rounded-full bg-gold-500 text-white text-sm font-semibold whitespace-nowrap">
-              맞춤주문 →
-            </span>
-          </Link>
-        )}
         {(() => {
           if (activeTab !== "all" || hasFilter || !!typeParam) {
             return <PreviewProductGrid products={filteredProducts} consultEnabled={consultEnabled} slug={slug} />;
