@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { hasAnySizeTier, normalizeSizeConfig } from "@/lib/sizeTiers";
-import { isTodayColorsDecided } from "@/lib/todayColors";
+import { isTodayColorsDecided, isTodayColorsEnabled } from "@/lib/todayColors";
 import type { CompanySettings } from "./companySettings";
 
 // 대시보드 — 손님 문의 줄이기
@@ -26,9 +27,16 @@ function buildItems(s: CompanySettings): Item[] {
     { label: "배송 기능 · 배송비", question: "“배송 돼요? 배송비 얼마예요?”", on: !!s.delivery_enabled && hasFee, tab: "reservation" },
     { label: "맞춤 주문", question: "“이 예산으로 어떤 꽃이 돼요?”", on: !!s.consult_enabled, tab: "reservation" },
     { label: "크기 기준", question: "“이거 크기 어느 정도예요?”", on: hasAnySizeTier(normalizeSizeConfig(s.size_tiers)), tab: "reservation" },
-    { label: "오늘 들어온 꽃 색상", question: "“오늘 무슨 색 꽃 있어요?”", on: isTodayColorsDecided(s) && (s.today_colors ?? []).length > 0, tab: "dashboard" },
+    // 오늘 꽃 색상 기능을 꺼 둔 매장은 이 항목을 빼요 (쓰지 않기로 한 것)
+    ...(isTodayColorsEnabled(s)
+      ? [{ label: "오늘 들어온 꽃 색상", question: "“오늘 무슨 색 꽃 있어요?”", on: isTodayColorsDecided(s) && (s.today_colors ?? []).length > 0, tab: "dashboard" }]
+      : []),
     { label: "추가 옵션 (카드·쇼핑백·연장제)", question: "“메시지 카드 써주세요? 쇼핑백 있어요?”", on: !!(s.message_card_enabled || s.shopping_bag_enabled || s.preservative_enabled), tab: "reservation" },
-    { label: "영업시간 외 수령", question: "“일찍·늦게 찾아가도 돼요?”", on: !!s.after_hours_enabled, tab: "business" },
+    (() => {
+      // 영업시간 외 수령 · 손님 안내 — 둘 다 해야 체크
+      const done = Number(!!s.after_hours_enabled) + Number(!!(s.after_hours_note ?? "").trim());
+      return { label: "영업시간 외 수령 · 안내", question: "“일찍·늦게 찾아가도 돼요? 꽃 어떻게 가져가요?”", on: done === 2, tab: "business", progress: [done, 2] as [number, number] };
+    })(),
     (() => {
       // 매장 위치·주차 정보 — 둘 다 채워야 체크
       const done = Number(!!s.location_url) + Number(!!s.parking);
@@ -42,18 +50,37 @@ export default function InquiryChecklist({ settings, onNavigate }: { settings: C
   const onCount = items.filter((i) => i.on).length;
   // 안 켠 것을 먼저
   const sorted = [...items].sort((a, b) => Number(a.on) - Number(b.on));
+  // 다 채우면 목록을 접어 둔다 (제목 줄을 눌러 펼치기) — 덜 채웠으면 늘 펼쳐서 보여준다
+  const allDone = onCount === items.length;
+  const [open, setOpen] = useState(false);
+  const showList = !allDone || open;
 
   return (
     <div className="bg-white py-4 px-4 md:rounded-2xl md:px-5 md:col-span-2">
-      <div className="flex items-end justify-between gap-3 mb-3">
+      {/* 제목 줄 — 다 채웠으면 눌러서 목록을 펼치고 접는다 */}
+      <button
+        type="button"
+        onClick={() => allDone && setOpen((v) => !v)}
+        aria-expanded={showList}
+        className={`w-full flex items-end justify-between gap-3 text-left ${showList ? "mb-3" : ""} ${allDone ? "cursor-pointer" : "cursor-default"}`}
+      >
         <div>
           <h3 className="text-sm font-semibold text-gray-700">손님 문의 줄이기</h3>
-          <p className="text-xs text-gray-400 mt-0.5">켜 둘수록 손님이 전화·DM으로 묻는 일이 줄어요</p>
+          <p className="text-xs text-gray-400 mt-0.5">
+            {allDone ? "모두 켜 두셨어요 · 손님이 묻기 전에 화면에서 알려줘요" : "켜 둘수록 손님이 전화·DM으로 묻는 일이 줄어요"}
+          </p>
         </div>
-        <span className="shrink-0 text-sm font-semibold text-gold-600 tabular-nums">
+        <span className="shrink-0 flex items-center gap-1.5 text-sm font-semibold text-gold-600 tabular-nums">
           {onCount}/{items.length}
+          {allDone && (
+            <svg className={`w-4 h-4 text-gray-400 transition-transform ${showList ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+            </svg>
+          )}
         </span>
-      </div>
+      </button>
+      {showList && (
+        <>
       {/* 진행 막대 */}
       <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden mb-2">
         <div className="h-full bg-gold-500 rounded-full transition-all" style={{ width: `${(onCount / items.length) * 100}%` }} />
@@ -93,6 +120,8 @@ export default function InquiryChecklist({ settings, onNavigate }: { settings: C
           </li>
         ))}
       </ul>
+        </>
+      )}
     </div>
   );
 }

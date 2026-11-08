@@ -975,7 +975,8 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
               title: "상품 형태",
               selected: form.productType,
               displayValue: form.productType,
-              options: ["꽃다발", "꽃바구니", "센터피스", "화병꽂이", "기타"],
+              // 매장 상품 유형 (메뉴 설정에서 추가·삭제·숨김한 그대로) + 기타
+              options: [...productTypeList.filter((t) => t !== "기타"), "기타"],
               onSelect: (v: string) => { set("productType", v); setActiveSection2(1); },
               extra: null as React.ReactNode,
             },
@@ -1508,9 +1509,14 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                       slots.push(`${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`);
                     }
                   }
-                  // 영업시간 외 수령 — 오늘이면 준비 시간 이후만
+                  // 영업시간 외 수령 — 오늘이면 준비 시간 이후만, 준비는 마감 전까지 끝나야 (사장님 설정에 따라)
                   const extraSlots = selectedDate && !leadOverflow
-                    ? afterHoursSlots(day, afterHours, minTimeDate ? Math.ceil((minH * 60 + minM) / 30) * 30 : null)
+                    ? afterHoursSlots(day, afterHours, minTimeDate ? Math.ceil((minH * 60 + minM) / 30) * 30 : null, {
+                        selectedDate,
+                        leadHours: leadMins / 60,
+                        businessHours,
+                        dateOverrides,
+                      })
                     : [];
                   return (
                     <div ref={s4RefTime} className="bg-white px-4 py-4 space-y-3">
@@ -1528,6 +1534,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                         <TimeSlotGrid
                           slots={slots}
                           extraSlots={extraSlots}
+                          afterHoursNote={afterHours.note}
                           value={form.desiredTime}
                           onSelect={(slot) => { set("desiredTime", slot); if (s4fe.time) setS4fe(p => ({ ...p, time: false })); }}
                           error={s4fe.time}

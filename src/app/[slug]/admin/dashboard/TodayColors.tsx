@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { notifyMenuChanged } from "@/lib/menuCacheClient";
 import { FLOWER_COLOR_MAP } from "@/lib/constants";
-import { TODAY_COLOR_OPTIONS, colorBusinessDate, isTodayColorsDecided } from "@/lib/todayColors";
+import { TODAY_COLOR_OPTIONS, colorBusinessDate, isTodayColorsDecided, isTodayColorsEnabled } from "@/lib/todayColors";
 import type { CompanySettings } from "./companySettings";
 
 // 오늘 들어온 꽃 색상 — 대시보드 맨 위 카드 + 그날 첫 접속 때 뜨는 팝업
@@ -82,8 +82,28 @@ export function TodayColorsCard({ companyId, settings, onSaved, inGrid = false }
     if (timer.current) clearTimeout(timer.current);
   }, []);
 
+  // 기능 켜기·끄기 — 안 쓰는 매장은 꺼 두면 아침 팝업·손님 주문 화면 색 고르기가 모두 사라진다
+  const enabled = isTodayColorsEnabled(settings);
+  const [toggling, setToggling] = useState(false);
+  const toggleEnabled = async () => {
+    if (toggling) return;
+    setToggling(true);
+    setError(null);
+    const patch = { today_colors_enabled: !enabled };
+    const { error: err } = await createClient().from("company_settings").update(patch).eq("company_id", companyId);
+    setToggling(false);
+    if (err) {
+      setError("바꾸지 못했어요. 다시 눌러주세요.");
+      return;
+    }
+    notifyMenuChanged();
+    onSaved(patch);
+  };
+
   const [m, d] = colorBusinessDate().slice(5).split("-").map(Number);
-  const status = saving
+  const status = !enabled
+    ? "꺼져 있어요 · 손님 화면에 색을 고르는 칸이 나오지 않아요"
+    : saving
     ? "저장 중..."
     : !decided
     ? "아직 오늘 꽃 색상을 알려주지 않았어요"
@@ -92,12 +112,26 @@ export function TodayColorsCard({ companyId, settings, onSaved, inGrid = false }
     : `${m}월 ${d}일 업데이트 · 손님 화면에 보여요`;
 
   return (
-    <div id="today-colors" className={`bg-white py-4 px-4 md:rounded-2xl md:px-5 ${inGrid ? "" : "-mx-4 md:mx-0"} ${decided ? "" : "ring-1 ring-inset ring-amber-300 bg-amber-50/40"}`}>
-      <div className="mb-3">
-        <h3 className="text-sm font-semibold text-gray-700">오늘 들어온 꽃 색상</h3>
-        <p className={`text-xs mt-0.5 ${decided || saving ? "text-gray-400" : "text-amber-700 font-medium"}`}>{status}</p>
+    <div id="today-colors" className={`bg-white py-4 px-4 md:rounded-2xl md:px-5 ${inGrid ? "" : "-mx-4 md:mx-0"} ${!enabled || decided ? "" : "ring-1 ring-inset ring-amber-300 bg-amber-50/40"}`}>
+      <div className={`flex items-start justify-between gap-3 ${enabled ? "mb-3" : ""}`}>
+        <div>
+          <h3 className="text-sm font-semibold text-gray-700">오늘 들어온 꽃 색상</h3>
+          <p className={`text-xs mt-0.5 ${!enabled || decided || saving ? "text-gray-400" : "text-amber-700 font-medium"}`}>{status}</p>
+        </div>
+        {/* 오른쪽 위 — 기능 켜기·끄기 */}
+        <button
+          type="button"
+          role="switch"
+          aria-checked={enabled}
+          aria-label="오늘 들어온 꽃 색상 사용"
+          disabled={toggling}
+          onClick={toggleEnabled}
+          className={`shrink-0 w-12 h-6 rounded-full transition-colors relative disabled:opacity-60 ${enabled ? "bg-gold-500" : "bg-gray-200"}`}
+        >
+          <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${enabled ? "left-6" : "left-0.5"}`} />
+        </button>
       </div>
-      <ColorChips value={picked} onChange={change} />
+      {enabled && <ColorChips value={picked} onChange={change} />}
       {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
     </div>
   );
@@ -119,7 +153,8 @@ export function TodayColorsPrompt({ companyId, settings, onSaved }: { companyId:
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (closed || isTodayColorsDecided(settings)) return null;
+  // 기능을 꺼 뒀거나, 오늘 이미 정했으면 안 띄운다
+  if (closed || !isTodayColorsEnabled(settings) || isTodayColorsDecided(settings)) return null;
 
   // 나중에 — 이번 접속에서만 닫는다 (다음 로그인·새 접속 때 다시 뜬다)
   const later = () => {

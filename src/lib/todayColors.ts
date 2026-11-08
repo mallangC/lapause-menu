@@ -16,14 +16,17 @@ export function colorBusinessDate(now: Date = new Date()): string {
   return new Date(now.getTime() + 2 * 3600_000).toISOString().slice(0, 10);
 }
 
-type ColorSettings = { today_colors?: string[] | null; today_colors_date?: string | null };
+type ColorSettings = { today_colors?: string[] | null; today_colors_date?: string | null; today_colors_enabled?: boolean | null };
+
+/** 오늘 꽃 색상 기능을 쓰는지 (사장님이 끌 수 있다, 기본 켜짐) */
+export const isTodayColorsEnabled = (s: ColorSettings | null | undefined) => s?.today_colors_enabled !== false;
 
 /** 오늘 색상을 정했는지 (색을 골랐거나 '오늘은 안내 없이'를 눌렀으면 true) */
 export const isTodayColorsDecided = (s: ColorSettings | null | undefined) => !!s && s.today_colors_date === colorBusinessDate();
 
 /** 오늘 손님에게 보여줄 색 — 오늘 정하지 않았거나 안내 없이 했으면 빈 목록 */
 export const todayColorsFor = (s: ColorSettings | null | undefined): string[] =>
-  isTodayColorsDecided(s) ? (s!.today_colors ?? []) : [];
+  isTodayColorsEnabled(s) && isTodayColorsDecided(s) ? (s!.today_colors ?? []) : [];
 
 /** 주문 마지막 페이지에서 색을 사장님께 맡기는 답 */
 export const PREPARED_COLOR_TRUST = "사장님께 맡길게요";

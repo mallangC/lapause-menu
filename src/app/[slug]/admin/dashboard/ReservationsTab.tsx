@@ -732,6 +732,8 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
                       <div className="flex items-center gap-1.5">
                         <span className={`text-xs font-medium ${isCancelled ? "text-gray-400" : "text-gray-700"}`}>{formatDateHeader(r.desired_date)}</span>
                         {r.desired_time && <span className="text-xs text-gray-400">{formatTimeOnly(r.desired_time)}</span>}
+                        {/* 영업시간 밖 수령 — 점선 뱃지 (손님 주문 화면의 점선 시간과 같은 표시) */}
+                        {r.after_hours_pickup && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full border border-dashed border-gold-400 text-gold-600">영업시간 외</span>}
                       </div>
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${isCancelled ? "border border-gray-300 text-gray-400" : r.delivery_type === "배송" ? "border border-blue-400 text-blue-500" : "border border-gray-400 text-gray-500"}`}>
                         {r.delivery_type}
@@ -808,6 +810,8 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
                         </td>
                         <td className="py-3 pr-3 text-xs whitespace-nowrap text-center text-gray-800">
                           {time || "—"}
+                          {/* 영업시간 밖 수령 */}
+                          {r.after_hours_pickup && <span className="block mt-0.5 text-[10px] font-medium text-gold-600">영업시간 외</span>}
                         </td>
                         <td className="py-3 pr-3 whitespace-nowrap text-center">
                           {r.customer_profile_id ? (

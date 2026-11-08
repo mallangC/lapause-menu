@@ -5,6 +5,8 @@ import { sendReservationConfirmedOwner } from "@/lib/solapi";
 import { cancelTossPayment, cartItemsTotal, isPastPickup, isValidDeliveryPart, loadCompanyProducts, loadOptionPrices } from "@/lib/orderPricing";
 import { isValidPreparedColor } from "@/lib/todayColors";
 import { parsePaymentChoice } from "@/lib/payment";
+import { isAfterHoursPickup } from "@/lib/afterHours";
+import type { BusinessHours, DateOverrides } from "@/lib/businessHours";
 import { normalizeTrafficSource } from "@/lib/trafficSource";
 
 interface CartItemPayload {
@@ -86,10 +88,12 @@ export async function POST(request: NextRequest) {
       isDemoCompany = companyRow?.is_demo ?? false;
     }
 
+    // 영업시간 밖 수령인지 — 저장해 두고 확정 알림톡에 사장님 안내를 함께 보낸다
+    let afterHoursPickup = false;
     if (companyId && body.desiredDate) {
       const { data: settingsRow } = await supabase
         .from("company_settings")
-        .select("closed_dates, business_hours")
+        .select("closed_dates, business_hours, date_overrides")
         .eq("company_id", companyId)
         .single();
       const closedDates = (settingsRow?.closed_dates as string[] | null) ?? [];
@@ -99,6 +103,12 @@ export async function POST(request: NextRequest) {
       if (isClosedDay || closedDates.includes(body.desiredDate)) {
         return NextResponse.json({ error: "선택하신 날짜는 휴무일입니다. 다른 날짜를 선택해주세요." }, { status: 400 });
       }
+      afterHoursPickup = isAfterHoursPickup(
+        body.desiredDate,
+        body.desiredTime,
+        settingsRow?.business_hours as BusinessHours | null,
+        settingsRow?.date_overrides as DateOverrides | null
+      );
     }
 
     if (isPastPickup(body.desiredDate, body.desiredTime)) {
@@ -212,6 +222,8 @@ export async function POST(request: NextRequest) {
       delivery_type: deliveryType,
       desired_date: desiredDate,
       desired_time: desiredTime || null,
+      // 영업시간 외 수령 (그런 주문만 표시 — 확정 알림톡에 안내를 붙인다)
+      ...(afterHoursPickup ? { after_hours_pickup: true } : {}),
       requests: requests || null,
       // 오늘 있는 색으로 준비하는 주문 — 손님이 고른 색 (정해진 값만, 고른 주문에만 넣는다)
       ...(isValidPreparedColor(preparedColor) ? { prepared_color: preparedColor } : {}),

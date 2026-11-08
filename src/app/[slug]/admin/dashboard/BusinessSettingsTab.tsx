@@ -13,7 +13,7 @@ import { useSettingsSync } from "./useSettingsSync";
 import { DEFAULT_COLOR_LEAD_DAYS } from "@/lib/todayColors";
 import { DEFAULT_TYPE_KEY } from "@/lib/productTypes";
 import { useStoreProductTypes } from "./useStoreProductTypes";
-import { AFTER_HOURS_END_OPTIONS, AFTER_HOURS_START_OPTIONS, DEFAULT_AFTER_HOURS_END, DEFAULT_AFTER_HOURS_START } from "@/lib/afterHours";
+import { AFTER_HOURS_END_OPTIONS, AFTER_HOURS_NOTE_MAX, AFTER_HOURS_START_OPTIONS, DEFAULT_AFTER_HOURS_END, DEFAULT_AFTER_HOURS_START } from "@/lib/afterHours";
 
 registerLocale("ko", ko);
 
@@ -109,6 +109,10 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
   const [afterHoursEnabled, setAfterHoursEnabled] = useState(false);
   const [afterHoursStart, setAfterHoursStart] = useState(DEFAULT_AFTER_HOURS_START);
   const [afterHoursEnd, setAfterHoursEnd] = useState(DEFAULT_AFTER_HOURS_END);
+  // 마감 후에도 매장에서 준비할 수 있는지 (끄면 준비는 마감 전까지 끝나야 하는 시간만 열린다)
+  const [afterHoursPrepAnytime, setAfterHoursPrepAnytime] = useState(false);
+  // 영업시간 외 수령 손님에게 전할 안내 (찾아가는 방법 등)
+  const [afterHoursNote, setAfterHoursNote] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const supabase = createClient();
@@ -124,6 +128,8 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
     if (typeof data.after_hours_enabled === "boolean") setAfterHoursEnabled(data.after_hours_enabled);
     if (typeof data.after_hours_start === "string") setAfterHoursStart(data.after_hours_start);
     if (typeof data.after_hours_end === "string") setAfterHoursEnd(data.after_hours_end);
+    setAfterHoursPrepAnytime(data.after_hours_prep_anytime === true);
+    setAfterHoursNote(typeof data.after_hours_note === "string" ? data.after_hours_note : "");
     if (data.min_lead_times && typeof data.min_lead_times === "object")
       setMinLeadTimes(
         Object.fromEntries(
@@ -203,6 +209,8 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
         after_hours_enabled: afterHoursEnabled,
         after_hours_start: afterHoursStart,
         after_hours_end: afterHoursEnd,
+        after_hours_prep_anytime: afterHoursPrepAnytime,
+        after_hours_note: afterHoursNote.trim() || null,
       };
     const { error: err } = await supabase
       .from("company_settings")
@@ -411,6 +419,41 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
                   예) 영업 09:00~19:00, 받을 수 있는 시간 04:00~24:00 → 04:00~08:30, 19:30~24:00이 영업시간 외 수령으로 열려요.
                 </p>
               )}
+
+              {/* 마감 후 준비 — 끄면 준비가 마감 전에 끝나는 시간만 손님에게 열린다 */}
+              <div className="flex items-start justify-between gap-3 pt-3 border-t border-gray-100">
+                <div>
+                  <p className="text-sm text-gray-700">마감 후 상품 준비 가능</p>
+                  <p className="text-xs text-gray-400 mt-0.5 break-keep">
+                    {afterHoursPrepAnytime
+                      ? "영업 시간이 지나도 영업시간 외 주문을 받아요."
+                      : "비활성화하면 준비가 마감 전에 끝나는 주문만 받아요. (마감 후 다음 날 영업 시작 시간 까지 예약 불가)"}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={afterHoursPrepAnytime}
+                  onClick={() => setAfterHoursPrepAnytime((v) => !v)}
+                  className={`shrink-0 w-12 h-6 rounded-full transition-colors relative ${afterHoursPrepAnytime ? "bg-gold-500" : "bg-gray-200"}`}
+                >
+                  <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${afterHoursPrepAnytime ? "left-6" : "left-0.5"}`} />
+                </button>
+              </div>
+
+              {/* 손님에게 전할 안내 — 영업시간 외 시간을 고르면 주문 화면에 보인다 */}
+              <div className="pt-3 border-t border-gray-100">
+                <p className="text-sm text-gray-700">영업시간 외 픽업 안내</p>
+                <p className="text-xs text-gray-400 mt-0.5 mb-2 break-keep">영업시간 외 픽업을 고른 손님에게 픽업 방법에 대해서 알림톡으로 전달해요.</p>
+                <textarea
+                  value={afterHoursNote}
+                  onChange={(e) => setAfterHoursNote(e.target.value.slice(0, AFTER_HOURS_NOTE_MAX))}
+                  rows={4}
+                  placeholder="예) 가게 앞 보관함에 이름표 붙여 둘게요. 도착하시면 문자 주세요."
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none focus:border-gray-400 bg-white placeholder:text-gray-300"
+                />
+                <p className="text-right text-[11px] text-gray-300">{afterHoursNote.length}/{AFTER_HOURS_NOTE_MAX}</p>
+              </div>
             </div>
           )}
         </div>

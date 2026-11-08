@@ -39,6 +39,8 @@ export interface Reservation {
   requests: string | null;
   /** 오늘 있는 색으로 준비하는 주문 — 손님이 고른 꽃 색상 ('사장님께 맡길게요' 포함) */
   prepared_color?: string | null;
+  /** 영업시간 밖 수령 주문 (주문할 때 기준) */
+  after_hours_pickup?: boolean | null;
   /** 결제 방법 — 'transfer'(계좌이체)만 저장, 비어 있으면 카드 결제 */
   payment_method?: string | null;
   /** 계좌이체 현금영수증 — '소득공제' | '지출증빙' | '신청 안 함' */

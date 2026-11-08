@@ -134,7 +134,7 @@ export async function PATCH(
   try {
     const { data: reservation } = await supabase
       .from("reservations")
-      .select("orderer_name, orderer_phone, items, final_price, delivery_type, desired_date, desired_time, customer_profile_id, company_id")
+      .select("orderer_name, orderer_phone, items, final_price, delivery_type, desired_date, desired_time, customer_profile_id, company_id, after_hours_pickup")
       .eq("id", id)
       .single();
 
@@ -142,7 +142,7 @@ export async function PATCH(
 
     const { data: companyRaw } = await supabase
       .from("companies")
-      .select("name, phone, is_demo, settings:company_settings(address, parking)")
+      .select("name, phone, is_demo, settings:company_settings(address, parking, after_hours_note)")
       .eq("id", reservation.company_id)
       .single();
 
@@ -154,6 +154,7 @@ export async function PATCH(
       phone: companyRaw.phone,
       address: (companyRaw.settings as { address?: string } | null)?.address ?? "",
       parking: (companyRaw.settings as { parking?: string | null } | null)?.parking ?? null,
+      afterHoursNote: (companyRaw.settings as { after_hours_note?: string | null } | null)?.after_hours_note ?? null,
     } : null;
 
     const companyPhone = company?.phone ?? "";
@@ -174,6 +175,8 @@ export async function PATCH(
         companyPhone,
         companyAddress: company?.address ?? "",
         parking: company?.parking ?? null,
+        // 영업시간 외 수령 주문에만 사장님 안내를 붙인다
+        afterHoursNote: reservation.after_hours_pickup ? company?.afterHoursNote ?? null : null,
       });
     } else if (status === "취소") {
       await sendReservationCancelled({

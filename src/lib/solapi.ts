@@ -2,7 +2,7 @@ import { SolapiMessageService } from "solapi";
 
 // 검수 완료 후 템플릿 ID 입력
 const TEMPLATES = {
-  /** 고객 → 예약 확정 시 발송 */
+  /** 고객 → 예약 확정 시 발송 (예전 템플릿 — 지금은 아래 #{주차정보} 템플릿만 쓴다) */
   RESERVATION_RECEIVED: "KA01TP260326063623079sya42My8HXv",
   /**
    * 고객 → 예약 확정 시 발송 (매장 주소 아래 #{주차정보} 한 줄이 있는 새 템플릿)
@@ -65,6 +65,7 @@ export async function sendReservationReceived({
   companyPhone,
   companyAddress,
   parking,
+  afterHoursNote,
 }: {
   to: string;
   ordererName: string;
@@ -77,15 +78,23 @@ export async function sendReservationReceived({
   companyAddress: string;
   /** 매장 주차 정보 ('주차 가능' | '잠시 주차 가능' | '주차 불가' | null) */
   parking?: string | null;
+  /** 영업시간 외 수령 주문이면 사장님이 써 둔 안내 (아니면 null) */
+  afterHoursNote?: string | null;
 }) {
-  // 주차 정보 한 줄 — 매장이 입력하지 않았으면 빈 값 (줄 자체가 비어 보이게)
+  // #{주차정보} 칸 — 주문에 맞는 안내를 줄줄이 (마지막 연락 줄은 늘 들어가서 칸이 비지 않는다)
+  //  · 주차 정보가 있으면 → 주차 : 가능
+  //  · 영업시간 외 수령이면 → [영업시간 외 수령 안내] + 사장님 안내
+  //  · 항상 → 궁금한 점은 매장으로 연락 주세요 : 전화번호
   const PARKING_LINE: Record<string, string> = { "주차 가능": "주차 : 가능", "잠시 주차 가능": "주차 : 잠시 가능", "주차 불가": "주차 : 불가" };
-  const withParking = !!TEMPLATES.RESERVATION_RECEIVED_WITH_PARKING;
+  const lines: string[] = [];
+  if (parking && PARKING_LINE[parking]) lines.push(PARKING_LINE[parking]);
+  if (afterHoursNote?.trim()) lines.push(`[영업시간 외 수령 안내]\n${afterHoursNote.trim()}`);
+  lines.push(companyPhone ? `궁금한 점은 매장으로 연락 주세요 : ${companyPhone}` : "궁금한 점은 매장으로 연락 주세요.");
   return sendAlimtalk({
     to,
-    templateId: withParking ? TEMPLATES.RESERVATION_RECEIVED_WITH_PARKING : TEMPLATES.RESERVATION_RECEIVED,
+    templateId: TEMPLATES.RESERVATION_RECEIVED_WITH_PARKING,
     variables: {
-      ...(withParking ? { "#{주차정보}": (parking && PARKING_LINE[parking]) || "" } : {}),
+      "#{주차정보}": lines.join("\n"),
       "#{고객성함}": ordererName,
       "#{매장명}": companyName,
       "#{상품유형}": productType,

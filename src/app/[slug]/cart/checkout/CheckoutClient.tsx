@@ -545,9 +545,14 @@ export default function CheckoutClient({
       timeSlots.push(`${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`);
     }
   }
-  // 영업시간 외 수령 — 오늘이면 준비 시간 이후만
+  // 영업시간 외 수령 — 오늘이면 준비 시간 이후만, 준비는 마감 전까지 끝나야 (사장님 설정에 따라)
   const extraSlots = selectedDate && !leadOverflow
-    ? afterHoursSlots(dayInfo, afterHours, minTimeDate ? Math.ceil((minH * 60 + minM) / 30) * 30 : null)
+    ? afterHoursSlots(dayInfo, afterHours, minTimeDate ? Math.ceil((minH * 60 + minM) / 30) * 30 : null, {
+        selectedDate,
+        leadHours,
+        businessHours,
+        dateOverrides,
+      })
     : [];
 
   const agreementJsx = (
@@ -752,6 +757,7 @@ export default function CheckoutClient({
                 <TimeSlotGrid
                   slots={timeSlots}
                   extraSlots={extraSlots}
+                  afterHoursNote={afterHours.note}
                   value={desiredTime}
                   onSelect={(slot) => { setDesiredTime(slot); if (fieldErrors.time) setFieldErrors(p => ({ ...p, time: false })); }}
                   error={fieldErrors.time}

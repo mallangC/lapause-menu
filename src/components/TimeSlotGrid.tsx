@@ -13,9 +13,11 @@ interface Props {
   onSelect: (slot: string) => void;
   /** 결제하기를 눌렀는데 시간을 안 골랐을 때 */
   error?: boolean;
+  /** 영업시간 외 수령 안내 (사장님이 쓴 찾아가는 방법 등) — 영업시간 외 시간을 고르면 보여준다 */
+  afterHoursNote?: string;
 }
 
-export default function TimeSlotGrid({ slots, extraSlots, value, onSelect, error }: Props) {
+export default function TimeSlotGrid({ slots, extraSlots, value, onSelect, error, afterHoursNote }: Props) {
   const all = [...slots, ...extraSlots].sort();
   const isExtra = (s: string) => extraSlots.includes(s);
   return (
@@ -49,6 +51,13 @@ export default function TimeSlotGrid({ slots, extraSlots, value, onSelect, error
           );
         })}
       </div>
+      {/* 영업시간 외 시간을 골랐을 때 — 사장님 안내 */}
+      {extraSlots.includes(value) && afterHoursNote?.trim() && (
+        <div className="rounded-lg border border-dashed border-gold-400 bg-white px-3 py-2.5">
+          <p className="text-xs font-medium text-gold-600">영업시간 외 수령 안내</p>
+          <p className="text-sm text-gray-700 mt-1 whitespace-pre-line break-keep">{afterHoursNote}</p>
+        </div>
+      )}
     </>
   );
 }

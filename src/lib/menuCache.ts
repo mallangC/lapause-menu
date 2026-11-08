@@ -66,8 +66,8 @@ async function loadMenuData(slug: string): Promise<MenuData | null> {
         delivery_enabled, delivery_fees,
         business_hours, closed_dates, date_overrides,
         notification_email, min_lead_times, consult_notice,
-        today_colors, today_colors_date, color_lead_days,
-        after_hours_enabled, after_hours_start, after_hours_end,
+        today_colors, today_colors_date, today_colors_enabled, color_lead_days,
+        after_hours_enabled, after_hours_start, after_hours_end, after_hours_prep_anytime, after_hours_note,
         size_tiers,
         bank_name, bank_account, bank_holder
       )

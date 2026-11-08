@@ -240,7 +240,7 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
             key: "photo" as const,
           },
         ]),
-    { text: "사진 보고 직접 고를게요", reply: "네, 알겠습니다! 메뉴판 보여드릴게요.\n메뉴 보시고 주문해주세요 🌷", href: menuHref, key: "menu" },
+    { text: "사진 보고 직접 고를게요", reply: "네, 알겠습니다!\n참고할 수 있는 이미지 보여드릴게요!\n확인 후 주문해주세요 🌷", href: menuHref, key: "menu" },
   ];
 
   // ── 대화 진행 상태 ──
