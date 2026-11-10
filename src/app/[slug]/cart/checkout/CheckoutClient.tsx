@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import PreparedColorPicker from "@/components/PreparedColorPicker";
-import { needsPreparedColor } from "@/lib/todayColors";
+import { colorPickMode } from "@/lib/todayColors";
 import { leadHoursFor } from "@/lib/productTypes";
 import TimeSlotGrid from "@/components/TimeSlotGrid";
 import PaymentMethodSection from "@/components/PaymentMethodSection";
@@ -50,6 +50,10 @@ interface CheckoutClientProps {
   todayColors: string[];
   /** 색 맞춤 가능 일수 */
   colorLeadDays: number;
+  /** 오늘 꽃 색상 기능을 켰는지 (끄면 색을 고르지 않는다) */
+  colorPickEnabled?: boolean;
+  /** 색 맞춤 최소 금액 (상품 금액 기준, 0이면 제한 없음) */
+  colorMinPrice?: number;
   /** 영업시간 외 수령 가능 범위 (꺼져 있으면 범위 없음) */
   afterHours: AfterHours;
   /** 계좌이체를 받을 수 있는지 (매장 계좌가 등록돼 있을 때) */
@@ -112,7 +116,7 @@ export default function CheckoutClient({
   storeAddress, deliveryEnabled, deliveryFees,
   businessHours, closedDates, dateOverrides = {},
   shoppingBagEnabled, shoppingBagPrice, preservativeEnabled, preservativePrice, messageCardEnabled, messageCardPrice,
-  notificationEmail, minLeadTimes, consultNotice, todayColors, colorLeadDays, afterHours, transferAvailable, direct, isDemo,
+  notificationEmail, minLeadTimes, consultNotice, todayColors, colorLeadDays, colorPickEnabled = true, colorMinPrice = 0, afterHours, transferAvailable, direct, isDemo,
   initialPaymentKey, initialOrderId, initialAmount, failCode, failMessage,
 }: CheckoutClientProps) {
   const { items: cartItems, clearCart } = useCart(slug, direct ? "direct" : "cart");
@@ -174,7 +178,9 @@ export default function CheckoutClient({
     ? selectedDate.toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" }).replace(/\. /g, "-").replace(".", "").trim()
     : "";
 
-  const needsColor = needsPreparedColor(todayColors, colorLeadDays, desiredDate);
+  // 받는 날에 따라 오늘 있는 색 / 모든 색 중에서 고른다
+  const colorMode = colorPickMode(colorPickEnabled, todayColors, colorLeadDays, desiredDate);
+  const needsColor = colorMode !== null;
 
   const itemsTotal = checkedItems.reduce((sum, i) => {
     let p = i.price * i.quantity;
@@ -731,11 +737,15 @@ export default function CheckoutClient({
               {/* 오늘 있는 색으로 준비되는 날짜면 바로 아래에서 색 고르기 (장바구니 상품은 모두 사진이 있다) */}
               {needsColor && (
                 <PreparedColorPicker
+                  mode={colorMode!}
                   todayColors={todayColors}
                   value={preparedColor}
                   onChange={(v) => { setPreparedColor(v); if (fieldErrors.color) setFieldErrors((p) => ({ ...p, color: false })); }}
                   error={fieldErrors.color}
                   hasPhoto
+                  minPrice={colorMinPrice}
+                  // 최소 금액은 상품 금액 기준 (추가 옵션·배송비 제외)
+                  amount={checkedItems.reduce((s, i) => s + i.price * i.quantity, 0)}
                 />
               )}
             </div>

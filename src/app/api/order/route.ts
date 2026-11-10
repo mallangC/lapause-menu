@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendReservationConfirmedOwner } from "@/lib/solapi";
 import { cancelTossPayment, cartItemsTotal, isPastPickup, isValidDeliveryPart, loadCompanyProducts, loadOptionPrices } from "@/lib/orderPricing";
-import { isValidPreparedColor } from "@/lib/todayColors";
+import { isValidPreparedColor, preparedColorToSave } from "@/lib/todayColors";
 import { parsePaymentChoice } from "@/lib/payment";
 import { isAfterHoursPickup } from "@/lib/afterHours";
 import type { BusinessHours, DateOverrides } from "@/lib/businessHours";
@@ -90,12 +90,15 @@ export async function POST(request: NextRequest) {
 
     // 영업시간 밖 수령인지 — 저장해 두고 확정 알림톡에 사장님 안내를 함께 보낸다
     let afterHoursPickup = false;
+    // 색 맞춤 최소 금액 (상품 금액이 이보다 작으면 고른 색 대신 '사장님께 맡길게요'로 저장)
+    let colorMinPrice = 0;
     if (companyId && body.desiredDate) {
       const { data: settingsRow } = await supabase
         .from("company_settings")
-        .select("closed_dates, business_hours, date_overrides")
+        .select("closed_dates, business_hours, date_overrides, color_min_price")
         .eq("company_id", companyId)
         .single();
+      colorMinPrice = (settingsRow?.color_min_price as number | null) ?? 0;
       const closedDates = (settingsRow?.closed_dates as string[] | null) ?? [];
       const businessHours = (settingsRow?.business_hours as Record<string, { closed: boolean }> | null) ?? {};
       const desiredDow = new Date(`${body.desiredDate}T00:00:00`).getDay();
@@ -226,7 +229,10 @@ export async function POST(request: NextRequest) {
       ...(afterHoursPickup ? { after_hours_pickup: true } : {}),
       requests: requests || null,
       // 오늘 있는 색으로 준비하는 주문 — 손님이 고른 색 (정해진 값만, 고른 주문에만 넣는다)
-      ...(isValidPreparedColor(preparedColor) ? { prepared_color: preparedColor } : {}),
+      // 최소 금액보다 작은 주문이면 '사장님께 맡길게요'로 (상품 금액 기준 — 추가 옵션·배송비 제외)
+      ...(isValidPreparedColor(preparedColor)
+        ? { prepared_color: preparedColorToSave(preparedColor, colorMinPrice, items.reduce((s, i) => s + dbProducts.get(i.productId)!.price * i.quantity, 0)) }
+        : {}),
       // 계좌이체 주문만 결제 방법·현금영수증을 남긴다 (비어 있으면 카드 결제)
       ...(isTransfer ? { payment_method: "transfer", cash_receipt_type: payment.receiptType, cash_receipt_number: payment.receiptNumber } : {}),
       recipient_name: delivery?.recipientName || null,

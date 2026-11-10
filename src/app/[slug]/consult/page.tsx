@@ -3,7 +3,7 @@ import { getMenuData } from "@/lib/menuCache";
 import { PRODUCT_TYPES, SEASONS } from "@/lib/constants";
 import ConsultClient from "./ConsultClient";
 import { parseChatAnswers, parseStyleOrder } from "@/lib/styleOrder";
-import { DEFAULT_COLOR_LEAD_DAYS, todayColorsFor } from "@/lib/todayColors";
+import { DEFAULT_COLOR_LEAD_DAYS, isTodayColorsEnabled, todayColorsFor } from "@/lib/todayColors";
 import { readAfterHours } from "@/lib/afterHours";
 
 interface Props {
@@ -72,6 +72,8 @@ export default async function ConsultPage({ params, searchParams }: Props) {
       chatAnswers={chatAnswers}
       todayColors={todayColorsFor(s as { today_colors?: string[]; today_colors_date?: string })}
       colorLeadDays={(s.color_lead_days as number | undefined) ?? DEFAULT_COLOR_LEAD_DAYS}
+      colorPickEnabled={isTodayColorsEnabled(s as { today_colors_enabled?: boolean | null })}
+      colorMinPrice={(s.color_min_price as number | undefined) ?? 0}
       afterHours={readAfterHours(s)}
       // 계좌이체 — 매장 계좌(은행·계좌번호·예금주)가 모두 등록돼 있어야 받는다
       transferAvailable={!!(s.bank_name && s.bank_account && s.bank_holder)}

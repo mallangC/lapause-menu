@@ -579,7 +579,7 @@ export default function ReservationDetail({
                   </div>
                 ))}
               {r.prepared_color && (
-                // 오늘 매장에 있는 색 중에서 손님이 고른 색 — 만들 때 꼭 봐야 해서 요청 사항 바로 위에
+                // 손님이 고른 꽃 색 (가까운 날은 당일 주문 가능 색, 그 이후는 모든 색 중에서) — 만들 때 꼭 봐야 해서 요청 사항 바로 위에
                 <div className="pt-2 border-t border-gray-50">
                   <Row label="꽃 색상">
                     <span className="inline-flex items-center gap-1.5 text-gray-800">

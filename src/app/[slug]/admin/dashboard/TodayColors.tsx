@@ -115,7 +115,7 @@ export function TodayColorsCard({ companyId, settings, onSaved, inGrid = false }
     <div id="today-colors" className={`bg-white py-4 px-4 md:rounded-2xl md:px-5 ${inGrid ? "" : "-mx-4 md:mx-0"} ${!enabled || decided ? "" : "ring-1 ring-inset ring-amber-300 bg-amber-50/40"}`}>
       <div className={`flex items-start justify-between gap-3 ${enabled ? "mb-3" : ""}`}>
         <div>
-          <h3 className="text-sm font-semibold text-gray-700">오늘 들어온 꽃 색상</h3>
+          <h3 className="text-sm font-semibold text-gray-700">오늘 가능한 꽃 색상</h3>
           <p className={`text-xs mt-0.5 ${!enabled || decided || saving ? "text-gray-400" : "text-amber-700 font-medium"}`}>{status}</p>
         </div>
         {/* 오른쪽 위 — 기능 켜기·끄기 */}
@@ -123,7 +123,7 @@ export function TodayColorsCard({ companyId, settings, onSaved, inGrid = false }
           type="button"
           role="switch"
           aria-checked={enabled}
-          aria-label="오늘 들어온 꽃 색상 사용"
+          aria-label="당일 주문 가능 꽃 색상 사용"
           disabled={toggling}
           onClick={toggleEnabled}
           className={`shrink-0 w-12 h-6 rounded-full transition-colors relative disabled:opacity-60 ${enabled ? "bg-gold-500" : "bg-gray-200"}`}
@@ -179,7 +179,7 @@ export function TodayColorsPrompt({ companyId, settings, onSaved }: { companyId:
   return (
     <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/40">
       <div className="bg-white rounded-3xl shadow-xl w-full max-w-[420px] px-5 py-6 md:px-6 md:py-7">
-        <p className="text-lg font-semibold text-gray-900">🌷 오늘 들어온 꽃 색상을 알려주세요</p>
+        <p className="text-lg font-semibold text-gray-900">🌷 오늘 가능한 꽃 색상을 알려주세요</p>
         <p className="text-sm text-gray-500 mt-1 mb-5 break-keep">손님 첫 화면과 주문 화면에 바로 보여요.<br />가까운 날짜 주문은 사장님이 선택한 색으로 준비돼요.</p>
         <ColorChips value={picked} onChange={setPicked} size="lg" />
         {error && <p className="mt-3 text-xs text-red-500">{error}</p>}

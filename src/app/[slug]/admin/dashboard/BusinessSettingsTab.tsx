@@ -105,6 +105,8 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
   const defaultLead = minLeadTimes[DEFAULT_TYPE_KEY] ?? minLeadTimes["기타"] ?? "2";
   // 색 맞춤 가능 일수 — 이보다 가까운 날짜 주문은 그날 매장에 있는 색으로 준비
   const [colorLeadDays, setColorLeadDays] = useState(String(DEFAULT_COLOR_LEAD_DAYS));
+  // 색 맞춤 최소 금액 — 상품 금액이 이보다 작으면 날짜와 관계없이 색은 사장님께 맡긴다 (비우면 제한 없음)
+  const [colorMinPrice, setColorMinPrice] = useState("");
   // 영업시간 외 수령 — 켜면 이 범위 중 영업시간 앞뒤도 손님이 수령 시간으로 고를 수 있다 (추가 요금 없음)
   const [afterHoursEnabled, setAfterHoursEnabled] = useState(false);
   const [afterHoursStart, setAfterHoursStart] = useState(DEFAULT_AFTER_HOURS_START);
@@ -125,6 +127,7 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
     if (data.date_overrides && typeof data.date_overrides === "object")
       setDateOverrides(pruneOverrides(data.date_overrides as DateOverrides));
     if (typeof data.color_lead_days === "number") setColorLeadDays(String(data.color_lead_days));
+    setColorMinPrice(typeof data.color_min_price === "number" && data.color_min_price > 0 ? String(data.color_min_price) : "");
     if (typeof data.after_hours_enabled === "boolean") setAfterHoursEnabled(data.after_hours_enabled);
     if (typeof data.after_hours_start === "string") setAfterHoursStart(data.after_hours_start);
     if (typeof data.after_hours_end === "string") setAfterHoursEnd(data.after_hours_end);
@@ -206,6 +209,7 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
           ),
         },
         color_lead_days: Number(colorLeadDays) || 0,
+        color_min_price: Number(colorMinPrice) || 0,
         after_hours_enabled: afterHoursEnabled,
         after_hours_start: afterHoursStart,
         after_hours_end: afterHoursEnd,
@@ -282,13 +286,35 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
         </div>
       </div>
 
-      {/* 색 맞춤 가능 일수 — 당일 예약 시간처럼 '얼마나 미리 주문해야 하나'를 정하는 값이라 바로 아래에 */}
+      {/* 색 맞춤 — 최소 금액(날짜와 관계없이 항상) + 가능 일수(가까운 날은 당일 주문 가능 색, 그 이후는 모든 색)
+          당일 예약 시간처럼 '얼마나 미리 주문해야 하나'를 정하는 값이라 바로 아래에 */}
       <div className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:p-6">
         <div className="max-w-lg space-y-3">
           <div>
+            <h3 className="text-sm font-medium text-gray-700">색 맞춤 최소 금액</h3>
+            <p className="text-xs text-gray-400 mt-0.5 break-keep">
+              상품 금액(추가 옵션·배송비 제외)이 이 금액보다 작은 주문은 날짜와 관계없이 손님이 색을 고르지 않고 사장님께 맡겨요. 비워 두면 금액과 관계없이 고를 수 있어요.
+            </p>
+          </div>
+          <div className="flex items-center justify-between border-t border-gray-100 md:border md:border-gray-200 md:rounded-xl px-0 md:px-4 py-3">
+            <span className="text-sm text-gray-700">원하는 색 고르기</span>
+            <div className="flex items-center gap-1.5">
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="제한 없음"
+                value={colorMinPrice ? Number(colorMinPrice).toLocaleString() : ""}
+                onChange={(e) => setColorMinPrice(e.target.value.replace(/\D/g, "").replace(/^0+/, "").slice(0, 8))}
+                className="w-28 border border-gray-200 rounded-lg px-2.5 py-1 text-sm text-right focus:outline-none focus:border-gray-400 bg-white placeholder:text-gray-300"
+              />
+              <span className="text-xs text-gray-400 whitespace-nowrap">원 이상 주문부터</span>
+            </div>
+          </div>
+
+          <div className="pt-3">
             <h3 className="text-sm font-medium text-gray-700">색 맞춤 가능 일수</h3>
             <p className="text-xs text-gray-400 mt-0.5 break-keep">
-              원하는 색 꽃을 따로 들여오려면 며칠이 필요한지 입력하세요. 입력한 시간보다 가까운 날짜의 주문은<br />대시보드에서 고른 &lsquo;오늘 들어온 꽃 색상&rsquo; 중에서 손님이 고르게 돼요.
+              원하는 색 꽃을 따로 들여오려면 며칠이 필요한지 입력하세요. 이보다 가까운 날짜의 주문은 대시보드에서 고른 &lsquo;당일 주문 가능 꽃 색상&rsquo; 중에서, 그 이후 날짜의 주문은 모든 색 중에서 손님이 골라요.
             </p>
           </div>
           <div className="flex items-center justify-between border-t border-gray-100 md:border md:border-gray-200 md:rounded-xl px-0 md:px-4 py-3">
