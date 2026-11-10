@@ -61,7 +61,7 @@ export default function StoreHeader({
           {logo}
         </Link>
 
-        {/* 오른쪽: 장바구니 + 맞춤주문 */}
+        {/* 오른쪽: 장바구니 + 맞춤 상담 (첫 화면 대화로, 인사 없이 주문 방식 질문부터) */}
         <div className="flex items-center gap-2">
           {consultEnabled && (
             <Link href={`/${slug}/cart`} className="relative p-2 text-gray-600 hover:text-gray-900 transition-colors">
@@ -77,10 +77,10 @@ export default function StoreHeader({
           )}
           {consultEnabled ? (
             <Link
-              href={`/${slug}/consult`}
+              href={`/${slug}?consult=1`}
               className="hidden md:inline-flex px-4 py-1.5 rounded-full bg-gold-500 text-white text-xs md:text-sm font-medium hover:bg-gold-600 transition-colors whitespace-nowrap"
             >
-              맞춤주문
+              맞춤 상담
             </Link>
           ) : (
             <div className="w-2" />
@@ -148,11 +148,11 @@ export default function StoreHeader({
             <>
               <div className="mx-2 my-2 border-t border-gray-100" />
               <Link
-                href={`/${slug}/consult`}
+                href={`/${slug}?consult=1`}
                 className="px-4 py-3.5 text-lg md:text-xl font-medium text-gold-500 hover:bg-gold-50 rounded-xl transition-colors"
                 onClick={() => setMenuOpen(false)}
               >
-                맞춤주문
+                맞춤 상담
               </Link>
             </>
           )}
