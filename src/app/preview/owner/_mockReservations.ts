@@ -105,7 +105,7 @@ const CANCEL_REASONS = [
 const PURPOSES = ["기념", "축하", "감사", "위로", "데이트"];
 const AGES = ["20대", "30대", "40대", "50대 이상"];
 const BUDGETS = ["3~5만원", "5~7만원", "7~10만원", "10만원 이상"];
-const SOURCES = ["instagram", "instagram", "naver", "kakao", "qr", "direct", "naver_blog"];
+const SOURCES = ["instagram", "instagram", "naver", "kakao", "qr", "direct", "blog"];
 
 // 손님별 고정 전화번호 · 단골 메모 (예약자 이름을 누르면 나오는 손님 정보 창)
 const customerPhone = (idx: number) => `010-${String(2000 + idx * 173).padStart(4, "0")}-${String(3100 + idx * 271).slice(-4)}`;
@@ -175,8 +175,8 @@ function makeMonth(year: number, month: number, todayStr: string): Reservation[]
       (s, it) => s + it.price + (it.message_card === "추가" ? MOCK_MESSAGE_CARD_PRICE : 0) + (it.shopping_bag === "추가" ? MOCK_SHOPPING_BAG_PRICE : 0),
       0,
     );
-    const orderPath = itemCount > 1 ? "cart" : pick(["consult", "consult", "product_detail", "cart", "manual"] as const);
-    const consult = orderPath === "consult";
+    const orderPath = itemCount > 1 ? "cart" : pick(["recommend", "recommend", "product_detail", "cart", "manual"] as const);
+    const consult = orderPath === "recommend";
     const gift = consult || chance(0.6);
 
     // 상태

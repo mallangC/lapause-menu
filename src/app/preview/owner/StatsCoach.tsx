@@ -51,8 +51,8 @@ export const STATS_STEPS: CoachStep[] = [
     noDot: true,
     pad: 0,
     mobileRadius: 0,
-    title: "예산대별 분포",
-    body: "맞춤주문 손님이 고른 예산대를 보여줘요.\n손님이 가장 많이 찾는 가격대에 맞춰\n상품 가격과 구성을 정할 수 있어요.",
+    title: "희망 금액대별 분포",
+    body: "맞춤주문 손님이 고른 희망 금액대를 보여줘요.\n손님이 가장 많이 찾는 가격대에 맞춰\n상품 가격과 구성을 정할 수 있어요.",
   },
   {
     selectors: ['[data-coach="st-best"]'],

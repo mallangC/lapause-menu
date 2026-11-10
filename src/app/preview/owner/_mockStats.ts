@@ -90,17 +90,17 @@ export const MOCK_STATS = {
 
 // 유입 분석 — 최근 30일 기준 값을 기간에 맞춰 늘리고 줄인다
 type SourceRow = { source: string | null; visits: number; orders: number; revenue: number };
-type PathRow = { path: "cart" | "product_detail" | "consult" | "manual" | "pay_link"; orders: number; revenue: number };
+type PathRow = { path: "cart" | "product_detail" | "recommend" | "manual" | "pay_link"; orders: number; revenue: number };
 const SOURCES_30: SourceRow[] = [
   { source: "instagram", visits: 2140, orders: 58, revenue: 4520000 },
   { source: "naver", visits: 1260, orders: 31, revenue: 2410000 },
   { source: "kakao", visits: 840, orders: 24, revenue: 1880000 },
   { source: "qr", visits: 420, orders: 12, revenue: 860000 },
-  { source: "naver_blog", visits: 310, orders: 7, revenue: 540000 },
+  { source: "blog", visits: 310, orders: 7, revenue: 540000 },
   { source: "direct", visits: 380, orders: 6, revenue: 470000 },
 ];
 const PATHS_30: PathRow[] = [
-  { path: "consult", orders: 62, revenue: 4980000 },
+  { path: "recommend", orders: 62, revenue: 4980000 },
   { path: "product_detail", orders: 44, revenue: 3270000 },
   { path: "cart", orders: 32, revenue: 2430000 },
   { path: "manual", orders: 14, revenue: 980000 },

@@ -8,8 +8,8 @@ const STEPS: CoachStep[] = [
   {
     selectors: ['[data-coach="welcome-opt-style"]'],
     radius: 16,
-    title: "사장님 스타일로 알아서",
-    body: "선물 정보·형태·분위기·예산만 받고\n사장님이 알아서 만드는 주문이에요.\n상품을 따로 등록하지 않아도 받을 수 있어요.",
+    title: "사장님 스타일로 예쁘게",
+    body: "선물 정보·형태·분위기·희망 금액만 받고\n사장님이 예쁘게 만드는 주문이에요.\n상품을 따로 등록하지 않아도 받을 수 있어요.",
   },
   {
     selectors: ['[data-coach="welcome-opt-recommend"]'],
@@ -27,7 +27,7 @@ const STEPS: CoachStep[] = [
     selectors: ['[data-coach="welcome-opt-menu"]'],
     radius: 16,
     title: "메뉴판에서 고르기",
-    body: "사장님이 올린 상품을 사진으로 보고\n손님이 직접 골라 예약해요.",
+    body: "사장님이 올린 상품 사진을 보고\n손님이 직접 골라 예약해요.",
   },
 ];
 

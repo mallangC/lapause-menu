@@ -582,7 +582,7 @@ export default function Landing() {
             const cardData = [
               { step: "STEP 1", title: "상품 형태", visible: true, items: ["꽃다발", "꽃바구니", "센터피스", "화병꽂이"], active: "꽃다발" },
               { step: "STEP 2", title: "선호하는 분위기", visible: step2Visible, items: ["화사한 파스텔톤", "깔끔한 화이트", "차분한 딥컬러"], active: "화사한 파스텔톤" },
-              { step: "STEP 3", title: "희망 예산", visible: step3Visible, items: ["5만원", "7만원", "10만원"], active: "7만원" },
+              { step: "STEP 3", title: "희망 금액", visible: step3Visible, items: ["5만원", "7만원", "10만원"], active: "7만원" },
             ];
             return (
               <div className="flex justify-center">

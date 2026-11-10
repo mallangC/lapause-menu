@@ -207,7 +207,7 @@ export default function StatsTab({ companyId, refreshKey }: Props) {
     ],
   };
 
-  // 예산대별 분포 (맞춤주문)
+  // 희망 금액대별 분포 (맞춤주문)
   const budgetData = {
     total: Object.values(stats.budgets).reduce((sum, v) => sum + v, 0),
     items: BUDGET_LABELS.filter((label) => (stats.budgets[label] ?? 0) > 0)
@@ -548,10 +548,10 @@ export default function StatsTab({ companyId, refreshKey }: Props) {
         </div>
       </section>
 
-      {/* 예산대별 분포 */}
+      {/* 희망 금액대별 분포 */}
       <section>
         <div className="bg-white -mx-4 md:mx-0 py-4 px-4 md:rounded-2xl md:px-5 space-y-3">
-          <h3 className="text-sm font-semibold text-gray-500">예산대별 분포 <span className="text-xs text-gray-300 font-normal">(맞춤주문)</span></h3>
+          <h3 className="text-sm font-semibold text-gray-500">희망 금액대별 분포 <span className="text-xs text-gray-300 font-normal">(맞춤주문)</span></h3>
           {budgetData.items.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-4">데이터 없음</p>
           ) : (

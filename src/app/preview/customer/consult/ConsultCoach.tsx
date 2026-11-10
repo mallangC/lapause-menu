@@ -81,8 +81,8 @@ const STEP2: CoachStep[] = [
     radius: 0,
     pad: 0,
     onEnter: openSection(2, 2),
-    title: "희망 예산",
-    body: "손님이 원하는 예산을 골라요.\n예산에 딱 맞는 상품과 조금 더 풍성한 상품을\n함께 보여줘서 손님의 선택 폭이 넓어져요.",
+    title: "희망 금액",
+    body: "손님이 원하는 금액을 골라요.\n금액에 딱 맞는 상품과 조금 더 풍성한 상품을\n함께 보여줘서 손님의 선택 폭이 넓어져요.",
   },
   {
     selectors: ['[data-coach="consult2-next"]'],
@@ -102,7 +102,7 @@ const STEP3: CoachStep[] = [
     radius: 0,
     pad: 0,
     title: "추천 상품",
-    body: "2단계에서 고른 상품 형태·분위기·예산을 토대로\n사장님 상품 중 어울리는 상품을 자동으로 추천해요.\n손님은 이 중 마음에 드는 상품을 하나 골라요.",
+    body: "2단계에서 고른 상품 형태·분위기·희망 금액을 토대로\n사장님 상품 중 어울리는 상품을 자동으로 추천해요.\n손님은 이 중 마음에 드는 상품을 하나 골라요.",
   },
 ];
 
@@ -261,8 +261,8 @@ const COACHES: Record<number, CoachConfig> = {
   },
   2: {
     intro: {
-      title: "2단계 · 취향 & 예산",
-      body: "손님이 원하는 상품 형태, 분위기, 예산을 골라요.\n이 세 가지로 사장님 상품 중 어울리는 꽃을 추천해 줘요.",
+      title: "2단계 · 취향 & 금액",
+      body: "손님이 원하는 상품 형태, 분위기, 희망 금액을 골라요.\n이 세 가지로 사장님 상품 중 어울리는 꽃을 추천해 줘요.",
     },
     steps: STEP2,
     outro: {
@@ -273,7 +273,7 @@ const COACHES: Record<number, CoachConfig> = {
   3: {
     intro: {
       title: "3단계 · 상품 선택",
-      body: "손님이 고른 취향과 예산에 맞는\n추천 상품이 보이는 화면이에요.",
+      body: "손님이 고른 취향과 희망 금액에 맞는\n추천 상품이 보이는 화면이에요.",
     },
     steps: STEP3,
     outro: {

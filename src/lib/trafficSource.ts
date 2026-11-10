@@ -1,11 +1,12 @@
 // 유입 출처(?utm_source= / ?from=)와 주문 경로 — 클라이언트·서버 공통
 
-export type OrderPath = "cart" | "product_detail" | "consult" | "owner_style" | "photo_request" | "manual" | "pay_link";
+export type OrderPath = "cart" | "product_detail" | "recommend" | "owner_style" | "photo_request" | "manual" | "pay_link";
 
 export const ORDER_PATH_LABEL: Record<OrderPath, string> = {
   cart: "장바구니",
   product_detail: "상품 상세",
-  consult: "맞춤 주문",
+  // 추천받은 상품 중 골라서 한 주문 (첫 화면 대화의 추천, 예전 단계형 맞춤주문)
+  recommend: "추천 주문",
   // 첫 화면 대화에서 상품 없이 한 주문
   owner_style: "사장님 스타일",
   photo_request: "사진 주문",
@@ -14,7 +15,7 @@ export const ORDER_PATH_LABEL: Record<OrderPath, string> = {
 };
 
 /** 손님이 사이트에서 직접 한 주문 경로 (방문 대비 전환율 계산 대상) */
-export const CUSTOMER_ORDER_PATHS: OrderPath[] = ["cart", "product_detail", "consult", "owner_style", "photo_request"];
+export const CUSTOMER_ORDER_PATHS: OrderPath[] = ["cart", "product_detail", "recommend", "owner_style", "photo_request"];
 
 // 자주 쓰는 표기를 하나로 묶는다 (insta, ig → instagram 등)
 const ALIASES: Record<string, string> = {
@@ -23,15 +24,13 @@ const ALIASES: Record<string, string> = {
   kakaotalk: "kakao",
   kakaochannel: "kakao",
   naverplace: "naver",
-  blog: "naver_blog",
-  naverblog: "naver_blog",
   yt: "youtube",
 };
 
 export const TRAFFIC_SOURCE_LABEL: Record<string, string> = {
   instagram: "인스타그램",
   naver: "네이버",
-  naver_blog: "네이버 블로그",
+  blog: "블로그",
   kakao: "카카오톡",
   youtube: "유튜브",
   qr: "QR 코드",

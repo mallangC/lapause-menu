@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
   const { data, error } = await db
     .from("reservations")
     .select("id, company_id, created_at, mood, budget, items, traffic_source, company:companies!inner(is_demo)")
-    .eq("order_path", "consult")
+    .eq("order_path", "recommend")
     .eq("company.is_demo", false)
     .is("deleted_at", null)
     .neq("status", "취소")
