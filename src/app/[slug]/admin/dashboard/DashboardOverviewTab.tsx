@@ -276,7 +276,7 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
               {([
                 ["kakao", "카카오톡"],
                 ["instagram", "인스타그램"],
-                ["naver_blog", "블로그"],
+                ["blog", "블로그"],
                 ["naver", "네이버"],
               ] as const).map(([source, label]) => (
                 <button

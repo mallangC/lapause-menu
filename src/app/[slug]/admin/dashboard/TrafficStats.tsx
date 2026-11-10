@@ -33,7 +33,7 @@ const SHARE_COLORS = ["#4D7CFE", "#E05780", "#F8961E", "#2A9D8F", "#9B5DE5", "#F
 const SOURCE_COLORS: Record<string, string> = {
   instagram: "#E1306C",
   naver: "#03C75A",
-  naver_blog: "#3B82F6", // 네이버(초록)와 겹치지 않게 파란색
+  blog: "#3B82F6", // 네이버(초록)와 겹치지 않게 파란색
   kakao: "#FEE500",
   youtube: "#FF0000",
   qr: "#4B5563",
@@ -203,8 +203,7 @@ export default function TrafficStats({ companyId, refreshKey }: Props) {
                   rows={[...sourceRows].sort((a, b) => b.revenue - a.revenue).map((r) => ({
                     key: r.source ?? "unknown",
                     color: r.source ? SOURCE_COLORS[r.source] : undefined,
-                    // 네이버 블로그는 '블로그'로 짧게
-                    label: r.source === "naver_blog" ? "블로그" : trafficSourceLabel(r.source),
+                    label: trafficSourceLabel(r.source),
                     revenue: r.revenue,
                     detail: `방문 ${r.visits.toLocaleString()} · 주문 ${r.orders.toLocaleString()} · 전환 ${r.visits > 0 ? `${((r.orders / r.visits) * 100).toFixed(1)}%` : "—"}`,
                   }))}
