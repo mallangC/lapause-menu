@@ -17,15 +17,16 @@ import FlowerNoticeModal from "@/components/FlowerNoticeModal";
 import StoreHeader from "@/components/main/StoreHeader";
 import OrderCompleteHeader from "@/components/OrderCompleteHeader";
 import { readTrafficSource } from "@/lib/trafficSource";
-import PreparedColorPicker from "@/components/PreparedColorPicker";
+import PreparedColorPicker, { PhotoOrderColorNotice } from "@/components/PreparedColorPicker";
+import ColorMinPriceHint from "@/components/ColorMinPriceHint";
 import { recommendProducts } from "@/lib/recommend";
 import { leadHoursFor } from "@/lib/productTypes";
-import { needsPreparedColor } from "@/lib/todayColors";
+import { colorPickMode, isNearColorDate } from "@/lib/todayColors";
 import TimeSlotGrid from "@/components/TimeSlotGrid";
 import PaymentMethodSection from "@/components/PaymentMethodSection";
 import { cashReceiptError, type CashReceipt, type PaymentMethod } from "@/lib/payment";
 import { AFTER_HOURS_OFF, afterHoursSlots, type AfterHours } from "@/lib/afterHours";
-import { PHOTO_PRODUCT_ID, isVirtualProductId, makeStyleProduct, photoOrderKey, readPhotoOrder, type ChatAnswers, type StyleOrder } from "@/lib/styleOrder";
+import { PHOTO_PRODUCT_ID, isVirtualProductId, makeStyleProduct, photoOrderKey, readPhotoOrder, type ChatAnswers, type StyleOrder, similarPointsLine } from "@/lib/styleOrder";
 
 registerLocale("ko", ko);
 
@@ -91,7 +92,7 @@ interface DraftData {
   /** 유입 출처 (?utm_source= / ?from=) */
   source?: string | null;
   /** 주문 경로 — 상품 상세에서 바로 예약했으면 product_detail, 처음부터 고른 맞춤 주문이면 consult */
-  orderPath?: "consult" | "product_detail";
+  orderPath?: "recommend" | "product_detail";
   quantity?: number;
   messageCardCount?: number;
   shoppingBagCount?: number;
@@ -139,6 +140,10 @@ interface Props {
   todayColors?: string[];
   /** 색 맞춤 가능 일수 */
   colorLeadDays?: number;
+  /** 오늘 꽃 색상 기능을 켰는지 (끄면 색을 고르지 않는다) */
+  colorPickEnabled?: boolean;
+  /** 색 맞춤 최소 금액 (상품 금액 기준, 0이면 제한 없음) */
+  colorMinPrice?: number;
   /** 영업시간 외 수령 가능 범위 (꺼져 있으면 범위 없음) */
   afterHours?: AfterHours;
   /** 계좌이체를 받을 수 있는지 (매장 계좌가 등록돼 있을 때) */
@@ -225,7 +230,7 @@ function scoreProducts(products: Product[], form: ConsultForm): Product[] {
   return recommendProducts(products, { productType: form.productType, mood: form.mood, budget });
 }
 
-export default function ConsultClient({ slug, companyName, logoImage = null, productTypeList = [], seasonList = [], notificationEmail, products, businessHours, closedDates, dateOverrides = {}, minLeadTimes = {}, consultNotice, storeAddress = null, deliveryEnabled = false, deliveryFees = {}, messageCardEnabled = false, messageCardPrice = 2000, shoppingBagEnabled = false, shoppingBagPrice = 2000, preservativeEnabled = false, preservativePrice = 500, isDemo = false, preselectedProduct = null, styleOrder = null, chatAnswers = null, todayColors = [], colorLeadDays = 0, afterHours = AFTER_HOURS_OFF, transferAvailable = false, initialQuantity = 1, initialPaymentId = null }: Props) {
+export default function ConsultClient({ slug, companyName, logoImage = null, productTypeList = [], seasonList = [], notificationEmail, products, businessHours, closedDates, dateOverrides = {}, minLeadTimes = {}, consultNotice, storeAddress = null, deliveryEnabled = false, deliveryFees = {}, messageCardEnabled = false, messageCardPrice = 2000, shoppingBagEnabled = false, shoppingBagPrice = 2000, preservativeEnabled = false, preservativePrice = 500, isDemo = false, preselectedProduct = null, styleOrder = null, chatAnswers = null, todayColors = [], colorLeadDays = 0, colorPickEnabled = true, colorMinPrice = 0, afterHours = AFTER_HOURS_OFF, transferAvailable = false, initialQuantity = 1, initialPaymentId = null }: Props) {
   // 첫 화면 대화에서 선물 정보·취향을 이미 받고 온 주문 (사장님 스타일·사진 주문·대화형 추천)
   const chat = styleOrder ?? chatAnswers;
   const fromChat = !!chat;
@@ -243,6 +248,8 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
           mood: chat.mood,
           budget: "기타",
           budgetCustom: String(chat.budget / 10000),
+          // 찾아본 사진 — 비슷했으면 하는 점은 요청 사항 맨 위에 글로 (따로 저장하지 않는다)
+          requests: styleOrder ? similarPointsLine(styleOrder.similar) : "",
         }
       : EMPTY_FORM
   );
@@ -440,7 +447,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
             paymentOrderId: returnedOrderId,
             paymentAmount: returnedAmount,
             trafficSource: draft.source ?? null,
-            orderPath: draft.orderPath ?? "consult",
+            orderPath: draft.orderPath ?? "recommend",
             // 찾아본 사진 — 이 탭에 보관해 둔 사진을 결제 승인 뒤 서버가 저장한다
             referenceImageData: draft.product.id === PHOTO_PRODUCT_ID ? readPhotoOrder(slug) : null,
           }),
@@ -498,7 +505,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
     const missing: string[] = [];
     if (!form.productType) missing.push("상품 형태");
     if (!form.mood) missing.push("분위기");
-    if (!form.budget || (form.budget === "기타" && !form.budgetCustom)) missing.push("희망 예산");
+    if (!form.budget || (form.budget === "기타" && !form.budgetCustom)) missing.push("희망 금액");
     if (missing.length > 0) {
       setStep2FieldErrors(missing);
       return;
@@ -526,8 +533,8 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
       messageCardContent: messageCardContents.filter(Boolean).join("\n[카드 구분]\n") || form.messageCardContent,
       shoppingBag: effectiveBagCount > 0 ? "추가" : "없음",
       preservative: effectivePreservativeCount > 0 ? "추가" : "없음",
-      // 오늘 있는 색으로 준비되는 날짜일 때만 고른 색을 보낸다 (날짜를 바꿔 범위를 벗어났으면 비운다)
-      preparedColor: needsPreparedColor(todayColors, colorLeadDays, form.desiredDate) ? form.preparedColor ?? "" : "",
+      // 색을 고르는 날짜일 때만 고른 색을 보낸다 (날짜를 바꿔 고르는 방식이 달라졌으면 아래에서 비운다)
+      preparedColor: colorPickMode(colorPickEnabled, todayColors, colorLeadDays, form.desiredDate) ? form.preparedColor ?? "" : "",
     };
 
     const finalPrice = selectedProduct.price +
@@ -561,7 +568,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
             paymentMethod: "transfer",
             cashReceipt: cashReceipt.type === "신청 안 함" ? { type: "신청 안 함", number: "" } : cashReceipt,
             trafficSource: readTrafficSource(slug),
-            orderPath: preselectedProduct && !chatAnswers ? "product_detail" : "consult",
+            orderPath: preselectedProduct && !chatAnswers ? "product_detail" : "recommend",
             referenceImageData: selectedProduct.id === PHOTO_PRODUCT_ID ? readPhotoOrder(slug) : null,
           }),
         });
@@ -615,7 +622,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
         noticeAgreed,
         finalPrice,
         source: readTrafficSource(slug),
-        orderPath: preselectedProduct && !chatAnswers ? "product_detail" : "consult",
+        orderPath: preselectedProduct && !chatAnswers ? "product_detail" : "recommend",
       } satisfies DraftData));
 
       await widgetRef.current?.requestPayment({
@@ -797,7 +804,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
             ? [{ num: 1 as const, label: "선물 · 취향" }, { num: 4 as const, label: "예약 확인" }]
             : preselectedProduct
             ? [{ num: 1 as const, label: "선물 정보" }, { num: 4 as const, label: "예약 확인" }]
-            : [{ num: 1 as const, label: "선물 정보" }, { num: 2 as const, label: "취향 & 예산" }, { num: 3 as const, label: "상품 선택" }, { num: 4 as const, label: "예약 확인" }]
+            : [{ num: 1 as const, label: "선물 정보" }, { num: 2 as const, label: "취향 & 금액" }, { num: 3 as const, label: "상품 선택" }, { num: 4 as const, label: "예약 확인" }]
           ).map(({ num, label }, i) => (
             <div key={num} className="flex items-center gap-2">
               {i > 0 && <div className="flex-1 h-px bg-gray-200 w-8" />}
@@ -978,6 +985,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
               // 매장 상품 유형 (메뉴 설정에서 추가·삭제·숨김한 그대로) + 기타
               options: [...productTypeList.filter((t) => t !== "기타"), "기타"],
               onSelect: (v: string) => { set("productType", v); setActiveSection2(1); },
+              hint: null as React.ReactNode,
               extra: null as React.ReactNode,
             },
             {
@@ -986,14 +994,23 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
               displayValue: form.mood,
               options: ["깔끔한 화이트&그린", "화사한 파스텔톤", "선명한 비비드톤", "차분한 딥컬러"],
               onSelect: (v: string) => { set("mood", v); setActiveSection2(2); },
+              hint: null as React.ReactNode,
               extra: null as React.ReactNode,
             },
             {
-              title: "희망 예산",
+              title: "희망 금액",
               selected: form.budget,
               displayValue: form.budget === "기타" ? (form.budgetCustom ? `${form.budgetCustom}만원` : "기타") : form.budget,
               options: ["3만원", "5만원", "7만원", "10만원", "12만원", "15만원", "기타"],
               onSelect: (v: string) => { set("budget", v); if (v !== "기타") setActiveSection2(-1); },
+              // 금액을 고르기 전에 — 이 금액 이상이면 원하는 꽃 색을 지정할 수 있다는 안내 (오늘 꽃 색상 기능을 켠 매장만)
+              hint: colorPickEnabled && colorMinPrice > 0 ? (
+                <ColorMinPriceHint
+                  minPrice={colorMinPrice}
+                  amount={(form.budget === "기타" ? Number(form.budgetCustom) || 0 : Number(form.budget.replace(/\D/g, "")) || 0) * 10000}
+                  className="pl-8 pr-4 py-3 bg-[color-mix(in_srgb,var(--color-gold-500)_5%,#fff)]"
+                />
+              ) : null as React.ReactNode,
               extra: form.budget === "기타" ? (
                 <div className="px-4 pt-3 pb-4">
                   <div className="flex items-center gap-2">
@@ -1044,6 +1061,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                     <div style={{ display: "grid", gridTemplateRows: isOpen ? "1fr" : "0fr", transition: "grid-template-rows 300ms ease-in-out" }}>
                       <div className="overflow-hidden">
                         <div className="border-t border-gray-200 divide-y divide-gray-100">
+                          {section.hint}
                           {section.options.map((opt) => (
                             <button
                               key={opt}
@@ -1213,8 +1231,12 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
               (form.deliveryType === "배송" && deliveryFee !== null ? deliveryFee : 0)
             : 0;
 
-          // 받는 날이 색 맞춤 가능 일수 안쪽이면 오늘 있는 색에서 고른다
-          const needsColor = needsPreparedColor(todayColors, colorLeadDays, form.desiredDate);
+          // 받는 날이 색 맞춤 가능 일수 안쪽이면 오늘 있는 색, 그 이후면 모든 색 중에서 고른다
+          const colorMode = colorPickMode(colorPickEnabled, todayColors, colorLeadDays, form.desiredDate);
+          const needsColor = colorMode !== null;
+          // 찾아본 사진 주문 — 가까운 날인데 오늘 색이 없으면 색 고르기 대신 '매장에 준비된 꽃으로' 안내
+          const isPhotoOrder = selectedProduct?.id === PHOTO_PRODUCT_ID;
+          const photoNoColorNotice = isPhotoOrder && !needsColor && colorPickEnabled && isNearColorDate(colorLeadDays, form.desiredDate);
 
           const handleConfirm = () => {
             const fe: Record<string, boolean> = {};
@@ -1461,13 +1483,19 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                   {/* 오늘 있는 색으로 준비되는 날짜면 바로 아래에서 색 고르기 */}
                   {needsColor && (
                     <PreparedColorPicker
+                      mode={colorMode!}
                       todayColors={todayColors}
                       value={form.preparedColor ?? ""}
                       onChange={(v) => { set("preparedColor", v); if (s4fe.color) setS4fe((p) => ({ ...p, color: false })); }}
                       error={s4fe.color}
                       hasPhoto={!!selectedProduct?.image_url}
+                      minPrice={colorMinPrice}
+                      // 최소 금액은 상품 금액 기준 (추가 옵션·배송비 제외)
+                      amount={selectedProduct?.price ?? 0}
+                      photoOrder={isPhotoOrder}
                     />
                   )}
+                  {photoNoColorNotice && <PhotoOrderColorNotice />}
                 </div>
 
                 {/* 수령 희망 시간 */}

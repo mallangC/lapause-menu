@@ -14,7 +14,7 @@ interface Props {
   initialHiddenProductTypes: string[];
   initialHiddenSeasons: string[];
   onSave: (hiddenProductTypes: string[], hiddenSeasons: string[]) => void;
-  /** 유형 삭제로 정리한 매장 설정(당일 준비 시간·크기 기준)을 공유 설정에도 반영 */
+  /** 유형 삭제로 정리한 매장 설정(당일 준비 시간·볼륨감 참고 이미지)을 공유 설정에도 반영 */
   onSettingsSaved?: (patch: Record<string, unknown>) => void;
 }
 
@@ -45,7 +45,7 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
 
   /**
    * 상품 유형 삭제 — 이 유형으로 등록된 상품이 있으면 막고 안내한다.
-   * 지우면 그 유형의 유형별 설정(당일 준비 시간·크기 기준과 참고 사진)도 함께 정리한다. 상품은 건드리지 않는다.
+   * 지우면 그 유형의 유형별 설정(당일 준비 시간·볼륨감 참고 이미지과 참고 사진)도 함께 정리한다. 상품은 건드리지 않는다.
    */
   const deleteProductType = async (name: string, remove: () => Promise<void>) => {
     if (deleting) return;

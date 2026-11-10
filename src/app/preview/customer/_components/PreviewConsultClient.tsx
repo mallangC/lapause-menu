@@ -17,7 +17,7 @@ import PreviewStoreHeader from "./PreviewStoreHeader";
 import PreviewPolicyLink from "./PreviewPolicyLink";
 import PreviewConsultComplete from "./PreviewConsultComplete";
 import OrderCompleteHeader from "@/components/OrderCompleteHeader";
-import { PHOTO_PRODUCT_ID, makeStyleProduct, photoOrderKey, readPhotoOrder, type ChatAnswers, type StyleOrder } from "@/lib/styleOrder";
+import { PHOTO_PRODUCT_ID, makeStyleProduct, photoOrderKey, readPhotoOrder, type ChatAnswers, type StyleOrder, similarPointsLine } from "@/lib/styleOrder";
 
 registerLocale("ko", ko);
 
@@ -267,6 +267,8 @@ export default function PreviewConsultClient({ logoNode, slug, companyName, logo
           mood: chat.mood,
           budget: "기타",
           budgetCustom: String(chat.budget / 10000),
+          // 찾아본 사진 — 비슷했으면 하는 점은 요청 사항 맨 위에 글로 (따로 저장하지 않는다)
+          requests: styleOrder ? similarPointsLine(styleOrder.similar) : "",
         }
       : EMPTY_FORM
   );
@@ -408,7 +410,7 @@ export default function PreviewConsultClient({ logoNode, slug, companyName, logo
     const missing: string[] = [];
     if (!form.productType) missing.push("상품 형태");
     if (!form.mood) missing.push("분위기");
-    if (!form.budget || (form.budget === "기타" && !form.budgetCustom)) missing.push("희망 예산");
+    if (!form.budget || (form.budget === "기타" && !form.budgetCustom)) missing.push("희망 금액");
     if (missing.length > 0) {
       setStep2FieldErrors(missing);
       return;
@@ -528,7 +530,7 @@ export default function PreviewConsultClient({ logoNode, slug, companyName, logo
             ? [{ num: 1 as const, label: "선물 · 취향" }, { num: 4 as const, label: "예약 확인" }]
             : preselectedProduct
             ? [{ num: 1 as const, label: "선물 정보" }, { num: 4 as const, label: "예약 확인" }]
-            : [{ num: 1 as const, label: "선물 정보" }, { num: 2 as const, label: "취향 & 예산" }, { num: 3 as const, label: "상품 선택" }, { num: 4 as const, label: "예약 확인" }]
+            : [{ num: 1 as const, label: "선물 정보" }, { num: 2 as const, label: "취향 & 금액" }, { num: 3 as const, label: "상품 선택" }, { num: 4 as const, label: "예약 확인" }]
           ).map(({ num, label }, i) => (
             <div key={num} className="flex items-center gap-2">
               {i > 0 && <div className="flex-1 h-px bg-gray-200 w-8" />}
@@ -722,7 +724,7 @@ export default function PreviewConsultClient({ logoNode, slug, companyName, logo
               extra: null as React.ReactNode,
             },
             {
-              title: "희망 예산",
+              title: "희망 금액",
               selected: form.budget,
               displayValue: form.budget === "기타" ? (form.budgetCustom ? `${form.budgetCustom}만원` : "기타") : form.budget,
               options: ["3만원", "5만원", "7만원", "10만원", "12만원", "15만원", "기타"],

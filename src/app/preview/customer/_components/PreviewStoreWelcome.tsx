@@ -19,9 +19,11 @@ interface Props {
   productTypes: string[];
   products: RecProduct[];
   footer: Omit<StoreFooterProps, "onLinkClick">;
+  /** 미리보기 메뉴판에서 '맞춤 상담'을 눌러 왔는지 */
+  fromMenu?: boolean;
 }
 
-export default function PreviewStoreWelcome({ logoNode, themeVars, photos, sizeConfig, productTypes, products, footer }: Props) {
+export default function PreviewStoreWelcome({ logoNode, themeVars, photos, sizeConfig, productTypes, products, footer, fromMenu = false }: Props) {
   const [linkNotice, setLinkNotice] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
@@ -43,6 +45,7 @@ export default function PreviewStoreWelcome({ logoNode, themeVars, photos, sizeC
         consultEnabled
         photos={photos}
         sizeConfig={sizeConfig}
+        fromMenu={fromMenu}
         productTypes={productTypes}
         products={products}
         footer={{ ...footer, onLinkClick: showLinkNotice }}

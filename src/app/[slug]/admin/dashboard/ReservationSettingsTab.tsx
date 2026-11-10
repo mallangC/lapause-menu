@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { formatMoney, parseMoney } from "@/lib/format";
 import SaveButton from "@/components/admin/SaveButton";
@@ -8,7 +8,7 @@ import { notifyMenuChanged } from "@/lib/menuCacheClient";
 import type { CompanySettings } from "./companySettings";
 import { useSettingsSync } from "./useSettingsSync";
 import SizeTiersEditor, { sizeConfigOrderErrors } from "@/components/admin/SizeTiersEditor";
-import { normalizeSizeConfig, sizeConfigImages, type SizeConfig } from "@/lib/sizeTiers";
+import { hasTierInput, normalizeSizeConfig, sizeConfigImages, type SizeConfig } from "@/lib/sizeTiers";
 import { STORAGE_BUCKET } from "@/lib/constants";
 import { removeStorageFiles } from "@/lib/storageCleanup";
 import { useStoreProductTypes } from "./useStoreProductTypes";
@@ -44,9 +44,11 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
   const [soldCount, setSoldCount] = useState(0);
   const [showMailOrderWarning, setShowMailOrderWarning] = useState(false);
   const [showNoticeInfo, setShowNoticeInfo] = useState(false);
-  // 크기 기준 (미니 ~ 프리미엄) — 기본 + 유형별, 가격에 따라 크기가 정해진다
+  // 볼륨감 참고 이미지 (4단계, 이름·가격·사진) — 상품 유형별, 손님이 희망 금액을 정하기 전에 본다
   const [sizeConfig, setSizeConfig] = useState<SizeConfig>(() => normalizeSizeConfig(null));
-  // 매장 유형 목록 (크기 기준 탭)
+  // 볼륨감 참고 사진 중 아직 올리지 않은 것 (미리보기 주소 → 줄인 사진) — 저장할 때 한 번에 올린다
+  const pendingSizeImages = useRef(new Map<string, Blob>());
+  // 매장 유형 목록 (볼륨감 참고 이미지 탭)
   const productTypes = useStoreProductTypes(companyId, settings.hidden_product_types);
 
   const supabase = createClient();
@@ -86,9 +88,39 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
   const handleSave = async () => {
     setError(null);
     if (sizeConfigOrderErrors(sizeConfig).length > 0) {
-      setError("크기 기준: 큰 크기일수록 가격이 더 높아야 해요.");
+      setError("볼륨감 참고 이미지: 아래 단계일수록 가격이 더 높아야 해요.");
       return false;
     }
+    // 볼륨감 참고 사진 — 고르기만 해 둔 사진(blob:)을 이제 올리고 주소를 바꾼다
+    const uploaded: string[] = [];
+    const uploadedUrl = new Map<string, string>();
+    for (const list of Object.values(sizeConfig.byType)) {
+      for (const t of list) {
+        const blob = t.image?.startsWith("blob:") ? pendingSizeImages.current.get(t.image) : undefined;
+        if (!t.image || !blob || uploadedUrl.has(t.image)) continue;
+        const path = `size_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.webp`;
+        const { error: upErr } = await supabase.storage.from(STORAGE_BUCKET).upload(path, blob, { upsert: false, contentType: "image/webp" });
+        if (upErr) {
+          // 이번에 올린 것은 지우고 멈춘다 (설정은 저장하지 않음)
+          removeStorageFiles(supabase, STORAGE_BUCKET, uploaded);
+          setError("볼륨감 참고 사진을 올리지 못했어요. 잠시 후 다시 저장해 주세요.");
+          return false;
+        }
+        const url = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path).data.publicUrl;
+        uploaded.push(url);
+        uploadedUrl.set(t.image, url);
+      }
+    }
+    const savedSize: SizeConfig = {
+      default: [],
+      byType: Object.fromEntries(
+        Object.entries(sizeConfig.byType).map(([k, l]) => [
+          k,
+          // 올리지 못한(미리보기만 남은) 사진은 저장하지 않는다
+          l.map((t) => ({ ...t, image: t.image?.startsWith("blob:") ? uploadedUrl.get(t.image) ?? null : t.image })),
+        ])
+      ),
+    };
     const patch = {
         consult_enabled: mailOrderBlocked ? false : consultEnabled,
         message_card_enabled: messageCardEnabled,
@@ -103,17 +135,24 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
           Object.entries(deliveryFees).map(([k, v]) => [k, v === "" ? null : parseMoney(v)])
         ),
         // 없는 유형(삭제됨) 설정은 저장하지 않는다
-        size_tiers: { default: sizeConfig.default, byType: Object.fromEntries(Object.entries(sizeConfig.byType).filter(([t]) => productTypes.includes(t))) },
+        // 볼륨감 참고 이미지 — 유형별만 ('기본'은 쓰지 않아 비운다), 지금 있는 유형 중 뭐라도 넣은 것만
+        size_tiers: { default: [], byType: Object.fromEntries(Object.entries(savedSize.byType).filter(([t, l]) => productTypes.includes(t) && hasTierInput(l))) },
       };
     const { error: err } = await supabase
       .from("company_settings")
       .update(patch)
       .eq("company_id", companyId);
     if (err) {
+      // 설정을 저장하지 못했으면 방금 올린 사진도 지운다 (미리보기는 그대로 두어 다시 저장할 수 있게)
+      removeStorageFiles(supabase, STORAGE_BUCKET, uploaded);
       setError(err.message);
       return false;
     }
-    // 크기 참고 사진 — 지우거나 바꿔서 더 이상 쓰지 않는 사진은 저장소에서 정리
+    // 올린 사진은 이제 저장소 주소로 — 미리보기 주소는 풀어 준다
+    setSizeConfig(savedSize);
+    pendingSizeImages.current.forEach((_, url) => URL.revokeObjectURL(url));
+    pendingSizeImages.current.clear();
+    // 볼륨감 참고 사진 — 지우거나 바꿔서 더 이상 쓰지 않는 사진은 저장소에서 정리
     const before = sizeConfigImages(normalizeSizeConfig(settings.size_tiers));
     const after = new Set(sizeConfigImages(normalizeSizeConfig(patch.size_tiers)));
     removeStorageFiles(supabase, STORAGE_BUCKET, before.filter((u) => !after.has(u)));
@@ -524,12 +563,12 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
         </div>
       </div>
 
-      {/* 크기 기준 — 가격에 따라 정해지는 크기와 참고 사진.
+      {/* 볼륨감 참고 이미지 — 단계별 이름·가격·사진.
           마지막 카드라 아래 저장 줄과 붙여 한 카드처럼 보이게 아래 모서리는 각지게.
           Tailwind v4의 space-y는 앞 요소 아래 여백(margin-bottom)으로 간격을 두므로 !mb-0으로 틈을 없앤다 */}
       <div className="!mb-0 bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:rounded-b-none md:p-6">
         <div className="max-w-lg">
-          <SizeTiersEditor value={sizeConfig} onChange={setSizeConfig} types={productTypes} />
+          <SizeTiersEditor value={sizeConfig} onChange={setSizeConfig} types={productTypes} pending={pendingSizeImages.current} />
         </div>
       </div>
 

@@ -10,8 +10,6 @@ export interface RecommendableProduct {
   is_popular: boolean;
 }
 
-const KNOWN_TYPES = ["꽃다발", "꽃바구니", "센터피스", "화병꽂이"];
-
 /**
  * 슬롯 1~2: 예산 ~ 예산+1만(10만원 이상이면 +2만)
  * 슬롯 3~4: 그보다 조금 위 ~ 예산+3만(10만원 이상이면 +5만)
@@ -21,7 +19,8 @@ export function recommendProducts<T extends RecommendableProduct>(
   products: T[],
   { productType, mood, budget }: { productType: string; mood: string; budget: number }
 ): T[] {
-  const mappedType = KNOWN_TYPES.includes(productType) ? productType : undefined;
+  // 매장 유형은 매장마다 다르다 — '기타'(정하지 않음)만 형태 조건 없이
+  const mappedType = productType && productType !== "기타" ? productType : undefined;
   const isHighBudget = budget >= 100000;
   const tightUpper = isHighBudget ? 20000 : 10000;
   const wideUpper = isHighBudget ? 50000 : 30000;

@@ -6,10 +6,13 @@ import StoreWelcomeClient from "./StoreWelcomeClient";
 import { formatPhone } from "@/lib/format";
 import { normalizeSizeConfig } from "@/lib/sizeTiers";
 import { storeProductTypes } from "@/lib/productTypes";
+import { isTodayColorsEnabled } from "@/lib/todayColors";
 import type { Metadata } from "next";
 
 interface Props {
   params: Promise<{ slug: string }>;
+  // ?consult=1 — 메뉴판 등에서 '맞춤 상담'을 눌러 온 손님 (인사 없이 주문 방식 질문부터)
+  searchParams?: Promise<{ consult?: string }>;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -22,8 +25,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 // 매장 첫 화면 — 상담하듯 주문 방식부터 고른다 (메뉴판은 /[slug]/menu 로 옮겼다)
-export default async function StoreWelcomePage({ params }: Props) {
+export default async function StoreWelcomePage({ params, searchParams }: Props) {
   const { slug } = await params;
+  const fromMenu = (await searchParams)?.consult === "1";
 
   // 메뉴판과 같은 캐시를 쓴다 (매장 이름·로고·디자인 색·맞춤주문 사용 여부)
   const menu = await getMenuData(slug);
@@ -50,9 +54,12 @@ export default async function StoreWelcomePage({ params }: Props) {
 
   return (
     <StoreWelcomeClient
+      fromMenu={fromMenu}
       photos={photos}
       // 크기 기준 (기본 + 유형별) — 대화에서 고른 형태에 맞춰 쓴다
       sizeConfig={normalizeSizeConfig(s.size_tiers)}
+      // 색 맞춤 최소 금액 — 예산 칸 위 안내 (오늘 꽃 색상 기능을 끈 매장은 색을 고르지 않으니 안내도 없음)
+      colorMinPrice={isTodayColorsEnabled(s as { today_colors_enabled?: boolean | null }) ? ((s.color_min_price as number | undefined) ?? 0) : 0}
       // 형태 질문의 답 — 매장 유형 중 손님에게 보이는 것
       productTypes={storeProductTypes(s.hidden_product_types as string[] | null, menu.categories, true)}
       // 대화형 추천에 쓸 상품 — 맞춤주문을 켠 매장만 (카드에 필요한 것만 넘긴다)
