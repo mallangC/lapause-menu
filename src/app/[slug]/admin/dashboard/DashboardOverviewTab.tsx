@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { CompanySettings } from "./companySettings";
 import { TodayColorsCard } from "./TodayColors";
 import InquiryChecklist from "./InquiryChecklist";
+import { ONBOARDING_SECTIONS, onboardingSectionIndex } from "@/lib/onboarding";
 
 interface Props {
   companyId: string;
@@ -81,6 +82,45 @@ function CheckItem({ ok, label, tab, onNavigate }: { ok: boolean; label: string;
         </svg>
       )}
     </button>
+  );
+}
+
+// 시작 설정 이어하기 — 시작 설정을 끝내지 않은 매장에만 (처음 가입 직후 한 번은 시작 설정이 자동으로 열린다)
+function OnboardingResumeCard({ companyId, slug, settings, onSettingsSaved }: { companyId: string; slug: string; settings: CompanySettings; onSettingsSaved: (patch: CompanySettings) => void }) {
+  const [hiding, setHiding] = useState(false);
+  // 컬럼이 아직 없으면(SQL 실행 전) 띄우지 않는다
+  if (!("onboarding_done_at" in settings) || settings.onboarding_done_at) return null;
+  const at = onboardingSectionIndex(settings.onboarding_step);
+  const started = !!settings.onboarding_step;
+
+  const hide = async () => {
+    setHiding(true);
+    const patch = { onboarding_done_at: new Date().toISOString() };
+    const { error } = await createClient().from("company_settings").update(patch).eq("company_id", companyId);
+    setHiding(false);
+    if (!error) onSettingsSaved(patch);
+  };
+
+  return (
+    <div className="bg-gold-500/10 border border-gold-400/40 rounded-2xl py-4 px-4 -mx-4 md:mx-0 md:px-5">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-gray-800">
+            시작 설정 <span className="text-gold-600 tabular-nums">{at + 1}/{ONBOARDING_SECTIONS.length}</span>
+          </p>
+          <p className="text-xs text-gray-500 mt-0.5">몇 가지만 답하면 메뉴판 준비가 끝나요.</p>
+        </div>
+        <Link
+          href={`/${slug}/admin/onboarding`}
+          className="shrink-0 px-4 py-2 rounded-xl bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors"
+        >
+          {started ? "이어서 하기" : "시작하기"}
+        </Link>
+      </div>
+      <button type="button" onClick={hide} disabled={hiding} className="mt-2 text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2 disabled:opacity-50">
+        다시 보지 않기
+      </button>
+    </div>
   );
 }
 
@@ -200,6 +240,8 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
   return (
     <div className="space-y-3">
       <h2 className="text-xl font-bold text-gray-900">대시보드</h2>
+
+      <OnboardingResumeCard companyId={companyId} slug={slug} settings={sharedSettings} onSettingsSaved={onSettingsSaved} />
 
 
       {/* 통신판매업 미신고 경고 */}
@@ -469,12 +511,15 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
                 </span>
               )}
             </div>
-            <button
-              onClick={() => onNavigate("company")}
-              className="text-xs text-gray-400 hover:text-gold-500 transition-colors"
-            >
-              매장 정보 →
-            </button>
+            {/* 대화로 판매 신청·준비 — 시작 설정과 같은 대화 화면의 판매 부분부터 (판매 중이면 숨김) */}
+            {!(consultStatus === "approved" && settings?.consult_enabled) && (
+              <Link
+                href={`/${slug}/admin/onboarding?start=sales`}
+                className="text-xs font-medium text-gold-600 hover:text-gold-500 transition-colors"
+              >
+                {consultStatus === "pending" ? "기다리는 동안 판매 준비 →" : consultStatus === "approved" ? "대화로 판매 준비 →" : consultStatus === "rejected" ? "대화로 다시 신청 →" : "대화로 신청하기 →"}
+              </Link>
+            )}
           </div>
 
           {consultStatus === "approved" ? (
@@ -488,11 +533,11 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
                   ? "반려되었습니다. 아래 항목을 확인하고 다시 신청해주세요."
                   : "아래 항목을 모두 완료한 뒤 맞춤 주문을 신청할 수 있습니다."}
               </p>
-              <CheckItem ok={hasPhone} label="매장 전화번호 입력" tab="company" onNavigate={onNavigate} />
-              <CheckItem ok={hasAddress} label="매장 주소 입력" tab="company" onNavigate={onNavigate} />
-              <CheckItem ok={hasBank} label="계좌 정보 입력 (은행·계좌번호·예금주)" tab="company" onNavigate={onNavigate} />
-              <CheckItem ok={hasBankDoc} label="통장사본 업로드" tab="company" onNavigate={onNavigate} />
-              <CheckItem ok={hasBusinessVerified} label="사업자등록번호 인증" tab="company" onNavigate={onNavigate} />
+              <CheckItem ok={hasPhone} label="매장 전화번호 입력" tab="ordersettings" onNavigate={onNavigate} />
+              <CheckItem ok={hasAddress} label="매장 주소 입력" tab="ordersettings" onNavigate={onNavigate} />
+              <CheckItem ok={hasBank} label="계좌 정보 입력 (은행·계좌번호·예금주)" tab="ordersettings" onNavigate={onNavigate} />
+              <CheckItem ok={hasBankDoc} label="통장사본 업로드" tab="ordersettings" onNavigate={onNavigate} />
+              <CheckItem ok={hasBusinessVerified} label="사업자등록번호 인증" tab="ordersettings" onNavigate={onNavigate} />
             </div>
           )}
         </div>
