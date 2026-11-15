@@ -1,8 +1,10 @@
 "use client";
 
+import ChatDemo from "./_landing/ChatDemo";
+import LivePreviewFrame, { LiveMenuFrame } from "./_landing/LiveMenuFrame";
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import { PLAN_PRICES, PLAN_FEATURES, PLATFORM_FEE_PERCENT_LABEL } from "@/lib/constants";
+import { ANNUAL_DISCOUNT_RATE, PLAN_PRICES, PLAN_FEATURES, PLATFORM_FEE_PERCENT_LABEL } from "@/lib/constants";
 
 // ────────────────────────────────────────────────
 // Scroll animation
@@ -75,16 +77,15 @@ function FaqItem({ q, a, isLast = false }: { q: string; a: string; isLast?: bool
 // ────────────────────────────────────────────────
 // Main Page
 // ────────────────────────────────────────────────
-const hero = { tag: "전자 메뉴판 & 예약 관리", headline: "상담 시간은 줄이고\n예약은 편리하게", sub: "링크 하나로 상품을 소개하고\n예약을 받으세요.", bg: "/landing/hero-menu.webp" };
+const hero = { tag: "꽃집 상담 & 예약", headline: "상담 시간은 줄이고\n예약은 편리하게", sub: "링크 하나로 손님 상담부터\n예약·결제까지 끝내요.", bg: "/landing/hero-menu.webp" };
 
 const capabilities = [
-  { title: "전자 메뉴판", desc: "앱 없이 링크만으로 상품 카탈로그를 공유하세요.", img: "/landing/cap-menu.webp", mobileImg: "/landing/cap-menu-m.webp" },
-  { title: "맞춤 주문", desc: "고객이 직접 꽃 종류, 예산, 색상을 선택합니다.", img: "/landing/cap-order.webp", mobileImg: "/landing/cap-order-m.webp" },
-  { title: "링크결제", desc: "전화·DM으로 받은 주문도 결제 링크 하나로 카드 결제까지 받으세요.", img: "/landing/cap-paylink.webp", mobileImg: "/landing/cap-paylink-m.webp" },
-  { title: "예약 관리", desc: "월별로 모든 예약을 한눈에 확인하세요.", img: "/landing/cap-reservation.webp", mobileImg: "/landing/cap-reservation-m.webp" },
-  { title: "카카오 알림", desc: "예약 확인, 확정, 취소 알림을 자동으로 발송합니다.", img: "/landing/cap-kakao.webp", mobileImg: "/landing/cap-kakao-m.webp" },
-  { title: "매출 분석", desc: "어떤 상품이 잘 팔리는지 데이터로 확인하세요.", img: "/landing/cap-stats.webp", mobileImg: "/landing/cap-stats-m.webp" },
-  { title: "나만의 링크", desc: "flo-aide.com/내가게주소로 브랜드를 만드세요.", img: "/landing/cap-link.webp", mobileImg: "/landing/cap-link-m.webp" },
+  { title: "맞춤 상담", desc: "손님이 대화하듯 고르면 주문서까지 정리돼요.", img: "/landing/cap-order.webp", mobileImg: "/landing/cap-order-m.webp" },
+  { title: "전자 메뉴판", desc: "사진·가격을 한눈에 보여줘 상품 문의가 줄어요.", img: "/landing/cap-menu.webp", mobileImg: "/landing/cap-menu-m.webp" },
+  { title: "링크결제", desc: "전화·DM 상담으로 정한 주문도 결제 링크 하나로 마무리해요.", img: "/landing/cap-paylink.webp", mobileImg: "/landing/cap-paylink-m.webp" },
+  { title: "예약 관리", desc: "상담 내용이 담긴 예약을 월별로 한눈에 확인하세요.", img: "/landing/cap-reservation.webp", mobileImg: "/landing/cap-reservation-m.webp" },
+  { title: "카카오 알림", desc: "\"예약 됐나요?\" 문의 없이 확정·취소를 자동으로 알려요.", img: "/landing/cap-kakao.webp", mobileImg: "/landing/cap-kakao-m.webp" },
+  { title: "매출 분석", desc: "어떤 상담에서 주문이 많이 나오는지 데이터로 확인하세요.", img: "/landing/cap-stats.webp", mobileImg: "/landing/cap-stats-m.webp" },
   { title: "쉬운 설정", desc: "가입하고 상품만 등록하면 바로 운영 시작. 별도 설치 없이도 누구나 쉽게.", img: "/landing/cap-setup.webp", mobileImg: "/landing/cap-setup-m.webp" },
 ];
 
@@ -104,7 +105,7 @@ const faqs = [
   { q: "고객이 예약하면 제가 직접 확정해야 하나요, 아니면 자동으로 되나요?", a: "기본적으로 관리자가 직접 확정하는 방식입니다. 예약 요청이 들어오면 알림을 받고, 관리 페이지에서 판매 가능한 예약건인지 확인 후 확정 또는 취소 처리를 할 수 있습니다." },
   { q: "메뉴에 가격을 표시하지 않을 수 있나요?", a: "네. 상품을 추가할 때 가격을 입력하지 않으면 가격이 표시되지 않습니다." },
   { q: "카카오 알림은 어떻게 작동하나요?", a: "고객이 예약을 완료하면 관리자에게, 관리자가 예약을 확정하거나 취소하면 고객 카카오톡으로 알림이 발송됩니다." },
-  { q: "비용은 얼마인가요?", a: `첫 1개월은 무료 체험입니다. 이후 월간 플랜 월 ${PLAN_PRICES.monthly.toLocaleString()}원, 연간 플랜 월 ${PLAN_PRICES.annual.toLocaleString()}원(연 ${PLAN_PRICES.annualTotal.toLocaleString()}원 일괄 결제, 월간 대비 약 30% 할인)으로 이용하실 수 있습니다. 두 플랜 모두 맞춤 주문·예약·통계·카카오 알림 등 모든 기능이 포함되며, 결제 수수료는 ${PLATFORM_FEE_PERCENT_LABEL}(카드 수수료, 부가세 포함)이고 정책에 따라 변경될 수 있습니다.` },
+  { q: "비용은 얼마인가요?", a: `첫 1개월은 무료 체험입니다. 이후 월간 플랜 월 ${PLAN_PRICES.monthly.toLocaleString()}원, 연간 플랜 월 ${PLAN_PRICES.annual.toLocaleString()}원(연 ${PLAN_PRICES.annualTotal.toLocaleString()}원 일괄 결제, 월간 대비 약 ${ANNUAL_DISCOUNT_RATE}% 할인)으로 이용하실 수 있습니다. 두 플랜 모두 맞춤 주문·예약·통계·카카오 알림 등 모든 기능이 포함됩니다. Flo.Aide는 결제 수수료를 따로 받지 않으며, 카드 결제 시 기본 카드 수수료 ${PLATFORM_FEE_PERCENT_LABEL}(부가세 별도)만 발생합니다. 카드 수수료는 정책에 따라 변경될 수 있습니다.` },
 ];
 
 export default function Landing() {
@@ -114,61 +115,6 @@ export default function Landing() {
   const capCarouselRef = useRef<HTMLDivElement>(null);
   const [painProgress, setPainProgress] = useState(0);
   const painRef = useRef<HTMLDivElement>(null);
-  const [step2Visible, setStep2Visible] = useState(false);
-  const [step3Visible, setStep3Visible] = useState(false);
-  const [imageVisible, setImageVisible] = useState(false);
-  const [selected, setSelected] = useState<Record<number, number>>({});
-  const [cursorPos, setCursorPos] = useState<{ y: number; clicking: boolean } | null>(null);
-  const animTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const cardsWrapperRef = useRef<HTMLDivElement>(null);
-
-  const getOptY = (cardIdx: number, optIdx: number): number => {
-    const wrapper = cardsWrapperRef.current;
-    if (!wrapper) return 200;
-    const card = wrapper.querySelector(`[data-card="${cardIdx}"]`) as HTMLElement;
-    if (!card) return 200;
-    const opt = card.querySelector(`[data-opt="${optIdx}"]`) as HTMLElement;
-    if (!opt) return 200;
-    return card.offsetTop + opt.offsetTop + opt.offsetHeight / 2;
-  };
-
-  useEffect(() => {
-    const push = (fn: () => void, delay: number) => {
-      animTimers.current.push(setTimeout(fn, delay));
-    };
-    const start = () => {
-      animTimers.current.forEach(clearTimeout);
-      animTimers.current = [];
-      setStep2Visible(false);
-      setStep3Visible(false);
-      setImageVisible(false);
-      setSelected({});
-      push(() => setCursorPos({ y: getOptY(0, 0) - 80, clicking: false }), 0);
-
-      // STEP 1: 클릭 후 그 자리에서 대기
-      push(() => setCursorPos({ y: getOptY(0, 0), clicking: false }), 150);
-      push(() => setCursorPos({ y: getOptY(0, 0), clicking: true }), 600);
-      push(() => { setSelected((s) => ({ ...s, 0: 0 })); setCursorPos({ y: getOptY(0, 0), clicking: false }); }, 750);
-      // 300ms 후 STEP 2 등장 → 이동
-      push(() => setStep2Visible(true), 1050);
-      push(() => setCursorPos({ y: getOptY(1, 0), clicking: false }), 1250);
-      // STEP 2: 클릭
-      push(() => setCursorPos({ y: getOptY(1, 0), clicking: true }), 1750);
-      push(() => { setSelected((s) => ({ ...s, 1: 0 })); setCursorPos({ y: getOptY(1, 0), clicking: false }); }, 1900);
-      // 300ms 후 STEP 3 등장 → 이동
-      push(() => setStep3Visible(true), 2200);
-      push(() => setCursorPos({ y: getOptY(2, 2), clicking: false }), 2400);
-      // STEP 3: 클릭 후 0.5초 대기
-      push(() => setCursorPos({ y: getOptY(2, 2), clicking: true }), 2900);
-      push(() => { setSelected((s) => ({ ...s, 2: 2 })); setCursorPos({ y: getOptY(2, 2), clicking: false }); }, 3050);
-      // 이미지 슬라이드
-      push(() => setImageVisible(true), 3550);
-      push(() => setCursorPos(null), 3650);
-      push(() => start(), 6200);
-    };
-    start();
-    return () => animTimers.current.forEach(clearTimeout);
-  }, []);
 
   function goToCap(idx: number) {
     setActiveCap(idx);
@@ -410,7 +356,7 @@ export default function Landing() {
               >
                 <p className="text-[12px] tracking-[0.25em] uppercase mb-4 font-medium" style={{ color: "#c9a96e" }}>Solution</p>
                 <h2 className="font-semibold text-center" style={{ fontSize: "clamp(2rem,5vw,3.2rem)", color: "#2c2416", lineHeight: 1.2 }}>
-                  플로에이드가<br />해결해드립니다
+                  상담은 플로에이드가<br />대신 해드릴게요
                 </h2>
               </div>
 
@@ -422,20 +368,20 @@ export default function Landing() {
                 >
                   <p className="text-[12px] tracking-[0.25em] uppercase mb-3 font-medium" style={{ color: "#c9a96e" }}>Pain Point</p>
                   <h2 className="font-semibold" style={{ fontSize: "clamp(1.4rem,4vw,2.6rem)", color: "#2c2416", lineHeight: 1.2 }}>
-                    꽃집 사장님들의 불편함
+                    꽃집 사장님들의 상담 고민
                   </h2>
                 </div>
 
                 {(() => {
                   const allPostIts = [
-                    { quote: "내 홈페이지를\n가지고 싶어요",                       fly: { x: -160, y: -110, r: -28 }, rotate: -8  },
-                    { quote: "비슷한 내용의\n상담에 시간을\n많이 쓰고 있어요",        fly: { x: -130, y: -110, r: -30 }, rotate: -2  },
-                    { quote: "손님이 상품을\n문의할 때마다\n사진 찾는 게 번거로워요",   fly: { x: 130, y: -110, r: 30 }, rotate: 2.5 },
-                    { quote: "색감별로 또는\n분위기별로 상품을\n한번에 안내하고 싶어요", fly: { x: 160, y: -110, r: 32 }, rotate: -7   },
-                    { quote: "영업 중에도\n문의가 너무\n많아요",                   fly: { x: -160, y: 110, r: -28 }, rotate: 6  },
-                    { quote: "상품을 한번에\n소개할 수 있는\n메뉴판이 필요해요",       fly: { x: -130, y: 110, r: -25 }, rotate: -1.5 },
-                    { quote: "흩어진 예약 정보를\n한 곳에서\n보고 싶어요",           fly: { x: 130, y: 110, r: 25 }, rotate: 3   },
-                    { quote: "SNS 사진만으론\n상품 안내가\n부족해요",              fly: { x: 160, y: 110, r: 30 }, rotate: -3   },
+                    { quote: "같은 질문에\n하루 종일\n답장하고 있어요",          fly: { x: -160, y: -110, r: -28 }, rotate: -8  },
+                    { quote: "\"얼마예요?\"\n가격 문의만\n수십 번이에요",       fly: { x: -130, y: -110, r: -30 }, rotate: -2  },
+                    { quote: "SNS 사진만으론\n상품 안내가\n부족해요",            fly: { x: 130, y: -110, r: 30 }, rotate: 2.5 },
+                    { quote: "사진 찾아서\n보내주는 데만\n한참 걸려요",           fly: { x: 160, y: -110, r: 32 }, rotate: -7   },
+                    { quote: "손님이 원하는 걸\n말로 설명하기\n어려워해요",        fly: { x: -160, y: 110, r: -28 }, rotate: 6  },
+                    { quote: "\"이 가격이면\n크기가 어느 정도예요?\"\n매번 설명해요", fly: { x: -130, y: 110, r: -25 }, rotate: -1.5 },
+                    { quote: "작업 중에도\nDM 답장 때문에\n손이 멈춰요",          fly: { x: 130, y: 110, r: 25 }, rotate: 3   },
+                    { quote: "문을 닫은 뒤에도\n상담 문의가\n계속 와요",           fly: { x: 160, y: 110, r: 30 }, rotate: -3   },
                   ];
                   return (
                     <div className="w-full grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3" style={{ maxWidth: "clamp(300px, 78vw, 920px)" }}>
@@ -467,7 +413,7 @@ export default function Landing() {
                 })()}
               </div>
 
-              {/* 스포트라이트 1번 — 페이드인 오버레이 */}
+              {/* 스포트라이트 1번 — 맞춤 상담 (포스트잇이 날아간 뒤 가장 먼저 보이는 기능) */}
               <div
                 className="spotlight1-overlay"
                 style={{
@@ -489,36 +435,78 @@ export default function Landing() {
                 </div>
                 <div className="relative z-10 w-full max-w-300 mx-auto px-6 md:px-8 pt-28 pb-10 md:py-28 grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-20 items-center">
                   <div>
+            <p className="text-[11px] md:text-[12px] tracking-[0.3em] uppercase mb-3 md:mb-5 font-medium" style={{ color: "#c9a96e" }}>맞춤 상담</p>
+            <h2 className="font-semibold text-white leading-[1.15] mb-3 md:mb-6" style={{ fontSize: "clamp(1.5rem,4.5vw,3.4rem)", whiteSpace: "pre-line" }}>{"사장님 대신\n상담해 드려요"}</h2>
+            <p className="text-[13px] md:text-[15px] leading-relaxed mb-4 md:mb-8" style={{ color: "rgba(255,255,255,0.45)" }}>
+              어떤 날 드릴 꽃인지, 어떤 분위기인지, 얼마에 맞출지 — 매번 묻던 질문을 대화로 대신 묻고 주문서까지 정리해요.
+            </p>
+            <ul className="space-y-2 md:space-y-3">
+              {["사장님 스타일·추천·찾아본 사진, 3가지 상담", "볼륨감 사진으로 금액 상담까지", "상담이 끝나면 바로 예약·결제"].map((item) => (
+                <li key={item} className="flex items-center gap-3 text-[13px] md:text-[14px]" style={{ color: "rgba(255,255,255,0.6)" }}>
+                  <span className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] shrink-0 font-bold" style={{ background: "rgba(201,169,110,0.2)", color: "#c9a96e" }}>✓</span>
+                  {item}
+                </li>
+              ))}
+            </ul>
+            <div className="mt-5 md:mt-8 inline-flex items-center gap-2 px-4 py-2 rounded-full text-[12px] font-medium" style={{ background: "rgba(201,169,110,0.12)", color: "#c9a96e", border: "1px solid rgba(201,169,110,0.3)" }}>
+              <span>📋</span> 사업자 등록증·통장 사본 제출로 신청
+            </div>
+                  </div>
+
+                  {/* 오른쪽: 매장 첫 화면처럼 대화로 상담하는 모습 (자동 재생) */}
+                  <div className="flex justify-center md:justify-end">
+                    <ChatDemo />
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* ── FEATURE SPOTLIGHT — 3 핵심 기능 ── */}
+
+      {/* 02 전자 메뉴판 — 맞춤 상담 다음 (상담을 줄이는 두 번째 방법) */}
+      <section className="spotlight2-section relative bg-white overflow-hidden" style={{ minHeight: "100vh", display: "flex", alignItems: "center" }}>
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute" style={{ width: 700, height: 700, bottom: -200, right: -100, background: "radial-gradient(circle, rgba(201,169,110,0.07) 0%, transparent 65%)" }} />
+          <div className="absolute" style={{ width: 500, height: 500, top: -100, left: -100, background: "radial-gradient(circle, rgba(210,120,130,0.05) 0%, transparent 65%)" }} />
+        </div>
+        <div className="relative z-10 max-w-[1200px] mx-auto px-6 md:px-8 w-full pt-28 pb-10 md:py-28 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-20 items-center">
+          <FadeIn>
                     <p className="text-[11px] md:text-[12px] tracking-[0.3em] uppercase mb-3 md:mb-5 font-medium" style={{ color: "#c9a96e" }}>전자 메뉴판</p>
-                    <h2 className="font-semibold text-white leading-[1.15] mb-3 md:mb-6" style={{ fontSize: "clamp(1.5rem,4.5vw,3.4rem)", whiteSpace: "pre-line" }}>{"어플 설치 없이\n링크 하나로 충분합니다"}</h2>
-                    <p className="text-[13px] md:text-[15px] leading-relaxed mb-4 md:mb-8" style={{ color: "rgba(255,255,255,0.45)" }}>
-                      사진·가격·설명을 한 번 등록하면, 고객은 링크를 열어 직접 보고 고릅니다.
+                    <h2 className="font-semibold leading-[1.15] mb-3 md:mb-6" style={{ fontSize: "clamp(1.5rem,4.5vw,3.4rem)", color: "#2c2416", whiteSpace: "pre-line" }}>{"\"사진 더 보내주세요\"\n이 질문이 사라져요"}</h2>
+                    <p className="text-[13px] md:text-[15px] leading-relaxed mb-4 md:mb-8 text-neutral-500">
+                      사진·가격·설명을 한 번 올려두면, 손님이 링크에서 직접 보고 골라요. 사진을 찾아 보내는 상담이 필요 없어요.
                     </p>
                     <ul className="space-y-2 md:space-y-3">
-                      {["앱 설치 없이 링크만으로 바로 접속", "색상·분위기·포장 필터로 원하는 상품 탐색", "PC·모바일 모두 지원 — 어떤 기기에서나 바로 사용"].map((item) => (
-                        <li key={item} className="flex items-center gap-3 text-[13px] md:text-[14px]" style={{ color: "rgba(255,255,255,0.6)" }}>
+                      {["상품 사진·가격 문의를 링크 하나로", "색상·분위기·포장 필터로 손님이 직접 찾기", "앱 설치 없이 카톡·인스타에서 바로 열림"].map((item) => (
+                        <li key={item} className="flex items-center gap-3 text-[13px] md:text-[14px] text-neutral-600">
                           <span className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] shrink-0 font-bold" style={{ background: "rgba(201,169,110,0.2)", color: "#c9a96e" }}>✓</span>
                           {item}
                         </li>
                       ))}
                     </ul>
-                  </div>
+          </FadeIn>
                   <div className="flex justify-center md:justify-end md:-mr-4">
-                    <div className="relative spotlight-wrap" style={{ width: "clamp(260px, 50vw, 420px)", height: 760 }}>
+                    <div className="relative spotlight-wrap" style={{ width: "clamp(260px, 50vw, 420px)", height: 670 }}>
                       {/* 앞 캡처 */}
-                      <div className="spotlight-img-wrapper absolute overflow-hidden" style={{ bottom: 0, left: "-10%", width: "78%", borderRadius: 14, transform: "translateY(-8px)", boxShadow: "0 32px 80px rgba(0,0,0,0.7)", border: "1px solid rgba(255,255,255,0.15)", zIndex: 2 }}>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img className="spotlight-img" src="/landing/screen-menu1.webp" alt="전자 메뉴판 화면" loading="lazy" style={{ width: "100%", height: 680, objectFit: "cover", objectPosition: "top", display: "block" }} />
+                      <div className="spotlight-img-wrapper absolute overflow-hidden" style={{ bottom: 0, left: "-10%", width: "78%", borderRadius: 14, transform: "translateY(-8px)", boxShadow: "0 24px 64px rgba(0,0,0,0.14)", border: "1px solid #ede8e0", zIndex: 2 }}>
+                        {/* 실제 프리뷰 메뉴판을 휴대폰 화면 그대로 — 직접 눌러 볼 수 있다 */}
+                        <div className="spotlight-img" style={{ width: "100%", height: 590 }}>
+                          <LiveMenuFrame />
+                        </div>
                       </div>
 
-                      {/* 맞춤 주문 버튼 */}
+                      {/* 맞춤 상담 버튼 (메뉴판 헤더와 같은 이름) */}
                       <div className="badge-order" style={{ position: "absolute", top: 50, left: -100, zIndex: 10, display: "flex", alignItems: "center", gap: 8, background: "#b8934a", borderRadius: 999, padding: "10px 18px", boxShadow: "0 8px 24px rgba(184,147,74,0.4)", animation: "floatY 4s ease-in-out infinite" }}>
                         <span style={{ fontSize: 15 }}>✨</span>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: "white" }}>맞춤 주문하기</span>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: "white" }}>맞춤 상담</span>
                       </div>
 
                       {/* 색상 필터 뱃지 */}
-                      <div className="badge-color" style={{ position: "absolute", bottom: 60, right: 70, zIndex: 10, background: "white", borderRadius: 14, padding: "12px 14px", boxShadow: "0 8px 24px rgba(0,0,0,0.25)", animation: "floatY 5s ease-in-out infinite 1s" }}>
+                      <div className="badge-color" style={{ position: "absolute", bottom: 60, right: 70, zIndex: 10, width: "max-content", whiteSpace: "nowrap", background: "white", borderRadius: 14, padding: "12px 14px", boxShadow: "0 8px 24px rgba(0,0,0,0.25)", animation: "floatY 5s ease-in-out infinite 1s" }}>
                         <p style={{ fontSize: 10, fontWeight: 600, color: "#b8934a", margin: "0 0 8px", letterSpacing: "0.05em" }}>색상</p>
                         <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                           {[
@@ -535,145 +523,12 @@ export default function Landing() {
                       </div>
 
                       {/* 링크 공유 뱃지 — 데스크탑 전용 */}
-                      <div className="badge-desktop-only" style={{ position: "absolute", top: 400, left: -150, zIndex: 10, background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", backdropFilter: "blur(12px)", borderRadius: 10, padding: "8px 14px", animation: "floatY 6s ease-in-out infinite 0.5s" }}>
-                        <p style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", margin: "0 0 3px" }}>공유 링크</p>
-                        <p style={{ fontSize: 12, fontWeight: 600, color: "white", margin: 0 }}>flo-aide.com/<span style={{ color: "#c9a96e" }}>내꽃집</span></p>
+                      <div className="badge-desktop-only" style={{ position: "absolute", top: 400, left: -150, zIndex: 10, background: "white", border: "1px solid #ede8e0", boxShadow: "0 8px 24px rgba(0,0,0,0.08)", borderRadius: 10, padding: "8px 14px", animation: "floatY 6s ease-in-out infinite 0.5s" }}>
+                        <p style={{ fontSize: 10, color: "#9ca3af", margin: "0 0 3px" }}>공유 링크</p>
+                        <p style={{ fontSize: 12, fontWeight: 600, color: "#2c2416", margin: 0 }}>flo-aide.com/<span style={{ color: "#c9a96e" }}>내꽃집</span>/menu</p>
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
-
-            </div>
-          );
-        })()}
-      </div>
-
-      {/* ── FEATURE SPOTLIGHT — 3 핵심 기능 ── */}
-
-      {/* 02 맞춤 주문 — 자동 애니메이션 */}
-      <section className="spotlight2-section relative bg-white overflow-hidden" style={{ minHeight: "100vh", display: "flex", alignItems: "center" }}>
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          <div className="absolute" style={{ width: 700, height: 700, bottom: -200, right: -100, background: "radial-gradient(circle, rgba(201,169,110,0.07) 0%, transparent 65%)" }} />
-          <div className="absolute" style={{ width: 500, height: 500, top: -100, left: -100, background: "radial-gradient(circle, rgba(210,120,130,0.05) 0%, transparent 65%)" }} />
-        </div>
-        <div className="relative z-10 max-w-[1200px] mx-auto px-6 md:px-8 w-full pt-28 pb-10 md:py-28 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-20 items-center">
-          <FadeIn>
-            <p className="text-[11px] md:text-[12px] tracking-[0.3em] uppercase mb-3 md:mb-5 font-medium" style={{ color: "#c9a96e" }}>맞춤 주문</p>
-            <h2 className="font-semibold leading-[1.15] mb-3 md:mb-6" style={{ fontSize: "clamp(1.5rem,4.5vw,3.4rem)", color: "#2c2416", whiteSpace: "pre-line" }}>{"고객이 직접 고르고\n주문하도록 하세요"}</h2>
-            <p className="text-[13px] md:text-[15px] leading-relaxed mb-4 md:mb-8 text-neutral-500">
-              꽃 종류, 색상, 포장, 예산, 원하는 분위기까지 — 고객이 단계별로 직접 선택합니다.
-            </p>
-            <ul className="space-y-2 md:space-y-3">
-              {["꽃·색상·포장·예산·분위기 선택 폼 제공", "주문 접수 즉시 관리자에게 알림"].map((item) => (
-                <li key={item} className="flex items-center gap-3 text-[13px] md:text-[14px] text-neutral-600">
-                  <span className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] shrink-0 font-bold" style={{ background: "rgba(201,169,110,0.2)", color: "#c9a96e" }}>✓</span>
-                  {item}
-                </li>
-              ))}
-            </ul>
-            <div className="mt-5 md:mt-8 inline-flex items-center gap-2 px-4 py-2 rounded-full text-[12px] font-medium" style={{ background: "rgba(201,169,110,0.1)", color: "#9a7a3a", border: "1px solid rgba(201,169,110,0.3)" }}>
-              <span>📋</span> 사업자 등록증·통장 사본 제출로 신청
-            </div>
-          </FadeIn>
-
-          {/* 오른쪽: 자동 애니메이션 */}
-          {(() => {
-            const cardData = [
-              { step: "STEP 1", title: "상품 형태", visible: true, items: ["꽃다발", "꽃바구니", "센터피스", "화병꽂이"], active: "꽃다발" },
-              { step: "STEP 2", title: "선호하는 분위기", visible: step2Visible, items: ["화사한 파스텔톤", "깔끔한 화이트", "차분한 딥컬러"], active: "화사한 파스텔톤" },
-              { step: "STEP 3", title: "희망 금액", visible: step3Visible, items: ["5만원", "7만원", "10만원"], active: "7만원" },
-            ];
-            return (
-              <div className="flex justify-center">
-                <div className="spotlight2-container" style={{ width: "clamp(260px, 50vw, 360px)", position: "relative", overflow: "hidden", minHeight: "clamp(280px, 50vh, 460px)" }}>
-                  {/* 스텝 카드 — 이미지가 오면 왼쪽으로 밀려남 */}
-                  <div ref={cardsWrapperRef} style={{
-                    transform: imageVisible ? "translateX(-110%)" : "translateX(0%)",
-                    transition: "transform 0.65s cubic-bezier(0.4,0,0.2,1)",
-                    willChange: "transform",
-                  }}>
-                    {cardData.map((card, cardIdx) => (
-                      <div
-                        key={card.step}
-                        data-card={cardIdx}
-                        className="spotlight2-card"
-                        style={{
-                          background: "white",
-                          border: "1px solid #ede8e0",
-                          borderRadius: 16,
-                          padding: "16px 20px 14px",
-                          marginBottom: 10,
-                          boxShadow: "0 4px 20px rgba(0,0,0,0.07)",
-                          opacity: card.visible ? 1 : 0,
-                          transform: card.visible ? "translateY(0)" : "translateY(18px)",
-                          transition: "opacity 0.4s ease, transform 0.4s ease",
-                          willChange: "transform, opacity",
-                        }}
-                      >
-                        <p className="spotlight2-step" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: "#c9a96e", marginBottom: 4 }}>{card.step}</p>
-                        <p className="spotlight2-title" style={{ fontSize: 15, fontWeight: 600, color: "#2c2416", marginBottom: 12 }}>{card.title}</p>
-                        {card.items.map((v, optIdx) => {
-                          const isChosen = selected[cardIdx] === optIdx;
-                          return (
-                            <div
-                              key={v}
-                              data-opt={optIdx}
-                              className="spotlight2-item"
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "space-between",
-                                padding: "9px 10px",
-                                borderTop: optIdx === 0 ? "none" : "1px solid #e8e0d5",
-                              }}
-                            >
-                              <span style={{ fontSize: 13, color: isChosen ? "#2c2416" : "#b0a090", fontWeight: isChosen ? 600 : 400, transition: "color 0.3s ease" }}>{v}</span>
-                              {isChosen
-                                ? <span style={{ width: 18, height: 18, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, background: "#2c2416", color: "white", flexShrink: 0 }}>✓</span>
-                                : <span style={{ width: 18, height: 18, borderRadius: 999, border: "1.5px solid #d8d0c8", display: "inline-block", flexShrink: 0 }} />
-                              }
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ))}
-                  </div>
-                  {/* 터치 인디케이터 */}
-                  {cursorPos && (
-                    <div
-                      style={{
-                        position: "absolute",
-                        left: "50%",
-                        top: cursorPos.y,
-                        width: 30,
-                        height: 30,
-                        borderRadius: "50%",
-                        background: "rgba(0,0,0,0.22)",
-                        transform: `translate(-50%, -50%) scale(${cursorPos.clicking ? 0.6 : 1})`,
-                        transition: "top 0.45s cubic-bezier(0.25,0.1,0.25,1), transform 0.12s ease",
-                        pointerEvents: "none",
-                        zIndex: 30,
-                      }}
-                    />
-                  )}
-
-                  {/* 이미지 — 오른쪽에서 스윽 */}
-                  <div style={{
-                    position: "absolute", inset: 0,
-                    transform: imageVisible ? "translateX(0%)" : "translateX(110%)",
-                    transition: "transform 0.65s cubic-bezier(0.4,0,0.2,1)",
-                    borderRadius: 16, overflow: "hidden",
-                    boxShadow: "0 24px 64px rgba(0,0,0,0.12)",
-                    willChange: "transform",
-                  }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/landing/screen-consult.webp" alt="맞춤 주문 화면" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} />
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
         </div>
       </section>
 
@@ -688,12 +543,12 @@ export default function Landing() {
           <FadeIn>
             <div className="max-w-xl mb-10 md:mb-14">
               <p className="text-[11px] md:text-[12px] tracking-[0.3em] uppercase mb-3 md:mb-5 font-medium" style={{ color: "#c9a96e" }}>예약 관리</p>
-              <h2 className="font-semibold text-white leading-[1.15] mb-3 md:mb-5" style={{ fontSize: "clamp(1.5rem,4.5vw,3.4rem)", whiteSpace: "pre-line" }}>{"모든 예약을\n한눈에 관리하세요"}</h2>
+              <h2 className="font-semibold text-white leading-[1.15] mb-3 md:mb-5" style={{ fontSize: "clamp(1.5rem,4.5vw,3.4rem)", whiteSpace: "pre-line" }}>{"상담 끝난 주문은\n한눈에 정리돼요"}</h2>
               <p className="text-[13px] md:text-[15px] leading-relaxed mb-4 md:mb-6" style={{ color: "rgba(255,255,255,0.45)" }}>
-                언제 예약이 몰리는지 파악하고 예약 확정·취소를 버튼 하나로 처리합니다. 확정하면 고객 카카오톡으로 알림이 자동 발송됩니다.
+                상담에서 받은 내용이 그대로 예약에 남아요. 다시 물어볼 필요 없이 확정 버튼 하나면 손님 카카오톡으로 알림이 가요.
               </p>
               <ul className="space-y-2 md:space-y-3">
-                {["월별로 예약 현황 한눈에 파악", "예약 확정 시 카카오 알림 자동 발송", "인기 상품·매출 통계 분석"].map((item) => (
+                {["선물 정보·요청 사항까지 예약에 기록", "확정·취소 시 카카오 알림 자동 발송", "어떤 상담에서 주문이 나오는지 통계"].map((item) => (
                   <li key={item} className="flex items-center gap-3 text-[13px] md:text-[14px]" style={{ color: "rgba(255,255,255,0.6)" }}>
                     <span className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] shrink-0 font-bold" style={{ background: "rgba(201,169,110,0.2)", color: "#c9a96e" }}>✓</span>
                     {item}
@@ -708,17 +563,8 @@ export default function Landing() {
             <div className="relative pb-6 md:pb-8 spotlight3-wrap">
               {/* 이미지 */}
               <div style={{ borderRadius: 16, overflow: "hidden", boxShadow: "0 -8px 60px rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.1)" }}>
-                <picture>
-                  <source media="(min-width: 768px)" srcSet="/landing/screen-reservation1.webp" />
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    className="spotlight3-img"
-                    src="/landing/screen-reservation1-m.webp"
-                    alt="예약 관리 대시보드"
-                    loading="lazy"
-                    style={{ width: "100%", display: "block", objectFit: "cover", objectPosition: "top" }}
-                  />
-                </picture>
+                {/* 실제 프리뷰 예약 관리 화면(PC)을 그대로 — 이미지처럼 보이기만 (누르기·스크롤 안 됨) */}
+                <LivePreviewFrame src="/preview/owner?tab=reservations" title="예약 관리 미리보기" viewportWidth={1280} viewportHeight={800} />
 
                 {/* 카카오 알림 뱃지 — 이미지 우상단 */}
                 <div className="badge-kakao" style={{ position: "absolute", top: 20, right: 20, zIndex: 10, background: "#FEE500", borderRadius: 14, padding: "10px 14px", boxShadow: "0 8px 24px rgba(254,229,0,0.35)", animation: "floatY 4s ease-in-out infinite 0.8s" }}>
@@ -749,9 +595,9 @@ export default function Landing() {
           <FadeIn>
             <p className="text-[13px] tracking-[0.2em] uppercase text-neutral-400 mb-3">Features</p>
             <h2 className="text-[clamp(1.8rem,4vw,2.8rem)] font-semibold not-italic text-neutral-900 leading-tight">
-              꽃집 운영에 필요한 모든 도구
+              상담을 줄여주는 도구들
             </h2>
-            <p className="text-[14px] text-neutral-400 mt-3">하나의 플랫폼에서 누리는 올인원 솔루션</p>
+            <p className="text-[14px] text-neutral-400 mt-3">반복되는 문의는 줄이고, 주문은 더 쉽게</p>
           </FadeIn>
         </div>
 
@@ -833,7 +679,7 @@ export default function Landing() {
           <FadeIn className="text-center mb-14">
             <p className="text-[13px] tracking-[0.2em] uppercase text-neutral-400 mb-3">Before / After</p>
             <h2 className="text-[clamp(1.8rem,4vw,2.8rem)] font-semibold not-italic leading-tight" style={{ color: "#2c2416" }}>
-              하루가 이렇게 바뀝니다
+              상담이 이렇게 줄어듭니다
             </h2>
           </FadeIn>
 
@@ -844,7 +690,7 @@ export default function Landing() {
                 { num: "80%", label: "반복 문의 감소", sub: "상품·가격 질문이 링크로 해결" },
                 { num: "0건", label: "놓치는 예약", sub: "모든 예약이 대시보드에 기록" },
                 { num: "앱 없이", label: "바로 사용 가능", sub: "앱 다운로드 없이 링크 하나로" },
-                { num: "24/7", label: "쉬는 날도 예약 접수", sub: "관리자가 자리를 비워도 OK" },
+                { num: "24/7", label: "쉬는 날도 상담·예약", sub: "사장님이 자리를 비워도 OK" },
               ].map(({ num, label }, i) => (
                 <div key={label} className="flex md:items-center">
                   <div className={`flex flex-col items-center text-center px-4 py-8 md:px-14 md:py-8 w-full
@@ -869,9 +715,9 @@ export default function Landing() {
                 <ul className="space-y-4">
                   {[
                     "카카오톡으로 상품 사진 일일이 전송",
-                    "\"얼마예요?\" 질문에 매번 답장",
-                    "예약 날짜·시간 수동으로 조율",
-                    "메모장·엑셀로 예약 관리",
+                    "\"얼마예요?\" \"크기는요?\" 매번 답장",
+                    "원하는 꽃을 하나하나 물어보기",
+                    "상담 내용을 메모장에 따로 정리",
                     "쉬는 날엔 상담 및 예약 불가",
                   ].map((item) => (
                     <li key={item} className="flex items-start gap-3 text-[14px] text-neutral-500">
@@ -887,11 +733,11 @@ export default function Landing() {
                 <p className="text-[11px] font-semibold tracking-widest uppercase mb-5" style={{ color: "rgba(201,169,110,0.7)" }}>Flo.Aide 사용 후</p>
                 <ul className="space-y-4">
                   {[
-                    "링크 하나로 상품·가격 한번에 공유",
-                    "고객이 직접 보고 예약까지 완료",
-                    "고객이 원하는 날짜 직접 선택",
-                    "대시보드에서 예약 한눈에 관리",
-                    "24시간 자동으로 예약 접수",
+                    "상품 사진·가격은 메뉴판에서 바로 확인",
+                    "대화형 상담이 원하는 꽃을 대신 물어봐요",
+                    "상담 내용이 예약에 그대로 남아요",
+                    "손님이 날짜·시간까지 직접 선택",
+                    "24시간 상담·예약 접수",
                   ].map((item) => (
                     <li key={item} className="flex items-start gap-3 text-[14px]" style={{ color: "rgba(255,255,255,0.8)" }}>
                       <span className="mt-0.5 shrink-0" style={{ color: "#c9a96e" }}>✓</span>
@@ -985,7 +831,7 @@ export default function Landing() {
                 <div className="text-center mb-8">
                   <div className="flex items-center justify-center mb-1" style={{ visibility: pricingCycle === "annual" ? "visible" : "hidden" }}>
                     <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(201,169,110,0.15)", color: "#9a7a3a" }}>
-                      30% 할인 · 연 ₩{(PLAN_PRICES.monthly * 12 - PLAN_PRICES.annualTotal).toLocaleString()} 절약
+                      {ANNUAL_DISCOUNT_RATE}% 할인 · 연 ₩{(PLAN_PRICES.monthly * 12 - PLAN_PRICES.annualTotal).toLocaleString()} 절약
                     </span>
                   </div>
                   <div className="flex items-end justify-center gap-1.5">
@@ -1018,7 +864,7 @@ export default function Landing() {
                 >
                   {pricingCycle === "annual" ? "연간 구독 시작하기" : "월간 구독 시작하기"}
                 </a>
-                <p className="text-[11px] text-neutral-400 text-center mt-3">결제 수수료는 정책에 따라 변경될 수 있습니다.</p>
+                <p className="text-[11px] text-neutral-400 text-center mt-3">카드 수수료는 정책에 따라 변경될 수 있습니다.</p>
               </div>
             </div>
 
@@ -1052,7 +898,7 @@ export default function Landing() {
           <h2
             className="text-[clamp(2rem,5vw,3.5rem)] font-semibold not-italic text-white leading-tight mb-4"
           >
-            오늘 무료로<br />꽃집 메뉴판을 만들어보세요
+            오늘 무료로<br />우리 가게 상담 링크를 만들어보세요
           </h2>
           <p className="text-[15px] mb-10" style={{ color: "rgba(255,255,255,0.4)" }}>
             한달 무료 기간에 모든 혜택을 경험해 보세요
@@ -1106,8 +952,8 @@ export default function Landing() {
         }
         @media (max-width: 768px) {
           .postit-card { aspect-ratio: 4/3 !important; }
-          .spotlight-wrap { height: 500px !important; width: 80% !important; margin: 0 auto !important; }
-          .spotlight-img { height: 490px !important; object-fit: contain !important; }
+          .spotlight-wrap { height: 450px !important; width: 80% !important; margin: 0 auto !important; }
+          .spotlight-img { height: 430px !important; object-fit: contain !important; }
           .badge-desktop-only { display: none !important; }
 
           /* 이미지 중앙 정렬: width 78% 기준 (100-78)/2 = 11% */
@@ -1121,8 +967,7 @@ export default function Landing() {
           .spotlight2-step { margin-bottom: 1px !important; font-size: 9px !important; }
           .spotlight2-title { font-size: 12px !important; margin-bottom: 6px !important; }
           .spotlight2-item { padding: 5px 7px !important; font-size: 11px !important; }
-          .spotlight3-wrap { width: 68% !important; margin: 0 auto !important; }
-          .spotlight3-img { object-fit: contain !important; max-height: 60vh !important; }
+          .spotlight3-wrap { width: 100% !important; margin: 0 auto !important; }
 
           /* Spotlight 1 뱃지 모바일 재배치 */
           .badge-order { left: auto !important; right: 120 !important; top: 50px !important; }

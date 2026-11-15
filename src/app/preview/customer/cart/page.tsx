@@ -51,7 +51,7 @@ export default async function PreviewCartPage({ searchParams }: Props) {
         initialExpanded={initialItems[0]?.productId ?? null}
         companyName="Brand Name"
         logoImage={null}
-        logoNode={<span className={`${brandFont.className} text-[22px] md:text-[30px] text-gray-900 tracking-wide`}>Brand Name</span>}
+        logoNode={<span className={`${brandFont.className} text-[22px] md:text-[30px] text-gray-900 tracking-wide`}>Brand Logo</span>}
         themeVars={PREVIEW_THEME_VARS}
         consultEnabled
         // 옵션을 모두 보여주기 위해 켜 두고, 가격은 목업 매장 설정

@@ -210,6 +210,8 @@ export default function PreviewCoach({ storageKey, intro, steps: allSteps, outro
 
   // 처음 들어오면 자동으로 시작, 이미 본 경우 반짝이는 점만
   useEffect(() => {
+    // 다른 화면 안에 넣어 보여줄 때(랜딩의 메뉴판 미리보기 등)나 캡처용 주소(?capture=1)는 설명·반짝이는 점 없이 화면만
+    if (window.self !== window.top || new URLSearchParams(window.location.search).has("capture")) return;
     let seen = false;
     try { seen = sessionStorage.getItem(storageKey) === "1"; } catch { /* 저장소 막힘 */ }
     const forced = new URLSearchParams(window.location.search).get("coach");

@@ -23,7 +23,7 @@ export default async function PreviewCheckoutPage({ searchParams }: Props) {
       slug="preview/customer"
       companyName="Brand Name"
       logoImage={null}
-      logoNode={<span className={`${brandFont.className} text-[22px] md:text-[30px] text-gray-900 tracking-wide`}>Brand Name</span>}
+      logoNode={<span className={`${brandFont.className} text-[22px] md:text-[30px] text-gray-900 tracking-wide`}>Brand Logo</span>}
       themeVars={PREVIEW_THEME_VARS}
       consultEnabled
       // 거리 계산(배송비)이 실제로 되도록 검색되는 주소

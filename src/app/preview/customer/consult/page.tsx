@@ -41,7 +41,7 @@ export default async function PreviewConsultPage({ searchParams }: Props) {
         slug="preview/customer"
         companyName="Brand Name"
         logoImage={null}
-        logoNode={<span className={`${brandFont.className} text-[22px] md:text-[30px] text-gray-900 tracking-wide`}>Brand Name</span>}
+        logoNode={<span className={`${brandFont.className} text-[22px] md:text-[30px] text-gray-900 tracking-wide`}>Brand Logo</span>}
         // 상품 유형은 꽃다발·꽃바구니·센터피스·화병꽂이만
         productTypeList={PRODUCT_TYPES.filter((t) => !["조화", "식물"].includes(t))}
         // 시즌 메뉴는 크리스마스만

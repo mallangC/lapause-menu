@@ -22,6 +22,10 @@ export default function PreviewBar({ homeHref, homeLabel }: Props) {
   const atHome = pathname === homeHref;
   // 지금 화면에 코치마크가 있으면 '설명 다시 보기'를 보여준다
   const [coach, setCoach] = useState(false);
+  // 다른 화면 안에 넣어 보여줄 때(랜딩의 메뉴판 미리보기 등)는 이동 바를 숨긴다
+  const [embedded, setEmbedded] = useState(false);
+  // 캡처용 주소(?capture=1)도 이동 바 없이 화면만
+  useEffect(() => { setEmbedded(window.self !== window.top || new URLSearchParams(window.location.search).has("capture")); }, []);
   useEffect(() => {
     const sync = () => setCoach(hasCoach());
     sync();
@@ -29,6 +33,7 @@ export default function PreviewBar({ homeHref, homeLabel }: Props) {
     return () => window.removeEventListener(COACH_AVAILABLE_EVENT, sync);
   }, []);
 
+  if (embedded) return null;
   return (
     <div
       className={`fixed z-[46] ${pathname === "/preview/customer/menu" ? "left-4" : "left-1/2 -translate-x-1/2"} md:left-1/2 md:-translate-x-1/2 flex items-center gap-0.5 p-1 rounded-full shadow-xl backdrop-blur-md`}

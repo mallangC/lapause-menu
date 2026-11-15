@@ -26,7 +26,7 @@ export default async function PreviewProductDetailPage({ params }: Props) {
         slug="preview/customer"
         companyName="Brand Name"
         logoImage={null}
-        logoNode={<span className={`${brandFont.className} text-[22px] md:text-[30px] text-gray-900 tracking-wide`}>Brand Name</span>}
+        logoNode={<span className={`${brandFont.className} text-[22px] md:text-[30px] text-gray-900 tracking-wide`}>Brand Logo</span>}
         themeVars={PREVIEW_THEME_VARS}
         product={product}
         allProducts={PREVIEW_PRODUCTS.filter((p) => p.id !== productId)}

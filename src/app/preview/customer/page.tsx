@@ -31,7 +31,7 @@ export default async function CustomerPreviewPage({ searchParams }: { searchPara
     <>
     <PreviewStoreWelcome
       fromMenu={fromMenu}
-      logoNode={<span className={`${brandFont.className} text-[22px] md:text-[30px] text-gray-900 tracking-wide`}>Brand Name</span>}
+      logoNode={<span className={`${brandFont.className} text-[22px] md:text-[30px] text-gray-900 tracking-wide`}>Brand Logo</span>}
       themeVars={PREVIEW_THEME_VARS}
       photos={photos}
       // 볼륨감 참고 이미지 예시 — 유형별로 정하는 값이라 꽃다발에만 4단계 (사진은 예시 꽃다발 사진을 가격 순으로 빌려 쓴다)
