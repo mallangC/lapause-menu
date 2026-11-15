@@ -131,7 +131,7 @@ export default function SettlementTab({ companyId, refreshKey }: Props) {
     <div className="space-y-3 md:space-y-4">
       <div>
         <h2 className="text-xl font-medium text-gray-900">정산</h2>
-        <p className="text-xs text-gray-400 mt-1">결제 수수료 {PLATFORM_FEE_PERCENT_LABEL}를 제외한 실 입금 예정/완료 금액입니다.</p>
+        <p className="text-xs text-gray-400 mt-1">기본 카드 수수료 {PLATFORM_FEE_PERCENT_LABEL}(부가세 별도)를 제외한 실 입금 예정/완료 금액입니다.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-px md:gap-3 -mx-4 md:mx-0 bg-gray-100 md:bg-transparent">

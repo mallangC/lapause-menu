@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import FloAideFooter from "@/components/FloAideFooter";
 import Image from "next/image";
-import { PLATFORM_FEE_PERCENT_LABEL } from "@/lib/constants";
+import { ANNUAL_DISCOUNT_RATE, PLAN_PRICES, PLATFORM_FEE_CHARGED_LABEL, PLATFORM_FEE_PERCENT_LABEL } from "@/lib/constants";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/terms" },
@@ -57,8 +57,8 @@ export default function TermsPage() {
             <h2 className="font-semibold text-gray-900 text-base">4. 이용 요금 및 결제</h2>
             <p>서비스는 월간 또는 연간 구독 방식으로 제공되며 요금은 아래와 같습니다.</p>
             <div className="bg-beige-50 rounded-xl p-4 text-xs text-gray-500 space-y-1.5">
-              <p><span className="font-medium text-gray-700">월간 구독:</span> 월 18,900원 (매월 자동 결제)</p>
-              <p><span className="font-medium text-gray-700">연간 구독:</span> 월 13,250원 상당(월간 대비 약 30% 할인), 연 159,000원 (1년 단위 자동 결제)</p>
+              <p><span className="font-medium text-gray-700">월간 구독:</span> 월 {PLAN_PRICES.monthly.toLocaleString()}원 (매월 자동 결제)</p>
+              <p><span className="font-medium text-gray-700">연간 구독:</span> 월 {PLAN_PRICES.annual.toLocaleString()}원 상당(월간 대비 약 {ANNUAL_DISCOUNT_RATE}% 할인), 연 {PLAN_PRICES.annualTotal.toLocaleString()}원 (1년 단위 자동 결제)</p>
               <p><span className="font-medium text-gray-700">무료 체험:</span> 최초 가입 회원에 한해 30일간 무료로 이용할 수 있습니다.</p>
             </div>
             <p>구독은 등록된 결제수단으로 매 결제 주기마다 자동 갱신되며 회원은 요금제 탭에서 언제든지 해지할 수 있습니다. 해지 시 현재 결제 주기가 끝나는 시점까지 서비스를 이용할 수 있습니다.</p>
@@ -69,7 +69,7 @@ export default function TermsPage() {
             <h2 className="font-semibold text-gray-900 text-base">5. 판매 수수료 및 정산</h2>
             <p>회원이 서비스를 통해 상품을 판매하는 경우 구매자의 결제는 토스페이먼츠 등 전자결제대행사(PG사)를 통해 처리되며 운영자는 결제 정보를 직접 수집·보관하지 않습니다.</p>
             <div className="bg-beige-50 rounded-xl p-4 text-xs text-gray-500 space-y-1.5">
-              <p><span className="font-medium text-gray-700">수수료율:</span> 결제 금액의 {PLATFORM_FEE_PERCENT_LABEL} (카드 수수료, 부가세 포함)</p>
+              <p><span className="font-medium text-gray-700">수수료율:</span> 회사는 별도의 결제 수수료를 받지 않으며, 기본 카드 수수료로 결제 금액의 {PLATFORM_FEE_PERCENT_LABEL} (부가세 별도, 부가세 포함 시 {PLATFORM_FEE_CHARGED_LABEL})를 차감합니다.</p>
               <p><span className="font-medium text-gray-700">정산 주기:</span> 매주 수요일 정산 (수요일이 공휴일인 경우 다음 영업일)</p>
               <p><span className="font-medium text-gray-700">정산 대상:</span> 결제일로부터 영업일 기준 4일이 지나고 예약이 완료 처리된 건</p>
             </div>

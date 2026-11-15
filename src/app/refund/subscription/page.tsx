@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import FloAideFooter from "@/components/FloAideFooter";
+import { PLAN_PRICES } from "@/lib/constants";
 import Image from "next/image";
 
 export const metadata: Metadata = {
@@ -53,10 +54,10 @@ export default function SubscriptionRefundPage() {
             <p>연간 플랜은 아래 기준에 따라 부분환불 또는 전액환불이 가능합니다.</p>
             <div className="bg-beige-50 rounded-xl p-4 space-y-2">
               <p className="font-semibold text-gray-700 text-[13px]">부분환불 계산 방식</p>
-              <p className="text-[13px]">환불액 = 실제 결제한 연간 금액 − 사용 개월수 × ₩18,900</p>
-              <p className="text-xs text-gray-400">· 실제 결제 금액은 정가 ₩159,000이며, 할인 코드를 적용해 결제했다면 할인된 금액입니다.</p>
+              <p className="text-[13px]">환불액 = 실제 결제한 연간 금액 − 사용 개월수 × ₩{PLAN_PRICES.monthly.toLocaleString()}</p>
+              <p className="text-xs text-gray-400">· 실제 결제 금액은 정가 ₩{PLAN_PRICES.annualTotal.toLocaleString()}이며, 할인 코드를 적용해 결제했다면 할인된 금액입니다.</p>
               <p className="text-xs text-gray-400">· 사용 개월수는 결제일로부터 올림 계산합니다. (예: 3개월 1일 이용 시 → 4개월로 산정)</p>
-              <p className="text-xs text-gray-400">· 공제 금액은 할인이 적용되지 않은 월간 정가(₩18,900)를 기준으로 합니다.</p>
+              <p className="text-xs text-gray-400">· 공제 금액은 할인이 적용되지 않은 월간 정가(₩{PLAN_PRICES.monthly.toLocaleString()})를 기준으로 합니다.</p>
               <p className="text-xs text-gray-400">· 공제 금액이 실제 결제 금액 이상이면(정가 결제 시 9개월째부터) 환불액은 0원이며 추가로 청구되지 않습니다.</p>
             </div>
             <div className="bg-beige-50 rounded-xl p-4 space-y-2">

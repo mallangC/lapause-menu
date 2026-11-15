@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import * as XLSX from "xlsx";
-import { PLATFORM_FEE_PERCENT_LABEL, PG_FEE_PERCENT_LABEL } from "@/lib/constants";
+import { PLATFORM_FEE_CHARGED_LABEL, PG_FEE_PERCENT_LABEL } from "@/lib/constants";
 
 interface Company {
   id: string;
@@ -220,7 +220,7 @@ export default function SettlementsTab({ companies }: Props) {
     const toSupply = (amountIncludingVat: number) => Math.round(amountIncludingVat / 1.1);
 
     const rows = history.map((s) => {
-      const feeAmount = s.gross_amount - s.total_amount; // 수수료 합계 (2%, 부가세 포함)
+      const feeAmount = s.gross_amount - s.total_amount; // 수수료 합계 (1.5% + 부가세 = 1.65%)
       const pgFee = feeAmount - s.margin_amount; // 토스 PG 수수료 (1.65%, 부가세 포함)
       const feeSupply = toSupply(feeAmount);
       const pgSupply = toSupply(pgFee);
@@ -376,7 +376,7 @@ export default function SettlementsTab({ companies }: Props) {
                             <th className="text-left px-6 py-3 font-medium">예금주</th>
                             <th className="text-right px-6 py-3 font-medium">예약 수</th>
                             <th className="text-right px-6 py-3 font-medium">결제 금액</th>
-                            <th className="text-right px-6 py-3 font-medium">정산 금액 <span className="text-gray-300">(수수료 {PLATFORM_FEE_PERCENT_LABEL} 차감)</span></th>
+                            <th className="text-right px-6 py-3 font-medium">정산 금액 <span className="text-gray-300">(수수료 {PLATFORM_FEE_CHARGED_LABEL} 차감)</span></th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
@@ -486,7 +486,7 @@ export default function SettlementsTab({ companies }: Props) {
                   <div className="bg-white border border-gray-200 rounded-2xl p-5">
                     <p className="text-xs text-gray-400 mb-1">Flo.Aide 순마진</p>
                     <p className="text-2xl font-semibold text-gold-600">{fmtMoney(history.reduce((s, i) => s + i.margin_amount, 0))}</p>
-                    <p className="text-xs text-gray-400 mt-1">수수료 {PLATFORM_FEE_PERCENT_LABEL} 중 PG({PG_FEE_PERCENT_LABEL}) 제외분</p>
+                    <p className="text-xs text-gray-400 mt-1">수수료 {PLATFORM_FEE_CHARGED_LABEL} 중 PG({PG_FEE_PERCENT_LABEL}) 제외분</p>
                   </div>
                 </div>
 

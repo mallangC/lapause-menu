@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import BillingKeyFlow from "@/components/BillingKeyFlow";
 import { createClient } from "@/lib/supabase/client";
-import { PLAN_PRICES, PLAN_FEATURES } from "@/lib/constants";
+import { ANNUAL_DISCOUNT_RATE, PLAN_PRICES, PLAN_FEATURES } from "@/lib/constants";
 import PromoCodeBox from "@/components/PromoCodeBox";
 import { quoteCharge } from "@/lib/billingPrice";
 import type { AppliedPromo } from "@/lib/appliedPromo";
@@ -64,7 +64,7 @@ export default function PlanSelectClient({ companyId, slug, customerName, trialE
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-1" style={{ visibility: pricingCycle === "annual" ? "visible" : "hidden" }}>
             <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(201,169,110,0.15)", color: "#9a7a3a" }}>
-              30% 할인 · 연 ₩{(PLAN_PRICES.monthly * 12 - PLAN_PRICES.annualTotal).toLocaleString()} 절약
+              {ANNUAL_DISCOUNT_RATE}% 할인 · 연 ₩{(PLAN_PRICES.monthly * 12 - PLAN_PRICES.annualTotal).toLocaleString()} 절약
             </span>
           </div>
           <div className="flex items-end justify-center gap-1.5">
