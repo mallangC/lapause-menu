@@ -27,8 +27,10 @@ async function compress(file: File): Promise<Blob> {
 interface Props {
   value: SizeConfig;
   onChange: (v: SizeConfig) => void;
-  /** 매장 유형 목록 (탭) */
+  /** 매장 유형 목록 (탭) — 손님에게 숨긴 유형도 포함 */
   types: string[];
+  /** 손님에게 숨긴 유형 — 탭에 '숨김' 표시 (숨겨 둔 채로 미리 세팅할 수 있다) */
+  hiddenTypes?: string[];
   /** 아직 올리지 않은 사진 — 미리보기 주소(blob:) → 줄인 사진. 저장할 때 부모가 올린다 */
   pending: Map<string, Blob>;
 }
@@ -38,7 +40,7 @@ export function sizeConfigOrderErrors(config: SizeConfig): string[] {
   return Object.entries(config.byType).filter(([, list]) => sizeTierOrderErrors(list).length > 0).map(([k]) => k);
 }
 
-export default function SizeTiersEditor({ value, onChange, types, pending }: Props) {
+export default function SizeTiersEditor({ value, onChange, types, hiddenTypes = [], pending }: Props) {
   const [tab, setTab] = useState<string>(types[0] ?? "");
   const [uploading, setUploading] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -93,7 +95,7 @@ export default function SizeTiersEditor({ value, onChange, types, pending }: Pro
           <span className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded-md bg-gold-500 text-white text-[11px] font-semibold leading-none">
             TIP
           </span>
-          <span className="pt-px">참고 사진은 사람이 꽃을 들고 있는 모습을 찍어 주세요. 사람이 함께 보여야 손님이 크기를 가늠할 수 있어요.</span>
+          <span className="pt-px">참고 사진은 사람이 꽃을 들고 있는 모습을 찍는 걸 추천드려요. 사람이 함께 보여야<br />손님이 크기를 가늠하여 문의를 줄일 수 있어요.</span>
         </p>
       </div>
 
@@ -113,6 +115,8 @@ export default function SizeTiersEditor({ value, onChange, types, pending }: Pro
               }`}
             >
               {t}
+              {/* 손님에게 숨긴 유형 — 미리 세팅해 둘 수 있다 */}
+              {hiddenTypes.includes(t) && <span className={`ml-1 text-[11px] ${on ? "text-white/80" : "text-gray-400"}`}>숨김</span>}
               {/* 손님에게 보이는 유형 표시 */}
               {custom && <span className={`ml-1 inline-block w-1.5 h-1.5 rounded-full align-middle ${on ? "bg-white" : "bg-gold-500"}`} />}
             </button>

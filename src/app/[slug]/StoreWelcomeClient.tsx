@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { BASE_MOODS, recommendOrderHref, photoOrderKey, PHOTO_MOOD_SAME, PHOTO_SIMILAR_POINTS, STYLE_MOODS, STYLE_MOOD_TRUST, styleOrderHref, type StyleKind } from "@/lib/styleOrder";
+import { BASE_MOODS, recommendOrderHref, photoOrderKey, PHOTO_MOOD_SAME, STYLE_AVOID_POINTS, STYLE_MOODS, STYLE_MOOD_TRUST, styleOrderHref, type StyleKind } from "@/lib/styleOrder";
 import FlowerNoticeModal from "@/components/FlowerNoticeModal";
 import StoreFooter, { type StoreFooterProps } from "@/components/main/StoreFooter";
 import VolumeRefs, { type VolumeRef } from "@/components/VolumeRefs";
@@ -25,6 +25,8 @@ interface Props {
   sizeConfig: SizeConfig;
   /** 색 맞춤 최소 금액 — 예산 칸 위에 '이 금액 이상이면 색 지정 가능' 안내 (0이면 안내 없음) */
   colorMinPrice?: number;
+  /** 사진 주문 최소 금액 ('색·사진 맞춤 최소 금액') — 이보다 낮은 금액으로는 사진 주문을 받지 않는다 (0이면 제한 없음) */
+  photoMinPrice?: number;
   /** 매장 상품 유형 (손님에게 보이는 것만) — 형태 질문의 답 */
   productTypes: string[];
   /** 대화형 추천에 쓸 상품 (맞춤주문을 켠 매장만) */
@@ -81,6 +83,10 @@ type Question = {
   photo?: boolean;
   // 여러 개 골라 '다 골랐어요'로 보낸다 (답은 ', '로 이어 저장)
   multi?: boolean;
+  // 여러 개 고른 답을 보낼 때 손님 말 — 고른 것 뒤에 붙인다 (예: ' 비슷하게 해주세요')
+  multiSay?: string;
+  // 건너뛰기 버튼 글자 (기본 '넘어갈게요')
+  skipLabel?: string;
   // 묻기 전에 볼륨감 참고 이미지를 보여준다 (희망 금액 정하기 전)
   volume?: boolean;
   // 답을 글자 대신 매장 상품 사진으로 고른다 (분위기)
@@ -96,7 +102,8 @@ const GIFT_QUESTIONS: Question[] = [
   { key: "age", label: "연령대", ask: "연령대도 알려주시겠어요?", options: ["10대 이하", "10대", "20대", "30대", "40대", "50대 이상"], short: { "10대 이하": "10대↓", "50대 이상": "50대↑" }, skippable: true },
 ];
 
-const BUDGET_Q: Question = { key: "budget", label: "희망 금액", ask: "얼마에 맞춰서 제작해드릴까요?", budget: true };
+// 금액 질문 — 세 흐름 모두 묻기 전에 볼륨감 참고 이미지를 보여준다 (사장님이 그 형태에 넣어 둔 경우만)
+const BUDGET_Q: Question = { key: "budget", label: "희망 금액", ask: "얼마에 맞춰서 제작해드릴까요?", budget: true, volume: true };
 
 // 형태 질문의 답은 매장 유형 목록 + 기타 (매장마다 다르다)
 const makeQuestions = (TYPE_OPTIONS: string[]): Record<Flow, Question[]> => ({
@@ -105,24 +112,27 @@ const makeQuestions = (TYPE_OPTIONS: string[]): Record<Flow, Question[]> => ({
     ...GIFT_QUESTIONS,
     { key: "type", label: "상품 형태", ask: "어떤 형태로 만들어드릴까요?", options: TYPE_OPTIONS },
     { key: "mood", label: "분위기", ask: "원하시는 분위기가 있을까요?", options: STYLE_MOODS },
+    // 색은 사장님께 맡기는 대신 꼭 피하고 싶은 것만 받는다 (결제 화면 요청 사항 맨 위에 글로)
+    { key: "avoid", label: "피하고 싶은 것", ask: "꼭 피하고 싶은 게 있을까요?\n여러 개 고르셔도 돼요.", options: STYLE_AVOID_POINTS, multi: true, multiSay: "은 피해주세요", skippable: true, skipLabel: "없어요" },
     BUDGET_Q,
   ],
-  // 찾아본 사진 — 형태를 먼저 묻고(그 형태 사진을 골라 오게) 사진을 받은 뒤, 사진에서 꼭 비슷했으면 하는 점을 묻는다
+  // 찾아본 사진 — 형태를 먼저 묻고(그 형태 사진을 골라 오게) 사진을 받는다
+  // (사진을 골라 왔다는 것 자체가 '이 분위기 그대로'라서 비슷했으면 하는 점은 묻지 않는다)
   // 분위기는 보낸 사진 분위기로 정해져 묻지 않는다. 크기는 예산(가격 기준)으로 정해져 묻지 않는다
   photo: [
     { key: "type", label: "상품 형태", ask: "어떤 형태로 준비해드릴까요?", options: TYPE_OPTIONS },
     { key: "photo", label: "사진", ask: "", photo: true },
-    { key: "similar", label: "비슷했으면 하는 점", ask: "사진에서 꼭 비슷했으면 하는 점이 있을까요?\n여러 개 고르셔도 돼요.", options: PHOTO_SIMILAR_POINTS, multi: true, skippable: true },
     ...GIFT_QUESTIONS,
     BUDGET_Q,
   ],
-  // 추천 — 상품 형태 → 희망 금액(볼륨감 참고 이미지를 먼저) → 분위기(사진으로) → 상품 추천 → 선물 용도
-  // 추천 결과를 바꾸는 질문을 먼저 묻고, 선물 용도는 상품을 고른 뒤에 (분위기 다음의 상품 추천은 질문이 아니라 answer에서 끼워 넣는다)
+  // 추천 — 상품 형태 → 희망 금액(볼륨감 참고 이미지를 먼저) → 분위기(사진으로) → 상품 추천 → 어떤 날 · 성별 · 연령대
+  // 추천 결과를 바꾸는 질문을 먼저 묻고, 선물 정보는 상품을 고른 뒤에 "이 꽃을 누구에게"로 확인한다
+  // (분위기 다음의 상품 추천은 질문이 아니라 answer에서 끼워 넣는다)
   recommend: [
     { key: "type", label: "상품 형태", ask: "어떤 형태로 찾으세요?", options: TYPE_OPTIONS },
     { ...BUDGET_Q, label: "희망 금액", ask: "희망 금액은 어느 정도로 생각하세요?", volume: true },
     { key: "mood", label: "분위기", ask: "어떤 분위기가 마음에 드세요?\n사진을 보고 골라주세요.", options: BASE_MOODS, moodPhotos: true },
-    { ...GIFT_QUESTIONS[0], ask: "마지막으로, 어떤 날 드릴 꽃이에요?" },
+    ...GIFT_QUESTIONS,
   ],
 });
 // 요약 카드에서 분위기를 맡긴 답은 짧게
@@ -147,6 +157,8 @@ async function shrinkToDataUrl(file: File, maxSide = 1600, quality = 0.85): Prom
 // 예산 버튼 — 눌러서 금액을 더한다 (직접 입력 없이 클릭만으로)
 const BUDGET_STEPS = [10000, 50000, 100000];
 const won = (n: number) => `${n.toLocaleString("ko-KR")}원`;
+// 버튼 안 짧은 금액 — 만 원 단위면 '5만원', 아니면 '55,000원'
+const manwon = (n: number) => (n % 10000 === 0 ? `${n / 10000}만원` : won(n));
 
 // 옆으로 넘기는 한 줄 (답 버튼·추천 상품 카드) — 넘치면 줄바꿈 대신 옆으로 밀어 본다
 // · 휴대폰: 손가락으로 밀기
@@ -226,7 +238,7 @@ type Item =
 
 // 매장 첫 화면 — 꽃집과 메시지 나누듯 "어떤 방식으로 주문할지"부터 고른다.
 // 추천은 맞춤주문, 직접 고르기·사진 주문은 메뉴판으로 넘어가고, '사장님 스타일'은 이 대화창에서 질문을 이어간다
-export default function StoreWelcomeClient({ slug, companyName, logoImage, themeVars, consultEnabled, photos, footer, sizeConfig, colorMinPrice = 0, productTypes, products, logoNode, mobileBottomGap = 24, fromMenu = false }: Props) {
+export default function StoreWelcomeClient({ slug, companyName, logoImage, themeVars, consultEnabled, photos, footer, sizeConfig, colorMinPrice = 0, photoMinPrice = 0, productTypes, products, logoNode, mobileBottomGap = 24, fromMenu = false }: Props) {
   const router = useRouter();
 
   const menuHref = `/${slug}/menu`;
@@ -394,7 +406,7 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
     // 추천 — 분위기까지 받으면 '어울리는 꽃 찾는 중...' 뒤에 상품 카드 (고르면 선물 용도를 묻는다)
     if (flow === "recommend" && QS[asked - 1].key === "mood") later(200, () => shopSays(() => setRecShown(true), 1300, "어울리는 꽃 찾는 중"));
     else if (asked < QS.length) later(200, () => shopSays(() => setAsked(asked + 1), 550));
-    // 추천 — 마지막 질문(선물 용도)까지 받으면 바로 주문으로 (방금 받은 답까지 넘긴다)
+    // 추천 — 마지막 질문(연령대)까지 받으면 바로 주문으로 (방금 받은 답까지 넘긴다)
     else if (flow === "recommend") confirm(next);
     else later(200, () => shopSays(() => setSummaryShown(true), 700));
   };
@@ -441,8 +453,8 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
       // 찾아본 사진은 분위기를 묻지 않고 '보낸 사진 분위기'로 고정
       mood: flow === "photo" ? PHOTO_MOOD_SAME : a("mood"),
       budget: Number(a("budget").replace(/\D/g, "")),
-      // 찾아본 사진 — 비슷했으면 하는 점 (결제 화면 요청 사항 맨 위에 글로 들어간다)
-      similar: a("similar") ? a("similar").split(", ") : [],
+      // 사장님 스타일 — 피하고 싶은 것 (결제 화면 요청 사항 맨 위에 글로 들어간다)
+      avoid: a("avoid") ? a("avoid").split(", ") : [],
     });
     router.prefetch(href);
     later(250, () =>
@@ -498,8 +510,9 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
     setRecPicked(false);
   };
 
-  // 볼륨감 참고 이미지 — 고른 형태의 기준 (유형별로 정하지 않았으면 기본)
-  const volumeRefs = volumeRefsForType(sizeConfig, ans("type"));
+  // 볼륨감 참고 이미지 — 고른 형태에 사장님이 넣어 둔 것
+  // 사진 주문은 최소 금액보다 싼 단계는 뺀다 (그 금액으로는 주문할 수 없어서)
+  const volumeRefs = volumeRefsForType(sizeConfig, ans("type")).filter((r) => flow !== "photo" || !photoMinPrice || r.price >= photoMinPrice);
   // 분위기를 사진으로 — 그 분위기의 매장 상품 중 고른 형태·희망 금액에 가까운 것 한 장
   const moodPhoto = (mood: string) => {
     const t = ans("type");
@@ -523,6 +536,8 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
   };
 
   const recs = recShown ? recommendForChat() : [];
+  // 사진 주문 — 최소 금액보다 낮으면 금액을 보낼 수 없다
+  const photoBudgetShort = flow === "photo" && photoMinPrice > 0 && budget > 0 && budget < photoMinPrice;
 
   // ── 화면에 그릴 대화 ──
   const items: Item[] = [];
@@ -550,8 +565,10 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
           ? // 추천은 예산을 묻는 말이라 '생각하고 있어요', 사장님 스타일·사진 주문은 제작 금액이라 '맞춰주세요'
             flow === "recommend" ? `${answers[i]} 정도 생각하고 있어요` : `${answers[i]}에 맞춰주세요`
           : q.multi && answers[i] !== SKIP
-            ? `${answers[i].replace(/, /g, "·")} 비슷하게 해주세요`
-            : (q.short?.[answers[i]] ?? answers[i]), onEdit: confirmed ? undefined : () => editFrom(i) });
+            ? `${answers[i].replace(/, /g, "·")}${q.multiSay ?? ""}`
+            : answers[i] === SKIP && q.skipLabel
+              ? q.skipLabel
+              : (q.short?.[answers[i]] ?? answers[i]), onEdit: confirmed ? undefined : () => editFrom(i) });
     // 추천 — 분위기 다음에 상품 카드 안내, 고른 상품(사진 + 말)
     if (flow === "recommend" && q.key === "mood" && recShown) {
       items.push({
@@ -574,7 +591,7 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
         // 사진은 요약 카드 위에 그대로 보여 줘서 줄에서는 뺀다
         ...QS.flatMap((q, i) => (q.photo ? [] : [{
           label: q.label,
-          value: answers[i] === SKIP ? "-" : SUMMARY_MOOD[answers[i]] ?? answers[i],
+          value: answers[i] === SKIP ? (q.skipLabel === "없어요" ? "없음" : "-") : SUMMARY_MOOD[answers[i]] ?? answers[i],
         }])),
         // 찾아본 사진 — 묻지 않은 분위기도 요약에는 보여 준다 (예산 앞에)
       ]
@@ -666,7 +683,8 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
                     <div className="flex gap-1 w-full max-w-[300px] rounded-2xl overflow-hidden">
                       {m.photos.map((src) => (
                         <div key={src} className="relative flex-1 aspect-[4/5] bg-beige-200">
-                          <Image src={src} alt="" fill sizes="120px" className="object-cover" />
+                          {/* 첫 화면에서 가장 먼저 보이는 그림이라 먼저 불러온다 (작은 사진 3장) */}
+                          <Image src={src} alt="" fill sizes="120px" priority className="object-cover" />
                         </div>
                       ))}
                     </div>
@@ -742,11 +760,35 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
           {/* 첫 질문 — 주문 방식 고르기 */}
           {showLanding && (
             <div className="flex flex-col items-end gap-2 mt-6">
-              {options.map((o, i) => (
-                <button key={o.text} type="button" data-coach={`welcome-opt-${o.key}`} onClick={() => pick(o)} className={`max-w-[85%] text-right ${replyBtn}`} style={{ animationDelay: `${i * 0.07}s` }}>
-                  {o.text}
-                </button>
-              ))}
+              {options.map((o, i) => {
+                // 사진 주문 — 고르기 전에 최소 금액을 알린다 (위쪽 테두리에 걸친 연한 라벨 — 홍보처럼 튀지 않게)
+                const note = o.flow === "photo" && photoMinPrice > 0 ? `${manwon(photoMinPrice)}부터` : null;
+                const btn = (
+                  <button
+                    key={o.text}
+                    type="button"
+                    data-coach={`welcome-opt-${o.key}`}
+                    onClick={() => pick(o)}
+                    className={`relative z-10 text-right ${note ? "" : "max-w-[85%]"} ${replyBtn}`}
+                    style={{ animationDelay: `${i * 0.07}s` }}
+                  >
+                    {o.text}
+                  </button>
+                );
+                if (!note) return btn;
+                return (
+                  // 가격 꼬리표가 말풍선 뒤에서 살짝 빠져나온 것처럼 — 오른쪽 끝을 버튼 밑으로 넣는다
+                  <div key={o.text} className="relative isolate max-w-[85%] welcome-in" style={{ animationDelay: `${i * 0.07}s` }}>
+                    <span
+                      className="absolute z-0 right-[calc(100%-14px)] top-1/2 -translate-y-1/2 pl-3 pr-[20px] py-1.5 bg-[color-mix(in_srgb,var(--color-gold-500)_16%,#fff)] text-gold-600 text-[12.5px] font-semibold leading-none whitespace-nowrap"
+                      style={{ clipPath: "polygon(8px 0, 100% 0, 100% 100%, 8px 100%, 0 50%)" }}
+                    >
+                      {note}
+                    </span>
+                    {btn}
+                  </div>
+                );
+              })}
             </div>
           )}
 
@@ -845,7 +887,7 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
                   }}
                   className="welcome-in px-2 py-1 text-[15px] text-gray-400 hover:text-gray-600"
                 >
-                  {SKIP}
+                  {current.skipLabel ?? SKIP}
                 </button>
               )}
             </div>
@@ -855,7 +897,18 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
           {current?.budget && (
             <div className="welcome-in self-end w-full max-w-[320px] mt-5 rounded-2xl rounded-br-md bg-white border border-gold-400 p-4">
               {/* 금액을 정하기 전에 — 이 금액 이상이면 원하는 꽃 색을 지정할 수 있다는 안내 */}
-              <ColorMinPriceHint minPrice={colorMinPrice} amount={budget} className="mb-2 pb-2.5 border-b border-gray-100" />
+              {flow === "photo" && photoMinPrice > 0 ? (
+                // 사진 주문 — 최소 금액 이상만 받는다
+                <ColorMinPriceHint
+                  minPrice={photoMinPrice}
+                  amount={budget}
+                  text={`사진 주문은 ${photoMinPrice.toLocaleString("ko-KR")}원 이상부터 가능해요`}
+                  okText="사진 주문이 가능한 금액이에요"
+                  className="mb-2 pb-2.5 border-b border-gray-100"
+                />
+              ) : (
+                <ColorMinPriceHint minPrice={colorMinPrice} amount={budget} className="mb-2 pb-2.5 border-b border-gray-100" />
+              )}
               {/* 금액은 오른쪽 끝에, 되돌리기 아이콘은 왼쪽에 */}
               <div className="flex items-center justify-between gap-3 mb-3">
                 {budget > 0 ? (
@@ -890,11 +943,11 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
               </div>
               <button
                 type="button"
-                disabled={budget === 0}
+                disabled={budget === 0 || photoBudgetShort}
                 onClick={() => answer(won(budget))}
                 className="mt-3 w-full py-3 rounded-xl bg-gold-500 text-white font-medium text-[15px] hover:bg-gold-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
-                {budget > 0 ? `${won(budget)}으로 부탁드려요` : "금액을 눌러 정해주세요"}
+                {budget === 0 ? "금액을 눌러 정해주세요" : photoBudgetShort ? `${won(photoMinPrice)} 이상으로 정해주세요` : `${won(budget)}으로 부탁드려요`}
               </button>
             </div>
           )}

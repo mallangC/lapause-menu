@@ -24,10 +24,12 @@ export const STYLE_PURPOSES = ["기념", "축하", "감사", "위로", "데이�
 export const STYLE_GENDERS = ["여성", "남성"];
 export const STYLE_AGES = ["10대 이하", "10대", "20대", "30대", "40대", "50대 이상"];
 
-/** 찾아본 사진 — 사진에서 꼭 비슷했으면 하는 점 (여러 개 고르기). 따로 저장하지 않고 요청 사항 맨 위에 글로 붙는다 */
-export const PHOTO_SIMILAR_POINTS = ["색감", "풍성함", "포장"];
-/** 요청 사항에 붙일 줄 — '비슷했으면 하는 점 : 색감, 포장' */
-export const similarPointsLine = (points: string[]) => (points.length > 0 ? `비슷했으면 하는 점 : ${points.join(", ")}` : "");
+/** 사장님 스타일 — 꼭 피하고 싶은 것 (여러 개 고르기). 색은 고르지 않고 맡기는 대신 피할 것만 받는다. 요청 사항 맨 위에 글로 붙는다 */
+export const STYLE_AVOID_POINTS = ["향이 강한 꽃", "꽃가루 날리는 꽃", "어두운 색", "너무 화려한 색"];
+/** 요청 사항에 붙일 줄 — '피하고 싶은 것 : 향이 강한 꽃, 어두운 색' */
+export const avoidPointsLine = (points: string[]) => (points.length > 0 ? `피하고 싶은 것 : ${points.join(", ")}` : "");
+/** 대화에서 받은 답으로 결제 화면 요청 사항을 미리 채운다 */
+export const styleOrderRequests = (o: Pick<StyleOrder, "avoid">) => avoidPointsLine(o.avoid);
 
 /** 예산은 1만 원 단위, 1만 원 ~ 1,000만 원 */
 export const isValidStyleBudget = (n: number) => Number.isInteger(n) && n >= 10000 && n <= 10_000_000 && n % 10000 === 0;
@@ -55,8 +57,8 @@ export interface StyleOrder {
   productType: string;
   mood: string;
   budget: number;
-  /** 찾아본 사진 — 비슷했으면 하는 점 */
-  similar: string[];
+  /** 사장님 스타일 — 피하고 싶은 것 */
+  avoid: string[];
 }
 
 /** 주문 내역·사장님 화면에 보일 상품 이름 */
@@ -94,7 +96,7 @@ export function styleOrderHref(slug: string, o: StyleOrder) {
   if (o.purpose) q.set("purpose", o.purpose);
   if (o.gender) q.set("gender", o.gender);
   if (o.age) q.set("age", o.age);
-  if (o.similar.length > 0) q.set("similar", o.similar.join(","));
+  if (o.avoid.length > 0) q.set("avoid", o.avoid.join(","));
   return `/${slug}/consult?${q.toString()}`;
 }
 
@@ -117,7 +119,7 @@ export function parseStyleOrder(sp: Record<string, string | undefined>): StyleOr
     mood,
     budget,
     // 정해진 값만, 정해진 순서로 (사진 주문만)
-    similar: kind === "photo" ? PHOTO_SIMILAR_POINTS.filter((p) => (sp.similar ?? "").split(",").includes(p)) : [],
+    avoid: kind === "style" ? STYLE_AVOID_POINTS.filter((p) => (sp.avoid ?? "").split(",").includes(p)) : [],
   };
 }
 

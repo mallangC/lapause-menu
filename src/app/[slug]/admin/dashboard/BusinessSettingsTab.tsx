@@ -105,7 +105,7 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
   const defaultLead = minLeadTimes[DEFAULT_TYPE_KEY] ?? minLeadTimes["기타"] ?? "2";
   // 색 맞춤 가능 일수 — 이보다 가까운 날짜 주문은 그날 매장에 있는 색으로 준비
   const [colorLeadDays, setColorLeadDays] = useState(String(DEFAULT_COLOR_LEAD_DAYS));
-  // 색 맞춤 최소 금액 — 상품 금액이 이보다 작으면 날짜와 관계없이 색은 사장님께 맡긴다 (비우면 제한 없음)
+  // 색·사진 맞춤 최소 금액 — 상품 금액이 이보다 작으면 색은 사장님께 맡기고, 사진 주문은 받지 않는다 (비우면 제한 없음)
   const [colorMinPrice, setColorMinPrice] = useState("");
   // 영업시간 외 수령 — 켜면 이 범위 중 영업시간 앞뒤도 손님이 수령 시간으로 고를 수 있다 (추가 요금 없음)
   const [afterHoursEnabled, setAfterHoursEnabled] = useState(false);
@@ -291,13 +291,16 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
       <div className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:p-6">
         <div className="max-w-lg space-y-3">
           <div>
-            <h3 className="text-sm font-medium text-gray-700">색 맞춤 최소 금액</h3>
+            <h3 className="text-sm font-medium text-gray-700">색·사진 맞춤 최소 금액</h3>
             <p className="text-xs text-gray-400 mt-0.5 break-keep">
-              상품 금액(추가 옵션·배송비 제외)이 이 금액보다 작은 주문은 날짜와 관계없이 손님이 색을 고르지 않고 사장님께 맡겨요. 비워 두면 금액과 관계없이 고를 수 있어요.
+              상품 금액(추가 옵션·배송비 제외)이 이 금액 이상인 주문만 아래 두 가지를 할 수 있어요.
+              <br />· 원하는 꽃 색 고르기 (모자라면 색은 사장님께 맡겨요)
+              <br />· 찾아본 사진으로 주문하기
+              <br />비워 두면 금액과 관계없이 모두 할 수 있어요.
             </p>
           </div>
           <div className="flex items-center justify-between border-t border-gray-100 md:border md:border-gray-200 md:rounded-xl px-0 md:px-4 py-3">
-            <span className="text-sm text-gray-700">원하는 색 고르기</span>
+            <span className="text-sm text-gray-700">색 고르기 · 사진 주문</span>
             <div className="flex items-center gap-1.5">
               <input
                 type="text"
@@ -453,7 +456,7 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
                   <p className="text-xs text-gray-400 mt-0.5 break-keep">
                     {afterHoursPrepAnytime
                       ? "영업 시간이 지나도 영업시간 외 주문을 받아요."
-                      : "비활성화하면 준비가 마감 전에 끝나는 주문만 받아요. (마감 후 다음 날 영업 시작 시간 까지 예약 불가)"}
+                      : "비활성화하면 마감 전에 끝나는 주문만 받아요. (마감 후 부터 다음 날 영업 시작 시간 까지 예약 불가)"}
                   </p>
                 </div>
                 <button

@@ -53,10 +53,12 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
       colorPickEnabled={isTodayColorsEnabled(s as { today_colors_enabled?: boolean | null })}
       colorMinPrice={(s.color_min_price as number | undefined) ?? 0}
       afterHours={readAfterHours(s)}
-      // 계좌이체 — 매장 계좌(은행·계좌번호·예금주)가 모두 등록돼 있어야 받는다
+      // 무통장 입금 — 매장 계좌(은행·계좌번호·예금주)가 모두 등록돼 있어야 받는다
       transferAvailable={!!(s.bank_name && s.bank_account && s.bank_holder)}
       direct={sp.direct === "1"}
       isDemo={raw.is_demo ?? false}
+      // 시즌이 걸린 상품 — 정해진 모습 그대로 파는 상품이라 꽃 색을 고르지 않는다
+      seasonalProductIds={menu.products.filter((pr) => pr.seasons?.length).map((pr) => pr.id)}
       initialPaymentKey={sp.paymentKey ?? null}
       initialOrderId={sp.orderId ?? null}
       initialAmount={sp.amount ? Number(sp.amount) : null}

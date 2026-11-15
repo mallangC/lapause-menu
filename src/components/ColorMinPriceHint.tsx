@@ -2,7 +2,21 @@
 // 첫 화면 대화의 예산 칸, 맞춤주문 2단계 '희망 예산'이 함께 쓴다. 금액이 최소 금액을 넘으면 확인 표시로 바뀐다.
 // 최소 금액이 없으면(0) 누구나 고를 수 있어 그리지 않는다.
 
-export default function ColorMinPriceHint({ minPrice, amount, className = "" }: { minPrice: number; amount: number; className?: string }) {
+export default function ColorMinPriceHint({
+  minPrice,
+  amount,
+  className = "",
+  text,
+  okText = "원하는 꽃 색을 선택할 수 있어요",
+}: {
+  minPrice: number;
+  amount: number;
+  className?: string;
+  /** 모자랄 때 문구 (기본: 'N원 이상은 꽃 색을 지정할 수 있어요') */
+  text?: string;
+  /** 넘었을 때 문구 */
+  okText?: string;
+}) {
   if (!minPrice || minPrice <= 0) return null;
   const ok = amount >= minPrice;
   return (
@@ -14,7 +28,7 @@ export default function ColorMinPriceHint({ minPrice, amount, className = "" }: 
       ) : (
         <span className="shrink-0">🎨</span>
       )}
-      {ok ? "원하는 꽃 색을 선택할 수 있어요" : `${minPrice.toLocaleString("ko-KR")}원 이상은 꽃 색을 지정할 수 있어요`}
+      {ok ? okText : text ?? `${minPrice.toLocaleString("ko-KR")}원 이상은 꽃 색을 지정할 수 있어요`}
     </p>
   );
 }

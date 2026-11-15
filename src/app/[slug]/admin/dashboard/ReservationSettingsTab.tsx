@@ -11,7 +11,7 @@ import SizeTiersEditor, { sizeConfigOrderErrors } from "@/components/admin/SizeT
 import { hasTierInput, normalizeSizeConfig, sizeConfigImages, type SizeConfig } from "@/lib/sizeTiers";
 import { STORAGE_BUCKET } from "@/lib/constants";
 import { removeStorageFiles } from "@/lib/storageCleanup";
-import { useStoreProductTypes } from "./useStoreProductTypes";
+import { useStoreProductTypeInfo } from "./useStoreProductTypes";
 
 interface Props {
   companyId: string;
@@ -49,7 +49,8 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
   // 볼륨감 참고 사진 중 아직 올리지 않은 것 (미리보기 주소 → 줄인 사진) — 저장할 때 한 번에 올린다
   const pendingSizeImages = useRef(new Map<string, Blob>());
   // 매장 유형 목록 (볼륨감 참고 이미지 탭)
-  const productTypes = useStoreProductTypes(companyId, settings.hidden_product_types);
+  // 손님에게 숨긴 유형도 포함 — 숨겨 둔 채로 볼륨감 참고 이미지를 미리 세팅할 수 있게
+  const { types: productTypes, hidden: hiddenProductTypes } = useStoreProductTypeInfo(companyId, settings.hidden_product_types);
 
   const supabase = createClient();
   const mailOrderBlocked = !mailOrderNumber && soldCount >= 50;
@@ -568,7 +569,7 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
           Tailwind v4의 space-y는 앞 요소 아래 여백(margin-bottom)으로 간격을 두므로 !mb-0으로 틈을 없앤다 */}
       <div className="!mb-0 bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:rounded-b-none md:p-6">
         <div className="max-w-lg">
-          <SizeTiersEditor value={sizeConfig} onChange={setSizeConfig} types={productTypes} pending={pendingSizeImages.current} />
+          <SizeTiersEditor value={sizeConfig} onChange={setSizeConfig} types={productTypes} hiddenTypes={hiddenProductTypes} pending={pendingSizeImages.current} />
         </div>
       </div>
 

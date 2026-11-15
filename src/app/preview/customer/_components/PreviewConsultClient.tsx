@@ -17,7 +17,7 @@ import PreviewStoreHeader from "./PreviewStoreHeader";
 import PreviewPolicyLink from "./PreviewPolicyLink";
 import PreviewConsultComplete from "./PreviewConsultComplete";
 import OrderCompleteHeader from "@/components/OrderCompleteHeader";
-import { PHOTO_PRODUCT_ID, makeStyleProduct, photoOrderKey, readPhotoOrder, type ChatAnswers, type StyleOrder, similarPointsLine } from "@/lib/styleOrder";
+import { PHOTO_PRODUCT_ID, makeStyleProduct, photoOrderKey, readPhotoOrder, type ChatAnswers, type StyleOrder, styleOrderRequests } from "@/lib/styleOrder";
 
 registerLocale("ko", ko);
 
@@ -267,8 +267,8 @@ export default function PreviewConsultClient({ logoNode, slug, companyName, logo
           mood: chat.mood,
           budget: "기타",
           budgetCustom: String(chat.budget / 10000),
-          // 찾아본 사진 — 비슷했으면 하는 점은 요청 사항 맨 위에 글로 (따로 저장하지 않는다)
-          requests: styleOrder ? similarPointsLine(styleOrder.similar) : "",
+          // 사장님 스타일의 피하고 싶은 것은 요청 사항 맨 위에 글로 (따로 저장하지 않는다)
+          requests: styleOrder ? styleOrderRequests(styleOrder) : "",
         }
       : EMPTY_FORM
   );
