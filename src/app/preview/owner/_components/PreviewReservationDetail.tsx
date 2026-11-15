@@ -485,7 +485,8 @@ export default function PreviewReservationDetail({
               </Row>
               {r.channel && <Row label="채널">{r.channel}</Row>}
               <Row label="주문 경로">{ORDER_PATH_LABEL[r.order_path as OrderPath] ?? "—"}</Row>
-              <Row label="유입">{trafficSourceLabel(r.traffic_source)}</Row>
+              {/* 유입 — 손님이 직접 한 주문만 (사장님 추가·링크결제는 유입이 없어 줄을 뺀다) */}
+              {r.order_path !== "manual" && r.order_path !== "pay_link" && <Row label="유입">{trafficSourceLabel(r.traffic_source)}</Row>}
             </SectionCard>
 
             {/* 제작 정보 — 선물 용도(상품을 해석하는 기준) → 상품·옵션·카드 문구 → 요청 사항(꼭 지킬 지시) 순 */}

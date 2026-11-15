@@ -34,7 +34,7 @@ interface Props {
   onSaveDeliveryFee: (r: Reservation, fee: string) => void;
   onEdit: (r: Reservation) => void;
   onDelete: (id: string) => void;
-  /** 계좌이체 입금 확인 → 결제완료로 (끝날 때까지 버튼에 로딩) */
+  /** 무통장 입금 입금 확인 → 결제완료로 (끝날 때까지 버튼에 로딩) */
   onMarkPaid?: (r: Reservation) => Promise<void> | void;
   messageCardPrice?: number;
   shoppingBagPrice?: number;
@@ -215,7 +215,7 @@ export default function ReservationDetail({
   // 배송인데 배송비를 아직 정하지 않음 — 링크 금액은 만드는 순간 고정되므로 미리 알려준다
   const deliveryFeeMissing = isDelivery && r.delivery_fee == null;
   const payAmount = r.final_price ?? 0;
-  // 계좌이체 주문 (현금영수증 신청·입금 확인)
+  // 무통장 입금 주문 (현금영수증 신청·입금 확인)
   const isTransfer = r.payment_method === "transfer";
   // 입금 확인 처리 중 — 눌렀는지 모르게 멈춰 보이지 않도록 버튼에 로딩을 보여준다
   const [markingPaid, setMarkingPaid] = useState(false);
@@ -512,7 +512,8 @@ export default function ReservationDetail({
               </Row>
               {r.channel && <Row label="채널">{r.channel}</Row>}
               <Row label="주문 경로">{ORDER_PATH_LABEL[r.order_path as OrderPath] ?? "—"}</Row>
-              <Row label="유입">{trafficSourceLabel(r.traffic_source)}</Row>
+              {/* 유입 — 손님이 직접 한 주문만 (사장님 추가·링크결제는 유입이 없어 줄을 뺀다) */}
+              {r.order_path !== "manual" && r.order_path !== "pay_link" && <Row label="유입">{trafficSourceLabel(r.traffic_source)}</Row>}
             </SectionCard>
 
             {/* 제작 정보 — 선물 용도(상품을 해석하는 기준) → 상품·옵션·카드 문구 → 요청 사항(꼭 지킬 지시) 순 */}
@@ -648,9 +649,9 @@ export default function ReservationDetail({
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-400">결제</span>
                 <span className="flex items-center gap-1.5">
-                  {/* 결제 방법 — 계좌이체만 저장되고, 비어 있으면 카드·간편결제 */}
+                  {/* 결제 방법 — 무통장 입금만 저장되고, 비어 있으면 카드·간편결제 */}
                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${isTransfer ? "bg-amber-50 text-amber-700" : "bg-gray-50 text-gray-500"}`}>
-                    {isTransfer ? "계좌이체" : "카드·간편결제"}
+                    {isTransfer ? "무통장 입금" : "카드·간편결제"}
                   </span>
                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${r.paid ? "bg-green-50 text-green-600" : "bg-gray-100 text-gray-400"}`}>
                     {r.paid ? "결제완료" : isTransfer ? "입금 대기" : "미결제"}
@@ -668,7 +669,7 @@ export default function ReservationDetail({
                 </div>
               )}
               {isTransfer && !r.paid && onMarkPaid && (
-                // 계좌이체 — 입금을 확인하면 결제완료로 바꾼다
+                // 무통장 입금 — 입금을 확인하면 결제완료로 바꾼다
                 <button
                   type="button"
                   disabled={markingPaid}

@@ -38,7 +38,8 @@ export const TRAFFIC_SOURCE_LABEL: Record<string, string> = {
 };
 
 export function trafficSourceLabel(source: string | null | undefined) {
-  if (!source) return "기록 없음";
+  // 출처가 비어 있으면 직접 유입 (손님 주문은 늘 출처를 저장한다 — 비어 있는 건 사장님 추가·링크결제·예전 주문)
+  if (!source) return TRAFFIC_SOURCE_LABEL.direct;
   return TRAFFIC_SOURCE_LABEL[source] ?? source;
 }
 

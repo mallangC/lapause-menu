@@ -159,7 +159,7 @@ export default function PreviewTrafficStats() {
 
             <p className="text-[11px] text-gray-400 leading-relaxed mt-4">
               방문은 같은 브라우저 기준 하루 1회로 셉니다. 채널은 대시보드의 &lsquo;채널별 링크 복사&rsquo;로 만든 주소로 들어온 경우에 구분되며, 주소에 채널 표시가 없으면 &lsquo;직접 유입&rsquo;으로 집계됩니다.
-              매출은 결제 완료된 주문의 실제 결제 금액이며, 취소된 주문은 제외됩니다. &lsquo;기록 없음&rsquo;은 유입 집계 기능 도입 전 주문입니다.
+              매출은 결제 완료된 주문의 실제 결제 금액이며, 취소된 주문은 제외됩니다.
             </p>
           </>
         )}

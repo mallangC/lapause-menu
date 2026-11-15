@@ -85,7 +85,8 @@ function StatCard({ label, value, sub, tone, trend }: { label: string; value: st
   const valueColor = tone === "up" ? "text-green-600" : tone === "down" ? "text-red-500" : "text-gray-900";
   const trendColor = trend?.tone === "up" ? "text-green-600" : trend?.tone === "down" ? "text-red-500" : "text-gray-400";
   return (
-    <div className="bg-white py-3 px-4 md:px-5 md:rounded-2xl">
+    // 이번 달 요약 상자 안 — 첫 칸은 왼쪽 여백 없이, 둘째 칸은 세로 선 오른쪽으로 띄운다
+    <div className="min-w-0 pr-4 [&:not(:first-child)]:pl-4 md:[&:not(:first-child)]:pl-5">
       <p className="text-xs text-gray-400">{label}{sub && <span className="ml-1.5 text-gray-300">· {sub}</span>}</p>
       <p className={`text-base md:text-2xl font-semibold truncate mt-1 ${valueColor}`}>{value}</p>
       {trend && <p className={`text-xs font-medium whitespace-nowrap mt-1 ${trendColor}`}>{trend.text}</p>}
@@ -227,8 +228,10 @@ export default function StatsTab({ companyId, refreshKey }: Props) {
 
       {/* 이번 달 요약 */}
       <section>
-        <h3 className="text-sm font-semibold text-gray-500 mb-3 uppercase tracking-wide">이번 달 요약</h3>
-        <div className="grid grid-cols-2 gap-2 -mx-4 md:mx-0 md:gap-3">
+        {/* 다른 항목처럼 흰 상자 안에 — 제목 아래 숫자 두 개를 세로 선으로 나눈다 */}
+        <div className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:px-5">
+        <h3 className="text-sm font-semibold text-gray-500 mb-4 uppercase tracking-wide">이번 달 요약</h3>
+        <div className="grid grid-cols-2 divide-x divide-gray-100">
           <StatCard
             label="총 매출"
             value={`${totalRevenue.toLocaleString()}원`}
@@ -247,6 +250,7 @@ export default function StatsTab({ companyId, refreshKey }: Props) {
               tone: countDiff > 0 ? "up" : countDiff < 0 ? "down" : "flat",
             }}
           />
+        </div>
         </div>
       </section>
 
