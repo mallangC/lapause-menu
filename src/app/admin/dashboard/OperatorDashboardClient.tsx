@@ -384,7 +384,7 @@ export default function OperatorDashboardClient({ companies, reservations, produ
             <div>
               <p className="text-xs text-gray-400 mb-1">직접 추가</p>
               <p className="text-xl font-semibold text-gray-600">{formatMoney(stats.totalManualGMV)}원</p>
-              <p className="text-xs text-gray-400 mt-1">현장·계좌이체 등</p>
+              <p className="text-xs text-gray-400 mt-1">현장·무통장 입금 등</p>
             </div>
             <div>
               <p className="text-xs text-gray-400 mb-1">사이트 결제 비율</p>

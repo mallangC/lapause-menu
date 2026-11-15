@@ -66,9 +66,9 @@ interface ReservationBody {
   orderPath?: string | null;
   /** 찾아본 사진 주문 — 손님이 보낸 참고 사진 (data URL). 결제가 승인된 뒤에 저장소에 올린다 */
   referenceImageData?: string | null;
-  /** 결제 방법 — card(토스 결제) / transfer(계좌이체: 결제 없이 접수, 입금 확인 후 사장님이 확정) */
+  /** 결제 방법 — card(토스 결제) / transfer(무통장 입금: 결제 없이 접수, 입금 확인 후 사장님이 확정) */
   paymentMethod?: "card" | "transfer";
-  /** 계좌이체 현금영수증 신청 */
+  /** 무통장 입금 현금영수증 신청 */
   cashReceipt?: { type: string; number: string };
 }
 
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
     if (!orderer.name || !orderer.phone || !body.product?.id) {
       return NextResponse.json({ error: "필수 정보가 누락되었습니다." }, { status: 400 });
     }
-    // 결제 방법 — 계좌이체는 토스 결제 없이 접수한다
+    // 결제 방법 — 무통장 입금는 토스 결제 없이 접수한다
     const payment = parsePaymentChoice(body);
     if (!payment) {
       return NextResponse.json({ error: "현금영수증 정보를 다시 확인해주세요." }, { status: 400 });
@@ -156,6 +156,10 @@ export async function POST(request: NextRequest) {
       if (body.form?.budget !== "기타" || !isValidStyleBudget(budget) || !isValidTypeName(body.form?.productType)) {
         return NextResponse.json({ error: "주문 정보가 올바르지 않습니다. 처음부터 다시 시도해주세요." }, { status: 400 });
       }
+      // 찾아본 사진 주문은 '색·사진 맞춤 최소 금액' 이상만 받는다
+      if (isPhotoOrder && colorMinPrice > 0 && budget < colorMinPrice) {
+        return NextResponse.json({ error: `사진 주문은 ${colorMinPrice.toLocaleString()}원 이상부터 가능해요.` }, { status: 400 });
+      }
       dbProduct = {
         id: body.product.id,
         price: budget,
@@ -180,7 +184,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "이 상품은 생화 수명연장제를 추가할 수 없어요." }, { status: 400 });
     }
 
-    // 계좌이체 — 결제 없이 받는 금액도 '상품가 + 선택한 옵션 최소 1개씩' 이상이어야 한다
+    // 무통장 입금 — 결제 없이 받는 금액도 '상품가 + 선택한 옵션 최소 1개씩' 이상이어야 한다
     if (isTransfer) {
       const minimum = consultMinimumTotal(dbProduct, body.form, await loadOptionPrices(adminClient, companyId));
       if (!Number.isInteger(body.finalPrice) || (body.finalPrice as number) < minimum) {
@@ -309,7 +313,7 @@ export async function POST(request: NextRequest) {
         // 토스가 실제로 승인한 금액 — 정산은 이 값을 기준으로 한다
         paid_amount: paidAmount,
         final_price: paidAmount ?? (paymentKey || isTransfer ? (finalPrice ?? dbProduct.price) : dbProduct.price),
-        // 계좌이체 주문만 결제 방법·현금영수증을 남긴다 (비어 있으면 카드 결제)
+        // 무통장 입금 주문만 결제 방법·현금영수증을 남긴다 (비어 있으면 카드 결제)
         ...(isTransfer ? { payment_method: "transfer", cash_receipt_type: payment.receiptType, cash_receipt_number: payment.receiptNumber } : {}),
         purpose: form.purpose === "기타" ? form.purposeCustom : form.purpose,
         recipient_gender: form.recipientGender,
@@ -371,6 +375,7 @@ export async function POST(request: NextRequest) {
           ordererName: orderer.name,
           ordererPhone: orderer.phone,
           requests: form.requests,
+          paymentMethod: isTransfer ? "transfer" : "card",
           slug,
         });
       }
@@ -382,7 +387,7 @@ export async function POST(request: NextRequest) {
       success: true,
       reservationId: savedReservationId,
       bankName: companyInfo?.bank_name ?? null,
-      // 계좌이체 주문은 입금해야 하므로 계좌번호 전체를, 그 외에는 가려서
+      // 무통장 입금 주문은 입금해야 하므로 계좌번호 전체를, 그 외에는 가려서
       bankAccount: companyInfo?.bank_account
         ? isTransfer ? companyInfo.bank_account : companyInfo.bank_account.replace(/(\d{4})\d+(\d{4})/, "$1****$2")
         : null,

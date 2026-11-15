@@ -3,7 +3,7 @@
 import { formatPhone } from "@/lib/format";
 import { CASH_RECEIPT_HINT, CASH_RECEIPT_TYPES, cashReceiptError, type CashReceipt, type PaymentMethod } from "@/lib/payment";
 
-// 주문 마지막 페이지 — 결제 방법 고르기 (카드·간편결제 / 계좌이체 + 현금영수증)
+// 주문 마지막 페이지 — 결제 방법 고르기 (카드·간편결제 / 무통장 입금 + 현금영수증)
 // 맞춤주문·장바구니 결제 화면이 함께 쓴다.
 
 interface Props {
@@ -13,7 +13,7 @@ interface Props {
   onReceipt: (r: CashReceipt) => void;
   /** 예약하기를 눌렀는데 현금영수증 번호가 틀렸을 때 */
   receiptError?: boolean;
-  /** 이 매장이 계좌이체를 받을 수 있는지 (매장 계좌가 등록돼 있어야 함) */
+  /** 이 매장이 무통장 입금를 받을 수 있는지 (매장 계좌가 등록돼 있어야 함) */
   transferAvailable: boolean;
   /** PC 오른쪽 결제 상자 안에 넣을 때 — 상자의 다른 칸과 같은 좌우 여백 */
   inSidebar?: boolean;
@@ -27,11 +27,10 @@ const fmtBiz = (v: string) => {
 export default function PaymentMethodSection({ method, onMethod, receipt, onReceipt, receiptError, transferAvailable, inSidebar = false }: Props) {
   const px = inSidebar ? "px-5" : "px-4";
   const errMsg = receiptError ? cashReceiptError(receipt) : null;
-  // 추가 옵션과 같은 모양 — 줄마다 이름 + 오른쪽 동그라미 체크
-  // 계좌이체는 매장 계좌가 없으면 고를 수 없게 흐리게 둔다 (선택지 자체는 늘 보이게)
+  // 무통장 입금는 매장 계좌가 없으면 고를 수 없게 흐리게 둔다 (선택지 자체는 늘 보이게)
   const options: { key: PaymentMethod; label: string; disabled?: boolean }[] = [
     { key: "card", label: "카드·간편결제" },
-    { key: "transfer", label: "계좌이체", disabled: !transferAvailable },
+    { key: "transfer", label: "무통장 입금", disabled: !transferAvailable },
   ];
 
   return (
@@ -41,7 +40,8 @@ export default function PaymentMethodSection({ method, onMethod, receipt, onRece
           결제 방법 <span className="text-red-400">*</span>
         </h3>
       </div>
-      <div className="divide-y divide-gray-100">
+      {/* 하나만 고르는 선택 — 수령 시간·현금영수증과 같은 버튼형 (아래 동의 체크박스와 헷갈리지 않게) */}
+      <div className={`grid grid-cols-2 gap-2 ${px} py-3`}>
         {options.map((o) => {
           const on = method === o.key;
           return (
@@ -51,26 +51,21 @@ export default function PaymentMethodSection({ method, onMethod, receipt, onRece
               disabled={o.disabled}
               onClick={() => onMethod(o.key)}
               aria-pressed={on}
-              className={`w-full flex items-center justify-between ${px} py-3.5 text-left transition-colors disabled:cursor-not-allowed ${
-                on ? "bg-[color-mix(in_srgb,var(--color-gold-500)_8%,#fff)]" : o.disabled ? "" : "hover:bg-gray-50"
+              className={`py-2.5 rounded-lg border text-sm transition-colors disabled:cursor-not-allowed ${
+                on
+                  ? "border-gold-500 bg-gold-500 text-white font-medium"
+                  : o.disabled
+                    ? "border-gray-100 text-gray-300"
+                    : "border-gray-200 text-gray-700 hover:border-gray-300"
               }`}
             >
-              <div className="min-w-0">
-                <span className={`text-sm ${on ? "text-gold-600 font-medium" : o.disabled ? "text-gray-300" : "text-gray-800"}`}>{o.label}</span>
-              </div>
-              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${on ? "border-gold-500 bg-gold-500" : o.disabled ? "border-gray-200" : "border-gray-300"}`}>
-                {on && (
-                  <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                  </svg>
-                )}
-              </div>
+              {o.label}
             </button>
           );
         })}
       </div>
 
-      {/* 계좌이체 — 현금영수증 신청 */}
+      {/* 무통장 입금 — 현금영수증 신청 */}
       {method === "transfer" && (
         <div className={`space-y-2 ${px} pt-3 pb-4 border-t border-gray-100`}>
           <p className="text-sm font-medium text-gray-700">현금영수증</p>

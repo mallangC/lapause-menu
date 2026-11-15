@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendReservationConfirmedOwner } from "@/lib/solapi";
+import { productTypeSummary, sendReservationConfirmedOwner } from "@/lib/solapi";
 import { cancelTossPayment, cartItemsTotal, isPastPickup, isValidDeliveryPart, loadCompanyProducts, loadOptionPrices } from "@/lib/orderPricing";
 import { isValidPreparedColor, preparedColorToSave } from "@/lib/todayColors";
 import { parsePaymentChoice } from "@/lib/payment";
@@ -36,9 +36,9 @@ interface OrderBody {
   requests: string;
   /** 오늘 있는 색으로 준비되는 날짜일 때 고른 색 */
   preparedColor?: string;
-  /** 결제 방법 — card(토스 결제) / transfer(계좌이체: 결제 없이 접수) */
+  /** 결제 방법 — card(토스 결제) / transfer(무통장 입금: 결제 없이 접수) */
   paymentMethod?: "card" | "transfer";
-  /** 계좌이체 현금영수증 신청 */
+  /** 무통장 입금 현금영수증 신청 */
   cashReceipt?: { type: string; number: string };
   finalPrice: number;
   paymentKey?: string;
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
   try {
     const body: OrderBody = await request.json();
     const { slug, orderer, items, paymentKey, paymentOrderId, paymentAmount, finalPrice } = body;
-    // 결제 방법 — 계좌이체는 토스 결제 없이 접수한다
+    // 결제 방법 — 무통장 입금는 토스 결제 없이 접수한다
     const payment = parsePaymentChoice(body);
     if (!payment) {
       return NextResponse.json({ error: "현금영수증 정보를 다시 확인해주세요." }, { status: 400 });
@@ -198,9 +198,7 @@ export async function POST(request: NextRequest) {
     }));
 
     // 대표 상품유형 (알림톡용)
-    const representativeType = items.length === 1
-      ? dbItems[0].type
-      : `${dbItems[0].type} 외 ${items.length - 1}건`;
+    const representativeType = productTypeSummary(dbItems);
 
     let savedReservationId: string | null = null;
     const { delivery, deliveryType, desiredDate, desiredTime, requests, preparedColor } = body;
@@ -233,7 +231,7 @@ export async function POST(request: NextRequest) {
       ...(isValidPreparedColor(preparedColor)
         ? { prepared_color: preparedColorToSave(preparedColor, colorMinPrice, items.reduce((s, i) => s + dbProducts.get(i.productId)!.price * i.quantity, 0)) }
         : {}),
-      // 계좌이체 주문만 결제 방법·현금영수증을 남긴다 (비어 있으면 카드 결제)
+      // 무통장 입금 주문만 결제 방법·현금영수증을 남긴다 (비어 있으면 카드 결제)
       ...(isTransfer ? { payment_method: "transfer", cash_receipt_type: payment.receiptType, cash_receipt_number: payment.receiptNumber } : {}),
       recipient_name: delivery?.recipientName || null,
       recipient_phone: delivery?.recipientPhone || null,
@@ -276,6 +274,7 @@ export async function POST(request: NextRequest) {
           ordererName: orderer.name,
           ordererPhone: orderer.phone,
           requests,
+          paymentMethod: isTransfer ? "transfer" : "card",
           slug,
         });
       }
@@ -283,7 +282,7 @@ export async function POST(request: NextRequest) {
       console.warn("[order] 사장님 알림톡 실패:", alimErr);
     }
 
-    // 계좌이체 — 입금할 매장 계좌를 함께 돌려준다 (완료 화면에 안내)
+    // 무통장 입금 — 입금할 매장 계좌를 함께 돌려준다 (완료 화면에 안내)
     let bank: { bankName: string | null; bankAccount: string | null; bankHolder: string | null } | null = null;
     if (isTransfer) {
       const { data: b } = await adminClient.from("company_settings").select("bank_name, bank_account, bank_holder").eq("company_id", companyId).single();

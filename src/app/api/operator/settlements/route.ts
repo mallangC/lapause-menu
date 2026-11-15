@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
     .select("id, final_price, paid_amount")
     .eq("company_id", company_id)
     .eq("paid", true)
-    // 카드로 실제 결제된 건만 (사장님이 계좌이체 등으로 '결제완료' 표시만 한 건은 Flo.Aide가 받은 돈이 아님)
+    // 카드로 실제 결제된 건만 (사장님이 무통장 입금 등으로 '결제완료' 표시만 한 건은 Flo.Aide가 받은 돈이 아님)
     .not("payment_id", "is", null)
     .is("settlement_id", null)
     .is("deleted_at", null)

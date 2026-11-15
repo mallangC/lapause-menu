@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
-import { sendPaymentCompletedOwner } from "@/lib/solapi";
+import { productTypeSummary, sendPaymentCompletedOwner } from "@/lib/solapi";
 
 export async function POST(request: NextRequest) {
   try {
@@ -101,10 +101,8 @@ export async function POST(request: NextRequest) {
         : null;
 
       if (ownerPhone && company) {
-        const items = reservation.items as Array<{ type?: string; name?: string }>;
-        const productType = items?.length === 1
-          ? (items[0].name || items[0].type || "상품")
-          : `${items[0]?.name || items[0]?.type || "상품"} 외 ${items.length - 1}건`;
+        // 다른 알림톡과 같은 규칙 — 같은 유형이면 '꽃다발 2건', 섞이면 '꽃다발 외 1건'
+        const productType = productTypeSummary(reservation.items as { type?: string; quantity?: number }[] | null) || "상품";
 
         const desiredDateTime = `${reservation.desired_date}${reservation.desired_time ? ` ${reservation.desired_time}` : ""}`;
 

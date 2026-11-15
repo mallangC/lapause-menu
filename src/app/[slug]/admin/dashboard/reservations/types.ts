@@ -41,9 +41,9 @@ export interface Reservation {
   prepared_color?: string | null;
   /** 영업시간 밖 수령 주문 (주문할 때 기준) */
   after_hours_pickup?: boolean | null;
-  /** 결제 방법 — 'transfer'(계좌이체)만 저장, 비어 있으면 카드 결제 */
+  /** 결제 방법 — 'transfer'(무통장 입금)만 저장, 비어 있으면 카드 결제 */
   payment_method?: string | null;
-  /** 계좌이체 현금영수증 — '소득공제' | '지출증빙' | '신청 안 함' */
+  /** 무통장 입금 현금영수증 — '소득공제' | '지출증빙' | '신청 안 함' */
   cash_receipt_type?: string | null;
   /** 현금영수증 번호 (휴대폰 / 사업자등록번호, 숫자만) */
   cash_receipt_number?: string | null;

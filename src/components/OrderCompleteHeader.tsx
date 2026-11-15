@@ -1,8 +1,8 @@
 // 손님 결제 완료 화면 상단 — 장바구니 결제(CheckoutClient)와 맞춤 주문(ConsultClient)이 같은 문구·스타일을 쓰도록 공통으로 둔다
-// 계좌이체 주문은 아직 결제 전이라 '예약 접수' 문구와, 입금할 매장 계좌를 함께 보여준다.
+// 무통장 입금 주문은 아직 결제 전이라 '예약 접수' 문구와, 입금할 매장 계좌를 함께 보여준다.
 
 interface Props {
-  /** 계좌이체 주문 — 입금할 매장 계좌 (있으면 계좌이체 화면) */
+  /** 무통장 입금 주문 — 입금할 매장 계좌 (있으면 무통장 입금 화면) */
   transfer?: { bankName: string | null; bankAccount: string | null; bankHolder: string | null; amount: number } | null;
 }
 
@@ -27,7 +27,7 @@ export default function OrderCompleteHeader({ transfer }: Props = {}) {
         </div>
       </div>
 
-      {/* 계좌이체 — 입금할 계좌 */}
+      {/* 무통장 입금 — 입금할 계좌 */}
       {transfer && (
         <div className="bg-white rounded-2xl overflow-hidden">
           <p className="px-4 pt-4 pb-3 text-sm font-semibold text-gray-400 border-b border-gray-100">입금 계좌</p>

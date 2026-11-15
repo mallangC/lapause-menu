@@ -306,7 +306,7 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
     ));
   };
 
-  // 계좌이체 입금 확인 → 결제완료
+  // 무통장 입금 입금 확인 → 결제완료
   const markPaid = async (r: Reservation) => {
     const res = await patchReservation(r.id, { paid: true });
     if (!res.ok) return;

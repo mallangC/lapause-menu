@@ -9,8 +9,8 @@ const TEMPLATES = {
    * 검수 통과 후 ID를 넣으면 위 템플릿 대신 이걸로 보낸다. 비어 있으면 기존 템플릿.
    */
   RESERVATION_RECEIVED_WITH_PARKING: "KA01TP2611060039104717O6R5PkzREo",
-  /** 사장님 → 새 예약 접수 시 발송 */
-  RESERVATION_CONFIRMED_OWNER: "KA01TP260326133524843omlSt2W5DcZ",
+  /** 사장님 → 새 예약 접수 시 발송 (#{결제방법} 줄이 추가된 템플릿 — 예전: KA01TP260326133524843omlSt2W5DcZ) */
+  RESERVATION_CONFIRMED_OWNER: "KA01TP261107025454875hEQUY4ULrB4",
   /** 고객 → 예약 취소 시 발송 */
   RESERVATION_CANCELLED: "KA01TP260326064935575n6c296qNkqi",
   /** 사장님 → 링크결제 완료 시 발송 */
@@ -23,6 +23,23 @@ type AlimtalkButton = {
   linkMo: string;
   linkPc: string;
 };
+
+/**
+ * 알림톡 #{상품유형} 값 — 상품 유형으로 짧게 (수량도 개수로 센다)
+ * · 1개: "꽃다발"
+ * · 모두 같은 유형: "꽃다발 2건"
+ * · 다른 유형이 섞임: "꽃다발 외 2건" (첫 상품 유형 + 나머지 개수)
+ */
+export function productTypeSummary(items: { type?: string | null; quantity?: number | null }[] | null | undefined): string {
+  const list = (items ?? []).filter(Boolean);
+  if (list.length === 0) return "";
+  const qty = (i: { quantity?: number | null }) => Math.max(1, Number(i.quantity) || 1);
+  const total = list.reduce((s, i) => s + qty(i), 0);
+  const first = list[0].type || "상품";
+  if (total === 1) return first;
+  const sameType = list.every((i) => (i.type || "상품") === first);
+  return sameType ? `${first} ${total}건` : `${first} 외 ${total - 1}건`;
+}
 
 async function sendAlimtalk({
   to,
@@ -118,6 +135,7 @@ export async function sendReservationConfirmedOwner({
   ordererName,
   ordererPhone,
   requests,
+  paymentMethod,
   slug,
 }: {
   to: string;
@@ -129,6 +147,8 @@ export async function sendReservationConfirmedOwner({
   ordererName: string;
   ordererPhone: string;
   requests: string;
+  /** 결제 방법 — transfer(무통장 입금)면 입금 확인이 필요하다고 함께 알린다 */
+  paymentMethod: "card" | "transfer";
   slug: string;
 }) {
   return sendAlimtalk({
@@ -140,6 +160,8 @@ export async function sendReservationConfirmedOwner({
       "#{수령방법}": deliveryType,
       "#{수령일시}": desiredDateTime,
       "#{주문금액}": `${finalPrice.toLocaleString()}원`,
+      // 관리자 예약 상세와 같은 이름 (무통장 입금은 사장님이 입금을 확인해야 확정)
+      "#{결제방법}": paymentMethod === "transfer" ? "무통장 입금 · 입금 확인 필요" : "카드·간편결제",
       "#{고객성함}": ordererName,
       "#{고객번호}": ordererPhone,
       "#{요청사항내용}": requests || "없음",

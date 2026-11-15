@@ -1,12 +1,12 @@
-// 결제 방법 — 카드·간편결제(토스 결제창) / 계좌이체(주문 후 매장 계좌로 입금, 사장님이 입금 확인 후 확정)
-// 계좌이체는 현금영수증 신청을 함께 받는다 (발행은 사장님이 홈택스 등에서 직접).
+// 결제 방법 — 카드·간편결제(토스 결제창) / 무통장 입금(주문 후 매장 계좌로 입금, 사장님이 입금 확인 후 확정)
+// 무통장 입금는 현금영수증 신청을 함께 받는다 (발행은 사장님이 홈택스 등에서 직접).
 // 링크 결제(사장님이 만든 결제 링크)는 카드만 — 여기 선택은 손님이 직접 하는 일반 주문에만 쓴다.
 
 export type PaymentMethod = "card" | "transfer";
 
 export const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
   card: "카드·간편결제",
-  transfer: "계좌이체",
+  transfer: "무통장 입금",
 };
 
 export const CASH_RECEIPT_TYPES = ["소득공제", "지출증빙", "신청 안 함"] as const;

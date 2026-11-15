@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { sendReservationReceived, sendReservationCancelled } from "@/lib/solapi";
+import { productTypeSummary, sendReservationReceived, sendReservationCancelled } from "@/lib/solapi";
 import { logReservationChange } from "@/lib/reservationLog";
 
 // 결제 시점에 따라 승인에 쓰인 시크릿 키가 다를 수 있어(위젯 전환 이전/이후), 위젯 키로 먼저 시도하고
@@ -102,7 +102,7 @@ export async function PATCH(
         );
       }
     }
-    // payment_id 없는 경우(계좌이체, 매장 결제, 직접 추가 등)나 이미 정산된 경우 → 환불 처리 없이 상태만 변경
+    // payment_id 없는 경우(무통장 입금, 매장 결제, 직접 추가 등)나 이미 정산된 경우 → 환불 처리 없이 상태만 변경
   }
 
   // 상태 업데이트
@@ -160,8 +160,8 @@ export async function PATCH(
     const companyPhone = company?.phone ?? "";
     const desiredDateTime = `${reservation.desired_date}${reservation.desired_time ? ` ${reservation.desired_time}` : ""}`;
 
-    const items = reservation.items as { type?: string }[] | null;
-    const productType = items?.[0]?.type ?? "";
+    // 같은 유형이면 '꽃다발 2건', 섞이면 '꽃다발 외 1건'
+    const productType = productTypeSummary(reservation.items as { type?: string; quantity?: number }[] | null);
 
     if (status === "준비중") {
       await sendReservationReceived({
