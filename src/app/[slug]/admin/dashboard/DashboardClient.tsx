@@ -102,6 +102,8 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
   const [showForm, setShowForm] = useState(false);
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  // 상품 관리 필터로 걸러진 개수 (필터가 없으면 null) — 제목 옆에 표시
+  const [filteredCount, setFilteredCount] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [themeVars, setThemeVars] = useState(generateThemeVars(themeBg, themeAccent));
   const [currentCompanyName, setCurrentCompanyName] = useState(companyName);
@@ -483,7 +485,12 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
             )}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-medium text-gray-900">상품 목록</h2>
+                <h2 className="text-xl font-medium text-gray-900">
+                상품 목록
+                <span className="ml-2 text-sm font-normal text-gray-400">
+                  {filteredCount !== null ? `${filteredCount} / ${products.length}개` : `${products.length}개`}
+                </span>
+              </h2>
                 <button
                   onClick={() => products.length >= 500 ? setShowLimitModal(true) : setShowForm(true)}
                   className="bg-gold-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gold-600 transition-colors whitespace-nowrap"
@@ -498,6 +505,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
                   onDelete={handleDelete}
                   onStatusChange={handleStatusChange}
                   companyId={companyId}
+                  onFilteredCountChange={setFilteredCount}
                 />
               </div>
             </div>

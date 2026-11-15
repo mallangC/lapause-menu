@@ -9,6 +9,7 @@ import { SEASONS, PRODUCT_TYPES, FLOWER_COLORS, FLOWER_COLOR_MAP, WRAPPING_COLOR
 import MobileFilter from "@/components/main/MobileFilter";
 import ProductGrid from "@/components/main/ProductGrid";
 import StoreHeader from "@/components/main/StoreHeader";
+import { sortByOrder } from "@/lib/productTypes";
 import StoreFooter from "@/components/main/StoreFooter";
 
 interface ProductsClientProps {
@@ -21,6 +22,9 @@ interface ProductsClientProps {
   hiddenSeasons: string[];
   customProductTypes: string[];
   customSeasons: string[];
+  /** 사장님이 정한 상품 유형·시즌 순서 */
+  productTypeOrder?: string[];
+  seasonOrder?: string[];
   consultEnabled: boolean;
   locationUrl?: string | null;
   kakaoChannelUrl?: string | null;
@@ -45,6 +49,8 @@ export default function ProductsClient({
   hiddenSeasons,
   customProductTypes,
   customSeasons,
+  productTypeOrder,
+  seasonOrder,
   consultEnabled,
   locationUrl,
   kakaoChannelUrl,
@@ -80,8 +86,9 @@ export default function ProductsClient({
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [openFilterDropdown, setOpenFilterDropdown] = useState<FilterKey | null>(null);
 
-  const productTypeList = [...PRODUCT_TYPES.filter((t) => !hiddenProductTypes.includes(t)), ...customProductTypes];
-  const seasonList = [...SEASONS.filter((s) => !hiddenSeasons.includes(s)), ...customSeasons];
+  // 사장님이 메뉴 설정에서 정한 순서대로
+  const productTypeList = sortByOrder([...PRODUCT_TYPES.filter((t) => !hiddenProductTypes.includes(t)), ...customProductTypes], productTypeOrder);
+  const seasonList = sortByOrder([...SEASONS.filter((s) => !hiddenSeasons.includes(s)), ...customSeasons], seasonOrder);
 
   const filteredProducts = applyFilter(products, filter)
     .filter((p) => {
@@ -91,7 +98,7 @@ export default function ProductsClient({
     })
     .sort((a, b) => {
       if (activeTab !== "all") return 0;
-      const order = [...PRODUCT_TYPES, ...customProductTypes];
+      const order = sortByOrder([...PRODUCT_TYPES, ...customProductTypes], productTypeOrder);
       const ai = order.indexOf(a.product_type);
       const bi = order.indexOf(b.product_type);
       return (ai === -1 ? order.length : ai) - (bi === -1 ? order.length : bi);
@@ -269,7 +276,8 @@ export default function ProductsClient({
           return (
             <>
               {/* 추천·인기 섹션 */}
-              <div className="pt-6 pb-3 px-4 md:px-2">
+              {/* 제목 위 여백은 짧게 — 바로 위 메뉴 줄과 붙어 보이지 않을 만큼만 */}
+              <div className="pt-3.5 pb-2.5 px-4 md:px-2">
                 <p className="text-lg font-semibold text-gray-800">추천·인기 상품</p>
               </div>
               <ProductGrid products={featured} consultEnabled={consultEnabled} slug={slug} />
@@ -277,7 +285,8 @@ export default function ProductsClient({
               {/* 전체 상품 */}
               {rest.length > 0 && (
                 <>
-                  <div className="pt-8 pb-3 px-4 md:px-2">
+                  {/* 제목 위 여백은 추천·인기 상품과 같은 정도로 짧게 */}
+                  <div className="pt-4 pb-2.5 px-4 md:px-2">
                     <p className="text-lg font-semibold text-gray-800">전체 상품</p>
                   </div>
                   <ProductGrid products={rest} consultEnabled={consultEnabled} slug={slug} />

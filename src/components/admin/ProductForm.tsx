@@ -5,6 +5,8 @@ import Image from "next/image";
 import { Product, ProductInput } from "@/types";
 import { removeStorageFiles } from "@/lib/storageCleanup";
 import { PRODUCT_TYPES, FLOWER_COLORS, WRAPPING_COLORS, FLOWER_COLOR_MAP, SEASONS, STORAGE_BUCKET, MOODS } from "@/lib/constants";
+import { sortByOrder } from "@/lib/productTypes";
+import { useCategoryOrder } from "@/hooks/useCategoryOrder";
 import { createClient } from "@/lib/supabase/client";
 
 function SelectDropdown({ value, options, onChange, placeholder }: {
@@ -192,14 +194,16 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
       .then(({ data }) => { if (data) setCustomCategories(data); });
   }, [companyId]);
 
-  const allProductTypes = [
+  // 사장님이 메뉴 설정에서 정한 순서대로
+  const categoryOrder = useCategoryOrder(companyId);
+  const allProductTypes = sortByOrder([
     ...PRODUCT_TYPES,
     ...customCategories.filter((c) => c.category_type === "product_type").map((c) => c.name),
-  ];
-  const allSeasons = [
+  ], categoryOrder.productTypes);
+  const allSeasons = sortByOrder([
     ...SEASONS,
     ...customCategories.filter((c) => c.category_type === "season").map((c) => c.name),
-  ];
+  ], categoryOrder.seasons);
 
   const toggleFlowerColor = (color: string) => {
     setData((prev) => ({

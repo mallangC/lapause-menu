@@ -60,8 +60,10 @@ export default async function StoreWelcomePage({ params, searchParams }: Props) 
       sizeConfig={normalizeSizeConfig(s.size_tiers)}
       // 색 맞춤 최소 금액 — 예산 칸 위 안내 (오늘 꽃 색상 기능을 끈 매장은 색을 고르지 않으니 안내도 없음)
       colorMinPrice={isTodayColorsEnabled(s as { today_colors_enabled?: boolean | null }) ? ((s.color_min_price as number | undefined) ?? 0) : 0}
+      // 사진 주문 최소 금액 — 같은 '색·사진 맞춤 최소 금액' (오늘 꽃 색상 기능과 관계없이)
+      photoMinPrice={(s.color_min_price as number | undefined) ?? 0}
       // 형태 질문의 답 — 매장 유형 중 손님에게 보이는 것
-      productTypes={storeProductTypes(s.hidden_product_types as string[] | null, menu.categories, true)}
+      productTypes={storeProductTypes(s.hidden_product_types as string[] | null, menu.categories, true, s.product_type_order as string[] | null)}
       // 대화형 추천에 쓸 상품 — 맞춤주문을 켠 매장만 (카드에 필요한 것만 넘긴다)
       products={
         s.consult_enabled

@@ -16,6 +16,8 @@ interface Props {
 export default function PreviewProductsTab({ products, setProducts, onNotice }: Props) {
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  // 필터로 걸러진 개수 (필터가 없으면 null) — 제목 옆에 표시
+  const [filteredCount, setFilteredCount] = useState<number | null>(null);
 
   useEffect(() => {
     document.body.style.overflow = (showForm || !!editingProduct) ? "hidden" : "";
@@ -84,7 +86,12 @@ export default function PreviewProductsTab({ products, setProducts, onNotice }: 
 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-medium text-gray-900">상품 목록</h2>
+          <h2 className="text-xl font-medium text-gray-900">
+            상품 목록
+            <span className="ml-2 text-sm font-normal text-gray-400">
+              {filteredCount !== null ? `${filteredCount} / ${products.length}개` : `${products.length}개`}
+            </span>
+          </h2>
           <button
             onClick={() => setShowForm(true)}
             data-coach="pd-add"
@@ -99,6 +106,7 @@ export default function PreviewProductsTab({ products, setProducts, onNotice }: 
             onEdit={(product) => { setEditingProduct(product); setShowForm(false); }}
             onDelete={handleDelete}
             onStatusChange={handleStatusChange}
+            onFilteredCountChange={setFilteredCount}
           />
         </div>
       </div>

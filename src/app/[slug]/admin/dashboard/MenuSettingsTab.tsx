@@ -7,7 +7,8 @@ import { notifyMenuChanged } from "@/lib/menuCacheClient";
 import { STORAGE_BUCKET } from "@/lib/constants";
 import { normalizeSizeConfig, sizeConfigImages } from "@/lib/sizeTiers";
 import { removeStorageFiles } from "@/lib/storageCleanup";
-import { PRODUCT_TYPES_CHANGED } from "./useStoreProductTypes";
+import { PRODUCT_TYPES_CHANGED, sortByOrder } from "@/lib/productTypes";
+import SortableChips, { type ChipItem } from "@/components/admin/SortableChips";
 
 interface Props {
   companyId: string;
@@ -35,13 +36,32 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
   // 삭제하려는 유형에 연결된 상품이 있을 때 띄우는 안내 (상품은 지우지 않는다)
   const [blockedDelete, setBlockedDelete] = useState<{ name: string; count: number } | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  // 사장님이 정한 순서 (메뉴판 탭·필터·상담 유형 선택에 그대로 쓰인다)
+  const [productTypeOrder, setProductTypeOrder] = useState<string[]>([]);
+  const [seasonOrder, setSeasonOrder] = useState<string[]>([]);
   const supabase = createClient();
 
   useEffect(() => {
     supabase.from("company_categories").select("*").eq("company_id", companyId).then(({ data }) => {
       if (data) setCustomCategories(data as CustomCategory[]);
     });
+    supabase.from("company_settings").select("product_type_order, season_order").eq("company_id", companyId).maybeSingle().then(({ data }) => {
+      setProductTypeOrder((data?.product_type_order as string[] | null) ?? []);
+      setSeasonOrder((data?.season_order as string[] | null) ?? []);
+    });
   }, [companyId]);
+
+  /** 순서 저장 — 화면에 보이는 이름 순서 그대로 (지운 이름은 남기지 않는다) */
+  const saveOrder = async (type: "product_type" | "season", names: string[]) => {
+    const column = type === "product_type" ? "product_type_order" : "season_order";
+    if (type === "product_type") setProductTypeOrder(names);
+    else setSeasonOrder(names);
+    const { error } = await supabase.from("company_settings").update({ [column]: names }).eq("company_id", companyId);
+    if (!error) {
+      notifyMenuChanged();
+      window.dispatchEvent(new Event(PRODUCT_TYPES_CHANGED));
+    }
+  };
 
   /**
    * 상품 유형 삭제 — 이 유형으로 등록된 상품이 있으면 막고 안내한다.
@@ -65,15 +85,19 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
       const { data: row } = await supabase.from("company_settings").select("min_lead_times, size_tiers").eq("company_id", companyId).single();
       const lead = { ...((row?.min_lead_times as Record<string, number> | null) ?? {}) };
       const size = normalizeSizeConfig(row?.size_tiers);
-      const removedImages = size.byType[name] ? sizeConfigImages({ default: [], byType: { [name]: size.byType[name] } }) : [];
+      // 지울 사진 — 이 유형의 볼륨감 참고 사진 + 이제 쓰지 않는 예전 '기본' 사진
+      const removedImages = sizeConfigImages({ default: size.default, byType: size.byType[name] ? { [name]: size.byType[name] } : {} });
       if (name in lead || size.byType[name]) {
         delete lead[name];
         delete size.byType[name];
-        const patch = { min_lead_times: lead, size_tiers: size };
+        // 볼륨감 참고 이미지는 유형별만 저장한다 ('기본'은 쓰지 않아 비운다)
+        const patch = { min_lead_times: lead, size_tiers: { default: [], byType: size.byType } };
         const { error } = await supabase.from("company_settings").update(patch).eq("company_id", companyId);
         if (!error) {
           onSettingsSaved?.(patch);
           removeStorageFiles(supabase, STORAGE_BUCKET, removedImages);
+          // 손님 화면 캐시도 정리된 설정으로 (유형 삭제 직후 한 번 갱신했지만 설정은 그 뒤에 바뀌었다)
+          notifyMenuChanged();
         }
       }
       window.dispatchEvent(new Event(PRODUCT_TYPES_CHANGED));
@@ -118,6 +142,9 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
       .select()
       .single();
     if (!error && data) {
+      // 예전에 지운 같은 이름이 순서에 남아 있으면 빼서, 새로 추가한 항목은 맨 뒤에 오게 한다
+      const order = type === "product_type" ? productTypeOrder : seasonOrder;
+      if (order.includes(trimmed)) await saveOrder(type, order.filter((n) => n !== trimmed));
       notifyMenuChanged();
       setCustomCategories((prev) => [...prev, data as CustomCategory]);
       if (type === "product_type") window.dispatchEvent(new Event(PRODUCT_TYPES_CHANGED));
@@ -132,6 +159,8 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
     await supabase.from("company_categories").update({ hidden: newHidden }).eq("id", id);
     notifyMenuChanged();
     setCustomCategories((prev) => prev.map((c) => (c.id === id ? { ...c, hidden: newHidden } : c)));
+    // 다른 설정 탭(볼륨감 참고 이미지 등)의 '숨김' 표시도 바로 맞춘다
+    window.dispatchEvent(new Event(PRODUCT_TYPES_CHANGED));
   };
 
   const deleteCategory = async (id: string) => {
@@ -147,11 +176,58 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
     SEASONS.filter((season) => !hiddenSeasons.includes(season)).length +
     customCategories.filter((c) => c.category_type === "season" && !c.hidden).length;
 
+  const customChip = (cat: CustomCategory, onDelete: () => void): ChipItem => ({
+    name: cat.name,
+    label: (
+      <button
+        onClick={() => toggleCustomHidden(cat.id)}
+        className={`w-full py-2 pl-7 pr-7 rounded-lg border text-sm text-center truncate transition-colors ${
+          cat.hidden ? "border-red-300 bg-red-50 text-red-500 font-medium" : "border-gray-200 text-gray-700 hover:border-gray-300"
+        }`}
+      >
+        {cat.hidden ? `${cat.name} (숨김)` : cat.name}
+      </button>
+    ),
+    onDelete,
+    deleting: deleting === cat.name,
+  });
+  const builtinChip = (name: string, onDelete: () => void): ChipItem => ({
+    name,
+    label: (
+      <div className="w-full py-2 pl-7 pr-7 rounded-lg border border-gray-200 text-sm text-gray-700 text-center truncate">{name}</div>
+    ),
+    onDelete,
+    deleting: deleting === name,
+  });
+
+  /** 사장님이 정한 순서대로 칩 정렬 (순서에 없는 새 항목은 뒤에) */
+  const sortChips = (items: ChipItem[], order: string[]) => {
+    const names = sortByOrder(items.map((i) => i.name), order);
+    return names.map((n) => items.find((i) => i.name === n)!);
+  };
+  const productTypeItems = sortChips(
+    [
+      ...PRODUCT_TYPES.filter((t) => !hiddenProductTypes.includes(t)).map((t) => builtinChip(t, () => deleteProductType(t, () => toggleProductType(t)))),
+      ...customCategories
+        .filter((c) => c.category_type === "product_type")
+        .map((c) => customChip(c, () => deleteProductType(c.name, () => deleteCategory(c.id)))),
+    ],
+    productTypeOrder,
+  );
+  const seasonItems = sortChips(
+    [
+      ...SEASONS.filter((x) => !hiddenSeasons.includes(x)).map((x) => builtinChip(x, () => toggleSeason(x))),
+      ...customCategories.filter((c) => c.category_type === "season").map((c) => customChip(c, () => deleteCategory(c.id))),
+    ],
+    seasonOrder,
+  );
+
   return (
     <div className="space-y-4">
       <div>
         <h2 className="text-xl font-medium text-gray-900 mb-1">메뉴 설정</h2>
         <p className="text-xs text-gray-400">직접 추가, 삭제가 가능합니다. 기본 제공 항목도 삭제할 수 있습니다.</p>
+        <p className="text-xs text-gray-400">왼쪽 ⠿ 를 끌어 순서를 바꾸면 손님 메뉴판에도 그 순서로 보여요.</p>
       </div>
       <div className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:p-6">
         <div className="space-y-8">
@@ -160,42 +236,10 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
             <p className="text-sm font-medium text-gray-700 mb-2">
               상품 유형 <span className="text-gray-400 font-normal">({activeProductTypeCount}/{MAX_PRODUCT_TYPES})</span>
             </p>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              {PRODUCT_TYPES.filter((type) => !hiddenProductTypes.includes(type)).map((type) => (
-                <div key={type} className="relative flex items-center justify-center py-2 px-3 pr-7 rounded-lg border border-gray-200 text-sm text-gray-700">
-                  <span className="truncate">{type}</span>
-                  <button
-                    onClick={() => deleteProductType(type, () => toggleProductType(type))}
-                    disabled={deleting === type}
-                    className="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors text-base leading-none"
-                    title="삭제"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-              {customCategories.filter((c) => c.category_type === "product_type").map((cat) => (
-                <div key={cat.id} className="relative">
-                  <button
-                    onClick={() => toggleCustomHidden(cat.id)}
-                    className={`w-full py-2 px-3 pr-7 rounded-lg border text-sm text-center truncate transition-colors ${
-                      cat.hidden
-                        ? "border-red-300 bg-red-50 text-red-500 font-medium"
-                        : "border-gray-200 text-gray-700 hover:border-gray-300"
-                    }`}
-                  >
-                    {cat.hidden ? `${cat.name} (숨김)` : cat.name}
-                  </button>
-                  <button
-                    onClick={() => deleteProductType(cat.name, () => deleteCategory(cat.id))}
-                    disabled={deleting === cat.name}
-                    className="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors text-base leading-none"
-                    title="삭제"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
+            <SortableChips
+              items={productTypeItems}
+              onReorder={(names) => saveOrder("product_type", names)}
+            >
               {showProductTypeForm ? (
                 <div className="space-y-1">
                   <input
@@ -220,7 +264,7 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
                   +
                 </button>
               ) : null}
-            </div>
+            </SortableChips>
           </div>
 
           {/* 시즌 */}
@@ -228,40 +272,10 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
             <p className="text-sm font-medium text-gray-700 mb-2">
               시즌 <span className="text-gray-400 font-normal">({activeSeasonCount}/{MAX_SEASONS})</span>
             </p>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              {SEASONS.filter((season) => !hiddenSeasons.includes(season)).map((season) => (
-                <div key={season} className="relative flex items-center justify-center py-2 px-3 pr-7 rounded-lg border border-gray-200 text-sm text-gray-700">
-                  <span className="truncate">{season}</span>
-                  <button
-                    onClick={() => toggleSeason(season)}
-                    className="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors text-base leading-none"
-                    title="삭제"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-              {customCategories.filter((c) => c.category_type === "season").map((cat) => (
-                <div key={cat.id} className="relative">
-                  <button
-                    onClick={() => toggleCustomHidden(cat.id)}
-                    className={`w-full py-2 px-3 pr-7 rounded-lg border text-sm text-center truncate transition-colors ${
-                      cat.hidden
-                        ? "border-red-300 bg-red-50 text-red-500 font-medium"
-                        : "border-gray-200 text-gray-700 hover:border-gray-300"
-                    }`}
-                  >
-                    {cat.hidden ? `${cat.name} (숨김)` : cat.name}
-                  </button>
-                  <button
-                    onClick={() => deleteCategory(cat.id)}
-                    className="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors text-base leading-none"
-                    title="삭제"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
+            <SortableChips
+              items={seasonItems}
+              onReorder={(names) => saveOrder("season", names)}
+            >
               {showSeasonForm ? (
                 <div className="space-y-1">
                   <input
@@ -286,7 +300,7 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
                   +
                 </button>
               ) : null}
-            </div>
+            </SortableChips>
           </div>
         </div>
       </div>

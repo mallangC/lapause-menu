@@ -68,6 +68,8 @@ export default async function CompanyMenuPage({ params }: Props) {
         customProductTypes={customProductTypes}
         hiddenSeasons={[...((s.hidden_seasons as string[]) ?? []), ...hiddenCustomSeasons]}
         customSeasons={customSeasons}
+        productTypeOrder={(s.product_type_order as string[] | null) ?? []}
+        seasonOrder={(s.season_order as string[] | null) ?? []}
         consultEnabled={(s.consult_enabled as boolean) ?? false}
         locationUrl={(s.location_url as string | null) ?? null}
         kakaoChannelUrl={(s.kakao_channel_url as string | null) ?? null}

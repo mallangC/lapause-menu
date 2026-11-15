@@ -12,6 +12,8 @@ import "react-datepicker/dist/react-datepicker.css";
 registerLocale("ko", ko);
 
 import { PRODUCT_TYPES as DEFAULT_PRODUCT_TYPES } from "@/lib/constants";
+import { sortByOrder } from "@/lib/productTypes";
+import { useCategoryOrder } from "@/hooks/useCategoryOrder";
 import { resolveDayHours, type DateOverrides } from "@/lib/businessHours";
 
 function CustomSelect({ value, onChange, options, placeholder, error }: {
@@ -219,7 +221,9 @@ export default function AddReservationModal({
   dateOverrides = {},
   initialData, reservationId,
 }: Props) {
-  const allProductTypes = [...DEFAULT_PRODUCT_TYPES, ...customProductTypes];
+  // 사장님이 메뉴 설정에서 정한 순서대로
+  const categoryOrder = useCategoryOrder(companyId);
+  const allProductTypes = sortByOrder([...DEFAULT_PRODUCT_TYPES, ...customProductTypes], categoryOrder.productTypes);
   const [channel, setChannel] = useState<string | null>(
     initialData?.channel ?? (reservationId ? null : "Flo.Aide")
   );

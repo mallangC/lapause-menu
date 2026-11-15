@@ -58,7 +58,7 @@ async function loadMenuData(slug: string): Promise<MenuData | null> {
       settings:company_settings(
         logo_image, theme_bg, theme_accent,
         location_url, kakao_channel_url, instagram_url, youtube_url,
-        hidden_product_types, hidden_seasons, consult_enabled,
+        hidden_product_types, hidden_seasons, product_type_order, season_order, consult_enabled,
         business_number, mail_order_number, address,
         shopping_bag_enabled, shopping_bag_price,
         preservative_enabled, preservative_price,

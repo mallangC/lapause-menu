@@ -11,6 +11,9 @@ export interface CategoryRow {
   hidden?: boolean | null;
 }
 
+/** 메뉴 설정에서 유형·시즌을 추가·삭제·숨김·순서 변경했을 때 다른 탭이 목록을 다시 불러오도록 알리는 이벤트 */
+export const PRODUCT_TYPES_CHANGED = "product-types-changed";
+
 /** 유형별 설정에서 따로 정하지 않은 유형이 따라가는 값의 키 */
 export const DEFAULT_TYPE_KEY = "기본";
 
@@ -18,14 +21,30 @@ export const DEFAULT_TYPE_KEY = "기본";
  * 매장 유형 목록
  * @param forCustomer true면 손님에게 숨긴 추가 유형은 뺀다 (사장님 설정 화면은 숨긴 것도 포함)
  */
-export function storeProductTypes(hiddenBuiltins: string[] | null | undefined, categories: CategoryRow[] | null | undefined, forCustomer = false): string[] {
+export function storeProductTypes(hiddenBuiltins: string[] | null | undefined, categories: CategoryRow[] | null | undefined, forCustomer = false, order?: string[] | null): string[] {
   const hidden = hiddenBuiltins ?? [];
   const builtins = PRODUCT_TYPES.filter((t) => !hidden.includes(t)) as string[];
   const customs = (categories ?? [])
     .filter((c) => c.category_type === "product_type" && !(forCustomer && c.hidden))
     .map((c) => c.name)
     .filter((n) => !builtins.includes(n));
-  return [...builtins, ...customs];
+  return sortByOrder([...builtins, ...customs], order);
+}
+
+/**
+ * 사장님이 메뉴 설정에서 정한 순서대로 정렬 (company_settings.product_type_order / season_order)
+ * 순서에 없는 이름(새로 추가했거나 순서를 아직 안 바꾼 것)은 원래 순서 그대로 뒤에 붙는다.
+ */
+export function sortByOrder<T extends string>(list: readonly T[], order: readonly string[] | null | undefined): T[] {
+  if (!order || order.length === 0) return [...list];
+  const rank = (n: string) => {
+    const i = order.indexOf(n);
+    return i === -1 ? order.length : i;
+  };
+  return list
+    .map((n, i) => ({ n, i }))
+    .sort((a, b) => rank(a.n) - rank(b.n) || a.i - b.i)
+    .map((x) => x.n);
 }
 
 /** 이 유형의 당일 최소 준비 시간(시간) — 유형 값 → 기본 → (예전 '기타' 값) → 2시간 */

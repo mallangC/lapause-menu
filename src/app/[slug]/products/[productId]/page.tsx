@@ -54,6 +54,8 @@ export default async function ProductDetailPage({ params }: Props) {
       hiddenSeasons={[...((s.hidden_seasons as string[] | null) ?? []), ...hiddenCustomSeasons]}
       customProductTypes={customProductTypes}
       customSeasons={customSeasons}
+      productTypeOrder={(s.product_type_order as string[] | null) ?? []}
+      seasonOrder={(s.season_order as string[] | null) ?? []}
     />
   );
 }

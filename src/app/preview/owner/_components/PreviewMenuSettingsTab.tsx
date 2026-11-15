@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { PRODUCT_TYPES, SEASONS } from "@/lib/constants";
+import { sortByOrder } from "@/lib/productTypes";
+import SortableChips, { type ChipItem } from "@/components/admin/SortableChips";
 
 type CustomCategory = { id: string; category_type: "product_type" | "season"; name: string; hidden: boolean };
 
@@ -23,6 +25,9 @@ export default function PreviewMenuSettingsTab() {
   const [duplicateError, setDuplicateError] = useState<"product_type" | "season" | null>(null);
   const [showProductTypeForm, setShowProductTypeForm] = useState(false);
   const [showSeasonForm, setShowSeasonForm] = useState(false);
+  // 끌어서 바꾼 순서 (화면 안에서만)
+  const [productTypeOrder, setProductTypeOrder] = useState<string[]>([]);
+  const [seasonOrder, setSeasonOrder] = useState<string[]>([]);
 
   const toggleProductType = async (type: string) => {
     const next = hiddenProductTypes.includes(type)
@@ -70,11 +75,50 @@ export default function PreviewMenuSettingsTab() {
     SEASONS.filter((season) => !hiddenSeasons.includes(season)).length +
     customCategories.filter((c) => c.category_type === "season" && !c.hidden).length;
 
+  const customChip = (cat: CustomCategory): ChipItem => ({
+    name: cat.name,
+    label: (
+      <button
+        onClick={() => toggleCustomHidden(cat.id)}
+        className={`w-full py-2 pl-7 pr-7 rounded-lg border text-sm text-center truncate transition-colors ${
+          cat.hidden ? "border-red-300 bg-red-50 text-red-500 font-medium" : "border-gray-200 text-gray-700 hover:border-gray-300"
+        }`}
+      >
+        {cat.hidden ? `${cat.name} (숨김)` : cat.name}
+      </button>
+    ),
+    onDelete: () => deleteCategory(cat.id),
+    deleting: false,
+  });
+  const builtinChip = (name: string, onDelete: () => void): ChipItem => ({
+    name,
+    label: <div className="w-full py-2 pl-7 pr-7 rounded-lg border border-gray-200 text-sm text-gray-700 text-center truncate">{name}</div>,
+    onDelete,
+    deleting: false,
+  });
+  const sortChips = (items: ChipItem[], order: string[]) =>
+    sortByOrder(items.map((i) => i.name), order).map((n) => items.find((i) => i.name === n)!);
+  const productTypeItems = sortChips(
+    [
+      ...PRODUCT_TYPES.filter((t) => !hiddenProductTypes.includes(t)).map((t) => builtinChip(t, () => toggleProductType(t))),
+      ...customCategories.filter((c) => c.category_type === "product_type").map(customChip),
+    ],
+    productTypeOrder,
+  );
+  const seasonItems = sortChips(
+    [
+      ...SEASONS.filter((x) => !hiddenSeasons.includes(x)).map((x) => builtinChip(x, () => toggleSeason(x))),
+      ...customCategories.filter((c) => c.category_type === "season").map(customChip),
+    ],
+    seasonOrder,
+  );
+
   return (
     <div className="space-y-4">
       <div>
         <h2 className="text-xl font-medium text-gray-900 mb-1">메뉴 설정</h2>
         <p className="text-xs text-gray-400">직접 추가, 삭제가 가능합니다. 기본 제공 항목도 삭제할 수 있습니다.</p>
+        <p className="text-xs text-gray-400">왼쪽 ⠿ 를 끌어 순서를 바꾸면 손님 메뉴판에도 그 순서로 보여요.</p>
       </div>
       <div data-coach="mn-all" className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:p-6">
         <div className="space-y-8">
@@ -83,40 +127,7 @@ export default function PreviewMenuSettingsTab() {
             <p className="text-sm font-medium text-gray-700 mb-2">
               상품 유형 <span className="text-gray-400 font-normal">({activeProductTypeCount}/{MAX_PRODUCT_TYPES})</span>
             </p>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              {PRODUCT_TYPES.filter((type) => !hiddenProductTypes.includes(type)).map((type) => (
-                <div key={type} className="relative flex items-center justify-center py-2 px-3 pr-7 rounded-lg border border-gray-200 text-sm text-gray-700">
-                  <span className="truncate">{type}</span>
-                  <button
-                    onClick={() => toggleProductType(type)}
-                    className="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors text-base leading-none"
-                    title="삭제"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-              {customCategories.filter((c) => c.category_type === "product_type").map((cat) => (
-                <div key={cat.id} className="relative">
-                  <button
-                    onClick={() => toggleCustomHidden(cat.id)}
-                    className={`w-full py-2 px-3 pr-7 rounded-lg border text-sm text-center truncate transition-colors ${
-                      cat.hidden
-                        ? "border-red-300 bg-red-50 text-red-500 font-medium"
-                        : "border-gray-200 text-gray-700 hover:border-gray-300"
-                    }`}
-                  >
-                    {cat.hidden ? `${cat.name} (숨김)` : cat.name}
-                  </button>
-                  <button
-                    onClick={() => deleteCategory(cat.id)}
-                    className="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors text-base leading-none"
-                    title="삭제"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
+            <SortableChips items={productTypeItems} onReorder={setProductTypeOrder}>
               {showProductTypeForm ? (
                 <div className="space-y-1">
                   <input
@@ -141,7 +152,7 @@ export default function PreviewMenuSettingsTab() {
                   +
                 </button>
               ) : null}
-            </div>
+            </SortableChips>
           </div>
 
           {/* 시즌 */}
@@ -149,40 +160,7 @@ export default function PreviewMenuSettingsTab() {
             <p className="text-sm font-medium text-gray-700 mb-2">
               시즌 <span className="text-gray-400 font-normal">({activeSeasonCount}/{MAX_SEASONS})</span>
             </p>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              {SEASONS.filter((season) => !hiddenSeasons.includes(season)).map((season) => (
-                <div key={season} className="relative flex items-center justify-center py-2 px-3 pr-7 rounded-lg border border-gray-200 text-sm text-gray-700">
-                  <span className="truncate">{season}</span>
-                  <button
-                    onClick={() => toggleSeason(season)}
-                    className="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors text-base leading-none"
-                    title="삭제"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-              {customCategories.filter((c) => c.category_type === "season").map((cat) => (
-                <div key={cat.id} className="relative">
-                  <button
-                    onClick={() => toggleCustomHidden(cat.id)}
-                    className={`w-full py-2 px-3 pr-7 rounded-lg border text-sm text-center truncate transition-colors ${
-                      cat.hidden
-                        ? "border-red-300 bg-red-50 text-red-500 font-medium"
-                        : "border-gray-200 text-gray-700 hover:border-gray-300"
-                    }`}
-                  >
-                    {cat.hidden ? `${cat.name} (숨김)` : cat.name}
-                  </button>
-                  <button
-                    onClick={() => deleteCategory(cat.id)}
-                    className="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors text-base leading-none"
-                    title="삭제"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
+            <SortableChips items={seasonItems} onReorder={setSeasonOrder}>
               {showSeasonForm ? (
                 <div className="space-y-1">
                   <input
@@ -207,7 +185,7 @@ export default function PreviewMenuSettingsTab() {
                   +
                 </button>
               ) : null}
-            </div>
+            </SortableChips>
           </div>
         </div>
       </div>

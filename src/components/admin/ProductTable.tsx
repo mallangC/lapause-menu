@@ -3,7 +3,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { Product, ProductStatus } from "@/types";
-import { BADGE_COLORS, PRODUCT_TYPES } from "@/lib/constants";
+import { BADGE_COLORS, PRODUCT_TYPES, SEASONS } from "@/lib/constants";
+import { sortByOrder } from "@/lib/productTypes";
+import { useCategoryOrder } from "@/hooks/useCategoryOrder";
 import { createClient } from "@/lib/supabase/client";
 import Pagination from "@/components/admin/Pagination";
 
@@ -13,6 +15,8 @@ interface ProductTableProps {
   onDelete: (id: string) => void;
   onStatusChange: (id: string, status: ProductStatus) => void;
   companyId: string;
+  /** 필터를 걸었을 때 걸러진 개수 (필터가 없으면 null) — 제목 옆 개수 표시용 */
+  onFilteredCountChange?: (count: number | null) => void;
 }
 
 const STATUS_CYCLE: ProductStatus[] = ["active", "inactive"];
@@ -129,27 +133,41 @@ function Chip({ label, active, onClick }: { label: string; active: boolean; onCl
   );
 }
 
-export default function ProductTable({ products, onEdit, onDelete, onStatusChange, companyId }: ProductTableProps) {
+export default function ProductTable({ products, onEdit, onDelete, onStatusChange, companyId, onFilteredCountChange }: ProductTableProps) {
   const [sortKey, setSortKey] = useState<"price_asc" | "price_desc" | "date_desc" | "date_asc">("date_desc");
   const [knownCustomTypes, setKnownCustomTypes] = useState<string[]>([]);
+  // 매장 시즌 — 추가한 시즌 + 지우지 않은 기본 시즌
+  const [customSeasons, setCustomSeasons] = useState<string[]>([]);
+  const [hiddenSeasons, setHiddenSeasons] = useState<string[]>([]);
   const [typesLoading, setTypesLoading] = useState(true);
   const supabase = createClient();
+  // 사장님이 메뉴 설정에서 정한 유형 순서 (필터 칩 순서)
+  const categoryOrder = useCategoryOrder(companyId);
 
   useEffect(() => {
     supabase
       .from("company_categories")
       .select("name, category_type")
       .eq("company_id", companyId)
-      .eq("category_type", "product_type")
       .then(({ data }) => {
-        if (data) setKnownCustomTypes(data.map((c) => c.name));
+        if (data) {
+          setKnownCustomTypes(data.filter((c) => c.category_type === "product_type").map((c) => c.name));
+          setCustomSeasons(data.filter((c) => c.category_type === "season").map((c) => c.name));
+        }
         setTypesLoading(false);
       });
+    supabase
+      .from("company_settings")
+      .select("hidden_seasons")
+      .eq("company_id", companyId)
+      .maybeSingle()
+      .then(({ data }) => setHiddenSeasons((data?.hidden_seasons as string[] | null) ?? []));
   }, [companyId]);
 
   const isValidType = (type: string) =>
     (PRODUCT_TYPES as readonly string[]).includes(type) || knownCustomTypes.includes(type);
   const [filterType, setFilterType] = useState("");
+  const [filterSeason, setFilterSeason] = useState("");
   const [filterBadge, setFilterBadge] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [page, setPage] = useState(1);
@@ -159,6 +177,7 @@ export default function ProductTable({ products, onEdit, onDelete, onStatusChang
   const filtered = [...products]
     .filter((p) => {
       if (filterType && p.product_type !== filterType) return false;
+      if (filterSeason && !(p.seasons ?? []).includes(filterSeason)) return false;
       if (filterBadge === "popular" && !p.is_popular) return false;
       if (filterBadge === "recommended" && !p.is_recommended) return false;
       if (filterBadge === "none" && (p.is_popular || p.is_recommended)) return false;
@@ -175,10 +194,26 @@ export default function ProductTable({ products, onEdit, onDelete, onStatusChang
   const currentPage = Math.min(page, totalPages);
   const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  const hasFilter = filterType || filterBadge || filterStatus;
+  const hasFilter = filterType || filterSeason || filterBadge || filterStatus;
+
+  // 개수는 '상품 목록' 제목 옆에 고정해서 보여준다 (필터 칩 줄 끝에 두면 가로 스크롤 뒤로 밀려 안 보인다)
+  const shownCount = hasFilter ? filtered.length : null;
+  useEffect(() => { onFilteredCountChange?.(shownCount); }, [shownCount]);
+
+  // 시즌 필터 칩 — 매장 시즌(메뉴 설정 순서대로) + 시즌을 지웠어도 아직 그 시즌이 붙은 상품이 있으면 함께
+  const usedSeasons = new Set(products.flatMap((p) => p.seasons ?? []));
+  const seasonChips = sortByOrder(
+    [
+      ...SEASONS.filter((x) => !hiddenSeasons.includes(x) || usedSeasons.has(x)),
+      ...customSeasons.filter((x) => !(SEASONS as readonly string[]).includes(x)),
+      ...[...usedSeasons].filter((x) => !(SEASONS as readonly string[]).includes(x) && !customSeasons.includes(x)),
+    ],
+    categoryOrder.seasons,
+  );
 
   const clearFilters = () => {
     setFilterType("");
+    setFilterSeason("");
     setFilterBadge("");
     setFilterStatus("");
     setPage(1);
@@ -212,9 +247,18 @@ export default function ProductTable({ products, onEdit, onDelete, onStatusChang
 
         {/* 필터 칩들 — 가로 스크롤 */}
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-          {[...PRODUCT_TYPES, ...knownCustomTypes].map((t) => (
+          {sortByOrder([...PRODUCT_TYPES, ...knownCustomTypes], categoryOrder.productTypes).map((t) => (
             <Chip key={t} label={t} active={filterType === t} onClick={() => { setFilterType(filterType === t ? "" : t); resetPage(); }} />
           ))}
+
+          {seasonChips.length > 0 && (
+            <>
+              <div className="h-4 w-px bg-gray-300 shrink-0 mx-0.5" />
+              {seasonChips.map((x) => (
+                <Chip key={`season-${x}`} label={x} active={filterSeason === x} onClick={() => { setFilterSeason(filterSeason === x ? "" : x); resetPage(); }} />
+              ))}
+            </>
+          )}
 
           <div className="h-4 w-px bg-gray-300 shrink-0 mx-0.5" />
 
@@ -232,9 +276,6 @@ export default function ProductTable({ products, onEdit, onDelete, onStatusChang
             </>
           )}
 
-          <span className="shrink-0 ml-1 text-xs text-gray-400 whitespace-nowrap">
-            {hasFilter ? `${filtered.length} / ${products.length}개` : `${products.length}개`}
-          </span>
         </div>
 
       </div>

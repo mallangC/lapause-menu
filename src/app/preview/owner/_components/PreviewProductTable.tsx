@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { Product, ProductStatus } from "@/types";
 import { BADGE_COLORS, PRODUCT_TYPES } from "@/lib/constants";
@@ -11,6 +11,8 @@ interface ProductTableProps {
   onEdit: (product: Product) => void;
   onDelete: (id: string) => void;
   onStatusChange: (id: string, status: ProductStatus) => void;
+  /** 필터를 걸었을 때 걸러진 개수 (필터가 없으면 null) — 제목 옆 개수 표시용 */
+  onFilteredCountChange?: (count: number | null) => void;
 }
 
 const STATUS_CYCLE: ProductStatus[] = ["active", "inactive"];
@@ -129,7 +131,7 @@ function Chip({ label, active, onClick }: { label: string; active: boolean; onCl
 }
 
 // 미리보기 상품 목록 — 실제 ProductTable 복사본. 매장 직접 추가 종류는 없어 기본 종류만 쓴다 (DB 조회 없음)
-export default function PreviewProductTable({ products, onEdit, onDelete, onStatusChange }: ProductTableProps) {
+export default function PreviewProductTable({ products, onEdit, onDelete, onStatusChange, onFilteredCountChange }: ProductTableProps) {
   const [sortKey, setSortKey] = useState<"price_asc" | "price_desc" | "date_desc" | "date_asc">("date_desc");
   const knownCustomTypes: string[] = [];
   const typesLoading = false;
@@ -137,6 +139,7 @@ export default function PreviewProductTable({ products, onEdit, onDelete, onStat
   const isValidType = (type: string) =>
     (PRODUCT_TYPES as readonly string[]).includes(type) || knownCustomTypes.includes(type);
   const [filterType, setFilterType] = useState("");
+  const [filterSeason, setFilterSeason] = useState("");
   const [filterBadge, setFilterBadge] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [page, setPage] = useState(1);
@@ -146,6 +149,7 @@ export default function PreviewProductTable({ products, onEdit, onDelete, onStat
   const filtered = [...products]
     .filter((p) => {
       if (filterType && p.product_type !== filterType) return false;
+      if (filterSeason && !(p.seasons ?? []).includes(filterSeason)) return false;
       if (filterBadge === "popular" && !p.is_popular) return false;
       if (filterBadge === "recommended" && !p.is_recommended) return false;
       if (filterBadge === "none" && (p.is_popular || p.is_recommended)) return false;
@@ -162,10 +166,17 @@ export default function PreviewProductTable({ products, onEdit, onDelete, onStat
   const currentPage = Math.min(page, totalPages);
   const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  const hasFilter = filterType || filterBadge || filterStatus;
+  const hasFilter = filterType || filterSeason || filterBadge || filterStatus;
+
+  // 개수는 '상품 목록' 제목 옆에 고정해서 보여준다 (필터 칩 줄 끝에 두면 가로 스크롤 뒤로 밀려 안 보인다)
+  const shownCount = hasFilter ? filtered.length : null;
+  useEffect(() => { onFilteredCountChange?.(shownCount); }, [shownCount]);
+  // 시즌 필터 칩 — 미리보기 매장의 시즌(메뉴 설정 목업과 같은 크리스마스) + 상품에 붙은 시즌
+  const seasonChips = [...new Set(["크리스마스", ...products.flatMap((p) => p.seasons ?? [])])];
 
   const clearFilters = () => {
     setFilterType("");
+    setFilterSeason("");
     setFilterBadge("");
     setFilterStatus("");
     setPage(1);
@@ -204,6 +215,15 @@ export default function PreviewProductTable({ products, onEdit, onDelete, onStat
             <Chip key={t} label={t} active={filterType === t} onClick={() => { setFilterType(filterType === t ? "" : t); resetPage(); }} />
           ))}
 
+          {seasonChips.length > 0 && (
+            <>
+              <div className="h-4 w-px bg-gray-300 shrink-0 mx-0.5" />
+              {seasonChips.map((x) => (
+                <Chip key={`season-${x}`} label={x} active={filterSeason === x} onClick={() => { setFilterSeason(filterSeason === x ? "" : x); resetPage(); }} />
+              ))}
+            </>
+          )}
+
           <div className="h-4 w-px bg-gray-300 shrink-0 mx-0.5" />
 
           <Chip label="인기" active={filterBadge === "popular"} onClick={() => { setFilterBadge(filterBadge === "popular" ? "" : "popular"); resetPage(); }} />
@@ -220,9 +240,6 @@ export default function PreviewProductTable({ products, onEdit, onDelete, onStat
             </>
           )}
 
-          <span className="shrink-0 ml-1 text-xs text-gray-400 whitespace-nowrap">
-            {hasFilter ? `${filtered.length} / ${products.length}개` : `${products.length}개`}
-          </span>
         </div>
 
       </div>

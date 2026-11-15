@@ -7,6 +7,7 @@ import { Product } from "@/types";
 import { FLOWER_COLOR_MAP, BADGE_COLORS, PRODUCT_TYPES, SEASONS } from "@/lib/constants";
 import FlowerNoticeModal from "@/components/FlowerNoticeModal";
 import StoreHeader from "@/components/main/StoreHeader";
+import { sortByOrder } from "@/lib/productTypes";
 import { useCart, startDirectOrder } from "@/hooks/useCart";
 
 interface ProductDetailClientProps {
@@ -21,6 +22,9 @@ interface ProductDetailClientProps {
   hiddenSeasons: string[];
   customProductTypes: string[];
   customSeasons: string[];
+  /** 사장님이 정한 상품 유형·시즌 순서 */
+  productTypeOrder?: string[];
+  seasonOrder?: string[];
 }
 
 export default function ProductDetailClient({
@@ -35,6 +39,8 @@ export default function ProductDetailClient({
   hiddenSeasons,
   customProductTypes,
   customSeasons,
+  productTypeOrder,
+  seasonOrder,
 }: ProductDetailClientProps) {
   const router = useRouter();
   const [noticeOpen, setNoticeOpen] = useState(false);
@@ -57,8 +63,9 @@ export default function ProductDetailClient({
     setTimeout(() => setAdded(false), 1500);
   };
 
-  const productTypeList = [...PRODUCT_TYPES.filter((t) => !hiddenProductTypes.includes(t)), ...customProductTypes];
-  const seasonList = [...SEASONS.filter((s) => !hiddenSeasons.includes(s)), ...customSeasons];
+  // 사장님이 메뉴 설정에서 정한 순서대로
+  const productTypeList = sortByOrder([...PRODUCT_TYPES.filter((t) => !hiddenProductTypes.includes(t)), ...customProductTypes], productTypeOrder);
+  const seasonList = sortByOrder([...SEASONS.filter((s) => !hiddenSeasons.includes(s)), ...customSeasons], seasonOrder);
 
   // 가격 비슷한 상품 2개 (±30%)
   const priceSimilar = product.price

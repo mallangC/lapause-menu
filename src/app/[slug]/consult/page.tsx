@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getMenuData } from "@/lib/menuCache";
 import { PRODUCT_TYPES, SEASONS } from "@/lib/constants";
+import { sortByOrder } from "@/lib/productTypes";
 import ConsultClient from "./ConsultClient";
 import { parseChatAnswers, parseStyleOrder } from "@/lib/styleOrder";
 import { DEFAULT_COLOR_LEAD_DAYS, isTodayColorsEnabled, todayColorsFor } from "@/lib/todayColors";
@@ -35,8 +36,9 @@ export default async function ConsultPage({ params, searchParams }: Props) {
   const customSeasons = customCats
     .filter((c) => c.category_type === "season" && !c.hidden)
     .map((c) => c.name as string);
-  const productTypeList = [...PRODUCT_TYPES.filter((t) => !hiddenProductTypes.includes(t)), ...customProductTypes];
-  const seasonList = [...SEASONS.filter((s2) => !hiddenSeasons.includes(s2)), ...customSeasons];
+  // 사장님이 메뉴 설정에서 정한 순서대로
+  const productTypeList = sortByOrder([...PRODUCT_TYPES.filter((t) => !hiddenProductTypes.includes(t)), ...customProductTypes], s.product_type_order as string[] | null);
+  const seasonList = sortByOrder([...SEASONS.filter((s2) => !hiddenSeasons.includes(s2)), ...customSeasons], s.season_order as string[] | null);
 
   // 추천·선택 목록은 예전처럼 가격 오름차순 (캐시는 상품 유형 → 가격 순)
   const allProducts = [...menu.products].sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
@@ -75,7 +77,7 @@ export default async function ConsultPage({ params, searchParams }: Props) {
       colorPickEnabled={isTodayColorsEnabled(s as { today_colors_enabled?: boolean | null })}
       colorMinPrice={(s.color_min_price as number | undefined) ?? 0}
       afterHours={readAfterHours(s)}
-      // 계좌이체 — 매장 계좌(은행·계좌번호·예금주)가 모두 등록돼 있어야 받는다
+      // 무통장 입금 — 매장 계좌(은행·계좌번호·예금주)가 모두 등록돼 있어야 받는다
       transferAvailable={!!(s.bank_name && s.bank_account && s.bank_holder)}
       initialQuantity={quantity ? Math.max(1, parseInt(quantity)) : 1}
       initialPaymentId={paymentKey ?? orderId ?? null}

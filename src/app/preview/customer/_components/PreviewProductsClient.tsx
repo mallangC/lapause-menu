@@ -81,6 +81,9 @@ export default function PreviewProductsClient({
   }, [activeTab, typeParam]);
 
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+  // 랜딩 등 다른 화면 안에 넣어 보여줄 때 — 떠 있는 버튼(맞춤 상담·필터)은 숨겨 화면만 깔끔하게
+  const [embedded, setEmbedded] = useState(false);
+  useEffect(() => { setEmbedded(window.self !== window.top); }, []);
   // 푸터 링크 버튼 안내 (미리보기는 외부로 이동하지 않는다)
   const [linkNotice, setLinkNotice] = useState<string | null>(null);
   const linkNoticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -282,7 +285,8 @@ export default function PreviewProductsClient({
           return (
             <>
               {/* 추천·인기 섹션 */}
-              <div className="pt-6 pb-3 px-4 md:px-2">
+              {/* 제목 위 여백은 짧게 — 바로 위 메뉴 줄과 붙어 보이지 않을 만큼만 */}
+              <div className="pt-3.5 pb-2.5 px-4 md:px-2">
                 <p className="text-lg font-semibold text-gray-800">추천·인기 상품</p>
               </div>
               <PreviewProductGrid products={featured} consultEnabled={consultEnabled} slug={slug} />
@@ -290,7 +294,8 @@ export default function PreviewProductsClient({
               {/* 전체 상품 */}
               {rest.length > 0 && (
                 <>
-                  <div className="pt-8 pb-3 px-4 md:px-2">
+                  {/* 제목 위 여백은 추천·인기 상품과 같은 정도로 짧게 */}
+                  <div className="pt-4 pb-2.5 px-4 md:px-2">
                     <p className="text-lg font-semibold text-gray-800">전체 상품</p>
                   </div>
                   <PreviewProductGrid products={rest} consultEnabled={consultEnabled} slug={slug} />
@@ -302,7 +307,7 @@ export default function PreviewProductsClient({
         {/* 모바일 FAB (맞춤 상담 + 필터 — 맞춤 상담은 첫 화면 대화로, 인사 없이 주문 방식 질문부터) — 상품 목록 끝에 붙인 sticky 칸. 스크롤 중엔 화면 아래(24px)에 붙어 있다가
             목록이 끝나면(푸터가 올라오면) 목록 끝, 곧 푸터 바로 위에 멈춘다. 브라우저가 직접 처리해 스크롤과 같은 박자로 움직인다
             (높이 0인 칸이라 목록 길이는 그대로, 버튼은 그 칸 위로 띄운다) */}
-        <div className="md:hidden sticky bottom-2 z-30 h-0 pointer-events-none">
+        <div className={`${embedded ? "hidden" : "md:hidden"} sticky bottom-2 z-30 h-0 pointer-events-none`}>
           <div className="pointer-events-auto absolute right-5 bottom-4 flex flex-col items-center gap-3">
             {consultEnabled && (
               <Link
