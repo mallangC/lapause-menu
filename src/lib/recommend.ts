@@ -1,4 +1,4 @@
-// 맞춤주문 추천 — 형태·분위기·예산으로 어울리는 상품 최대 4개
+// 맞춤주문 추천 — 형태·분위기·예산으로 어울리는 상품 (기본 최대 4개, limit로 바꿀 수 있다)
 // 기존 맞춤주문 화면(ConsultClient)과 첫 화면 대화형 추천(StoreWelcomeClient)이 함께 쓴다.
 
 export interface RecommendableProduct {
@@ -17,7 +17,8 @@ export interface RecommendableProduct {
  */
 export function recommendProducts<T extends RecommendableProduct>(
   products: T[],
-  { productType, mood, budget }: { productType: string; mood: string; budget: number }
+  { productType, mood, budget }: { productType: string; mood: string; budget: number },
+  limit = 4,
 ): T[] {
   // 매장 유형은 매장마다 다르다 — '기타'(정하지 않음)만 형태 조건 없이
   const mappedType = productType && productType !== "기타" ? productType : undefined;
@@ -48,13 +49,13 @@ export function recommendProducts<T extends RecommendableProduct>(
   });
   const wideTop = [...wide].sort((a, b) => score(b) - score(a)).slice(0, 2);
 
-  const result = [...tightTop, ...wideTop];
-  if (result.length < 4) {
+  const result = [...tightTop, ...wideTop].slice(0, limit);
+  if (result.length < limit) {
     const allIds = new Set(result.map((p) => p.id));
     const fallback = products
       .filter((p) => !allIds.has(p.id))
       .sort((a, b) => score(b) - score(a))
-      .slice(0, 4 - result.length);
+      .slice(0, limit - result.length);
     result.push(...fallback);
   }
   return result;

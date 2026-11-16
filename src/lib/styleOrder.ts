@@ -29,8 +29,13 @@ export const STYLE_AGES = ["10대 이하", "10대", "20대", "30대", "40대", "
 export const STYLE_AVOID_MAX = 100;
 /** 요청 사항에 붙일 줄 — '피하고 싶은 것 : 향이 강한 꽃, 노란색' */
 export const avoidPointsLine = (text: string) => (text.trim() ? `피하고 싶은 것 : ${text.trim()}` : "");
+/** 찾아본 사진 — 사진에서 꼭 비슷하게 하고 싶은 부분 (여러 개 고르기). 요청 사항 맨 위에 글로 붙는다 */
+export const PHOTO_SIMILAR_POINTS = ["색상", "꽃 구성", "포장지 색상", "볼륨감"];
+/** 요청 사항에 붙일 줄 — '비슷하게 할 부분 : 색상, 볼륨감' */
+export const similarPointsLine = (points: string[]) => (points.length > 0 ? `비슷하게 할 부분 : ${points.join(", ")}` : "");
 /** 대화에서 받은 답으로 결제 화면 요청 사항을 미리 채운다 */
-export const styleOrderRequests = (o: Pick<StyleOrder, "avoid">) => avoidPointsLine(o.avoid);
+export const styleOrderRequests = (o: Pick<StyleOrder, "avoid" | "similar">) =>
+  [similarPointsLine(o.similar ?? []), avoidPointsLine(o.avoid)].filter(Boolean).join("\n");
 
 /** 예산은 1만 원 단위, 1만 원 ~ 1,000만 원 */
 // 희망 금액 — 버튼(만 원 단위)이나 직접 입력(천 원 단위)으로 정한다
@@ -61,6 +66,8 @@ export interface StyleOrder {
   budget: number;
   /** 사장님 스타일 — 피하고 싶은 것 */
   avoid: string;
+  /** 찾아본 사진 — 꼭 비슷하게 하고 싶은 부분 */
+  similar: string[];
 }
 
 /** 주문 내역·사장님 화면에 보일 상품 이름 */
@@ -99,6 +106,7 @@ export function styleOrderHref(slug: string, o: StyleOrder) {
   if (o.gender) q.set("gender", o.gender);
   if (o.age) q.set("age", o.age);
   if (o.avoid.trim()) q.set("avoid", o.avoid.trim().slice(0, STYLE_AVOID_MAX));
+  if (o.similar.length > 0) q.set("similar", o.similar.join(","));
   return `/${slug}/consult?${q.toString()}`;
 }
 
@@ -120,8 +128,10 @@ export function parseStyleOrder(sp: Record<string, string | undefined>): StyleOr
     productType,
     mood,
     budget,
-    // 정해진 값만, 정해진 순서로 (사진 주문만)
+    // 사장님 스타일만 — 손님이 쓴 글 (길이 제한)
     avoid: kind === "style" ? (sp.avoid ?? "").replace(/\s+/g, " ").trim().slice(0, STYLE_AVOID_MAX) : "",
+    // 사진 주문만 — 정해진 값만, 정해진 순서로
+    similar: kind === "photo" ? PHOTO_SIMILAR_POINTS.filter((x) => (sp.similar ?? "").split(",").includes(x)) : [],
   };
 }
 

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { BASE_MOODS, recommendOrderHref, photoOrderKey, PHOTO_MOOD_SAME, STYLE_AVOID_MAX, STYLE_MOODS, STYLE_MOOD_TRUST, styleOrderHref, type StyleKind } from "@/lib/styleOrder";
+import { BASE_MOODS, recommendOrderHref, photoOrderKey, PHOTO_MOOD_SAME, PHOTO_SIMILAR_POINTS, STYLE_AVOID_MAX, STYLE_MOODS, STYLE_MOOD_TRUST, styleOrderHref, type StyleKind } from "@/lib/styleOrder";
 import FlowerNoticeModal from "@/components/FlowerNoticeModal";
 import StoreFooter, { type StoreFooterProps } from "@/components/main/StoreFooter";
 import VolumeRefs, { type VolumeRef } from "@/components/VolumeRefs";
@@ -86,7 +86,7 @@ type Question = {
   // 답을 글로 쓴다 (입력칸 + 보내기) — placeholder는 입력칸 안내
   text?: boolean;
   placeholder?: string;
-  // 여러 개 고른 답을 보낼 때 손님 말 — 고른 것 뒤에 붙인다 (예: ' 비슷하게 해주세요')
+  // 답을 보낼 때 손님 말 — 고른 것 뒤에 붙인다 (예: '은 비슷했으면 좋겠어요', 여러 개면 '·'로 이어서)
   multiSay?: string;
   // 건너뛰기 버튼 글자 (기본 '넘어갈게요')
   skipLabel?: string;
@@ -121,23 +121,25 @@ const makeQuestions = (TYPE_OPTIONS: string[]): Record<Flow, Question[]> => ({
     // 색은 사장님께 맡기는 대신 꼭 피하고 싶은 것만 받는다 (결제 화면 요청 사항 맨 위에 글로)
     { key: "avoid", label: "피하고 싶은 것", ask: "꼭 피하고 싶은 게 있을까요?\n편하게 적어주세요.", text: true, placeholder: "예) 향이 강한 꽃, 노란색", skippable: true, skipLabel: "없어요" },
   ],
-  // 찾아본 사진 — 형태를 먼저 묻고(그 형태 사진을 골라 오게) 사진을 받는다
-  // (사진을 골라 왔다는 것 자체가 '이 분위기 그대로'라서 비슷했으면 하는 점은 묻지 않는다)
-  // 분위기는 보낸 사진 분위기로 정해져 묻지 않는다. 크기는 예산(가격 기준)으로 정해져 묻지 않는다
+  // 찾아본 사진 — 형태 → 사진 받기 → 희망 금액(볼륨감 참고 이미지를 먼저) → 선물 정보 → 비슷하게 할 부분
+  // 형태를 먼저 묻고(그 형태 사진을 골라 오게) 사진을 받는다. 분위기는 보낸 사진 분위기로 정해져 묻지 않는다
   photo: [
     { key: "type", label: "상품 형태", ask: "어떤 형태로 준비해드릴까요?", options: TYPE_OPTIONS },
     { key: "photo", label: "사진", ask: "", photo: true },
-    ...GIFT_QUESTIONS,
     BUDGET_Q,
+    ...GIFT_QUESTIONS,
+    // 사진에서 꼭 살리고 싶은 부분 (결제 화면 요청 사항 맨 위에 글로)
+    // 딱 하나만 고르게 — 사장님이 가장 신경 쓸 한 가지
+    { key: "similar", label: "비슷하게 할 부분", ask: "사진에서 한 가지 비슷하면 좋겠는 부분은\n어디예요?", options: PHOTO_SIMILAR_POINTS, wrap: true, multiSay: "은 비슷했으면 좋겠어요", skippable: true, skipLabel: "전체 느낌만 비슷하면 돼요" },
   ],
-  // 추천 — 상품 형태 → 희망 금액(볼륨감 참고 이미지를 먼저) → 분위기(사진으로) → 상품 추천 → 어떤 날 · 성별 · 연령대
-  // 추천 결과를 바꾸는 질문을 먼저 묻고, 선물 정보는 상품을 고른 뒤에 "이 꽃을 누구에게"로 확인한다
+  // 추천 — 상품 형태 → 희망 금액(볼륨감 참고 이미지를 먼저) → 어떤 날 · 성별 · 연령대 → 분위기(사진으로) → 상품 추천
+  // 분위기를 마지막에 묻고 바로 상품을 보여준다 — 상품을 고르면 곧바로 주문으로
   // (분위기 다음의 상품 추천은 질문이 아니라 answer에서 끼워 넣는다)
   recommend: [
     { key: "type", label: "상품 형태", ask: "어떤 형태로 찾으세요?", options: TYPE_OPTIONS },
     { ...BUDGET_Q, label: "희망 금액", ask: "희망 금액은 어느 정도로 생각하세요?", volume: true },
-    { key: "mood", label: "분위기", ask: "어떤 분위기가 마음에 드세요?\n사진을 보고 골라주세요.", options: BASE_MOODS, moodPhotos: true },
     ...GIFT_QUESTIONS,
+    { key: "mood", label: "분위기", ask: "어떤 분위기가 마음에 드세요?\n사진을 보고 골라주세요.", options: BASE_MOODS, moodPhotos: true },
   ],
 });
 // 요약 카드에서 분위기를 맡긴 답은 짧게
@@ -161,6 +163,8 @@ async function shrinkToDataUrl(file: File, maxSide = 1600, quality = 0.85): Prom
 
 // 예산 버튼 — 눌러서 금액을 더한다 (직접 입력 없이 클릭만으로)
 const BUDGET_STEPS = [10000, 50000, 100000];
+// 대화형 추천 — 한 번에 보여줄 상품 수 (그 뒤에 '새로 추천받기' 카드)
+const REC_COUNT = 5;
 // 직접 입력 범위 — 1만 원 ~ 1,000만 원 (서버 검사와 같다)
 const BUDGET_MIN = 10000;
 const BUDGET_MAX = 10_000_000;
@@ -171,7 +175,6 @@ const manwon = (n: number) => (n % 10000 === 0 ? `${n / 10000}만원` : won(n));
 // 옆으로 넘기는 한 줄 (답 버튼·추천 상품 카드) — 넘치면 줄바꿈 대신 옆으로 밀어 본다
 // · 휴대폰: 손가락으로 밀기
 // · PC: 마우스 휠을 돌려도 옆으로 넘어가고(끝에 닿으면 화면 스크롤로), 양옆 화살표 버튼으로도 넘긴다
-// · 더 있는 쪽 끝은 흐리게 해 넘길 게 있다는 걸 알린다
 function ChipRow({ children, align = "end", innerClassName = "gap-2" }: { children: React.ReactNode; align?: "end" | "start"; innerClassName?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const [canLeft, setCanLeft] = useState(false);
@@ -205,9 +208,6 @@ function ChipRow({ children, align = "end", innerClassName = "gap-2" }: { childr
     };
   }, []);
   const go = (dir: 1 | -1) => ref.current?.scrollBy({ left: dir * ref.current.clientWidth * 0.7, behavior: "smooth" });
-  const mask = canLeft || canRight
-    ? `linear-gradient(to right, ${canLeft ? "transparent, #000 40px" : "#000"}, ${canRight ? "#000 calc(100% - 40px), transparent" : "#000"})`
-    : undefined;
   const arrowCls =
     "hidden md:flex absolute top-1/2 -translate-y-1/2 z-10 w-8 h-8 items-center justify-center rounded-full bg-white border border-beige-200 shadow-sm text-gray-500 hover:text-gold-600 hover:border-gold-400 transition-colors";
   return (
@@ -215,7 +215,6 @@ function ChipRow({ children, align = "end", innerClassName = "gap-2" }: { childr
       <div
         ref={ref}
         className="no-scrollbar -mx-4 md:-mx-5 px-4 md:px-5 overflow-x-auto"
-        style={mask ? { maskImage: mask, WebkitMaskImage: mask } : undefined}
       >
         {/* 다 들어가면 오른쪽(손님 쪽)에 붙고, 넘치면 왼쪽부터 시작해 밀어서 본다 */}
         <div className={`flex w-max ${align === "end" ? "ml-auto" : ""} ${innerClassName}`}>{children}</div>
@@ -312,7 +311,6 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
   const [typingLabel, setTypingLabel] = useState<string | null>(null);
   // 요약을 보고 '이대로 주문할게요'를 눌렀는지 — 누른 뒤엔 답을 고칠 수 없다 (곧 결제 화면으로 넘어간다)
   const [confirmed, setConfirmed] = useState(false);
-  const [byeShown, setByeShown] = useState(false);
   const [typing, setTyping] = useState(true);
   // 찾아본 사진 — 보낸 사진(줄인 data URL, 이 탭에 보관)과 진행 상태
   const [refPreview, setRefPreview] = useState<string | null>(null);
@@ -328,6 +326,8 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
   const [pickedRec, setPickedRec] = useState<RecProduct | null>(null);
   // 고른 상품을 생화 안내까지 확인했는지 — 확인하면 선물 용도를 묻는다
   const [recPicked, setRecPicked] = useState(false);
+  // '새로 추천받기'로 이미 보여준 추천 상품 — 다음 추천에서 뺀다
+  const [seenRecIds, setSeenRecIds] = useState<string[]>([]);
   const QS = makeQuestions([...productTypes, "기타"])[flow];
 
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -415,19 +415,17 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
   const answer = (v: string) => {
     const next = [...answers.slice(0, asked - 1), v];
     setAnswers(next);
-    // 추천 — 분위기까지 받으면 '어울리는 꽃 찾는 중...' 뒤에 상품 카드 (고르면 선물 용도를 묻는다)
+    // 추천 — 분위기(마지막 질문)까지 받으면 '어울리는 꽃 찾는 중...' 뒤에 상품 카드 (고르면 바로 주문으로)
     if (flow === "recommend" && QS[asked - 1].key === "mood") later(200, () => shopSays(() => setRecShown(true), 1300, "어울리는 꽃 찾는 중"));
     else if (asked < QS.length) later(200, () => shopSays(() => setAsked(asked + 1), 550));
-    // 추천 — 마지막 질문(연령대)까지 받으면 바로 주문으로 (방금 받은 답까지 넘긴다)
-    else if (flow === "recommend") confirm(next);
     else later(200, () => shopSays(() => setSummaryShown(true), 700));
   };
 
-  // 추천에서 고른 상품 — 생화 안내를 확인하면 선물 용도를 묻는다
+  // 추천에서 고른 상품 — 생화 안내를 확인하면 사장님 스타일처럼 답을 정리해 보여주고 '이대로 주문할게요'
   const pickRec = () => {
     setShowFlowerNotice(false);
     setRecPicked(true);
-    later(200, () => shopSays(() => setAsked(asked + 1), 550));
+    later(200, () => shopSays(() => setSummaryShown(true), 700));
   };
 
   // 요약대로 주문 — 받은 답을 맞춤주문 마지막 단계(예약 확인·결제)로 넘긴다
@@ -467,15 +465,11 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
       budget: Number(a("budget").replace(/\D/g, "")),
       // 사장님 스타일 — 피하고 싶은 것 (결제 화면 요청 사항 맨 위에 글로 들어간다)
       avoid: a("avoid"),
+      // 찾아본 사진 — 비슷하게 할 부분
+      similar: a("similar") ? a("similar").split(", ") : [],
     });
-    router.prefetch(href);
-    later(250, () =>
-      shopSays(() => {
-        setByeShown(true);
-        // 답을 읽을 틈을 두고 넘어간다
-        later(1400, () => router.push(href));
-      }, 750)
-    );
+    // 멘트 없이 바로 주문 화면으로
+    router.push(href);
   };
 
   // 이미 보낸 답을 눌러 그 질문부터 다시 고른다
@@ -486,12 +480,13 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
     setAsked(qIdx + 1);
     setSummaryShown(false);
     setTypingLabel(null);
-    // 추천 상품은 분위기나 그 앞부터 다시 고를 때만 지운다 (선물 용도만 고치면 고른 상품은 그대로)
+    // 추천 상품은 분위기나 그 앞부터 다시 고를 때 지운다 (분위기가 마지막 질문이라 추천에서는 어떤 답을 고쳐도 다시 추천)
     const moodIdx = QS.findIndex((q) => q.key === "mood");
     if (flow !== "recommend" || qIdx <= moodIdx) {
       setRecShown(false);
       setPickedRec(null);
       setRecPicked(false);
+      setSeenRecIds([]);
     }
     if (QS[qIdx].budget) {
       const prev = answers[qIdx];
@@ -524,13 +519,15 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
     setAsked(moodIdx + 1);
     setPickedRec(null);
     setRecPicked(false);
+    setSummaryShown(false);
   };
 
   // 볼륨감 참고 이미지 — 고른 형태에 사장님이 넣어 둔 것
   // 사진 주문은 최소 금액보다 싼 단계는 뺀다 (그 금액으로는 주문할 수 없어서)
   const volumeRefs = volumeRefsForType(sizeConfig, ans("type")).filter((r) => flow !== "photo" || !photoMinPrice || r.price >= photoMinPrice);
-  // 분위기를 사진으로 — 그 분위기의 매장 상품 중 고른 형태·희망 금액에 가까운 것 한 장
-  const moodPhoto = (mood: string) => {
+  // 분위기를 사진으로 — 그 분위기의 매장 상품 중 고른 형태이면서 희망 금액에 가장 가까운 것 한 장
+  // (같은 금액대 상품 사진이라 분위기와 함께 크기도 가늠할 수 있다 — 가격은 보여주지 않고 분위기만)
+  const moodPick = (mood: string) => {
     const t = ans("type");
     const b = Number(ans("budget").replace(/\D/g, "")) || 0;
     const pool = products.filter((p) => p.mood === mood && p.image_url);
@@ -538,20 +535,30 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
       (x, y) =>
         Number(y.product_type === t) - Number(x.product_type === t) ||
         Math.abs(x.price - b) - Math.abs(y.price - b) ||
+        // 금액 차이가 같으면 희망 금액을 넘지 않는 쪽
+        Number(x.price > b) - Number(y.price > b) ||
         Number(y.is_recommended || y.is_popular) - Number(x.is_recommended || x.is_popular)
     );
-    return pool[0]?.image_url ?? null;
+    return pool[0] ?? null;
   };
   // 추천 상품 — 고른 분위기의 상품 중에서 형태·희망 금액에 맞는 4개 (모자라면 다른 분위기에서 채운다)
+  // 5개 — '새로 추천받기'를 누르면 이미 보여준 상품은 빼고 다시 고른다
   const recommendForChat = () => {
     const opts = { productType: ans("type"), mood: ans("mood"), budget: Number(ans("budget").replace(/\D/g, "")) || 0 };
-    const first = recommendProducts(products.filter((p) => p.mood === opts.mood), opts);
-    if (first.length >= 4) return first.slice(0, 4);
-    const rest = recommendProducts(products.filter((p) => !first.includes(p)), opts);
-    return [...first, ...rest].slice(0, 4);
+    const pool = products.filter((p) => !seenRecIds.includes(p.id));
+    const first = recommendProducts(pool.filter((p) => p.mood === opts.mood), opts, REC_COUNT);
+    if (first.length >= REC_COUNT) return first;
+    const rest = recommendProducts(pool.filter((p) => !first.includes(p)), opts, REC_COUNT - first.length);
+    return [...first, ...rest];
   };
 
   const recs = recShown ? recommendForChat() : [];
+  // 아직 안 보여준 상품이 남아 있을 때만 '새로 추천받기'
+  const canRefreshRecs = recs.length > 0 && products.some((p) => !seenRecIds.includes(p.id) && !recs.some((r) => r.id === p.id));
+  const refreshRecs = () => {
+    const shown = recs.map((r) => r.id);
+    shopSays(() => setSeenRecIds((prev) => [...prev, ...shown]), 900, "다른 꽃 찾는 중");
+  };
   // 사진 주문 — 최소 금액보다 낮으면 금액을 보낼 수 없다
   const photoBudgetShort = flow === "photo" && photoMinPrice > 0 && budget > 0 && budget < photoMinPrice;
   // 직접 입력한 금액 — 1만 원 이상, 천 원 단위만 받는다 (저장·통계가 '5.5만원'처럼 만 원 단위로 다룬다)
@@ -583,7 +590,7 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
     if (answers[i] !== undefined) items.push({ id: `a${i}`, from: "me", text: q.budget
           ? // 추천은 예산을 묻는 말이라 '생각하고 있어요', 사장님 스타일·사진 주문은 제작 금액이라 '맞춰주세요'
             flow === "recommend" ? `${answers[i]} 정도 생각하고 있어요` : `${answers[i]}에 맞춰주세요`
-          : q.multi && answers[i] !== SKIP
+          : (q.multi || q.multiSay) && answers[i] !== SKIP
             ? `${answers[i].replace(/, /g, "·")}${q.multiSay ?? ""}`
             : answers[i] === SKIP && q.skipLabel
               ? q.skipLabel
@@ -596,8 +603,8 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
         text: recs.length > 0 ? "이런 꽃은 어떠세요? 💐\n마음에 드는 걸 골라주세요." : "아직 추천해드릴 상품이 없어요 😢\n메뉴판에서 직접 둘러봐 주시겠어요?",
       });
       if (recPicked && pickedRec) {
-        if (pickedRec.image_url) items.push({ id: "rec-img", from: "me", image: pickedRec.image_url });
-        items.push({ id: "rec-pick", from: "me", text: `‘${pickedRec.name}’ 이걸로 할게요`, tight: !!pickedRec.image_url, onEdit: confirmed ? undefined : editRec });
+        // 고른 상품은 글로만 — 사진은 아래 요약 카드('이렇게 준비해드릴게요!')에 넣는다
+        items.push({ id: "rec-pick", from: "me", text: `‘${pickedRec.name}’ 이걸로 할게요`, onEdit: confirmed ? undefined : editRec });
       }
     }
   }
@@ -610,17 +617,19 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
         // 사진은 요약 카드 위에 그대로 보여 줘서 줄에서는 뺀다
         ...QS.flatMap((q, i) => (q.photo ? [] : [{
           label: q.label,
-          value: answers[i] === SKIP ? (q.skipLabel === "없어요" ? "없음" : "-") : SUMMARY_MOOD[answers[i]] ?? answers[i],
+          value: answers[i] === SKIP ? (q.skipLabel === "없어요" ? "없음" : q.key === "similar" ? "전체 느낌" : "-") : SUMMARY_MOOD[answers[i]] ?? answers[i],
         }])),
         // 찾아본 사진 — 묻지 않은 분위기도 요약에는 보여 준다 (예산 앞에)
       ]
-        .flatMap((r) => (flow === "photo" && r.label === "희망 금액" ? [{ label: "분위기", value: SUMMARY_MOOD[PHOTO_MOOD_SAME] }, r] : [r])),
-      image: flow === "photo" ? refPreview ?? undefined : undefined,
+        .flatMap((r) => (flow === "photo" && r.label === "희망 금액" ? [{ label: "분위기", value: SUMMARY_MOOD[PHOTO_MOOD_SAME] }, r] : [r]))
+        // 추천 — 고른 상품을 맨 아래에
+        .concat(flow === "recommend" && pickedRec ? [{ label: "고른 상품", value: pickedRec.name }] : []),
+      // 요약 카드 위 사진 — 사진 주문은 보낸 사진, 추천은 고른 상품 사진
+      image: flow === "photo" ? refPreview ?? undefined : flow === "recommend" ? pickedRec?.image_url ?? undefined : undefined,
     });
   }
-  // 요약을 보고 주문 (추천은 선물 용도 답이 마지막 말이라 따로 없음)
-  if (confirmed && flow !== "recommend") items.push({ id: "confirm", from: "me", text: CONFIRM_TEXT });
-  if (byeShown) items.push({ id: "bye", from: "shop", text: "네! 이제 받으실 날짜와 정보만 알려주세요 🌷" });
+  // 요약을 보고 주문
+  if (confirmed) items.push({ id: "confirm", from: "me", text: CONFIRM_TEXT });
 
   // 지금 답을 기다리는 질문
   const current = !typing && asked > 0 && answers.length < asked ? QS[asked - 1] : null;
@@ -814,30 +823,30 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
           {/* 사장님 스타일 — 지금 질문의 답 고르기 */}
           {/* 분위기를 사진으로 고르기 — 그 분위기의 매장 상품 사진 (없으면 글자만) */}
           {current?.moodPhotos && (
-            // 다섯 개를 한눈에 — 휴대폰은 3칸씩 두 줄, PC는 한 줄 (옆으로 밀지 않는다)
-            <div className="welcome-in mt-4 pl-12">
-              <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
+            // 옆으로 밀어 보는 큰 카드 — 희망 금액에 맞는 그 분위기 상품 사진이라 크기도 함께 본다
+            <div className="welcome-in mt-4">
+              <ChipRow align="start" innerClassName="gap-2.5 pl-12 pr-1">
                 {current.options!.map((v) => {
-                  const img = moodPhoto(v);
+                  const pick = moodPick(v);
                   return (
                     <button
                       key={v}
                       type="button"
                       onClick={() => answer(v)}
-                      className="group min-w-0 bg-white rounded-2xl overflow-hidden text-left border border-transparent hover:border-gold-400 active:scale-[0.97] transition-all"
+                      className="group w-36 md:w-40 shrink-0 bg-white rounded-2xl overflow-hidden text-left border border-transparent hover:border-gold-400 active:scale-[0.97] transition-all"
                     >
                       <div className="relative w-full aspect-[4/5] bg-beige-200">
-                        {img ? (
-                          <Image src={img} alt="" fill sizes="(min-width: 768px) 140px, 33vw" className="object-cover" />
+                        {pick?.image_url ? (
+                          <Image src={pick.image_url} alt="" fill sizes="160px" className="object-cover" />
                         ) : (
-                          <span className="absolute inset-0 flex items-center justify-center text-2xl">💐</span>
+                          <span className="absolute inset-0 flex items-center justify-center text-3xl">💐</span>
                         )}
                       </div>
-                      <p className="px-2 py-2 text-[13px] md:text-sm font-medium leading-snug text-gray-800 break-keep group-hover:text-gold-600">{v}</p>
+                      <p className="px-3 py-2.5 text-sm font-medium text-gray-800 break-keep group-hover:text-gold-600">{v}</p>
                     </button>
                   );
                 })}
-              </div>
+              </ChipRow>
             </div>
           )}
 
@@ -915,7 +924,7 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
               {/* 건너뛰기는 답과 섞이지 않게 아래 줄에 따로 */}
               {current.skippable && (
                 <button type="button" onClick={() => answer(SKIP)} className="welcome-in px-2 py-1 text-[15px] text-gray-400 hover:text-gray-600">
-                  {SKIP}
+                  {current.skipLabel ?? SKIP}
                 </button>
               )}
             </div>
@@ -944,19 +953,21 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
                   })}
                 </ChipRow>
               </div>
-              <button
-                type="button"
-                disabled={multiSel.length === 0}
-                onClick={() => {
-                  // 보기 순서대로 이어서 저장
-                  const picked = current.options!.filter((o) => multiSel.includes(o));
-                  setMultiSel([]);
-                  answer(picked.join(", "));
-                }}
-                className="welcome-in px-5 py-2.5 rounded-2xl rounded-br-md bg-gold-500 text-white font-medium text-[15px] hover:bg-gold-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                {multiSel.length > 0 ? "다 골랐어요" : "골라주세요"}
-              </button>
+              {/* 하나라도 고르면 보내기 버튼이 나온다 (안 골랐을 땐 아래 건너뛰기만) */}
+              {multiSel.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    // 보기 순서대로 이어서 저장
+                    const picked = current.options!.filter((o) => multiSel.includes(o));
+                    setMultiSel([]);
+                    answer(picked.join(", "));
+                  }}
+                  className="welcome-in px-5 py-2.5 rounded-2xl rounded-br-md bg-gold-500 text-white font-medium text-[15px] hover:bg-gold-600 transition-colors"
+                >
+                  다 골랐어요
+                </button>
+              )}
               {current.skippable && (
                 <button
                   type="button"
@@ -1098,7 +1109,7 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
           {/* 추천 상품 — 옆으로 밀어서 보고, 고르면 생화 안내 후 주문으로 */}
           {recShown && !typing && !recPicked && !confirmed && recs.length > 0 && (
             <div className="welcome-in mt-3">
-              <ChipRow align="start" innerClassName="gap-3 pl-12 pr-1">
+              <ChipRow key={seenRecIds.length} align="start" innerClassName="gap-3 pl-12 pr-1">
                 {recs.map((p) => (
                   <div key={p.id} className="w-40 md:w-44 shrink-0 bg-white rounded-2xl overflow-hidden">
                     <div className="relative w-full aspect-[4/5] bg-beige-200">
@@ -1121,6 +1132,21 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
                     </div>
                   </div>
                 ))}
+                {/* 마지막 카드 — 방금 보여준 상품은 빼고 다시 추천 */}
+                {canRefreshRecs && (
+                  <button
+                    type="button"
+                    onClick={refreshRecs}
+                    className="group w-40 md:w-44 shrink-0 rounded-2xl border-2 border-dashed border-gold-400/60 bg-white/60 flex flex-col items-center justify-center gap-3 text-gold-600 hover:bg-white hover:border-gold-400 active:scale-[0.97] transition-all"
+                  >
+                    <span className="w-12 h-12 rounded-full bg-beige-100 flex items-center justify-center group-hover:bg-gold-500 group-hover:text-white transition-colors">
+                      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                      </svg>
+                    </span>
+                    <span className="text-[15px] font-medium">새로 추천받기</span>
+                  </button>
+                )}
               </ChipRow>
             </div>
           )}
@@ -1156,8 +1182,9 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
       {/* 생화 안내 — 사진과 똑같이는 어렵다는 것 (맞춤주문 상품 선택 뒤와 같은 안내) */}
       {showFlowerNotice && (
         <FlowerNoticeModal
-          // 추천은 상품을 고른 뒤 선물 용도를 묻고, 사진 주문은 바로 주문으로
+          // 추천은 고른 상품으로, 사진 주문은 받은 사진으로 바로 주문
           onConfirm={flow === "recommend" ? pickRec : confirm}
+          photoOrder={flow === "photo"}
           onClose={() => {
             setShowFlowerNotice(false);
             setPickedRec(null);

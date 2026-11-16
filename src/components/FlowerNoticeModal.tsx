@@ -5,9 +5,11 @@ import { useEffect } from "react";
 interface Props {
   onConfirm: () => void;
   onClose: () => void;
+  /** 찾아본 사진 주문 — 원하는 구성이 어려우면 취소될 수 있다는 안내를 함께 (한 번에 보여준다) */
+  photoOrder?: boolean;
 }
 
-export default function FlowerNoticeModal({ onConfirm, onClose }: Props) {
+export default function FlowerNoticeModal({ onConfirm, onClose, photoOrder = false }: Props) {
   useEffect(() => {
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = ""; };
@@ -27,6 +29,13 @@ export default function FlowerNoticeModal({ onConfirm, onClose }: Props) {
           <p>사진과 똑같은 구성으로 제작이 어렵습니다.</p>
           <p>이미지를 참고해 비슷한 분위기로 준비해 드릴게요.</p>
         </div>
+        {photoOrder && (
+          // 사진 주문 — 주문이 성립하지 않을 수도 있다는 안내 (결제 전에 꼭 보게)
+          <div className="pt-4 border-t border-gray-100 text-[15px] md:text-[16px] text-gray-700 leading-[1.7] text-center break-keep">
+            <p>원하시는 구성으로 제작이 어려운 경우</p>
+            <p>예약이 취소될 수 있어요.</p>
+          </div>
+        )}
         <button
           type="button"
           onClick={onConfirm}
