@@ -9,7 +9,7 @@ import { ko } from "date-fns/locale";
 import "react-datepicker/dist/react-datepicker.css";
 registerLocale("ko", ko);
 
-import { PRODUCT_TYPES as DEFAULT_PRODUCT_TYPES } from "@/lib/constants";
+import { MOODS, PRODUCT_TYPES as DEFAULT_PRODUCT_TYPES } from "@/lib/constants";
 import { resolveDayHours, type DateOverrides } from "@/lib/businessHours";
 
 function CustomSelect({ value, onChange, options, placeholder, error }: {
@@ -132,7 +132,6 @@ const DELIVERY_TYPES = ["픽업", "배송"];
 const GENDERS = ["여성", "남성", "부모님"];
 const AGES = ["10대", "20대", "30대", "40대", "50대 이상"];
 const RELATIONSHIPS = ["연인", "가족", "친구", "직장동료/상사", "기타"];
-const MOODS = ["깔끔한 화이트&그린", "화사한 파스텔톤", "선명한 비비드톤", "차분한 딥컬러"];
 
 function parseNaverText(text: string) {
   const r: Record<string, string | Date | null | boolean> = {};

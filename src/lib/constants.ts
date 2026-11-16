@@ -33,7 +33,8 @@ export const BADGE_COLORS = {
   recommended: { bg: "#9CAF88", label: "추천" },
 } as const;
 
-export const MOODS = ["깔끔한 화이트&그린", "화사한 파스텔톤", "선명한 비비드톤", "차분한 딥컬러"] as const;
+// 상품 분위기 — 상품 등록·필터·대화형 추천·사장님 스타일이 모두 이 목록을 쓴다
+export const MOODS = ["밝고 화사한", "러프하고 내추럴한", "차분하고 빈티지한", "독특하고 유니크한", "진하고 강렬한"] as const;
 
 export const INACTIVITY_TIMEOUT_MS = 60000;
 

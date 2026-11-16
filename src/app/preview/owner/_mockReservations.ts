@@ -18,22 +18,22 @@ const img = (n: number) => `/preview/thumb/${n}.jpg`;
 type MockProduct = Pick<Product, "id" | "name" | "price" | "image_url" | "product_type" | "flower_colors" | "wrapping_color" | "mood"> & { bag_included?: boolean };
 
 export const MOCK_PRODUCTS: MockProduct[] = [
-  { id: "p1", name: "가을 센터피스", price: 89000, image_url: img(1), product_type: "센터피스", flower_colors: ["보라색", "흰색"], wrapping_color: "밝은 계열", mood: "차분한 딥컬러", bag_included: true },
-  { id: "p2", name: "핑크 튤립 꽃다발", price: 120000, image_url: img(2), product_type: "꽃다발", flower_colors: ["핑크색"], wrapping_color: "밝은 계열", mood: "화사한 파스텔톤" },
-  { id: "p3", name: "내추럴 꽃다발", price: 65000, image_url: img(3), product_type: "꽃다발", flower_colors: ["노란색", "흰색"], wrapping_color: "어두운 계열", mood: "차분한 딥컬러" },
-  { id: "p4", name: "파스텔 믹스 꽃다발", price: 70000, image_url: img(4), product_type: "꽃다발", flower_colors: ["핑크색", "노란색", "보라색"], wrapping_color: "밝은 계열", mood: "화사한 파스텔톤" },
-  { id: "p5", name: "라벤더 박스 센터피스", price: 120000, image_url: img(5), product_type: "센터피스", flower_colors: ["보라색", "노란색"], wrapping_color: "어두운 계열", mood: "화사한 파스텔톤", bag_included: true },
-  { id: "p6", name: "오렌지 장미 꽃다발", price: 300000, image_url: img(6), product_type: "꽃다발", flower_colors: ["주황색"], wrapping_color: "밝은 계열", mood: "선명한 비비드톤" },
-  { id: "p7", name: "피치 장미 꽃다발", price: 200000, image_url: img(7), product_type: "꽃다발", flower_colors: ["주황색", "노란색"], wrapping_color: "밝은 계열", mood: "화사한 파스텔톤" },
-  { id: "p9", name: "썬샤인 꽃다발", price: 150000, image_url: img(9), product_type: "꽃다발", flower_colors: ["노란색"], wrapping_color: "밝은 계열", mood: "선명한 비비드톤" },
-  { id: "p10", name: "블루 해바라기 꽃다발", price: 90000, image_url: img(10), product_type: "꽃다발", flower_colors: ["노란색", "파란색"], wrapping_color: "밝은 계열", mood: "선명한 비비드톤" },
-  { id: "p11", name: "딥 로즈 꽃다발", price: 85000, image_url: img(11), product_type: "꽃다발", flower_colors: ["보라색", "파란색"], wrapping_color: "어두운 계열", mood: "차분한 딥컬러" },
-  { id: "p12", name: "그린 민트 꽃다발", price: 72000, image_url: img(12), product_type: "꽃다발", flower_colors: ["초록색", "흰색"], wrapping_color: "밝은 계열", mood: "깔끔한 화이트&그린" },
-  { id: "p14", name: "레드 시그니처 꽃다발", price: 60000, image_url: img(14), product_type: "꽃다발", flower_colors: ["빨간색"], wrapping_color: "밝은 계열", mood: "선명한 비비드톤" },
-  { id: "p15", name: "핑크 플라워 박스", price: 95000, image_url: img(15), product_type: "꽃바구니", flower_colors: ["핑크색"], wrapping_color: "밝은 계열", mood: "화사한 파스텔톤" },
-  { id: "p16", name: "옐로우 미니 꽃다발", price: 85000, image_url: img(16), product_type: "꽃다발", flower_colors: ["노란색"], wrapping_color: "밝은 계열", mood: "화사한 파스텔톤" },
-  { id: "p17", name: "카라 부케", price: 250000, image_url: img(17), product_type: "꽃다발", flower_colors: ["흰색", "초록색"], wrapping_color: "기타", mood: "깔끔한 화이트&그린", bag_included: true },
-  { id: "p18", name: "글라디올라스 화병꽂이", price: 75000, image_url: img(18), product_type: "화병꽂이", flower_colors: ["주황색", "초록색"], wrapping_color: "기타", mood: "선명한 비비드톤", bag_included: true },
+  { id: "p1", name: "가을 센터피스", price: 89000, image_url: img(1), product_type: "센터피스", flower_colors: ["보라색", "흰색"], wrapping_color: "밝은 계열", mood: "차분하고 빈티지한", bag_included: true },
+  { id: "p2", name: "핑크 튤립 꽃다발", price: 120000, image_url: img(2), product_type: "꽃다발", flower_colors: ["핑크색"], wrapping_color: "밝은 계열", mood: "밝고 화사한" },
+  { id: "p3", name: "내추럴 꽃다발", price: 65000, image_url: img(3), product_type: "꽃다발", flower_colors: ["노란색", "흰색"], wrapping_color: "어두운 계열", mood: "차분하고 빈티지한" },
+  { id: "p4", name: "파스텔 믹스 꽃다발", price: 70000, image_url: img(4), product_type: "꽃다발", flower_colors: ["핑크색", "노란색", "보라색"], wrapping_color: "밝은 계열", mood: "밝고 화사한" },
+  { id: "p5", name: "라벤더 박스 센터피스", price: 120000, image_url: img(5), product_type: "센터피스", flower_colors: ["보라색", "노란색"], wrapping_color: "어두운 계열", mood: "밝고 화사한", bag_included: true },
+  { id: "p6", name: "오렌지 장미 꽃다발", price: 300000, image_url: img(6), product_type: "꽃다발", flower_colors: ["주황색"], wrapping_color: "밝은 계열", mood: "진하고 강렬한" },
+  { id: "p7", name: "피치 장미 꽃다발", price: 200000, image_url: img(7), product_type: "꽃다발", flower_colors: ["주황색", "노란색"], wrapping_color: "밝은 계열", mood: "밝고 화사한" },
+  { id: "p9", name: "썬샤인 꽃다발", price: 150000, image_url: img(9), product_type: "꽃다발", flower_colors: ["노란색"], wrapping_color: "밝은 계열", mood: "진하고 강렬한" },
+  { id: "p10", name: "블루 해바라기 꽃다발", price: 90000, image_url: img(10), product_type: "꽃다발", flower_colors: ["노란색", "파란색"], wrapping_color: "밝은 계열", mood: "진하고 강렬한" },
+  { id: "p11", name: "딥 로즈 꽃다발", price: 85000, image_url: img(11), product_type: "꽃다발", flower_colors: ["보라색", "파란색"], wrapping_color: "어두운 계열", mood: "차분하고 빈티지한" },
+  { id: "p12", name: "그린 민트 꽃다발", price: 72000, image_url: img(12), product_type: "꽃다발", flower_colors: ["초록색", "흰색"], wrapping_color: "밝은 계열", mood: "러프하고 내추럴한" },
+  { id: "p14", name: "레드 시그니처 꽃다발", price: 60000, image_url: img(14), product_type: "꽃다발", flower_colors: ["빨간색"], wrapping_color: "밝은 계열", mood: "진하고 강렬한" },
+  { id: "p15", name: "핑크 플라워 박스", price: 95000, image_url: img(15), product_type: "꽃바구니", flower_colors: ["핑크색"], wrapping_color: "밝은 계열", mood: "밝고 화사한" },
+  { id: "p16", name: "옐로우 미니 꽃다발", price: 85000, image_url: img(16), product_type: "꽃다발", flower_colors: ["노란색"], wrapping_color: "밝은 계열", mood: "밝고 화사한" },
+  { id: "p17", name: "카라 부케", price: 250000, image_url: img(17), product_type: "꽃다발", flower_colors: ["흰색", "초록색"], wrapping_color: "기타", mood: "러프하고 내추럴한", bag_included: true },
+  { id: "p18", name: "글라디올라스 화병꽂이", price: 75000, image_url: img(18), product_type: "화병꽂이", flower_colors: ["주황색", "초록색"], wrapping_color: "기타", mood: "진하고 강렬한", bag_included: true },
 ];
 
 export const findMockProduct = (id?: string | null) => MOCK_PRODUCTS.find((p) => p.id === id) ?? null;

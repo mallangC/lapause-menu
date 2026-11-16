@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { Product, ProductStatus } from "@/types";
-import { BADGE_COLORS, PRODUCT_TYPES, SEASONS } from "@/lib/constants";
+import { BADGE_COLORS, MOODS, PRODUCT_TYPES, SEASONS } from "@/lib/constants";
 import { sortByOrder } from "@/lib/productTypes";
 import { useCategoryOrder } from "@/hooks/useCategoryOrder";
 import { createClient } from "@/lib/supabase/client";
@@ -177,6 +177,8 @@ export default function ProductTable({ products, onEdit, onDelete, onStatusChang
     (PRODUCT_TYPES as readonly string[]).includes(type) || knownCustomTypes.includes(type);
   const [filterType, setFilterType] = useState("");
   const [filterSeason, setFilterSeason] = useState("");
+  // 분위기 — '' 전체 / 분위기 이름 / '__none' 분위기를 안 정한 상품
+  const [filterMood, setFilterMood] = useState("");
   const [filterBadge, setFilterBadge] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [page, setPage] = useState(1);
@@ -187,6 +189,7 @@ export default function ProductTable({ products, onEdit, onDelete, onStatusChang
     .filter((p) => {
       if (filterType && p.product_type !== filterType) return false;
       if (filterSeason && !(p.seasons ?? []).includes(filterSeason)) return false;
+      if (filterMood === "__none" ? !!p.mood : filterMood && p.mood !== filterMood) return false;
       if (filterBadge === "popular" && !p.is_popular) return false;
       if (filterBadge === "recommended" && !p.is_recommended) return false;
       if (filterBadge === "none" && (p.is_popular || p.is_recommended)) return false;
@@ -203,7 +206,7 @@ export default function ProductTable({ products, onEdit, onDelete, onStatusChang
   const currentPage = Math.min(page, totalPages);
   const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  const hasFilter = filterType || filterSeason || filterBadge || filterStatus;
+  const hasFilter = filterType || filterSeason || filterMood || filterBadge || filterStatus;
 
   // 개수는 '상품 목록' 제목 옆에 고정해서 보여준다 (필터 칩 줄 끝에 두면 가로 스크롤 뒤로 밀려 안 보인다)
   const shownCount = hasFilter ? filtered.length : null;
@@ -223,6 +226,7 @@ export default function ProductTable({ products, onEdit, onDelete, onStatusChang
   const clearFilters = () => {
     setFilterType("");
     setFilterSeason("");
+    setFilterMood("");
     setFilterBadge("");
     setFilterStatus("");
     setPage(1);
@@ -268,6 +272,12 @@ export default function ProductTable({ products, onEdit, onDelete, onStatusChang
               ))}
             </>
           )}
+
+          {/* 분위기 — 상품마다 분위기를 다시 고를 때 묶어 보기 좋게 ('분위기 없음'은 아직 안 정한 상품) */}
+          <div className="h-4 w-px bg-gray-300 shrink-0 mx-0.5" />
+          {[...MOODS, "__none"].map((m) => (
+            <Chip key={`mood-${m}`} label={m === "__none" ? "분위기 없음" : m} active={filterMood === m} onClick={() => { setFilterMood(filterMood === m ? "" : m); resetPage(); }} />
+          ))}
 
           <div className="h-4 w-px bg-gray-300 shrink-0 mx-0.5" />
 
