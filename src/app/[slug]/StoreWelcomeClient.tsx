@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { BASE_MOODS, recommendOrderHref, photoOrderKey, PHOTO_MOOD_SAME, STYLE_AVOID_POINTS, STYLE_MOODS, STYLE_MOOD_TRUST, styleOrderHref, type StyleKind } from "@/lib/styleOrder";
+import { BASE_MOODS, recommendOrderHref, photoOrderKey, PHOTO_MOOD_SAME, STYLE_AVOID_MAX, STYLE_MOODS, STYLE_MOOD_TRUST, styleOrderHref, type StyleKind } from "@/lib/styleOrder";
 import FlowerNoticeModal from "@/components/FlowerNoticeModal";
 import StoreFooter, { type StoreFooterProps } from "@/components/main/StoreFooter";
 import VolumeRefs, { type VolumeRef } from "@/components/VolumeRefs";
@@ -83,6 +83,9 @@ type Question = {
   photo?: boolean;
   // 여러 개 골라 '다 골랐어요'로 보낸다 (답은 ', '로 이어 저장)
   multi?: boolean;
+  // 답을 글로 쓴다 (입력칸 + 보내기) — placeholder는 입력칸 안내
+  text?: boolean;
+  placeholder?: string;
   // 여러 개 고른 답을 보낼 때 손님 말 — 고른 것 뒤에 붙인다 (예: ' 비슷하게 해주세요')
   multiSay?: string;
   // 건너뛰기 버튼 글자 (기본 '넘어갈게요')
@@ -91,6 +94,8 @@ type Question = {
   volume?: boolean;
   // 답을 글자 대신 매장 상품 사진으로 고른다 (분위기)
   moodPhotos?: boolean;
+  // 답을 한 줄로 밀어 보지 않고 줄바꿈해 모두 한눈에 보여준다 (분위기처럼 다 보고 골라야 하는 질문)
+  wrap?: boolean;
 };
 
 const SKIP = "넘어갈게요";
@@ -111,10 +116,10 @@ const makeQuestions = (TYPE_OPTIONS: string[]): Record<Flow, Question[]> => ({
   style: [
     ...GIFT_QUESTIONS,
     { key: "type", label: "상품 형태", ask: "어떤 형태로 만들어드릴까요?", options: TYPE_OPTIONS },
-    { key: "mood", label: "분위기", ask: "원하시는 분위기가 있을까요?", options: STYLE_MOODS },
-    // 색은 사장님께 맡기는 대신 꼭 피하고 싶은 것만 받는다 (결제 화면 요청 사항 맨 위에 글로)
-    { key: "avoid", label: "피하고 싶은 것", ask: "꼭 피하고 싶은 게 있을까요?\n여러 개 고르셔도 돼요.", options: STYLE_AVOID_POINTS, multi: true, multiSay: "은 피해주세요", skippable: true, skipLabel: "없어요" },
+    { key: "mood", label: "분위기", ask: "원하시는 분위기가 있을까요?", options: STYLE_MOODS, wrap: true },
     BUDGET_Q,
+    // 색은 사장님께 맡기는 대신 꼭 피하고 싶은 것만 받는다 (결제 화면 요청 사항 맨 위에 글로)
+    { key: "avoid", label: "피하고 싶은 것", ask: "꼭 피하고 싶은 게 있을까요?\n편하게 적어주세요.", text: true, placeholder: "예) 향이 강한 꽃, 노란색", skippable: true, skipLabel: "없어요" },
   ],
   // 찾아본 사진 — 형태를 먼저 묻고(그 형태 사진을 골라 오게) 사진을 받는다
   // (사진을 골라 왔다는 것 자체가 '이 분위기 그대로'라서 비슷했으면 하는 점은 묻지 않는다)
@@ -156,6 +161,9 @@ async function shrinkToDataUrl(file: File, maxSide = 1600, quality = 0.85): Prom
 
 // 예산 버튼 — 눌러서 금액을 더한다 (직접 입력 없이 클릭만으로)
 const BUDGET_STEPS = [10000, 50000, 100000];
+// 직접 입력 범위 — 1만 원 ~ 1,000만 원 (서버 검사와 같다)
+const BUDGET_MIN = 10000;
+const BUDGET_MAX = 10_000_000;
 const won = (n: number) => `${n.toLocaleString("ko-KR")}원`;
 // 버튼 안 짧은 금액 — 만 원 단위면 '5만원', 아니면 '55,000원'
 const manwon = (n: number) => (n % 10000 === 0 ? `${n / 10000}만원` : won(n));
@@ -292,8 +300,12 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
   const [asked, setAsked] = useState(0);
   const [answers, setAnswers] = useState<string[]>([]);
   const [budget, setBudget] = useState(0);
+  // 금액을 눌러 직접 입력하는 중인지 (버튼으로 쌓는 것과 함께 쓴다)
+  const [budgetTyping, setBudgetTyping] = useState(false);
   // 여러 개 고르는 질문에서 지금 골라 둔 것
   const [multiSel, setMultiSel] = useState<string[]>([]);
+  // 글로 쓰는 질문에 지금 써 둔 답
+  const [textAns, setTextAns] = useState("");
   // 요약 카드는 가게가 '입력 중'을 마친 뒤에 한 번만 나타난다 (답하자마자 떴다 사라지지 않게)
   const [summaryShown, setSummaryShown] = useState(false);
   // 입력 중 말풍선에 함께 보일 말 (예: '크기 확인 중')
@@ -454,7 +466,7 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
       mood: flow === "photo" ? PHOTO_MOOD_SAME : a("mood"),
       budget: Number(a("budget").replace(/\D/g, "")),
       // 사장님 스타일 — 피하고 싶은 것 (결제 화면 요청 사항 맨 위에 글로 들어간다)
-      avoid: a("avoid") ? a("avoid").split(", ") : [],
+      avoid: a("avoid"),
     });
     router.prefetch(href);
     later(250, () =>
@@ -488,6 +500,10 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
     if (QS[qIdx].multi) {
       const prev = answers[qIdx];
       setMultiSel(prev && prev !== SKIP ? prev.split(", ") : []);
+    }
+    if (QS[qIdx].text) {
+      const prev = answers[qIdx];
+      setTextAns(prev && prev !== SKIP ? prev : "");
     }
     // 사진 질문이나 그 앞부터 다시 고르면 사진도 다시 받는다
     const photoIdx = QS.findIndex((q) => q.photo);
@@ -538,6 +554,9 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
   const recs = recShown ? recommendForChat() : [];
   // 사진 주문 — 최소 금액보다 낮으면 금액을 보낼 수 없다
   const photoBudgetShort = flow === "photo" && photoMinPrice > 0 && budget > 0 && budget < photoMinPrice;
+  // 직접 입력한 금액 — 1만 원 이상, 천 원 단위만 받는다 (저장·통계가 '5.5만원'처럼 만 원 단위로 다룬다)
+  const budgetTooSmall = budget > 0 && budget < BUDGET_MIN;
+  const budgetNotRound = budget > 0 && budget % 1000 !== 0;
 
   // ── 화면에 그릴 대화 ──
   const items: Item[] = [];
@@ -795,8 +814,9 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
           {/* 사장님 스타일 — 지금 질문의 답 고르기 */}
           {/* 분위기를 사진으로 고르기 — 그 분위기의 매장 상품 사진 (없으면 글자만) */}
           {current?.moodPhotos && (
-            <div className="welcome-in mt-4">
-              <ChipRow align="start" innerClassName="gap-2.5 pl-12 pr-1">
+            // 다섯 개를 한눈에 — 휴대폰은 3칸씩 두 줄, PC는 한 줄 (옆으로 밀지 않는다)
+            <div className="welcome-in mt-4 pl-12">
+              <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
                 {current.options!.map((v) => {
                   const img = moodPhoto(v);
                   return (
@@ -804,26 +824,84 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
                       key={v}
                       type="button"
                       onClick={() => answer(v)}
-                      className="group w-36 md:w-40 shrink-0 bg-white rounded-2xl overflow-hidden text-left border border-transparent hover:border-gold-400 active:scale-[0.97] transition-all"
+                      className="group min-w-0 bg-white rounded-2xl overflow-hidden text-left border border-transparent hover:border-gold-400 active:scale-[0.97] transition-all"
                     >
                       <div className="relative w-full aspect-[4/5] bg-beige-200">
                         {img ? (
-                          <Image src={img} alt="" fill sizes="160px" className="object-cover" />
+                          <Image src={img} alt="" fill sizes="(min-width: 768px) 140px, 33vw" className="object-cover" />
                         ) : (
-                          <span className="absolute inset-0 flex items-center justify-center text-3xl">💐</span>
+                          <span className="absolute inset-0 flex items-center justify-center text-2xl">💐</span>
                         )}
                       </div>
-                      <p className="px-3 py-2.5 text-sm font-medium text-gray-800 break-keep group-hover:text-gold-600">{v}</p>
+                      <p className="px-2 py-2 text-[13px] md:text-sm font-medium leading-snug text-gray-800 break-keep group-hover:text-gold-600">{v}</p>
                     </button>
                   );
                 })}
-              </ChipRow>
+              </div>
             </div>
           )}
 
-          {current && !current.budget && !current.photo && !current.multi && !current.moodPhotos && (
+          {/* 글로 쓰기 — 입력칸 + 보내기, 아래에 '없어요' */}
+          {current?.text && (
             <div className="flex flex-col items-end gap-2 mt-5">
-              {/* 고를 답은 한 줄로 — 많으면 옆으로 밀어서 본다 */}
+              <form
+                className="welcome-in self-end w-full max-w-[320px] flex items-end gap-2 rounded-2xl rounded-br-md bg-white border border-gold-400 p-2 pl-4"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const v = textAns.replace(/\s+/g, " ").trim();
+                  if (!v) return;
+                  setTextAns("");
+                  answer(v);
+                }}
+              >
+                <textarea
+                  value={textAns}
+                  onChange={(e) => setTextAns(e.target.value.slice(0, STYLE_AVOID_MAX))}
+                  onKeyDown={(e) => {
+                    // 엔터로 보내기 (한글 조합 중에는 보내지 않는다), 줄바꿈은 Shift+엔터
+                    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                      e.preventDefault();
+                      e.currentTarget.form?.requestSubmit();
+                    }
+                  }}
+                  rows={2}
+                  maxLength={STYLE_AVOID_MAX}
+                  placeholder={current.placeholder}
+                  aria-label={current.label}
+                  className={`flex-1 min-w-0 resize-none py-1.5 bg-transparent text-gray-800 placeholder:text-gray-300 focus:outline-none ${bubbleText}`}
+                />
+                <button
+                  type="submit"
+                  disabled={!textAns.trim()}
+                  className="shrink-0 px-4 py-2 rounded-xl bg-gold-500 text-white font-medium text-[15px] hover:bg-gold-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  보내기
+                </button>
+              </form>
+              {current.skippable && (
+                <button
+                  type="button"
+                  onClick={() => { setTextAns(""); answer(SKIP); }}
+                  className={`shrink-0 whitespace-nowrap ${replyBtn}`}
+                >
+                  {current.skipLabel ?? SKIP}
+                </button>
+              )}
+            </div>
+          )}
+
+          {current && !current.budget && !current.photo && !current.multi && !current.moodPhotos && !current.text && (
+            <div className="flex flex-col items-end gap-2 mt-5">
+              {/* 고를 답은 한 줄로 — 많으면 옆으로 밀어서 본다 (wrap이면 줄바꿈해 모두 보이게) */}
+              {current.wrap ? (
+                <div className="self-stretch flex flex-wrap justify-end gap-2 pl-10">
+                  {current.options!.map((v, i) => (
+                    <button key={v} type="button" onClick={() => answer(v)} className={`whitespace-nowrap ${replyBtn}`} style={{ animationDelay: `${i * 0.04}s` }}>
+                      {current.short?.[v] ?? v}
+                    </button>
+                  ))}
+                </div>
+              ) : (
               <div className="self-stretch">
                 <ChipRow>
                   {current.options!.map((v, i) => (
@@ -833,6 +911,7 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
                   ))}
                 </ChipRow>
               </div>
+              )}
               {/* 건너뛰기는 답과 섞이지 않게 아래 줄에 따로 */}
               {current.skippable && (
                 <button type="button" onClick={() => answer(SKIP)} className="welcome-in px-2 py-1 text-[15px] text-gray-400 hover:text-gray-600">
@@ -927,14 +1006,48 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
                 ) : (
                   <span />
                 )}
-                <span className="text-[28px] font-semibold text-gray-900 tabular-nums">{won(budget)}</span>
+                {/* 금액 — 누르면 직접 입력 (버튼으로 더한 금액에서 고쳐도 된다) */}
+                {budgetTyping ? (
+                  <span className="flex items-baseline gap-1 min-w-0">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      autoFocus
+                      aria-label="희망 금액 직접 입력"
+                      value={budget > 0 ? budget.toLocaleString("ko-KR") : ""}
+                      placeholder="0"
+                      onChange={(e) => {
+                        const n = Number(e.target.value.replace(/\D/g, "")) || 0;
+                        setBudget(Math.min(n, BUDGET_MAX));
+                      }}
+                      onFocus={(e) => e.currentTarget.select()}
+                      onBlur={() => setBudgetTyping(false)}
+                      onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                      className="w-[150px] min-w-0 text-right text-[28px] font-semibold text-gray-900 tabular-nums bg-transparent border-b-2 border-gold-400 focus:outline-none placeholder:text-gray-300"
+                    />
+                    <span className="text-[28px] font-semibold text-gray-900">원</span>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setBudgetTyping(true)}
+                    aria-label="희망 금액 직접 입력하기"
+                    className="group flex items-center gap-1.5 text-[28px] font-semibold text-gray-900 tabular-nums"
+                  >
+                    <svg className="w-4 h-4 text-gray-300 group-hover:text-gold-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" />
+                    </svg>
+                    <span className="border-b border-dashed border-gray-300 group-hover:border-gold-400">{won(budget)}</span>
+                  </button>
+                )}
               </div>
+              <p className="-mt-2 mb-3 text-right text-xs text-gray-400">금액을 눌러 직접 입력할 수도 있어요</p>
               <div className="grid grid-cols-3 gap-2">
                 {BUDGET_STEPS.map((s) => (
                   <button
                     key={s}
                     type="button"
-                    onClick={() => setBudget((b) => b + s)}
+                    onClick={() => { setBudgetTyping(false); setBudget((b) => Math.min(b + s, BUDGET_MAX)); }}
                     className="py-2.5 rounded-xl bg-beige-100 text-gold-600 font-semibold text-[15px] hover:bg-gold-500 hover:text-white active:scale-[0.96] transition-colors"
                   >
                     +{s / 10000}만
@@ -943,11 +1056,19 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
               </div>
               <button
                 type="button"
-                disabled={budget === 0 || photoBudgetShort}
-                onClick={() => answer(won(budget))}
+                disabled={budget === 0 || photoBudgetShort || budgetTooSmall || budgetNotRound}
+                onClick={() => { setBudgetTyping(false); answer(won(budget)); }}
                 className="mt-3 w-full py-3 rounded-xl bg-gold-500 text-white font-medium text-[15px] hover:bg-gold-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
-                {budget === 0 ? "금액을 눌러 정해주세요" : photoBudgetShort ? `${won(photoMinPrice)} 이상으로 정해주세요` : `${won(budget)}으로 부탁드려요`}
+                {budget === 0
+                  ? "금액을 눌러 정해주세요"
+                  : budgetTooSmall
+                  ? `${won(BUDGET_MIN)} 이상으로 정해주세요`
+                  : budgetNotRound
+                  ? "천 원 단위로 정해주세요"
+                  : photoBudgetShort
+                  ? `${won(photoMinPrice)} 이상으로 정해주세요`
+                  : `${won(budget)}으로 부탁드려요`}
               </button>
             </div>
           )}

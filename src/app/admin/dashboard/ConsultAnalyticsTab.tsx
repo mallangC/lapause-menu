@@ -43,8 +43,8 @@ const won = (n: number) => `${n.toLocaleString()}원`;
 const pct = (a: number, b: number) => (b > 0 ? `${Math.round((a / b) * 100)}%` : "—");
 /** '5만원' → 50000 (예전 '1~5만원' 같은 구간 라벨은 비교할 수 없어 null) */
 const budgetAmount = (budget: string | null) => {
-  const m = budget?.match(/^(\d+)만원$/);
-  return m ? Number(m[1]) * 10000 : null;
+  const m = budget?.match(/^(\d+(?:\.\d+)?)만원$/);
+  return m ? Math.round(Number(m[1]) * 10000) : null;
 };
 /** 주문한 상품 가격(배송비·옵션 제외)을 손님이 고른 예산과 비교 */
 const fitOf = (o: ConsultOrder): Fit | null => {

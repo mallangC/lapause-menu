@@ -7,7 +7,7 @@ import { preloadOrderInputs } from "@/components/LazyOrderInputs";
 import { Product } from "@/types";
 import OrderCheckout, { type CheckoutOrder } from "@/components/order/OrderCheckout";
 import { EMPTY_FORM, type ConsultForm } from "@/components/order/orderTypes";
-import { FLOWER_COLOR_MAP } from "@/lib/constants";
+import { FLOWER_COLOR_MAP, MOODS } from "@/lib/constants";
 import type { DateOverrides } from "@/lib/businessHours";
 import FlowerNoticeModal from "@/components/FlowerNoticeModal";
 import StoreHeader from "@/components/main/StoreHeader";
@@ -110,7 +110,8 @@ const BUDGET_MAP: Record<string, number> = {
 
 // 추천 계산은 첫 화면 대화형 추천과 같은 규칙 (src/lib/recommend.ts)
 function scoreProducts(products: Product[], form: ConsultForm): Product[] {
-  const budget = form.budget === "기타" ? parseInt(form.budgetCustom || "0") * 10000 : BUDGET_MAP[form.budget] ?? 0;
+  // 희망 금액은 만 원 단위 글자('5.5' = 55,000원 — 직접 입력하면 천 원 단위까지)
+  const budget = form.budget === "기타" ? Math.round((Number(form.budgetCustom) || 0) * 10000) : BUDGET_MAP[form.budget] ?? 0;
   return recommendProducts(products, { productType: form.productType, mood: form.mood, budget });
 }
 
@@ -481,7 +482,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
               title: "선호하는 분위기",
               selected: form.mood,
               displayValue: form.mood,
-              options: ["깔끔한 화이트&그린", "화사한 파스텔톤", "선명한 비비드톤", "차분한 딥컬러"],
+              options: [...MOODS],
               onSelect: (v: string) => { set("mood", v); setActiveSection2(2); },
               hint: null as React.ReactNode,
               extra: null as React.ReactNode,

@@ -152,7 +152,8 @@ export async function POST(request: NextRequest) {
     }
     let dbProduct: DbProduct | undefined;
     if (isStyleOrder) {
-      const budget = Number(body.form?.budgetCustom) * 10000;
+      // 만 원 단위 글자 ('5.5' = 55,000원) — 소수 계산 오차가 없게 반올림
+      const budget = Math.round(Number(body.form?.budgetCustom) * 10000);
       if (body.form?.budget !== "기타" || !isValidStyleBudget(budget) || !isValidTypeName(body.form?.productType)) {
         return NextResponse.json({ error: "주문 정보가 올바르지 않습니다. 처음부터 다시 시도해주세요." }, { status: 400 });
       }

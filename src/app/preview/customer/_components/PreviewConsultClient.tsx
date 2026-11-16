@@ -10,7 +10,7 @@ import DatePicker, { registerLocale } from "react-datepicker";
 import { ko } from "date-fns/locale/ko";
 import "react-datepicker/dist/react-datepicker.css";
 import { Product } from "@/types";
-import { FLOWER_COLOR_MAP } from "@/lib/constants";
+import { FLOWER_COLOR_MAP, MOODS } from "@/lib/constants";
 import { resolveDayHours, type DateOverrides } from "@/lib/businessHours";
 import PreviewFlowerNotice from "./PreviewFlowerNotice";
 import PreviewStoreHeader from "./PreviewStoreHeader";
@@ -190,7 +190,7 @@ const BUDGET_MAP: Record<string, number> = {
 function scoreProducts(products: Product[], form: ConsultForm): Product[] {
   const budget =
     form.budget === "기타"
-      ? parseInt(form.budgetCustom || "0") * 10000
+      ? Math.round((Number(form.budgetCustom) || 0) * 10000)
       : BUDGET_MAP[form.budget] ?? 0;
 
   const mappedType = TYPE_MAP[form.productType];
@@ -719,7 +719,7 @@ export default function PreviewConsultClient({ logoNode, slug, companyName, logo
               title: "선호하는 분위기",
               selected: form.mood,
               displayValue: form.mood,
-              options: ["깔끔한 화이트&그린", "화사한 파스텔톤", "선명한 비비드톤", "차분한 딥컬러"],
+              options: [...MOODS],
               onSelect: (v: string) => { set("mood", v); setActiveSection2(2); },
               extra: null as React.ReactNode,
             },
