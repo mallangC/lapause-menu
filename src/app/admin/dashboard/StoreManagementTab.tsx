@@ -938,6 +938,7 @@ export default function StoreManagementTab({ stores }: Props) {
                   <textarea
                     value={refundReason}
                     onChange={e => setRefundReason(e.target.value)}
+                    disabled={refunding}
                     placeholder="환불 사유를 입력하세요"
                     rows={3}
                     className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-gray-400 resize-none placeholder-gray-300"
@@ -951,16 +952,18 @@ export default function StoreManagementTab({ stores }: Props) {
                 <div className="flex gap-2 pt-1">
                   <button
                     onClick={closeModal}
-                    className="flex-1 text-sm px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+                    disabled={refunding}
+                    className="flex-1 text-sm px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-40"
                   >
                     취소
                   </button>
                   <button
                     onClick={handleRefund}
                     disabled={refunding || !refundReason.trim()}
-                    className="flex-1 text-sm px-4 py-2.5 rounded-xl bg-red-500 text-white font-medium hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className={`flex-1 inline-flex items-center justify-center gap-2 text-sm px-4 py-2.5 rounded-xl bg-red-500 text-white font-medium hover:bg-red-600 transition-colors ${refunding ? "disabled:opacity-80 disabled:cursor-wait" : "disabled:opacity-50 disabled:cursor-not-allowed"}`}
                   >
-                    {refunding ? "처리 중…" : "환불 확인"}
+                    {refunding && <span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />}
+                    {refunding ? "환불하는 중…" : "환불 확인"}
                   </button>
                 </div>
               </>

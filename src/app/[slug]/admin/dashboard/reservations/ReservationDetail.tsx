@@ -29,11 +29,14 @@ const STATUS_STYLE: Record<string, { dot: string; text: string; bg: string }> = 
 
 interface Props {
   r: Reservation;
-  onUpdateStatus: (id: string, status: string, cancelReason?: string) => void;
+  /** 상태 변경 — Promise를 돌려주면 끝날 때까지 버튼에 로딩을 보여준다 (false면 실패: 창을 닫지 않는다) */
+  onUpdateStatus: (id: string, status: string, cancelReason?: string) => Promise<boolean | void> | boolean | void;
   onOpenLightbox: (url: string) => void;
   onSaveDeliveryFee: (r: Reservation, fee: string) => void;
   onEdit: (r: Reservation) => void;
   onDelete: (id: string) => void;
+  /** 삭제 중 — 삭제 버튼에 로딩 */
+  deleting?: boolean;
   /** 무통장 입금 입금 확인 → 결제완료로 (끝날 때까지 버튼에 로딩) */
   onMarkPaid?: (r: Reservation) => Promise<void> | void;
   messageCardPrice?: number;
@@ -76,6 +79,7 @@ export default function ReservationDetail({
   onSaveDeliveryFee,
   onEdit,
   onDelete,
+  deleting = false,
   messageCardPrice = 0,
   shoppingBagPrice = 0,
   preservativePrice = 0,
@@ -162,6 +166,16 @@ export default function ReservationDetail({
   const [cancelReason, setCancelReason] = useState("");
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [pendingStatus, setPendingStatus] = useState("");
+  // 지금 바꾸는 중인 상태 (API 요청이 끝날 때까지 버튼에 로딩, 창은 닫지 않는다)
+  const [updating, setUpdating] = useState<string | null>(null);
+  const runUpdate = async (status: string, reason?: string) => {
+    setUpdating(status);
+    try {
+      return (await onUpdateStatus(r.id, status, reason)) !== false;
+    } finally {
+      setUpdating(null);
+    }
+  };
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [productDetail, setProductDetail] = useState<Product | null>(null);
 
@@ -186,24 +200,26 @@ export default function ReservationDetail({
       setPendingStatus("준비중");
       setShowConfirmModal(true);
     } else {
-      onUpdateStatus(r.id, status);
+      runUpdate(status);
     }
   };
 
-  const handleConfirmYes = () => {
-    setShowConfirmModal(false);
+  const handleConfirmYes = async () => {
     if (pendingStatus === "취소") {
+      setShowConfirmModal(false);
       setCancelReason("");
       setShowCancelModal(true);
-    } else {
-      onUpdateStatus(r.id, pendingStatus);
+      return;
     }
+    // 확정 — 끝날 때까지 창을 열어 두고 '네' 버튼에 로딩
+    await runUpdate(pendingStatus);
+    setShowConfirmModal(false);
   };
 
-  const handleCancelConfirm = () => {
-    if (!cancelReason.trim()) return;
-    onUpdateStatus(r.id, "취소", cancelReason.trim());
-    setShowCancelModal(false);
+  const handleCancelConfirm = async () => {
+    if (!cancelReason.trim() || updating) return;
+    // 취소(카드 결제면 환불까지) — 끝날 때까지 창을 열어 두고 '취소 확정' 버튼에 로딩, 실패하면 창을 그대로 둔다
+    if (await runUpdate("취소", cancelReason.trim())) setShowCancelModal(false);
   };
 
   const refImages = r.reference_images?.filter(Boolean) ?? [];
@@ -365,7 +381,7 @@ export default function ReservationDetail({
       )}
 
       {showConfirmModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowConfirmModal(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => !updating && setShowConfirmModal(false)}>
           <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4 space-y-4" onClick={(e) => e.stopPropagation()}>
             {pendingStatus === "취소" && r.settlement_id ? (
               <div className="space-y-1.5">
@@ -381,23 +397,33 @@ export default function ReservationDetail({
               </p>
             )}
             <div className="flex gap-2">
-              <button type="button" onClick={handleConfirmYes} className="flex-1 bg-gold-500 text-white py-2 rounded-xl text-sm font-medium hover:bg-gold-600 transition-colors">네</button>
-              <button type="button" onClick={() => setShowConfirmModal(false)} className="flex-1 border border-gray-200 text-gray-500 py-2 rounded-xl text-sm hover:border-gray-400 transition-colors">아니요</button>
+              <button type="button" onClick={handleConfirmYes} disabled={!!updating} className="flex-1 inline-flex items-center justify-center gap-2 bg-gold-500 text-white py-2 rounded-xl text-sm font-medium hover:bg-gold-600 disabled:opacity-80 disabled:cursor-wait transition-colors">
+                {updating && <span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />}
+                {updating ? "확정하는 중..." : "네"}
+              </button>
+              <button type="button" onClick={() => setShowConfirmModal(false)} disabled={!!updating} className="flex-1 border border-gray-200 text-gray-500 py-2 rounded-xl text-sm hover:border-gray-400 disabled:opacity-40 transition-colors">아니요</button>
             </div>
           </div>
         </div>
       )}
       {showCancelModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowCancelModal(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => !updating && setShowCancelModal(false)}>
           <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4 space-y-4" onClick={(e) => e.stopPropagation()}>
             <div>
               <h3 className="text-sm font-medium text-gray-900 mb-1">취소 사유 입력</h3>
               <p className="text-xs text-gray-400">사유는 내부 기록으로 저장되며, 고객 안내 시 활용할 수 있습니다.</p>
             </div>
-            <textarea value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} placeholder="예) 재료 수급 불가, 고객 요청으로 취소 등" rows={3} autoFocus className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gray-400 resize-none" />
+            <textarea value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} disabled={!!updating} placeholder="예) 재료 수급 불가, 고객 요청으로 취소 등" rows={3} autoFocus className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gray-400 resize-none disabled:bg-gray-50" />
+            {/* 카드 결제는 환불까지 해서 몇 초 걸린다 — 기다리는 중이라고 알려준다 */}
+            {updating && r.payment_id && !r.settlement_id && (
+              <p className="text-xs text-gray-500">결제 취소(환불)까지 처리하고 있어요. 잠시만 기다려 주세요.</p>
+            )}
             <div className="flex gap-2">
-              <button type="button" onClick={handleCancelConfirm} disabled={!cancelReason.trim()} className="flex-1 bg-red-500 text-white py-2 rounded-xl text-sm font-medium hover:bg-red-600 disabled:opacity-40 transition-colors">취소 확정</button>
-              <button type="button" onClick={() => setShowCancelModal(false)} className="flex-1 border border-gray-200 text-gray-500 py-2 rounded-xl text-sm hover:border-gray-400 transition-colors">돌아가기</button>
+              <button type="button" onClick={handleCancelConfirm} disabled={!cancelReason.trim() || !!updating} className={`flex-1 inline-flex items-center justify-center gap-2 bg-red-500 text-white py-2 rounded-xl text-sm font-medium hover:bg-red-600 transition-colors ${updating ? "disabled:opacity-80 disabled:cursor-wait" : "disabled:opacity-40"}`}>
+                {updating && <span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />}
+                {updating ? "취소하는 중..." : "취소 확정"}
+              </button>
+              <button type="button" onClick={() => setShowCancelModal(false)} disabled={!!updating} className="flex-1 border border-gray-200 text-gray-500 py-2 rounded-xl text-sm hover:border-gray-400 disabled:opacity-40 transition-colors">돌아가기</button>
             </div>
           </div>
         </div>
@@ -747,16 +773,20 @@ export default function ReservationDetail({
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); handleStatusChange("준비중"); }}
-                className="flex-1 bg-gold-500 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-gold-600 transition-colors"
+                disabled={!!updating}
+                className="flex-1 inline-flex items-center justify-center gap-2 bg-gold-500 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-gold-600 disabled:opacity-80 disabled:cursor-wait transition-colors"
               >
-                예약 확정
+                {updating === "준비중" && <span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />}
+                {updating === "준비중" ? "확정하는 중..." : "예약 확정"}
               </button>
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); handleStatusChange("취소"); }}
-                className="flex-1 border border-red-200 text-red-500 py-2.5 rounded-xl text-sm font-medium hover:bg-red-50 transition-colors"
+                disabled={!!updating}
+                className="flex-1 inline-flex items-center justify-center gap-2 border border-red-200 text-red-500 py-2.5 rounded-xl text-sm font-medium hover:bg-red-50 disabled:opacity-60 disabled:cursor-wait transition-colors"
               >
-                예약 취소
+                {updating === "취소" && <span className="w-4 h-4 rounded-full border-2 border-red-400 border-t-transparent animate-spin" />}
+                {updating === "취소" ? "취소하는 중..." : "예약 취소"}
               </button>
             </div>
           ) : (
@@ -765,12 +795,17 @@ export default function ReservationDetail({
               <div ref={statusDropdownRef} className="relative">
                 <button
                   type="button"
-                  disabled={r.status === "취소"}
+                  disabled={r.status === "취소" || !!updating}
                   onClick={(e) => { e.stopPropagation(); setStatusDropdownOpen((v) => !v); }}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-white border-gray-200 hover:border-gray-400 ${STATUS_STYLE[r.status]?.text ?? "text-gray-600"}`}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-medium transition-colors disabled:cursor-not-allowed bg-white border-gray-200 hover:border-gray-400 ${updating ? "disabled:cursor-wait" : "disabled:opacity-40"} ${STATUS_STYLE[updating ?? r.status]?.text ?? "text-gray-600"}`}
                 >
-                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_STYLE[r.status]?.dot ?? "bg-gray-400"}`} />
-                  {r.status}
+                  {/* 바꾸는 중이면 바꿀 상태를 로딩과 함께 보여준다 */}
+                  {updating ? (
+                    <span className="w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin shrink-0" />
+                  ) : (
+                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_STYLE[r.status]?.dot ?? "bg-gray-400"}`} />
+                  )}
+                  {updating ? `${updating} 변경 중...` : r.status}
                   <svg className="w-3 h-3 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
                 </button>
                 {statusDropdownOpen && (
@@ -806,13 +841,18 @@ export default function ReservationDetail({
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onDelete(r.id); }}
-              aria-label="삭제"
+              disabled={deleting}
+              aria-label={deleting ? "삭제하는 중" : "삭제"}
               title="삭제"
-              className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+              className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 disabled:cursor-wait transition-colors"
             >
+              {deleting ? (
+                <span className="w-4 h-4 rounded-full border-2 border-red-400 border-t-transparent animate-spin" />
+              ) : (
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
               </svg>
+              )}
             </button>
           </div>
         </div>

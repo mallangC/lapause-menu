@@ -18,10 +18,12 @@ function SwipeableReservationCard({
   children,
   onEdit,
   onDelete,
+  deleting,
 }: {
   children: React.ReactNode;
   onEdit: () => void;
   onDelete: () => void;
+  deleting?: boolean;
 }) {
   const [offset, setOffset] = useState(0);
   const startX = useRef(0);
@@ -85,6 +87,13 @@ function SwipeableReservationCard({
       >
         {children}
       </div>
+      {/* 삭제 중 — 카드를 덮어 로딩을 보여주고 다른 동작을 막는다 */}
+      {deleting && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center gap-2 bg-white/75 text-sm text-gray-600">
+          <span className="w-4 h-4 rounded-full border-2 border-red-400 border-t-transparent animate-spin" />
+          삭제하는 중...
+        </div>
+      )}
     </div>
   );
 }
@@ -272,7 +281,8 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId]);
 
-  const updateStatus = async (id: string, status: string, cancelReason?: string) => {
+  /** 상태 변경 — 끝날 때까지 기다릴 수 있게 성공 여부를 돌려준다 (버튼 로딩) */
+  const updateStatus = async (id: string, status: string, cancelReason?: string): Promise<boolean> => {
     const previousStatus = allReservations.find((r) => r.id === id)?.status ?? "";
     const res = await fetch(`/api/reservation/${id}/status`, {
       method: "PATCH",
@@ -282,11 +292,12 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       alert(data.error ?? "상태 변경에 실패했습니다.");
-      return;
+      return false;
     }
     setAllReservations((prev) => prev.map((r) =>
       r.id === id ? { ...r, status: status as Reservation["status"], ...(cancelReason ? { cancel_reason: cancelReason } : {}) } : r
     ));
+    return true;
   };
 
   const patchReservation = (id: string, body: Record<string, unknown>) =>
@@ -328,17 +339,26 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
     setItemStatusPopover(null);
   };
 
+  // 지금 삭제 중인 예약 — 그 카드·상세의 삭제 버튼에 로딩
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const handleDeleteReservation = async (id: string) => {
-    if (!confirm("정말 삭제하시겠습니까?")) return;
-    const res = await fetch(`/api/reservation/${id}`, { method: "DELETE" });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      alert((data as { error?: string }).error ?? "삭제 중 오류가 발생했습니다.");
-      return;
+    if (deletingId || !confirm("정말 삭제하시겠습니까?")) return;
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/reservation/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert((data as { error?: string }).error ?? "삭제 중 오류가 발생했습니다.");
+        return;
+      }
+      setAllReservations((prev) => prev.filter((r) => r.id !== id));
+      setExpandedId(null);
+      setMobileDetailId(null);
+    } catch {
+      alert("삭제 중 오류가 발생했습니다.");
+    } finally {
+      setDeletingId(null);
     }
-    setAllReservations((prev) => prev.filter((r) => r.id !== id));
-    setExpandedId(null);
-    setMobileDetailId(null);
   };
 
   const mobileDetailReservation = mobileDetailId
@@ -506,7 +526,8 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
                 onOpenLightbox={setLightboxUrl}
                 onSaveDeliveryFee={saveDeliveryFee}
                 onEdit={(r) => { setMobileDetailId(null); setEditingReservation(r); }}
-                onDelete={(id) => { setMobileDetailId(null); handleDeleteReservation(id); }}
+                onDelete={handleDeleteReservation}
+                deleting={deletingId === mobileDetailReservation.id}
                 onMarkPaid={markPaid}
                 messageCardPrice={messageCardPrice}
                 shoppingBagPrice={shoppingBagPrice}
@@ -723,6 +744,7 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
                   key={r.id}
                   onEdit={() => setEditingReservation(r)}
                   onDelete={() => handleDeleteReservation(r.id)}
+                  deleting={deletingId === r.id}
                 >
                   <div
                     onClick={() => setMobileDetailId(r.id)}
@@ -908,6 +930,7 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
                               onSaveDeliveryFee={saveDeliveryFee}
                               onEdit={setEditingReservation}
                               onDelete={handleDeleteReservation}
+                              deleting={deletingId === r.id}
                               onMarkPaid={markPaid}
                               messageCardPrice={messageCardPrice}
                               shoppingBagPrice={shoppingBagPrice}

@@ -197,13 +197,20 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
     setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, status } : p)));
   };
 
+  // 지금 삭제 중인 상품 — 목록에서 그 줄·카드에 로딩을 보여준다
+  const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
   const handleDelete = async (id: string) => {
-    if (!confirm("정말 삭제하시겠습니까?")) return;
+    if (deletingProductId || !confirm("정말 삭제하시겠습니까?")) return;
     setError(null);
-    const { error: err } = await supabase.from("products").delete().eq("id", id);
-    if (err) { setError(err.message); return; }
-    notifyMenuChanged();
-    setProducts((prev) => prev.filter((p) => p.id !== id));
+    setDeletingProductId(id);
+    try {
+      const { error: err } = await supabase.from("products").delete().eq("id", id);
+      if (err) { setError(err.message); return; }
+      notifyMenuChanged();
+      setProducts((prev) => prev.filter((p) => p.id !== id));
+    } finally {
+      setDeletingProductId(null);
+    }
   };
 
   const handleSignOut = async () => {
@@ -506,6 +513,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
                   onStatusChange={handleStatusChange}
                   companyId={companyId}
                   onFilteredCountChange={setFilteredCount}
+                  deletingId={deletingProductId}
                 />
               </div>
             </div>

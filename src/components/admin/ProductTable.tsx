@@ -17,6 +17,8 @@ interface ProductTableProps {
   companyId: string;
   /** 필터를 걸었을 때 걸러진 개수 (필터가 없으면 null) — 제목 옆 개수 표시용 */
   onFilteredCountChange?: (count: number | null) => void;
+  /** 지금 삭제 중인 상품 — 끝날 때까지 로딩 */
+  deletingId?: string | null;
 }
 
 const STATUS_CYCLE: ProductStatus[] = ["active", "inactive"];
@@ -43,7 +45,7 @@ function StatusToggle({ status, onClick }: { status: ProductStatus; onClick: () 
 
 const ACTION_WIDTH = 120;
 
-function SwipeableCard({ children, onEdit, onDelete }: { children: React.ReactNode; onEdit: () => void; onDelete: () => void }) {
+function SwipeableCard({ children, onEdit, onDelete, deleting }: { children: React.ReactNode; onEdit: () => void; onDelete: () => void; deleting?: boolean }) {
   const [offset, setOffset] = useState(0);
   const startX = useRef(0);
   const startOffset = useRef(0);
@@ -105,6 +107,13 @@ function SwipeableCard({ children, onEdit, onDelete }: { children: React.ReactNo
       >
         {children}
       </div>
+      {/* 삭제 중 — 카드를 덮어 로딩을 보여주고 다른 동작을 막는다 */}
+      {deleting && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center gap-2 bg-white/75 text-sm text-gray-600">
+          <span className="w-4 h-4 rounded-full border-2 border-red-400 border-t-transparent animate-spin" />
+          삭제하는 중...
+        </div>
+      )}
     </div>
   );
 }
@@ -133,7 +142,7 @@ function Chip({ label, active, onClick }: { label: string; active: boolean; onCl
   );
 }
 
-export default function ProductTable({ products, onEdit, onDelete, onStatusChange, companyId, onFilteredCountChange }: ProductTableProps) {
+export default function ProductTable({ products, onEdit, onDelete, onStatusChange, companyId, onFilteredCountChange, deletingId = null }: ProductTableProps) {
   const [sortKey, setSortKey] = useState<"price_asc" | "price_desc" | "date_desc" | "date_asc">("date_desc");
   const [knownCustomTypes, setKnownCustomTypes] = useState<string[]>([]);
   // 매장 시즌 — 추가한 시즌 + 지우지 않은 기본 시즌
@@ -297,6 +306,7 @@ export default function ProductTable({ products, onEdit, onDelete, onStatusChang
                   key={product.id}
                   onEdit={() => onEdit(product)}
                   onDelete={() => onDelete(product.id)}
+                  deleting={deletingId === product.id}
                 >
                   <div className={`flex items-center gap-3 py-3 ${typeDeleted ? "bg-red-50/50" : ""}`}>
                     {/* 이미지 */}
@@ -377,7 +387,7 @@ export default function ProductTable({ products, onEdit, onDelete, onStatusChang
                   return (
                     <tr
                       key={product.id}
-                      className={`border-b transition-colors text-center text-sm ${typeDeleted ? "border-red-200 bg-red-50/50 hover:bg-red-50" : "border-gray-100 hover:bg-gray-50"}`}
+                      className={`border-b transition-colors text-center text-sm ${typeDeleted ? "border-red-200 bg-red-50/50 hover:bg-red-50" : "border-gray-100 hover:bg-gray-50"} ${deletingId === product.id ? "opacity-50" : ""}`}
                     >
                       <td className="py-3">
                         <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 mx-auto">
@@ -437,13 +447,18 @@ export default function ProductTable({ products, onEdit, onDelete, onStatusChang
                           <button
                             type="button"
                             onClick={() => onDelete(product.id)}
-                            aria-label="삭제"
+                            disabled={!!deletingId}
+                            aria-label={deletingId === product.id ? "삭제하는 중" : "삭제"}
                             title="삭제"
-                            className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+                            className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 disabled:cursor-wait transition-colors"
                           >
+                            {deletingId === product.id ? (
+                              <span className="w-4 h-4 rounded-full border-2 border-red-400 border-t-transparent animate-spin" />
+                            ) : (
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
                             </svg>
+                            )}
                           </button>
                         </div>
                       </td>

@@ -38,33 +38,44 @@ export default function VerificationTab() {
 
   const handleApprove = async (app: Application) => {
     setActionLoading(app.company_id);
-    const res = await fetch(`/api/operator/consult-verify/${app.company_id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "approve" }),
-    });
-    if (res.ok) fetchApplications();
-    else alert("승인 처리에 실패했습니다.");
-    setActionLoading(null);
+    try {
+      const res = await fetch(`/api/operator/consult-verify/${app.company_id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "approve" }),
+      });
+      // 목록을 다시 받을 때까지 로딩을 유지한다 (승인 표시가 바뀌는 걸 보고 끝났다고 알 수 있게)
+      if (res.ok) await fetchApplications();
+      else alert("승인 처리에 실패했습니다.");
+    } catch {
+      alert("승인 처리에 실패했습니다.");
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   const handleReject = async () => {
     if (!rejectModal) return;
     setActionLoading(rejectModal.company_id);
-    const res = await fetch(`/api/operator/consult-verify/${rejectModal.company_id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "reject", reason: rejectReason }),
-    });
-    const data = await res.json();
-    if (res.ok) {
-      setRejectModal(null);
-      setRejectReason("");
-      fetchApplications();
-    } else {
-      alert(data.error ?? "반려 처리에 실패했습니다.");
+    try {
+      const res = await fetch(`/api/operator/consult-verify/${rejectModal.company_id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reject", reason: rejectReason }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        await fetchApplications();
+        setRejectModal(null);
+        setRejectReason("");
+      } else {
+        alert(data.error ?? "반려 처리에 실패했습니다.");
+      }
+    } catch {
+      alert("반려 처리에 실패했습니다.");
+    } finally {
+      setActionLoading(null);
     }
-    setActionLoading(null);
   };
 
   const handleViewBankDoc = async (companyId: string) => {
@@ -214,9 +225,10 @@ export default function VerificationTab() {
                           <button
                             onClick={() => handleApprove(app)}
                             disabled={actionLoading === app.company_id}
-                            className="px-2.5 py-1 text-xs bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors whitespace-nowrap disabled:opacity-40"
+                            className="inline-flex items-center justify-center gap-1.5 px-2.5 py-1 text-xs bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors whitespace-nowrap disabled:opacity-80 disabled:cursor-wait"
                           >
-                            승인
+                            {actionLoading === app.company_id && !rejectModal && <span className="w-3 h-3 rounded-full border-2 border-green-600 border-t-transparent animate-spin" />}
+                            {actionLoading === app.company_id && !rejectModal ? "승인 중..." : "승인"}
                           </button>
                           <button
                             onClick={() => { setRejectModal(app); setRejectReason(""); }}
@@ -255,6 +267,7 @@ export default function VerificationTab() {
               <textarea
                 value={rejectReason}
                 onChange={e => setRejectReason(e.target.value)}
+                disabled={actionLoading === rejectModal.company_id}
                 placeholder="매장에게 전달될 반려 사유를 입력하세요."
                 rows={3}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none"
@@ -263,16 +276,18 @@ export default function VerificationTab() {
             <div className="flex gap-2 mt-4">
               <button
                 onClick={() => setRejectModal(null)}
-                className="flex-1 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
+                disabled={actionLoading === rejectModal.company_id}
+                className="flex-1 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40"
               >
                 취소
               </button>
               <button
                 onClick={handleReject}
                 disabled={!rejectReason.trim() || actionLoading === rejectModal.company_id}
-                className="flex-1 py-2 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600 disabled:opacity-40 transition-colors"
+                className={`flex-1 inline-flex items-center justify-center gap-2 py-2 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600 transition-colors ${actionLoading === rejectModal.company_id ? "disabled:opacity-80 disabled:cursor-wait" : "disabled:opacity-40"}`}
               >
-                {actionLoading === rejectModal.company_id ? "처리 중..." : "반려"}
+                {actionLoading === rejectModal.company_id && <span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />}
+                {actionLoading === rejectModal.company_id ? "반려하는 중..." : "반려"}
               </button>
             </div>
           </div>
