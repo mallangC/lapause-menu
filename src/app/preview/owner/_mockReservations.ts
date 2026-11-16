@@ -18,8 +18,8 @@ const img = (n: number) => `/preview/thumb/${n}.jpg`;
 type MockProduct = Pick<Product, "id" | "name" | "price" | "image_url" | "product_type" | "flower_colors" | "wrapping_color" | "mood"> & { bag_included?: boolean };
 
 export const MOCK_PRODUCTS: MockProduct[] = [
-  { id: "p1", name: "가을 센터피스", price: 89000, image_url: img(1), product_type: "센터피스", flower_colors: ["보라색", "흰색"], wrapping_color: "밝은 계열", mood: "차분하고 빈티지한", bag_included: true },
-  { id: "p2", name: "핑크 튤립 꽃다발", price: 120000, image_url: img(2), product_type: "꽃다발", flower_colors: ["핑크색"], wrapping_color: "밝은 계열", mood: "밝고 화사한" },
+  { id: "p1", name: "가을 센터피스", price: 89000, image_url: img(1), product_type: "센터피스", flower_colors: ["보라색", "흰색"], wrapping_color: "밝은 계열", mood: "독특하고 유니크한", bag_included: true },
+  { id: "p2", name: "핑크 튤립 꽃다발", price: 120000, image_url: img(2), product_type: "꽃다발", flower_colors: ["핑크색"], wrapping_color: "밝은 계열", mood: "진하고 강렬한" },
   { id: "p3", name: "내추럴 꽃다발", price: 65000, image_url: img(3), product_type: "꽃다발", flower_colors: ["노란색", "흰색"], wrapping_color: "어두운 계열", mood: "차분하고 빈티지한" },
   { id: "p4", name: "파스텔 믹스 꽃다발", price: 70000, image_url: img(4), product_type: "꽃다발", flower_colors: ["핑크색", "노란색", "보라색"], wrapping_color: "밝은 계열", mood: "밝고 화사한" },
   { id: "p5", name: "라벤더 박스 센터피스", price: 120000, image_url: img(5), product_type: "센터피스", flower_colors: ["보라색", "노란색"], wrapping_color: "어두운 계열", mood: "밝고 화사한", bag_included: true },

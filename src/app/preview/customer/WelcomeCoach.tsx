@@ -9,19 +9,19 @@ const STEPS: CoachStep[] = [
     selectors: ['[data-coach="welcome-opt-style"]'],
     radius: 16,
     title: "사장님 스타일로 예쁘게",
-    body: "선물 정보·형태·분위기·희망 금액만 받고\n사장님이 예쁘게 만드는 주문이에요.\n상품을 따로 등록하지 않아도 받을 수 있어요.",
+    body: "선물 정보·형태·분위기·희망 금액과\n피하고 싶은 것만 받고 사장님이 예쁘게 만드는 주문이에요.\n상품을 따로 등록하지 않아도 받을 수 있어요.",
   },
   {
     selectors: ['[data-coach="welcome-opt-recommend"]'],
     radius: 16,
     title: "추천받기",
-    body: "몇 가지 질문에 답하면 사장님 상품 중\n어울리는 꽃을 대화창에서 바로 추천해요.\n손님이 고르면 바로 예약·결제로 이어져요.",
+    body: "형태·희망 금액·선물 정보·분위기를 물어\n사장님 상품 중 어울리는 꽃을 5개씩 추천해요.\n마음에 드는 게 없으면 새로 추천받을 수 있어요.",
   },
   {
     selectors: ['[data-coach="welcome-opt-photo"]'],
     radius: 16,
     title: "찾아본 사진으로 주문",
-    body: "손님이 찾아본 사진으로 주문을 받아요.\n보낸 사진은 예약 상세에서 볼 수 있어요.",
+    body: "손님이 찾아본 사진과 희망 금액,\n사진에서 비슷했으면 하는 부분을 함께 받아요.\n보낸 사진은 예약 상세에서 볼 수 있어요.",
   },
   {
     selectors: ['[data-coach="welcome-opt-menu"]'],
