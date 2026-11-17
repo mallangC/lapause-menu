@@ -27,8 +27,8 @@ export const STYLE_AGES = ["10대 이하", "10대", "20대", "30대", "40대", "
 
 /** 사장님 스타일 — 꼭 피하고 싶은 것 (손님이 글로 쓴다). 색은 고르지 않고 맡기는 대신 피할 것만 받는다. 요청 사항 맨 위에 글로 붙는다 */
 export const STYLE_AVOID_MAX = 100;
-/** 요청 사항에 붙일 줄 — '피하고 싶은 것 : 향이 강한 꽃, 노란색' */
-export const avoidPointsLine = (text: string) => (text.trim() ? `피하고 싶은 것 : ${text.trim()}` : "");
+/** 요청 사항에 붙일 줄 — '피하고 싶은 색 : 노란색, 검은색' */
+export const avoidPointsLine = (text: string) => (text.trim() ? `피하고 싶은 색 : ${text.trim()}` : "");
 /** 찾아본 사진 — 사진에서 특히 참고했으면 하는 부분 (손님이 글로 쓴다). 요청 사항 맨 위에 글로 붙는다 */
 /** 요청 사항에 붙일 줄 — '특히 참고할 부분 : 포장지 색감' */
 export const similarPointsLine = (text: string) => (text.trim() ? `특히 참고할 부분 : ${text.trim()}` : "");
@@ -161,7 +161,8 @@ export function parseChatAnswers(sp: Record<string, string | undefined>): ChatAn
   const budget = Number(sp.budget);
   const productType = sp.type ?? "";
   const mood = sp.mood ?? "";
-  if (!isValidStyleBudget(budget) || !isValidTypeName(productType) || !BASE_MOODS.includes(mood)) return null;
+  // 분위기는 비어 있어도 된다 (그 금액대에 분위기가 없어 묻지 않은 경우)
+  if (!isValidStyleBudget(budget) || !isValidTypeName(productType) || (mood !== "" && !BASE_MOODS.includes(mood))) return null;
   const pick = (v: string | undefined, list: string[]) => (v && list.includes(v) ? v : "");
   return {
     purpose: pick(sp.purpose, STYLE_PURPOSES),

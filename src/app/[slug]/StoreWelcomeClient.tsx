@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { BASE_MOODS, recommendOrderHref, photoOrderKey, PHOTO_MOOD_SAME, STYLE_AVOID_MAX, STYLE_MOODS, STYLE_MOOD_TRUST, styleOrderHref, type StyleKind } from "@/lib/styleOrder";
 import FlowerNoticeModal from "@/components/FlowerNoticeModal";
+import { FLOWER_COLORS, FLOWER_COLOR_MAP } from "@/lib/constants";
 import StoreFooter, { type StoreFooterProps } from "@/components/main/StoreFooter";
 import VolumeRefs, { type VolumeRef } from "@/components/VolumeRefs";
 import ColorMinPriceHint from "@/components/ColorMinPriceHint";
@@ -94,6 +95,8 @@ type Question = {
   volume?: boolean;
   // 답을 글자 대신 매장 상품 사진으로 고른다 (분위기)
   moodPhotos?: boolean;
+  // 여러 개 고르기를 컬러칩으로 (선택지 이름이 꽃 색 이름 — 색 동그라미를 함께 보여준다)
+  colorChips?: boolean;
   // 답을 한 줄로 밀어 보지 않고 줄바꿈해 모두 한눈에 보여준다 (분위기처럼 다 보고 골라야 하는 질문)
   wrap?: boolean;
 };
@@ -112,14 +115,15 @@ const BUDGET_Q: Question = { key: "budget", label: "희망 금액", ask: "얼마
 
 // 형태 질문의 답은 매장 유형 목록 + 기타 (매장마다 다르다)
 const makeQuestions = (TYPE_OPTIONS: string[]): Record<Flow, Question[]> => ({
-  // 사장님 스타일 — 분위기도 맡길 수 있게 '사장님에게 맡길게요'를 맨 앞에
+  // 사장님 스타일 — 형태 → 희망 금액 → 분위기 → 피하고 싶은 색
+  // 분위기는 그 금액대에 상품이 있는 분위기만 보여주고, 하나도 없으면 묻지 않고 '사장님에게 맡길게요'로 (컴포넌트에서 거른다)
   style: [
     ...GIFT_QUESTIONS,
     { key: "type", label: "상품 형태", ask: "어떤 형태로 만들어드릴까요?", options: TYPE_OPTIONS },
-    { key: "mood", label: "분위기", ask: "원하시는 분위기가 있을까요?", options: STYLE_MOODS, wrap: true },
     BUDGET_Q,
-    // 색은 사장님께 맡기는 대신 꼭 피하고 싶은 것만 받는다 (결제 화면 요청 사항 맨 위에 글로)
-    { key: "avoid", label: "피하고 싶은 것", ask: "피하고 싶은 색감이 있다면 알려주세요.", text: true, placeholder: "예) 향이 강한 꽃, 노란색", skippable: true, skipLabel: "없어요" },
+    { key: "mood", label: "분위기", ask: "원하시는 분위기가 있을까요?", options: STYLE_MOODS, wrap: true },
+    // 색은 사장님께 맡기는 대신 피하고 싶은 색 하나만 컬러칩으로 받는다 (누르면 바로 다음, 결제 화면 요청 사항 맨 위에 글로)
+    { key: "avoid", label: "피하고 싶은 색", ask: "피하고 싶은 색감이 있다면 알려주세요.", options: [...FLOWER_COLORS], colorChips: true, multiSay: "은 피해주세요", skippable: true, skipLabel: "없어요" },
   ],
   // 찾아본 사진 — 형태 → 사진 받기 → 희망 금액(볼륨감 참고 이미지를 먼저) → 선물 정보 → 특히 참고할 부분
   // 형태를 먼저 묻고(그 형태 사진을 골라 오게) 사진을 받는다. 분위기는 보낸 사진 분위기로 정해져 묻지 않는다
@@ -163,6 +167,8 @@ async function shrinkToDataUrl(file: File, maxSide = 1600, quality = 0.85): Prom
 
 // 예산 버튼 — 눌러서 금액을 더한다 (직접 입력 없이 클릭만으로)
 const BUDGET_STEPS = [10000, 50000, 100000];
+// 희망 금액 '가격대' — 희망 금액부터 20% 위까지 (아래로는 보지 않는다). 예) 5만 원 → 5~6만 원, 10만 원 → 10~12만 원
+const inBudgetRange = (price: number, budget: number) => price >= budget && price <= budget * 1.2;
 // 대화형 추천 — 한 번에 보여줄 상품 수 (그 뒤에 '새로 추천받기' 카드)
 const REC_COUNT = 5;
 // 직접 입력 범위 — 1만 원 ~ 1,000만 원 (서버 검사와 같다)
@@ -328,7 +334,18 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
   const [recPicked, setRecPicked] = useState(false);
   // '새로 추천받기'로 이미 보여준 추천 상품 — 다음 추천에서 뺀다
   const [seenRecIds, setSeenRecIds] = useState<string[]>([]);
-  const QS = makeQuestions([...productTypes, "기타"])[flow];
+  const BASE_QS = makeQuestions([...productTypes, "기타"])[flow];
+  // 사장님 스타일·추천 — 희망 금액대(금액 ~ +20%)에 상품이 있는 분위기만 선택지로
+  // 하나도 없으면 분위기를 묻지 않는다 (사장님 스타일은 '사장님에게 맡길게요'로 저장, 추천은 분위기 없이 추천)
+  const moodBudget = flow === "photo" ? 0 : Number((answers[BASE_QS.findIndex((q) => q.key === "budget")] ?? "").replace(/\D/g, "")) || 0;
+  // 사장님 스타일은 '색·사진 맞춤 최소 금액' 이상일 때만 분위기를 고른다 (모자라면 분위기도 사장님께)
+  const styleMoodLocked = flow === "style" && photoMinPrice > 0 && moodBudget < photoMinPrice;
+  const budgetMoods = styleMoodLocked ? [] : BASE_MOODS.filter((m) => products.some((p) => p.mood === m && inBudgetRange(p.price, moodBudget)));
+  const QS = moodBudget > 0
+    ? BASE_QS.flatMap((q) =>
+        q.key !== "mood" ? [q] : budgetMoods.length === 0 ? [] : [{ ...q, options: flow === "style" ? [STYLE_MOOD_TRUST, ...budgetMoods] : budgetMoods }]
+      )
+    : BASE_QS;
 
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const later = (ms: number, fn: () => void) => {
@@ -416,7 +433,8 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
     const next = [...answers.slice(0, asked - 1), v];
     setAnswers(next);
     // 추천 — 분위기(마지막 질문)까지 받으면 '어울리는 꽃 찾는 중...' 뒤에 상품 카드 (고르면 바로 주문으로)
-    if (flow === "recommend" && QS[asked - 1].key === "mood") later(200, () => shopSays(() => setRecShown(true), 1300, "어울리는 꽃 찾는 중"));
+    // (분위기를 묻지 않았으면 마지막 질문인 연령대 다음에)
+    if (flow === "recommend" && asked >= QS.length) later(200, () => shopSays(() => setRecShown(true), 1300, "어울리는 꽃 찾는 중"));
     else if (asked < QS.length) later(200, () => shopSays(() => setAsked(asked + 1), 550));
     else later(200, () => shopSays(() => setSummaryShown(true), 700));
   };
@@ -461,7 +479,8 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
       age: a("age"),
       productType: a("type"),
       // 찾아본 사진은 분위기를 묻지 않고 '보낸 사진 분위기'로 고정
-      mood: flow === "photo" ? PHOTO_MOOD_SAME : a("mood"),
+      // 사장님 스타일은 그 금액대에 분위기가 없어 묻지 않았으면 '사장님에게 맡길게요'
+      mood: flow === "photo" ? PHOTO_MOOD_SAME : a("mood") || STYLE_MOOD_TRUST,
       budget: Number(a("budget").replace(/\D/g, "")),
       // 사장님 스타일 — 피하고 싶은 것 (결제 화면 요청 사항 맨 위에 글로 들어간다)
       avoid: a("avoid"),
@@ -480,9 +499,8 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
     setAsked(qIdx + 1);
     setSummaryShown(false);
     setTypingLabel(null);
-    // 추천 상품은 분위기나 그 앞부터 다시 고를 때 지운다 (분위기가 마지막 질문이라 추천에서는 어떤 답을 고쳐도 다시 추천)
-    const moodIdx = QS.findIndex((q) => q.key === "mood");
-    if (flow !== "recommend" || qIdx <= moodIdx) {
+    // 추천 상품은 지운다 (추천은 모든 질문 다음이라 어떤 답을 고쳐도 다시 추천)
+    {
       setRecShown(false);
       setPickedRec(null);
       setRecPicked(false);
@@ -514,9 +532,8 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
     clearLater();
     setTyping(false);
     setTypingLabel(null);
-    const moodIdx = QS.findIndex((q) => q.key === "mood");
-    setAnswers((a) => a.slice(0, moodIdx + 1));
-    setAsked(moodIdx + 1);
+    // 답은 그대로 두고 추천 카드로 (추천은 마지막 질문 다음)
+    setAsked(QS.length);
     setPickedRec(null);
     setRecPicked(false);
     setSummaryShown(false);
@@ -595,8 +612,8 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
             : answers[i] === SKIP && q.skipLabel
               ? q.skipLabel
               : (q.short?.[answers[i]] ?? answers[i]), onEdit: confirmed ? undefined : () => editFrom(i) });
-    // 추천 — 분위기 다음에 상품 카드 안내, 고른 상품(사진 + 말)
-    if (flow === "recommend" && q.key === "mood" && recShown) {
+    // 추천 — 마지막 질문(분위기, 분위기를 안 물었으면 연령대) 다음에 상품 카드 안내, 고른 상품
+    if (flow === "recommend" && i === QS.length - 1 && recShown) {
       items.push({
         id: "rec-intro",
         from: "shop",
@@ -907,10 +924,18 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
           {current && !current.budget && !current.photo && !current.multi && !current.moodPhotos && !current.text && (
             <div className="flex flex-col items-end gap-2 mt-5">
               {/* 고를 답은 한 줄로 — 많으면 옆으로 밀어서 본다 (wrap이면 줄바꿈해 모두 보이게) */}
-              {current.wrap ? (
-                <div className="self-stretch flex flex-wrap justify-end gap-2 pl-10">
+              {current.wrap || current.colorChips ? (
+                // 컬러칩은 3열 격자, 그 외는 줄바꿈해 오른쪽 정렬
+                <div className={`self-stretch pl-10 ${current.colorChips ? "grid grid-cols-3 gap-2" : "flex flex-wrap justify-end gap-2"}`}>
                   {current.options!.map((v, i) => (
-                    <button key={v} type="button" onClick={() => answer(v)} className={`whitespace-nowrap ${replyBtn}`} style={{ animationDelay: `${i * 0.04}s` }}>
+                    <button key={v} type="button" onClick={() => answer(v)} className={`whitespace-nowrap inline-flex items-center gap-1.5 ${current.colorChips ? "justify-center !px-2" : ""} ${replyBtn}`} style={{ animationDelay: `${i * 0.04}s` }}>
+                      {/* 컬러칩 — 색 동그라미 (흰색은 테두리로 보이게) */}
+                      {current.colorChips && (
+                        <span
+                          className={`w-4 h-4 rounded-full shrink-0 border ${v === "흰색" ? "border-gray-300" : "border-black/5"}`}
+                          style={{ backgroundColor: FLOWER_COLOR_MAP[v] ?? "#a8a29e" }}
+                        />
+                      )}
                       {current.short?.[v] ?? v}
                     </button>
                   ))}
@@ -928,9 +953,18 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
               )}
               {/* 건너뛰기는 답과 섞이지 않게 아래 줄에 따로 */}
               {current.skippable && (
-                <button type="button" onClick={() => answer(SKIP)} className="welcome-in px-2 py-1 text-[15px] text-gray-400 hover:text-gray-600">
-                  {current.skipLabel ?? SKIP}
-                </button>
+                current.colorChips ? (
+                  // 컬러칩 질문의 '없어요' — 컬러칩과 같은 크기로, 아래 줄 오른쪽 칸에
+                  <div className="self-stretch pl-10 grid grid-cols-3 gap-2">
+                    <button type="button" onClick={() => answer(SKIP)} className={`col-start-3 whitespace-nowrap inline-flex items-center justify-center !px-2 ${replyBtn}`}>
+                      {current.skipLabel ?? SKIP}
+                    </button>
+                  </div>
+                ) : (
+                  <button type="button" onClick={() => answer(SKIP)} className="welcome-in px-2 py-1 text-[15px] text-gray-400 hover:text-gray-600">
+                    {current.skipLabel ?? SKIP}
+                  </button>
+                )
               )}
             </div>
           )}
@@ -938,26 +972,38 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
           {/* 여러 개 고르기 — 눌러서 켜고 끈 뒤 '다 골랐어요'로 보낸다 */}
           {current?.multi && (
             <div className="flex flex-col items-end gap-2 mt-5">
-              <div className="self-stretch">
-                <ChipRow>
-                  {current.options!.map((v, i) => {
-                    const on = multiSel.includes(v);
-                    return (
-                      <button
-                        key={v}
-                        type="button"
-                        aria-pressed={on}
-                        onClick={() => setMultiSel((s) => (on ? s.filter((x) => x !== v) : [...s, v]))}
-                        className={`shrink-0 whitespace-nowrap ${replyBtn} ${on ? "!bg-gold-500 !border-gold-500 !text-white" : ""}`}
-                        style={{ animationDelay: `${i * 0.04}s` }}
-                      >
-                        {on && <span className="mr-1">✓</span>}
-                        {v}
-                      </button>
-                    );
-                  })}
-                </ChipRow>
-              </div>
+              {(() => {
+                const chips = current.options!.map((v, i) => {
+                  const on = multiSel.includes(v);
+                  return (
+                    <button
+                      key={v}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => setMultiSel((s) => (on ? s.filter((x) => x !== v) : [...s, v]))}
+                      className={`shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 ${replyBtn} ${on ? "!bg-gold-500 !border-gold-500 !text-white" : ""}`}
+                      style={{ animationDelay: `${i * 0.04}s` }}
+                    >
+                      {current.colorChips ? (
+                        // 컬러칩 — 색 동그라미 (흰색은 테두리로 보이게)
+                        <span
+                          className={`w-4 h-4 rounded-full shrink-0 border ${on ? "border-white/80" : v === "흰색" ? "border-gray-300" : "border-black/5"}`}
+                          style={{ backgroundColor: FLOWER_COLOR_MAP[v] ?? "#a8a29e" }}
+                        />
+                      ) : (
+                        on && <span>✓</span>
+                      )}
+                      {v}
+                    </button>
+                  );
+                });
+                // 컬러칩은 줄바꿈해 한눈에, 그 외는 한 줄로 밀어서
+                return current.colorChips || current.wrap ? (
+                  <div className="self-stretch flex flex-wrap justify-end gap-2 pl-10">{chips}</div>
+                ) : (
+                  <div className="self-stretch"><ChipRow>{chips}</ChipRow></div>
+                );
+              })()}
               {/* 하나라도 고르면 보내기 버튼이 나온다 (안 골랐을 땐 아래 건너뛰기만) */}
               {multiSel.length > 0 && (
                 <button
@@ -980,7 +1026,7 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
                     setMultiSel([]);
                     answer(SKIP);
                   }}
-                  className="welcome-in px-2 py-1 text-[15px] text-gray-400 hover:text-gray-600"
+                  className={`shrink-0 whitespace-nowrap ${replyBtn}`}
                 >
                   {current.skipLabel ?? SKIP}
                 </button>
@@ -1002,7 +1048,28 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
                   className="mb-2 pb-2.5 border-b border-gray-100"
                 />
               ) : (
-                <ColorMinPriceHint minPrice={colorMinPrice} amount={budget} className="mb-2 pb-2.5 border-b border-gray-100" />
+                flow === "style" ? (
+                  // 사장님 스타일 — 최소 금액 이상이면 분위기도 고를 수 있다 (오늘 꽃 색상을 꺼 둔 매장은 분위기만)
+                  colorMinPrice > 0 ? (
+                    <ColorMinPriceHint
+                      minPrice={colorMinPrice}
+                      amount={budget}
+                      text={`${colorMinPrice.toLocaleString("ko-KR")}원↑ 꽃 색상, 분위기를 지정할 수 있어요`}
+                      okText="원하는 꽃 색상과 분위기를 지정할 수 있어요"
+                      className="mb-2 pb-2.5 border-b border-gray-100"
+                    />
+                  ) : (
+                    <ColorMinPriceHint
+                      minPrice={photoMinPrice}
+                      amount={budget}
+                      text={`${photoMinPrice.toLocaleString("ko-KR")}원↑ 분위기를 지정할 수 있어요`}
+                      okText="원하는 분위기를 지정할 수 있어요"
+                      className="mb-2 pb-2.5 border-b border-gray-100"
+                    />
+                  )
+                ) : (
+                  <ColorMinPriceHint minPrice={colorMinPrice} amount={budget} className="mb-2 pb-2.5 border-b border-gray-100" />
+                )
               )}
               {/* 금액은 오른쪽 끝에, 되돌리기 아이콘은 왼쪽에 */}
               <div className="flex items-center justify-between gap-3 mb-3">
