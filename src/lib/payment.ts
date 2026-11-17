@@ -9,7 +9,8 @@ export const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
   transfer: "무통장 입금",
 };
 
-export const CASH_RECEIPT_TYPES = ["소득공제", "지출증빙", "신청 안 함"] as const;
+// 순서 = 화면 버튼 순서 — 기본은 맨 앞의 '신청 안 함' (필요한 손님만 골라 번호를 넣는다)
+export const CASH_RECEIPT_TYPES = ["신청 안 함", "소득공제", "지출증빙"] as const;
 export type CashReceiptType = (typeof CASH_RECEIPT_TYPES)[number];
 
 export interface CashReceipt {

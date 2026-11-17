@@ -224,7 +224,8 @@ export default function OrderCheckout(props: Props) {
   const [noticeAgreed, setNoticeAgreed] = useState(false);
   // 결제 방법 — 카드·간편결제(토스) / 무통장 입금(결제 없이 접수 → 입금 확인 후 확정)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
-  const [cashReceipt, setCashReceipt] = useState<CashReceipt>({ type: "소득공제", number: "" });
+  // 현금영수증 — 기본은 '신청 안 함'
+  const [cashReceipt, setCashReceipt] = useState<CashReceipt>({ type: "신청 안 함", number: "" });
   const [fe, setFe] = useState<Record<string, boolean>>({});
   const clearFe = (k: string) => setFe((p) => (p[k] ? { ...p, [k]: false } : p));
   const [submitting, setSubmitting] = useState(false);
@@ -759,13 +760,13 @@ export default function OrderCheckout(props: Props) {
   );
   const payment: PaymentProps = {
     method: paymentMethod,
-    onMethod: (m) => {
-      setPaymentMethod(m);
-      // 소득공제 번호는 주문자 연락처로 미리 채운다
-      if (m === "transfer" && cashReceipt.type === "소득공제" && !cashReceipt.number) setCashReceipt({ type: "소득공제", number: parsePhone(phone) });
-    },
+    onMethod: (m) => setPaymentMethod(m),
     receipt: cashReceipt,
-    onReceipt: (r) => { setCashReceipt(r); clearFe("receipt"); },
+    onReceipt: (r) => {
+      // 소득공제를 고르면 번호는 주문자 연락처로 미리 채운다
+      setCashReceipt(r.type === "소득공제" && !r.number ? { ...r, number: parsePhone(phone) } : r);
+      clearFe("receipt");
+    },
     receiptError: fe.receipt,
     transferAvailable,
   };
