@@ -124,11 +124,10 @@ function TimeSelect({ value, onChange, label }: { value: string; onChange: (v: s
   );
 }
 
+// Flo.Aide 프로필 사진 (public/logo_small.png)
 const Avatar = () => (
-  <div className="w-8 h-8 rounded-full bg-gold-500 text-white flex items-center justify-center shrink-0">
-    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 21c0-4 0-6 0-9m0 0c-2.5 0-4.5-2-4.5-4.5C10 7.5 12 9.5 12 12Zm0 0c2.5 0 4.5-2 4.5-4.5C14 7.5 12 9.5 12 12Zm0-4.5a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Z" />
-    </svg>
+  <div className="relative w-8 h-8 rounded-full overflow-hidden shrink-0">
+    <Image src="/logo_small.png" alt="Flo.Aide" fill sizes="32px" className="object-cover" />
   </div>
 );
 
