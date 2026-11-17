@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { BASE_MOODS, recommendOrderHref, photoOrderKey, PHOTO_MOOD_SAME, PHOTO_SIMILAR_POINTS, STYLE_AVOID_MAX, STYLE_MOODS, STYLE_MOOD_TRUST, styleOrderHref, type StyleKind } from "@/lib/styleOrder";
+import { BASE_MOODS, recommendOrderHref, photoOrderKey, PHOTO_MOOD_SAME, STYLE_AVOID_MAX, STYLE_MOODS, STYLE_MOOD_TRUST, styleOrderHref, type StyleKind } from "@/lib/styleOrder";
 import FlowerNoticeModal from "@/components/FlowerNoticeModal";
 import StoreFooter, { type StoreFooterProps } from "@/components/main/StoreFooter";
 import VolumeRefs, { type VolumeRef } from "@/components/VolumeRefs";
@@ -86,7 +86,7 @@ type Question = {
   // 답을 글로 쓴다 (입력칸 + 보내기) — placeholder는 입력칸 안내
   text?: boolean;
   placeholder?: string;
-  // 답을 보낼 때 손님 말 — 고른 것 뒤에 붙인다 (예: '은 비슷했으면 좋겠어요', 여러 개면 '·'로 이어서)
+  // 답을 보낼 때 손님 말 — 고른 것 뒤에 붙인다 (예: '을 참고해 주세요', 여러 개면 '·'로 이어서)
   multiSay?: string;
   // 건너뛰기 버튼 글자 (기본 '넘어갈게요')
   skipLabel?: string;
@@ -119,9 +119,9 @@ const makeQuestions = (TYPE_OPTIONS: string[]): Record<Flow, Question[]> => ({
     { key: "mood", label: "분위기", ask: "원하시는 분위기가 있을까요?", options: STYLE_MOODS, wrap: true },
     BUDGET_Q,
     // 색은 사장님께 맡기는 대신 꼭 피하고 싶은 것만 받는다 (결제 화면 요청 사항 맨 위에 글로)
-    { key: "avoid", label: "피하고 싶은 것", ask: "꼭 피하고 싶은 게 있을까요?\n편하게 적어주세요.", text: true, placeholder: "예) 향이 강한 꽃, 노란색", skippable: true, skipLabel: "없어요" },
+    { key: "avoid", label: "피하고 싶은 것", ask: "피하고 싶은 색감이 있다면 알려주세요.", text: true, placeholder: "예) 향이 강한 꽃, 노란색", skippable: true, skipLabel: "없어요" },
   ],
-  // 찾아본 사진 — 형태 → 사진 받기 → 희망 금액(볼륨감 참고 이미지를 먼저) → 선물 정보 → 비슷하게 할 부분
+  // 찾아본 사진 — 형태 → 사진 받기 → 희망 금액(볼륨감 참고 이미지를 먼저) → 선물 정보 → 특히 참고할 부분
   // 형태를 먼저 묻고(그 형태 사진을 골라 오게) 사진을 받는다. 분위기는 보낸 사진 분위기로 정해져 묻지 않는다
   photo: [
     { key: "type", label: "상품 형태", ask: "어떤 형태로 준비해드릴까요?", options: TYPE_OPTIONS },
@@ -130,7 +130,7 @@ const makeQuestions = (TYPE_OPTIONS: string[]): Record<Flow, Question[]> => ({
     ...GIFT_QUESTIONS,
     // 사진에서 꼭 살리고 싶은 부분 (결제 화면 요청 사항 맨 위에 글로)
     // 딱 하나만 고르게 — 사장님이 가장 신경 쓸 한 가지
-    { key: "similar", label: "비슷하게 할 부분", ask: "사진에서 한 가지 비슷하면 좋겠는 부분은\n어디예요?", options: PHOTO_SIMILAR_POINTS, wrap: true, multiSay: "은 비슷했으면 좋겠어요", skippable: true, skipLabel: "전체 느낌만 비슷하면 돼요" },
+    { key: "similar", label: "특히 참고할 부분", ask: "사진에서 특히 참고해야 할 부분이\n있다면 알려주세요.", text: true, placeholder: "예) 포장지 색감, 풍성한 느낌" },
   ],
   // 추천 — 상품 형태 → 희망 금액(볼륨감 참고 이미지를 먼저) → 어떤 날 · 성별 · 연령대 → 분위기(사진으로) → 상품 추천
   // 분위기를 마지막에 묻고 바로 상품을 보여준다 — 상품을 고르면 곧바로 주문으로
@@ -465,8 +465,8 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
       budget: Number(a("budget").replace(/\D/g, "")),
       // 사장님 스타일 — 피하고 싶은 것 (결제 화면 요청 사항 맨 위에 글로 들어간다)
       avoid: a("avoid"),
-      // 찾아본 사진 — 비슷하게 할 부분
-      similar: a("similar") ? a("similar").split(", ") : [],
+      // 찾아본 사진 — 특히 참고할 부분
+      similar: a("similar"),
     });
     // 멘트 없이 바로 주문 화면으로
     router.push(href);
@@ -808,8 +808,9 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
                   // 가격 꼬리표가 말풍선 뒤에서 살짝 빠져나온 것처럼 — 오른쪽 끝을 버튼 밑으로 넣는다
                   <div key={o.text} className="relative isolate max-w-[85%] welcome-in" style={{ animationDelay: `${i * 0.07}s` }}>
                     <span
-                      className="absolute z-0 right-[calc(100%-14px)] top-1/2 -translate-y-1/2 pl-3 pr-[20px] py-1.5 bg-[color-mix(in_srgb,var(--color-gold-500)_16%,#fff)] text-gold-600 text-[12.5px] font-semibold leading-none whitespace-nowrap"
-                      style={{ clipPath: "polygon(8px 0, 100% 0, 100% 100%, 8px 100%, 0 50%)" }}
+                      className="absolute z-0 right-[calc(100%-14px)] top-1/2 -translate-y-1/2 pl-[18px] pr-[20px] py-1.5 bg-[color-mix(in_srgb,var(--color-gold-500)_16%,#fff)] text-gold-600 text-[12.5px] font-semibold leading-none whitespace-nowrap"
+                      // 왼쪽 끝은 리본 끝처럼 가운데가 안으로 파인 모양 (위·아래 끝이 길게 뻗는다)
+                      style={{ clipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%, 10px 50%)" }}
                     >
                       {note}
                     </span>
@@ -853,8 +854,11 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
           {/* 글로 쓰기 — 입력칸 + 보내기, 아래에 '없어요' */}
           {current?.text && (
             <div className="flex flex-col items-end gap-2 mt-5">
+              {/* 글자 수(100자까지)는 입력칸 밖 왼쪽 아래에 */}
+              <div className="welcome-in self-stretch flex items-end justify-end gap-2">
+              <span className="shrink-0 pb-1 text-[11px] text-gray-400 tabular-nums">{textAns.length}/{STYLE_AVOID_MAX}</span>
               <form
-                className="welcome-in self-end w-full max-w-[320px] flex items-end gap-2 rounded-2xl rounded-br-md bg-white border border-gold-400 p-2 pl-4"
+                className="w-full max-w-[320px] flex items-end gap-2 rounded-2xl rounded-br-md bg-white border border-gold-400 p-2 pl-4"
                 onSubmit={(e) => {
                   e.preventDefault();
                   const v = textAns.replace(/\s+/g, " ").trim();
@@ -887,6 +891,7 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
                   보내기
                 </button>
               </form>
+              </div>
               {current.skippable && (
                 <button
                   type="button"

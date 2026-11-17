@@ -24,16 +24,23 @@ export default function FlowerNoticeModal({ onConfirm, onClose, photoOrder = fal
         className="bg-white rounded-3xl shadow-xl w-full max-w-[400px] px-5 py-6 md:px-6 md:py-7 space-y-5"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="text-[16px] md:text-[17px] text-gray-700 leading-[1.75] text-center break-keep">
-          <p>생화는 계절과 입고 상황이 매번 다르기 때문에</p>
-          <p>사진과 똑같은 구성으로 제작이 어렵습니다.</p>
-          <p>이미지를 참고해 비슷한 분위기로 준비해 드릴게요.</p>
-        </div>
-        {photoOrder && (
-          // 사진 주문 — 주문이 성립하지 않을 수도 있다는 안내 (결제 전에 꼭 보게)
-          <div className="pt-4 border-t border-gray-100 text-[15px] md:text-[16px] text-gray-700 leading-[1.7] text-center break-keep">
-            <p>원하시는 구성으로 제작이 어려운 경우</p>
-            <p>예약이 취소될 수 있어요.</p>
+        {photoOrder ? (
+          // 사진 주문 — 안내가 두 가지라 줄머리 표시(-)로 나눠 보여준다
+          <ul className="space-y-3 text-[16px] md:text-[17px] text-gray-700 leading-[1.75] break-keep">
+            <li className="flex gap-2">
+              <span className="shrink-0 text-gold-500">-</span>
+              <span>생화는 계절과 입고 상황이 매번 다르기 때문에 사진과 똑같은 구성으로 제작이 어렵습니다. 이미지를 참고해 비슷한 분위기로 준비해 드릴게요.</span>
+            </li>
+            <li className="flex gap-2">
+              <span className="shrink-0 text-gold-500">-</span>
+              <span>원하시는 구성으로 제작이 어려운 경우 예약이 취소될 수 있어요.</span>
+            </li>
+          </ul>
+        ) : (
+          <div className="text-[16px] md:text-[17px] text-gray-700 leading-[1.75] text-center break-keep">
+            <p>생화는 계절과 입고 상황이 매번 다르기 때문에</p>
+            <p>사진과 똑같은 구성으로 제작이 어렵습니다.</p>
+            <p>이미지를 참고해 비슷한 분위기로 준비해 드릴게요.</p>
           </div>
         )}
         <button
