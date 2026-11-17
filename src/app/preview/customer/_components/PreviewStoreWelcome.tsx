@@ -5,6 +5,7 @@ import StoreWelcomeClient from "@/app/[slug]/StoreWelcomeClient";
 import type { StoreFooterProps } from "@/components/main/StoreFooter";
 import type { RecProduct } from "@/app/[slug]/StoreWelcomeClient";
 import type { SizeConfig } from "@/lib/sizeTiers";
+import { PREVIEW_COLOR_MIN_PRICE } from "../../_mockStore";
 
 // 손님 화면 미리보기 — 매장 첫 화면(대화형 상담). 실제 화면 컴포넌트를 목업 매장 값으로 그린다.
 // · 주소가 /preview/customer 라서 메뉴판·맞춤주문 이동도 미리보기 안으로 이어진다
@@ -45,6 +46,9 @@ export default function PreviewStoreWelcome({ logoNode, themeVars, photos, sizeC
         consultEnabled
         photos={photos}
         sizeConfig={sizeConfig}
+        // 예시 매장은 '색·사진 맞춤 최소 금액' 6만 원 — 금액 고를 때 색 지정 안내, 사진 주문 '6만원부터' 꼬리표가 보인다
+        colorMinPrice={PREVIEW_COLOR_MIN_PRICE}
+        photoMinPrice={PREVIEW_COLOR_MIN_PRICE}
         fromMenu={fromMenu}
         productTypes={productTypes}
         products={products}

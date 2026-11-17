@@ -8,6 +8,9 @@ import { makeMockProductList } from "./owner/_mockReservations";
 export const PREVIEW_ALL_PRODUCTS: Product[] = makeMockProductList();
 export const PREVIEW_PRODUCTS: Product[] = PREVIEW_ALL_PRODUCTS.filter((p) => p.status === "active");
 
+// 색·사진 맞춤 최소 금액 — 예시 매장은 6만 원 (이 금액 이상이면 꽃 색 지정·사진 주문 가능)
+export const PREVIEW_COLOR_MIN_PRICE = 60000;
+
 // 디자인 — Flo.Aide 기본 색
 export const PREVIEW_THEME_VARS = generateThemeVars(DEFAULT_THEME_BG, DEFAULT_THEME_ACCENT);
 
