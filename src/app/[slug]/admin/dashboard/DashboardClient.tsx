@@ -1,5 +1,6 @@
 "use client";
 
+import { hasUnsaved } from "@/components/admin/useDirty";
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -24,7 +25,7 @@ import PlanTab from "./PlanTab";
 import type { AppliedPromo } from "@/lib/appliedPromo";
 import DashboardOverviewTab from "./DashboardOverviewTab";
 import { TodayColorsPrompt } from "./TodayColors";
-import { notifyMenuChanged } from "@/lib/menuCacheClient";
+import { notifyMenuChanged, refreshProductEmbedding } from "@/lib/menuCacheClient";
 
 type Tab = "dashboard" | "reservations" | "products" | "stats" | "settlement" | "company" | "ordersettings" | "business" | "reservation" | "menusettings" | "settings" | "plan" | "myinfo";
 const TABS: Tab[] = ["dashboard", "reservations", "products", "stats", "settlement", "company", "ordersettings", "business", "reservation", "menusettings", "settings", "plan", "myinfo"];
@@ -72,6 +73,8 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
   // Next 페이지 이동(router.push)은 서버 데이터를 다시 받아와서, 브라우저 기록만 바꾸는 history API를 쓴다.
   // replace: 기록을 쌓지 않고 바꾸기만 (예: 판매 기능을 꺼서 통계 탭이 사라질 때)
   const goTab = (tab: Tab, replace = false) => {
+    // 지금 탭에 저장하지 않은 내용이 있으면 한 번 묻는다 (값은 그 탭에 그대로 남아 돌아오면 이어서 저장할 수 있다)
+    if (tab !== activeTab && hasUnsaved(activeTab) && !window.confirm("저장하지 않은 내용이 있어요. 다른 메뉴로 이동할까요?\n(바꾼 내용은 이 메뉴로 돌아오면 그대로 남아 있어요)")) return;
     setActiveTab(tab);
     const url = new URL(window.location.href);
     if (tab === "dashboard") url.searchParams.delete("tab");
@@ -171,6 +174,8 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
       .single();
     if (err) { setError(err.message); return; }
     notifyMenuChanged();
+    // 사진 주문 가격대 안내용 사진 임베딩
+    if ((newProduct as Product).image_url) refreshProductEmbedding((newProduct as Product).id);
     setProducts((prev) => [...prev, newProduct as Product]);
     setShowForm(false);
   };
@@ -186,6 +191,8 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
       .single();
     if (err) { setError(err.message); return; }
     notifyMenuChanged();
+    // 사진을 바꾸거나 지웠으면 임베딩도 다시 (지웠으면 서버가 지운다)
+    if ((updated as Product).image_url !== editingProduct.image_url) refreshProductEmbedding(editingProduct.id);
     setProducts((prev) => prev.map((p) => (p.id === editingProduct.id ? (updated as Product) : p)));
     setEditingProduct(null);
   };
@@ -578,6 +585,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
                 onSettingsSaved={handleSettingsSaved}
                 onConsultToggle={handleConsultToggle}
                 onGoToOrderSettings={() => goTab("ordersettings")}
+                products={products.filter((p) => p.status === "active")}
               />
             </div>
           )}

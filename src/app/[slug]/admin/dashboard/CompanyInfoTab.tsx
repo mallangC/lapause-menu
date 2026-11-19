@@ -3,7 +3,10 @@
 import { useState, useRef } from "react";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
-import SaveButton, { SaveButtonHandle } from "@/components/admin/SaveButton";
+import { resizeToWebp } from "@/lib/imageThumb";
+import type { SaveButtonHandle } from "@/components/admin/SaveButton";
+import SaveBar from "@/components/admin/SaveBar";
+import { useDirty } from "@/components/admin/useDirty";
 import { notifyMenuChanged } from "@/lib/menuCacheClient";
 
 interface Props {
@@ -33,6 +36,20 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
   const [youtubeUrl, setYoutubeUrl] = useState(initialYoutubeUrl ?? "");
   // 주차 가능 여부 — 매장 위치처럼 손님이 찾아올 때 보는 정보라 여기에 (언제든 바꿀 수 있다)
   const [parking, setParking] = useState(initialParking ?? "");
+  // 마지막으로 저장된 값 (되돌리기용) · 바뀐 내용이 있는지
+  const saved = useRef({ name: initialName, logoUrl: initialLogo, locationUrl: initialNaverTalkUrl ?? "", kakaoChannelUrl: initialKakaoChannelUrl ?? "", instagramUrl: initialInstagramUrl ?? "", youtubeUrl: initialYoutubeUrl ?? "", parking: initialParking ?? "" });
+  const { dirty, clean } = useDirty("company", JSON.stringify({ name, logoUrl, locationUrl, kakaoChannelUrl, instagramUrl, youtubeUrl, parking }));
+  const revert = () => {
+    const v = saved.current;
+    setName(v.name);
+    setLogoUrl(v.logoUrl);
+    setNaverTalkUrl(v.locationUrl);
+    setKakaoChannelUrl(v.kakaoChannelUrl);
+    setInstagramUrl(v.instagramUrl);
+    setYoutubeUrl(v.youtubeUrl);
+    setParking(v.parking);
+    setError(null);
+  };
   const [uploading, setUploading] = useState(false);
   // 바로가기 버튼 i 팁 — 메뉴판에서 버튼이 보이는 위치 예시 이미지
   const [showLinksInfo, setShowLinksInfo] = useState(false);
@@ -47,10 +64,18 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
     setUploading(true);
     setError(null);
 
-    const path = `logos/${Date.now()}.${file.name.split(".").pop()}`;
+    // 로고는 작게 보이므로 긴 변 512px WebP로 줄여서 저장 (투명 배경 유지, 사진은 Supabase에서 바로 받는다)
+    let upload: Blob = file;
+    try {
+      upload = await resizeToWebp(file, 512, 0.9);
+    } catch {
+      /* 줄이지 못하면 원본 그대로 */
+    }
+    const ext = upload === file ? file.name.split(".").pop() : "webp";
+    const path = `logos/${Date.now()}.${ext}`;
     const { error: uploadError } = await supabase.storage
       .from("product_menu")
-      .upload(path, file, { upsert: false });
+      .upload(path, upload, { upsert: false, contentType: upload === file ? file.type : "image/webp" });
 
     if (uploadError) {
       setError("로고 업로드 실패: " + uploadError.message);
@@ -86,6 +111,8 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
     notifyMenuChanged();
     onSettingsSaved?.({ location_url: locationUrl || null, kakao_channel_url: kakaoChannelUrl || null, instagram_url: instagramUrl || null, youtube_url: youtubeUrl || null, parking: parking || null, logo_image: logoUrl });
     onSave(name, logoUrl, locationUrl || null, kakaoChannelUrl || null, instagramUrl || null, youtubeUrl || null);
+    saved.current = { name, logoUrl, locationUrl, kakaoChannelUrl, instagramUrl, youtubeUrl, parking };
+    clean();
   };
 
   return (
@@ -274,12 +301,7 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
             </div>
 
             <div className="sticky bottom-0 bg-white border-t border-gray-100 -mx-0 pt-4 pb-1 flex items-center gap-3">
-              <SaveButton
-                ref={saveBtnRef}
-                onSave={handleSave}
-                disabled={uploading}
-                className="text-sm font-medium text-white bg-gold-500 hover:bg-gold-600"
-              />
+              <SaveBar dirty={dirty} onSave={handleSave} onRevert={revert} saveRef={saveBtnRef} />
             </div>
           </form>
         </div>

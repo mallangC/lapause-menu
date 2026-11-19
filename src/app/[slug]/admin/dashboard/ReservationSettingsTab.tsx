@@ -3,14 +3,16 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { formatMoney, parseMoney } from "@/lib/format";
-import SaveButton from "@/components/admin/SaveButton";
+import SaveBar from "@/components/admin/SaveBar";
+import { useDirty } from "@/components/admin/useDirty";
 import { notifyMenuChanged } from "@/lib/menuCacheClient";
 import type { CompanySettings } from "./companySettings";
 import { useSettingsSync } from "./useSettingsSync";
 import SizeTiersEditor, { sizeConfigOrderErrors } from "@/components/admin/SizeTiersEditor";
-import { hasTierInput, normalizeSizeConfig, sizeConfigImages, type SizeConfig } from "@/lib/sizeTiers";
+import { hasTierInput, normalizeSizeConfig, sizeConfigImages, type RefProduct, type SizeConfig } from "@/lib/sizeTiers";
 import { STORAGE_BUCKET } from "@/lib/constants";
 import { removeStorageFiles } from "@/lib/storageCleanup";
+import { resizeToWebp, THUMB_MAX_PX, thumbPath } from "@/lib/imageThumb";
 import { useStoreProductTypeInfo } from "./useStoreProductTypes";
 
 interface Props {
@@ -19,11 +21,16 @@ interface Props {
   onSettingsSaved: (patch: CompanySettings) => void;
   onConsultToggle?: (enabled: boolean) => void;
   onGoToOrderSettings?: () => void;
+  /** 판매 중 상품 — 볼륨감 단계에 사진이 없을 때 대신 쓸 상품 안내용 */
+  products?: RefProduct[];
 }
 
-export default function ReservationSettingsTab({ companyId, settings, onSettingsSaved, onConsultToggle, onGoToOrderSettings }: Props) {
+export default function ReservationSettingsTab({ companyId, settings, onSettingsSaved, onConsultToggle, onGoToOrderSettings, products = [] }: Props) {
   const [consultApplyStatus, setConsultApplyStatus] = useState<"pending" | "approved" | "rejected" | null>(null);
   const [consultEnabled, setConsultEnabled] = useState(false);
+  // 사장님이 이 화면에서 판매 스위치를 직접 눌렀는지 — 누른 때만 판매 값을 저장한다
+  // (배송·옵션만 바꿔 저장할 때 화면이 들고 있던 예전 판매 값으로 덮어쓰지 않게)
+  const consultTouched = useRef(false);
   const [messageCardEnabled, setMessageCardEnabled] = useState(false);
   const [messageCardPrice, setMessageCardPrice] = useState("");
   const [shoppingBagEnabled, setShoppingBagEnabled] = useState(false);
@@ -56,8 +63,10 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
   const mailOrderBlocked = !mailOrderNumber && soldCount >= 50;
 
   // 매장 설정은 대시보드가 한 번 받아둔 값을 사용 (DB 재조회 없음)
-  const markOwnSave = useSettingsSync(settings, (data) => {
-    if (data.consult_enabled) setConsultEnabled(data.consult_enabled);
+  // 설정 값 채우기 — 처음·다른 탭이 저장했을 때·되돌리기
+  const applySettings = (data: CompanySettings) => {
+    // 최신 판매 값 반영 (직접 바꾸고 아직 저장하지 않은 값은 그대로 둔다)
+    if (!consultTouched.current) setConsultEnabled(!!data.consult_enabled);
     if (data.consult_apply_status) setConsultApplyStatus(data.consult_apply_status);
     setMessageCardEnabled(data.message_card_enabled ?? false);
     setMessageCardPrice(data.message_card_price ? formatMoney(String(data.message_card_price)) : "");
@@ -82,7 +91,19 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
         "15-20": fees["15-20"] != null ? formatMoney(String(fees["15-20"])) : "",
       });
     }
-  });
+    clean();
+  };
+  const markOwnSave = useSettingsSync(settings, applySettings);
+  // 바뀐 내용이 있는지 — 저장되는 값만 비교
+  const { dirty, clean } = useDirty("reservation", JSON.stringify({ consultEnabled, messageCardEnabled, messageCardPrice, shoppingBagEnabled, shoppingBagPrice, preservativeEnabled, preservativePrice, consultNotice, deliveryEnabled, deliveryFees, sizeConfig }));
+  // 되돌리기 — 마지막으로 저장된 값으로 (고른 사진도 버린다)
+  const revert = () => {
+    consultTouched.current = false;
+    pendingSizeImages.current.forEach((_, url) => URL.revokeObjectURL(url));
+    pendingSizeImages.current.clear();
+    setError(null);
+    applySettings(settings);
+  };
   // 이 탭에서 저장한 값을 공유 설정에도 반영 (다른 탭이 최신 값을 보도록)
   const saveShared = (patch: CompanySettings) => { markOwnSave(); onSettingsSaved(patch); };
 
@@ -107,6 +128,13 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
           setError("볼륨감 참고 사진을 올리지 못했어요. 잠시 후 다시 저장해 주세요.");
           return false;
         }
+        // 대화 카드용 작은 사진도 함께 (실패해도 원본으로 보여준다)
+        try {
+          const thumb = await resizeToWebp(blob, THUMB_MAX_PX);
+          await supabase.storage.from(STORAGE_BUCKET).upload(thumbPath(path)!, thumb, { upsert: true, contentType: "image/webp" });
+        } catch {
+          /* 썸네일 실패는 무시 */
+        }
         const url = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path).data.publicUrl;
         uploaded.push(url);
         uploadedUrl.set(t.image, url);
@@ -122,8 +150,10 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
         ])
       ),
     };
+    // 판매 값은 스위치를 직접 눌렀을 때만 (통신판매업 미신고로 막힌 매장은 늘 끈다)
+    const writeConsult = consultTouched.current || mailOrderBlocked;
     const patch = {
-        consult_enabled: mailOrderBlocked ? false : consultEnabled,
+        ...(writeConsult ? { consult_enabled: mailOrderBlocked ? false : consultEnabled } : {}),
         message_card_enabled: messageCardEnabled,
         message_card_price: messageCardEnabled ? parseMoney(messageCardPrice) : 0,
         shopping_bag_enabled: shoppingBagEnabled,
@@ -159,7 +189,9 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
     removeStorageFiles(supabase, STORAGE_BUCKET, before.filter((u) => !after.has(u)));
     saveShared(patch);
     notifyMenuChanged();
-    onConsultToggle?.(consultEnabled);
+    if (writeConsult) onConsultToggle?.(mailOrderBlocked ? false : consultEnabled);
+    consultTouched.current = false;
+    clean();
   };
 
   return (
@@ -196,20 +228,31 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
           <div className="space-y-3">
             <h3 className="text-sm font-medium text-gray-700">기능 설정</h3>
             <div className="border-t border-gray-100 md:border md:border-gray-200 md:rounded-xl overflow-hidden divide-y divide-gray-100">
-            {/* 맞춤 주문 기능 활성화 */}
+            {/* 판매 기능 — 승인 전(신청 전·검토 중·반려)에도 줄은 보이게 두고, 회색으로 흐리게 + 스위치는 눌리지 않게, 아래에 지금 상태 안내 */}
             {consultApplyStatus !== "approved" ? (
-              <div className="px-0 md:px-4 py-3.5 md:bg-gray-50 text-sm text-gray-500">
-                {consultApplyStatus === "pending" && "운영자 검토 중입니다. 승인 후 활성화할 수 있습니다."}
-                {consultApplyStatus === "rejected" && (
-                  <span>맞춤 주문 신청이 반려되었습니다.{" "}
-                    <button type="button" onClick={onGoToOrderSettings} className="underline text-gold-600 hover:text-gold-700">판매 신청 탭</button>에서 재신청해주세요.
-                  </span>
-                )}
-                {!consultApplyStatus && (
-                  <span>맞춤 주문을 사용하려면{" "}
-                    <button type="button" onClick={onGoToOrderSettings} className="underline text-gold-600 hover:text-gold-700">판매 신청 탭</button>에서 신청해주세요.
-                  </span>
-                )}
+              <div className="px-0 md:px-4 py-3.5 bg-white">
+                <div className="flex items-center justify-between opacity-50">
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">판매 기능</p>
+                    <p className="text-xs text-gray-400 mt-0.5">판매 기능을 활성화하고 맞춤 주문하기 버튼을 표시합니다.</p>
+                  </div>
+                  <button type="button" disabled aria-disabled aria-label="판매 기능 (승인 후 켤 수 있어요)" className="shrink-0 w-12 h-6 rounded-full relative bg-gray-200 cursor-not-allowed">
+                    <span className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow" />
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  {consultApplyStatus === "pending" && "운영자 검토 중입니다. 승인 후 활성화할 수 있습니다."}
+                  {consultApplyStatus === "rejected" && (
+                    <span>맞춤 주문 신청이 반려되었습니다.{" "}
+                      <button type="button" onClick={onGoToOrderSettings} className="underline text-gold-600 hover:text-gold-700">판매 신청 탭</button>에서 재신청해주세요.
+                    </span>
+                  )}
+                  {!consultApplyStatus && (
+                    <span>맞춤 주문을 사용하려면{" "}
+                      <button type="button" onClick={onGoToOrderSettings} className="underline text-gold-600 hover:text-gold-700">판매 신청 탭</button>에서 신청해주세요.
+                    </span>
+                  )}
+                </p>
               </div>
             ) : (
               <div className="px-0 md:px-4 py-3.5 bg-white">
@@ -229,6 +272,7 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
                         setShowBankWarning(true);
                         return;
                       }
+                      consultTouched.current = true;
                       setConsultEnabled((prev) => !prev);
                     }}
                     className={`shrink-0 w-12 h-6 rounded-full transition-colors relative ${
@@ -569,16 +613,13 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
           Tailwind v4의 space-y는 앞 요소 아래 여백(margin-bottom)으로 간격을 두므로 !mb-0으로 틈을 없앤다 */}
       <div className="!mb-0 bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:rounded-b-none md:p-6">
         <div className="max-w-lg">
-          <SizeTiersEditor value={sizeConfig} onChange={setSizeConfig} types={productTypes} hiddenTypes={hiddenProductTypes} pending={pendingSizeImages.current} />
+          <SizeTiersEditor value={sizeConfig} onChange={setSizeConfig} types={productTypes} hiddenTypes={hiddenProductTypes} pending={pendingSizeImages.current} products={products} />
         </div>
       </div>
 
       {/* 저장 — 카드 밖에 두어 어느 섹션을 보고 있어도 화면 아래에 붙어 있게 하고, 위 카드와는 옅은 회색 선으로만 구분 */}
       <div className="sticky bottom-0 z-10 bg-white border-t border-gray-100 -mx-4 md:mx-0 px-4 md:px-6 py-3 md:rounded-b-2xl flex items-center gap-3">
-        <SaveButton
-          onSave={handleSave}
-          className="text-sm font-medium text-white bg-gold-500 hover:bg-gold-600"
-        />
+        <SaveBar dirty={dirty} onSave={handleSave} onRevert={revert} />
       </div>
     </div>
     </>

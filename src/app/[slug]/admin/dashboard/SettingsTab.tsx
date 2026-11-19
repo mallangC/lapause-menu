@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { generateThemeVars, DEFAULT_THEME_BG, DEFAULT_THEME_ACCENT } from "@/lib/theme";
-import SaveButton from "@/components/admin/SaveButton";
+import SaveBar from "@/components/admin/SaveBar";
+import { useDirty } from "@/components/admin/useDirty";
 import { notifyMenuChanged } from "@/lib/menuCacheClient";
 
 interface Props {
@@ -17,6 +18,14 @@ export default function SettingsTab({ companyId, initialBg, initialAccent, onThe
   const [bg, setBg] = useState(initialBg);
   const [accent, setAccent] = useState(initialAccent);
   const [error, setError] = useState<string | null>(null);
+  // 마지막으로 저장된 색 (되돌리기용) · 바뀐 내용이 있는지
+  const saved = useRef({ bg: initialBg, accent: initialAccent });
+  const { dirty, clean } = useDirty("settings", JSON.stringify({ bg, accent }));
+  const revert = () => {
+    setBg(saved.current.bg);
+    setAccent(saved.current.accent);
+    setError(null);
+  };
 
   const supabase = createClient();
 
@@ -34,6 +43,8 @@ export default function SettingsTab({ companyId, initialBg, initialAccent, onThe
     }
     notifyMenuChanged();
     onThemeChange(bg, accent);
+    saved.current = { bg, accent };
+    clean();
   };
 
   const handleReset = () => {
@@ -136,11 +147,7 @@ export default function SettingsTab({ companyId, initialBg, initialAccent, onThe
               <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
             )}
 
-            <div className="mt-6 flex items-center gap-3">
-              <SaveButton
-                onSave={handleSave}
-                className="text-sm font-medium text-white bg-gold-500 hover:bg-gold-600"
-              />
+            <div className="mt-6">
               <button
                 onClick={handleReset}
                 className="px-4 py-2 rounded-lg text-sm border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors"
@@ -151,6 +158,10 @@ export default function SettingsTab({ companyId, initialBg, initialAccent, onThe
           </div>
 
         </div>
+      </div>
+      {/* 저장 — 다른 설정 탭처럼 화면 아래에 붙어 있게 */}
+      <div className="sticky bottom-0 z-10 bg-white border-t border-gray-100 -mx-4 md:mx-0 px-4 md:px-6 py-3 md:rounded-2xl flex items-center gap-3">
+        <SaveBar dirty={dirty} onSave={handleSave} onRevert={revert} />
       </div>
     </div>
   );

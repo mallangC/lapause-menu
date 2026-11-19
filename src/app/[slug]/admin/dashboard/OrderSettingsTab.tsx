@@ -5,7 +5,9 @@ import imageCompression from "browser-image-compression";
 import DaumPostcodeEmbed from "react-daum-postcode";
 import { createClient } from "@/lib/supabase/client";
 import { formatPhone, parsePhone } from "@/lib/format";
-import SaveButton, { SaveButtonHandle } from "@/components/admin/SaveButton";
+import type { SaveButtonHandle } from "@/components/admin/SaveButton";
+import SaveBar from "@/components/admin/SaveBar";
+import { useDirty } from "@/components/admin/useDirty";
 import { notifyMenuChanged } from "@/lib/menuCacheClient";
 import type { CompanySettings } from "./companySettings";
 import { useSettingsSync } from "./useSettingsSync";
@@ -47,20 +49,23 @@ export default function OrderSettingsTab({ companyId, plan: _plan, settings, onS
   const bankImageInputRef = useRef<HTMLInputElement>(null);
   const businessRegInputRef = useRef<HTMLInputElement>(null);
   const saveBtnRef = useRef<SaveButtonHandle>(null);
+  // 불러온 전화번호 (되돌리기용)
+  const loadedPhone = useRef("");
   const supabase = createClient();
 
   // 매장 설정은 대시보드가 한 번 받아둔 값을 사용 (DB 재조회 없음)
-  const markOwnSave = useSettingsSync(settings, (data) => {
-    if (data.address) setAddress(data.address);
-    if (data.bank_name) setBankName(data.bank_name);
-    if (data.bank_account) setBankAccount(data.bank_account);
-    if (data.bank_holder) setBankHolder(data.bank_holder);
-    if (data.business_number) setBusinessNumber(data.business_number);
-    if (data.mail_order_number) setMailOrderNumber(data.mail_order_number);
+  // 설정 값 채우기 — 처음·다른 탭이 저장했을 때·되돌리기
+  const applySettings = (data: CompanySettings) => {
+    setAddress(data.address ?? "");
+    setBankName(data.bank_name ?? "");
+    setBankAccount(data.bank_account ?? "");
+    setBankHolder(data.bank_holder ?? "");
+    setBusinessNumber(data.business_number ?? "");
+    setMailOrderNumber(data.mail_order_number ?? "");
     setSoldCount(data.sold_count ?? 0);
     if (data.business_verified_at) setBusinessVerifiedAt(data.business_verified_at);
     if (data.business_status) setBusinessStatus(data.business_status);
-    if (data.bank_account_image_url) setBankAccountImageUrl(data.bank_account_image_url);
+    setBankAccountImageUrl(data.bank_account_image_url ?? null);
     if (data.business_registration_image_url) setBusinessRegImageUrl(data.business_registration_image_url);
     if (data.consult_apply_status) setConsultApplyStatus(data.consult_apply_status);
     if (data.consult_reject_reason) setConsultRejectReason(data.consult_reject_reason);
@@ -71,7 +76,18 @@ export default function OrderSettingsTab({ companyId, plan: _plan, settings, onS
       bankHolder: data.bank_holder || "",
       businessNumber: data.business_number || "",
     };
-  });
+    clean();
+  };
+  const markOwnSave = useSettingsSync(settings, applySettings);
+  // 바뀐 내용이 있는지 — 저장되는 값만 비교
+  const { dirty, clean } = useDirty("ordersettings", JSON.stringify({ phone, address, addressDetail, bankName, bankAccount, bankHolder, bankAccountImageUrl, businessNumber, mailOrderNumber }));
+  // 되돌리기 — 마지막으로 저장된 값으로
+  const revert = () => {
+    setError(null);
+    setPhone(loadedPhone.current);
+    setAddressDetail("");
+    applySettings(settings);
+  };
   // 이 탭에서 저장한 값을 공유 설정에도 반영 (다른 탭이 최신 값을 보도록)
   const saveShared = (patch: CompanySettings) => { markOwnSave(); onSettingsSaved(patch); };
 
@@ -82,7 +98,12 @@ export default function OrderSettingsTab({ companyId, plan: _plan, settings, onS
       .eq("id", companyId)
       .single()
       .then(({ data }) => {
-        if (data?.phone) setPhone(formatPhone(data.phone));
+        if (data?.phone) {
+          loadedPhone.current = formatPhone(data.phone);
+          setPhone(loadedPhone.current);
+          // 전화번호는 따로 불러오므로 불러온 뒤 다시 '저장된 상태'로
+          clean();
+        }
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId]);
@@ -244,6 +265,8 @@ export default function OrderSettingsTab({ companyId, plan: _plan, settings, onS
       setConsultEnabled(false);
       initialConsultFields.current = { bankName, bankAccount, bankHolder, businessNumber };
     }
+    loadedPhone.current = phone;
+    clean();
   };
 
   const disabledByConsult = consultEnabled;
@@ -554,11 +577,7 @@ export default function OrderSettingsTab({ companyId, plan: _plan, settings, onS
 
       {/* 저장 — 카드 밖(폼 안)에 두어 어느 섹션을 보고 있어도 화면 아래에 붙어 있게 하고, 위 카드와는 옅은 회색 선으로만 구분 */}
       <div className="sticky bottom-0 z-10 bg-white border-t border-gray-100 -mx-4 md:mx-0 px-4 md:px-6 py-3 md:rounded-b-2xl flex items-center gap-3">
-        <SaveButton
-          ref={saveBtnRef}
-          onSave={handleSave}
-          className="text-sm font-medium text-white bg-gold-500 hover:bg-gold-600"
-        />
+        <SaveBar dirty={dirty} onSave={handleSave} onRevert={revert} saveRef={saveBtnRef} />
       </div>
       </form>
     </div>

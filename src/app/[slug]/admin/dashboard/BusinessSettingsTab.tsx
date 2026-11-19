@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { DayHours, BusinessHours, DateOverrides } from "@/lib/businessHours";
-import SaveButton from "@/components/admin/SaveButton";
+import SaveBar from "@/components/admin/SaveBar";
+import { useDirty } from "@/components/admin/useDirty";
 import DatePicker, { registerLocale } from "react-datepicker";
 import { ko } from "date-fns/locale";
 import "react-datepicker/dist/react-datepicker.css";
@@ -120,7 +121,8 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
   const supabase = createClient();
 
   // 매장 설정은 대시보드가 한 번 받아둔 값을 사용 (DB 재조회 없음)
-  const markOwnSave = useSettingsSync(settings, (data) => {
+  // 설정 값 채우기 — 처음·다른 탭이 저장했을 때·되돌리기
+  const applySettings = (data: CompanySettings) => {
     if (data.business_hours && Object.keys(data.business_hours).length > 0)
       setBusinessHours(data.business_hours as BusinessHours);
     if (data.closed_dates) setClosedDates(data.closed_dates);
@@ -139,7 +141,16 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
           Object.entries(data.min_lead_times as Record<string, number>).map(([k, v]) => [k, String(v)])
         )
       );
-  });
+    clean();
+  };
+  const markOwnSave = useSettingsSync(settings, applySettings);
+  // 바뀐 내용이 있는지 — 저장되는 값만 비교
+  const { dirty, clean } = useDirty("business", JSON.stringify({ businessHours, closedDates, dateOverrides, minLeadTimes, colorLeadDays, colorMinPrice, afterHoursEnabled, afterHoursStart, afterHoursEnd, afterHoursPrepAnytime, afterHoursNote }));
+  // 되돌리기 — 마지막으로 저장된 값으로
+  const revert = () => {
+    setError(null);
+    applySettings(settings);
+  };
   // 이 탭에서 저장한 값을 공유 설정에도 반영 (다른 탭이 최신 값을 보도록)
   const saveShared = (patch: CompanySettings) => { markOwnSave(); onSettingsSaved(patch); };
 
@@ -226,6 +237,7 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
     }
     saveShared(patch);
     notifyMenuChanged();
+    clean();
   };
 
   const formatDate = (dateStr: string) => {
@@ -581,10 +593,7 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
 
       {/* 저장 — 카드 밖에 두어 어느 섹션을 보고 있어도 화면 아래에 붙어 있게 하고, 위 카드와는 옅은 회색 선으로만 구분 */}
       <div className="sticky bottom-0 z-10 bg-white border-t border-gray-100 -mx-4 md:mx-0 px-4 md:px-6 py-3 md:rounded-b-2xl flex items-center gap-3">
-        <SaveButton
-          onSave={handleSave}
-          className="text-sm font-medium text-white bg-gold-500 hover:bg-gold-600"
-        />
+        <SaveBar dirty={dirty} onSave={handleSave} onRevert={revert} />
       </div>
     </div>
   );
