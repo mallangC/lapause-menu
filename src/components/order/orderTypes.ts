@@ -52,6 +52,8 @@ export interface OrderProduct {
   id: string;
   name: string;
   price: number;
+  /** 할인 전 정가 (있으면 할인 중) */
+  original_price?: number | null;
   product_type: string;
   image_url: string | null;
   bag_included?: boolean;

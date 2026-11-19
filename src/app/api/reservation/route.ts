@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { MESSAGE_CARD_MAX } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendReservationConfirmedOwner } from "@/lib/solapi";
@@ -301,7 +302,8 @@ export async function POST(request: NextRequest) {
           // 사장님 스타일 주문은 실제 상품이 없다
           product_id: isStyleOrder ? null : dbProduct.id,
           message_card: form.messageCard,
-          message_card_content: form.messageCardContent || null,
+          // 메시지 카드는 50자까지 (화면과 같게)
+          message_card_content: form.messageCardContent?.slice(0, MESSAGE_CARD_MAX) || null,
           shopping_bag: dbProduct.bag_included ? "서비스" : form.shoppingBag,
           preservative: form.preservative,
           memo: null,
@@ -339,7 +341,7 @@ export async function POST(request: NextRequest) {
         // 찾아본 사진 주문의 참고 사진 — 사장님 예약 상세에 참고 이미지로 보인다
         ...(referenceImages.length > 0 ? { reference_images: referenceImages } : {}),
         // 주문 경로 — 사장님 스타일·찾아본 사진 주문은 상품 id로 서버가 정한다
-        order_path: isPhotoOrder ? "photo_request" : isStyleOrder ? "owner_style" : body.orderPath === "product_detail" ? "product_detail" : "recommend",
+        order_path: isPhotoOrder ? "photo_request" : isStyleOrder ? "owner_style" : body.orderPath === "product_detail" || body.orderPath === "intro_photo" ? body.orderPath : "recommend",
         traffic_source: normalizeTrafficSource(body.trafficSource) ?? "direct",
       }).select("id");
 

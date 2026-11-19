@@ -22,6 +22,8 @@ export default function StoreHeader({
   seasonList,
   consultEnabled,
 }: StoreHeaderProps) {
+  // 로고 → 첫 화면 대화 (판매를 꺼 둔 매장은 대화가 없어 메뉴판으로)
+  const homeHref = consultEnabled ? `/${slug}` : `/${slug}/menu`;
   const [menuOpen, setMenuOpen] = useState(false);
   const { totalCount } = useCart(slug);
 
@@ -54,7 +56,7 @@ export default function StoreHeader({
 
         {/* 중앙 로고 */}
         <Link
-          href={`/${slug}`}
+          href={homeHref}
           className="absolute left-1/2 -translate-x-1/2"
           onClick={() => setMenuOpen(false)}
         >
@@ -100,7 +102,7 @@ export default function StoreHeader({
       >
         {/* 드로어 헤더 */}
         <div className="flex items-center justify-between px-5 h-14 md:h-20 border-b border-gray-100 shrink-0">
-          <Link href={`/${slug}`} onClick={() => setMenuOpen(false)}>
+          <Link href={homeHref} onClick={() => setMenuOpen(false)}>
             {logo}
           </Link>
           <button onClick={() => setMenuOpen(false)} className="p-2 -mr-2 text-gray-400 hover:text-gray-700 transition-colors">

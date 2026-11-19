@@ -1,5 +1,7 @@
 "use client";
 
+import { MESSAGE_CARD_PLACEHOLDER, MessageCardCount } from "@/components/order/MessageCardSuggest";
+import { MESSAGE_CARD_MAX } from "@/lib/constants";
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -290,15 +292,18 @@ export default function PreviewCartClient({
                                     )}
                                     <textarea
                                       value={(item.messageCardContents ?? [])[idx] ?? ""}
+                                      maxLength={MESSAGE_CARD_MAX}
                                       onChange={(e) => {
                                         const next = Array.from({ length: item.messageCardCount ?? 0 }, (_, i) => (item.messageCardContents ?? [])[i] ?? "");
-                                        next[idx] = e.target.value;
+                                        next[idx] = e.target.value.slice(0, MESSAGE_CARD_MAX);
                                         updateItem(item.productId, { messageCardContents: next });
                                       }}
-                                      placeholder="카드에 적을 내용을 입력해주세요"
+                                      placeholder={MESSAGE_CARD_PLACEHOLDER}
                                       rows={2}
                                       className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 resize-none focus:outline-none focus:border-gold-400"
                                     />
+                                    {/* 글자 수 — 입력칸 오른쪽 아래 */}
+                                    <MessageCardCount text={(item.messageCardContents ?? [])[idx] ?? ""} />
                                   </div>
                                 ))}
                               </div>

@@ -125,7 +125,7 @@ export function DeliverySection(p: {
               <button
                 type="button"
                 onClick={() => p.onChange(v)}
-                className={`w-full flex items-center justify-between px-4 py-3.5 text-left transition-colors ${on ? "bg-[color-mix(in_srgb,var(--color-gold-500)_8%,#fff)]" : "hover:bg-gray-50"}`}
+                className={`w-full flex items-center justify-between px-4 py-3.5 text-left transition-colors ${on ? "bg-white" : "hover:bg-gray-50"}`}
               >
                 <span className={`text-sm ${on ? "text-gold-600 font-medium" : "text-gray-800"}`}>{v}</span>
                 <RadioDot on={on} />
@@ -341,7 +341,7 @@ export interface PaymentProps {
 
 interface PayBoxProps {
   /** 결제 금액 줄 — 상품·옵션·배송비 (금액이 0이면 그리지 않는 건 넘기는 쪽에서) */
-  lines: { label: string; amount: number; plus?: boolean }[];
+  lines: { label: string; amount: number; plus?: boolean; minus?: boolean }[];
   total: number;
   payment: PaymentProps;
   agreements: React.ReactNode;
@@ -357,10 +357,10 @@ function PriceLines({ lines, total, px }: { lines: PayBoxProps["lines"]; total: 
     <div className={`${px} py-4 border-b border-gray-100 space-y-2`}>
       <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">결제 금액</p>
       {lines.map((l) => (
-        <div key={l.label} className="flex justify-between text-sm text-gray-700">
+        <div key={l.label} className={`flex justify-between text-sm ${l.minus ? "text-red-500" : "text-gray-700"}`}>
           <span>{l.label}</span>
           <span>
-            {l.plus ? "+" : ""}
+            {l.plus ? "+" : l.minus ? "-" : ""}
             {l.amount.toLocaleString()}원
           </span>
         </div>
@@ -419,6 +419,21 @@ export function SidePayBox(p: PayBoxProps) {
           {p.error && <p className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{p.error}</p>}
           <PayButton {...p} />
         </div>
+      </div>
+    </div>
+  );
+}
+
+/** 첫 화면 대화 주문 — 결제 방법 · 결제 금액 · 동의 · 버튼을 한 카드로 (화면 크기와 관계없이) */
+export function ChatPayBox(p: PayBoxProps) {
+  return (
+    <div className="bg-white rounded-2xl overflow-hidden">
+      <PaymentMethodSection {...p.payment} />
+      <PriceLines lines={p.lines} total={p.total} px="px-4" />
+      <div className="px-4 py-4 space-y-4">
+        {p.agreements}
+        {p.error && <p className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{p.error}</p>}
+        <PayButton {...p} />
       </div>
     </div>
   );

@@ -117,3 +117,6 @@ export const PLAN_FEATURES = [
   // Flo.Aide는 결제 수수료를 따로 받지 않는다 — 카드사에 나가는 기본 카드 수수료만 (부가세 안내는 Q&A에서)
   { text: `결제 수수료 0원 · 기본 카드 수수료 ${PLATFORM_FEE_PERCENT_LABEL}만`, highlight: true },
 ] as const;
+
+/** 메시지 카드 글자 수 제한 (화면·서버 같게) */
+export const MESSAGE_CARD_MAX = 50;

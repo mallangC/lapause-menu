@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { MESSAGE_CARD_MAX } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { productTypeSummary, sendReservationConfirmedOwner } from "@/lib/solapi";
@@ -192,7 +193,7 @@ export async function POST(request: NextRequest) {
       preservative: item.preservativeCount > 0 ? `${item.preservativeCount}개` : "미포함",
       message_card: item.messageCardCount > 0 ? `${item.messageCardCount}장` : "미포함",
       message_card_content: item.messageCardCount > 0 && item.messageCardContents?.length
-        ? item.messageCardContents.map((c, i) => item.messageCardContents.length > 1 ? `[${i + 1}] ${c}` : c).filter(Boolean).join("\n") || null
+        ? item.messageCardContents.map((c) => (c ?? "").slice(0, MESSAGE_CARD_MAX)).map((c, i) => item.messageCardContents.length > 1 ? `[${i + 1}] ${c}` : c).filter(Boolean).join("\n") || null
         : null,
       memo: null,
     }));

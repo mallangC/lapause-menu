@@ -1,6 +1,6 @@
 // 유입 출처(?utm_source= / ?from=)와 주문 경로 — 클라이언트·서버 공통
 
-export type OrderPath = "cart" | "product_detail" | "recommend" | "owner_style" | "photo_request" | "manual" | "pay_link";
+export type OrderPath = "cart" | "product_detail" | "recommend" | "owner_style" | "photo_request" | "intro_photo" | "manual" | "pay_link";
 
 export const ORDER_PATH_LABEL: Record<OrderPath, string> = {
   cart: "장바구니",
@@ -10,12 +10,14 @@ export const ORDER_PATH_LABEL: Record<OrderPath, string> = {
   // 첫 화면 대화에서 상품 없이 한 주문
   owner_style: "사장님 스타일",
   photo_request: "사진 주문",
+  // 첫 화면 대화의 매장 작품 사진을 눌러 바로 한 주문
+  intro_photo: "첫 화면 사진",
   manual: "사장님 추가",
   pay_link: "링크결제",
 };
 
 /** 손님이 사이트에서 직접 한 주문 경로 (방문 대비 전환율 계산 대상) */
-export const CUSTOMER_ORDER_PATHS: OrderPath[] = ["cart", "product_detail", "recommend", "owner_style", "photo_request"];
+export const CUSTOMER_ORDER_PATHS: OrderPath[] = ["cart", "product_detail", "recommend", "owner_style", "photo_request", "intro_photo"];
 
 // 자주 쓰는 표기를 하나로 묶는다 (insta, ig → instagram 등)
 const ALIASES: Record<string, string> = {

@@ -1,7 +1,11 @@
 "use client";
 
+import { discountAmount } from "@/lib/discount";
+import PriceTag from "@/components/PriceTag";
+import { MESSAGE_CARD_PLACEHOLDER, MessageCardCount } from "@/components/order/MessageCardSuggest";
+import { MESSAGE_CARD_MAX } from "@/lib/constants";
 import { useState, useEffect } from "react";
-import Image from "next/image";
+import StoreImage from "@/components/StoreImage";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import StoreHeader from "@/components/main/StoreHeader";
@@ -46,6 +50,8 @@ export default function CartClient({
   // 장바구니 다음 화면은 주문서뿐이라 들어오자마자 미리 받아 둔다 (배포 환경에서만 동작)
   useEffect(() => { router.prefetch(checkoutPath); }, [router, checkoutPath]);
 
+  // 할인 합계 — 정가에서 빠진 금액 (선택한 상품 · 수량만큼)
+  const totalDiscount = checkedItems.reduce((s, i) => s + discountAmount(i.price, i.original_price) * i.quantity, 0);
   const totalPrice = checkedItems.reduce((sum, item) => {
     let price = item.price * item.quantity;
     if (!item.bag_included) price += shoppingBagPrice * (item.shoppingBagCount ?? 0);
@@ -103,7 +109,7 @@ export default function CartClient({
 
                   {/* 이미지 */}
                   {item.image_url ? (
-                    <Image src={item.image_url} alt={item.name} width={64} height={64} className="w-16 h-16 rounded-xl object-cover shrink-0" />
+                    <StoreImage thumb src={item.image_url} alt={item.name} width={64} height={64} className="w-16 h-16 rounded-xl object-cover shrink-0" />
                   ) : (
                     <div className="w-16 h-16 rounded-xl bg-gray-100 shrink-0" />
                   )}
@@ -112,7 +118,10 @@ export default function CartClient({
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-gray-400">{item.product_type}</p>
                     <p className="text-sm font-medium text-gray-900 leading-snug">{item.name}</p>
-                    <p className="text-sm font-bold text-gold-500 mt-0.5">{itemTotal.toLocaleString()}원</p>
+                    {/* 할인 중이면 정가(취소선) · 할인율 · 할인가 (수량만큼) */}
+                    <p className="mt-0.5">
+                      <PriceTag price={itemTotal} original={item.original_price ? item.original_price * item.quantity : null} size="sm" />
+                    </p>
                   </div>
 
                   {/* 수량 + 삭제 */}
@@ -278,15 +287,18 @@ export default function CartClient({
                                     )}
                                     <textarea
                                       value={(item.messageCardContents ?? [])[idx] ?? ""}
+                                      maxLength={MESSAGE_CARD_MAX}
                                       onChange={(e) => {
                                         const next = Array.from({ length: item.messageCardCount ?? 0 }, (_, i) => (item.messageCardContents ?? [])[i] ?? "");
-                                        next[idx] = e.target.value;
+                                        next[idx] = e.target.value.slice(0, MESSAGE_CARD_MAX);
                                         updateItem(item.productId, { messageCardContents: next });
                                       }}
-                                      placeholder="카드에 적을 내용을 입력해주세요"
+                                      placeholder={MESSAGE_CARD_PLACEHOLDER}
                                       rows={2}
                                       className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 resize-none focus:outline-none focus:border-gold-400"
                                     />
+                                    {/* 글자 수 — 입력칸 오른쪽 아래 */}
+                                    <MessageCardCount text={(item.messageCardContents ?? [])[idx] ?? ""} />
                                   </div>
                                 ))}
                               </div>
@@ -307,7 +319,10 @@ export default function CartClient({
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 py-4 safe-area-bottom">
         <div className="max-w-lg mx-auto flex items-center gap-4">
           <div className="flex-1 min-w-0">
-            <p className="text-xs text-gray-400">선택 {checkedItems.length}개</p>
+            <p className="text-xs text-gray-400">
+              선택 {checkedItems.length}개
+              {totalDiscount > 0 && <span className="ml-1.5 text-red-500">{totalDiscount.toLocaleString()}원 할인</span>}
+            </p>
             <p className="text-lg font-bold text-gray-900">{totalPrice.toLocaleString()}원</p>
           </div>
           <button

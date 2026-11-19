@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGE_CARD_PLACEHOLDER, MessageCardCount } from "@/components/order/MessageCardSuggest";
 import { useState, useMemo, useRef, useEffect } from "react";
 import { formatPhone, parsePhone } from "@/lib/format";
 import Image from "next/image";
@@ -10,7 +11,7 @@ import DatePicker, { registerLocale } from "react-datepicker";
 import { ko } from "date-fns/locale/ko";
 import "react-datepicker/dist/react-datepicker.css";
 import { Product } from "@/types";
-import { FLOWER_COLOR_MAP, MOODS } from "@/lib/constants";
+import { FLOWER_COLOR_MAP, MESSAGE_CARD_MAX, MOODS } from "@/lib/constants";
 import { resolveDayHours, type DateOverrides } from "@/lib/businessHours";
 import PreviewFlowerNotice from "./PreviewFlowerNotice";
 import PreviewStoreHeader from "./PreviewStoreHeader";
@@ -1337,14 +1338,17 @@ export default function PreviewConsultClient({ logoNode, slug, companyName, logo
                                     onChange={(e) => {
                                       setMessageCardContents((prev) => {
                                         const next = Array.from({ length: messageCardCount }, (_, i) => prev[i] ?? "");
-                                        next[idx] = e.target.value;
+                                        next[idx] = e.target.value.slice(0, MESSAGE_CARD_MAX);
                                         return next;
                                       });
                                     }}
-                                    placeholder="메시지 카드에 적을 내용을 입력해주세요. (30자 이내 작성 권장)"
+                                    maxLength={MESSAGE_CARD_MAX}
+                                    placeholder={MESSAGE_CARD_PLACEHOLDER}
                                     rows={2}
                                     className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none focus:border-gold-400 bg-gray-50 placeholder:text-gray-300"
                                   />
+                                  {/* 글자 수 — 입력칸 오른쪽 아래 */}
+                                  <MessageCardCount text={messageCardContents[idx] ?? ""} />
                                 </div>
                               ))}
                             </div>
@@ -1353,11 +1357,14 @@ export default function PreviewConsultClient({ logoNode, slug, companyName, logo
                             <div className="px-4 pb-3">
                               <textarea
                                 value={form.messageCardContent}
-                                onChange={(e) => set("messageCardContent", e.target.value)}
-                                placeholder="메시지 카드에 적을 내용을 입력해주세요. (30자 이내 작성 권장)"
+                                onChange={(e) => set("messageCardContent", e.target.value.slice(0, MESSAGE_CARD_MAX))}
+                                maxLength={MESSAGE_CARD_MAX}
+                                placeholder={MESSAGE_CARD_PLACEHOLDER}
                                 rows={3}
                                 className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none focus:border-gold-400 bg-gray-50 placeholder:text-gray-300"
                               />
+                              {/* 글자 수 — 입력칸 오른쪽 아래 */}
+                              <MessageCardCount text={form.messageCardContent} />
                             </div>
                           )}
                         </div>

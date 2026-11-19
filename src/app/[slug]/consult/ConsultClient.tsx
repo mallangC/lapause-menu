@@ -1,7 +1,8 @@
 "use client";
 
+import PriceTag from "@/components/PriceTag";
 import { useState, useMemo, useEffect } from "react";
-import Image from "next/image";
+import StoreImage from "@/components/StoreImage";
 import Link from "next/link";
 import { preloadOrderInputs } from "@/components/LazyOrderInputs";
 import { Product } from "@/types";
@@ -644,7 +645,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                     )}
                     <div className="w-full aspect-square overflow-hidden bg-beige-200">
                       {product.image_url ? (
-                        <Image
+                        <StoreImage thumb
                           src={product.image_url}
                           alt={product.name}
                           width={300}
@@ -661,7 +662,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
                       <div>
                         <span className="text-xs text-gray-400">{product.product_type}</span>
                         <p className="font-medium text-gray-900 text-sm leading-snug">{product.name}</p>
-                        <p className="text-gold-600 font-medium text-sm mt-0.5">{product.price.toLocaleString()}원</p>
+                        <p className="mt-0.5"><PriceTag price={product.price} original={product.original_price} size="sm" /></p>
                       </div>
                       {(product.flower_colors.length > 0 || product.wrapping_color) && (
                         <div className="flex items-center justify-between pt-2 border-t border-gray-100">

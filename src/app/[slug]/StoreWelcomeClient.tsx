@@ -1,15 +1,21 @@
 "use client";
 
+import PriceTag from "@/components/PriceTag";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { BASE_MOODS, recommendOrderHref, photoOrderKey, PHOTO_MOOD_SAME, STYLE_AVOID_MAX, STYLE_MOODS, STYLE_MOOD_TRUST, styleOrderHref, type StyleKind } from "@/lib/styleOrder";
+import StoreImage from "@/components/StoreImage";
+import { BASE_MOODS, recommendOrderHref, photoOrderKey, PHOTO_MOOD_SAME, STYLE_AVOID_MAX, STYLE_MOODS, STYLE_MOOD_TRUST, styleOrderHref, makeStyleProduct, readPhotoOrder, styleOrderRequests, PHOTO_PRODUCT_ID, type StyleKind } from "@/lib/styleOrder";
 import FlowerNoticeModal from "@/components/FlowerNoticeModal";
-import { FLOWER_COLORS, FLOWER_COLOR_MAP } from "@/lib/constants";
+import IntroProductViewer, { type IntroProduct } from "@/components/IntroProductViewer";
+import ChatCheckout, { type CheckoutSettings } from "./ChatCheckout";
+import type { Done, SingleOrder } from "@/components/order/useOrderCheckout";
+import { EMPTY_FORM } from "@/components/order/orderTypes";
+import { FLOWER_COLOR_MAP } from "@/lib/constants";
 import StoreFooter, { type StoreFooterProps } from "@/components/main/StoreFooter";
 import VolumeRefs, { type VolumeRef } from "@/components/VolumeRefs";
 import ColorMinPriceHint from "@/components/ColorMinPriceHint";
-import { volumeRefsForType, type SizeConfig } from "@/lib/sizeTiers";
+import { volumeJudgeRefs, volumeRefsForType, type SizeConfig } from "@/lib/sizeTiers";
 import { recommendProducts } from "@/lib/recommend";
 
 interface Props {
@@ -20,6 +26,10 @@ interface Props {
   consultEnabled: boolean;
   /** 첫 인사에 곁들일 매장 작품 사진 (최대 3장) */
   photos: string[];
+  /** 첫 인사 사진의 상품 (photos와 같은 순서) — 있으면 사진을 눌러 크게 보고 바로 주문 */
+  photoProducts?: IntroProduct[];
+  /** 인기·추천 상품 — 있으면 첫 인사 사진을 이 중 무작위 3장으로 (화면마다 달라지게 브라우저에서 고른다) */
+  photoPoolProducts?: IntroProduct[];
   /** 메뉴판과 같은 푸터 */
   footer: StoreFooterProps;
   /** 볼륨감 참고 이미지 (기본 + 유형별) — 추천에서 희망 금액을 정하기 전에 보여준다 */
@@ -38,6 +48,12 @@ interface Props {
   logoNode?: React.ReactNode;
   /** 모바일에서 대화 끝을 화면 바닥에서 얼마나 띄울지(px) — 미리보기는 아래 이동 바에 가리지 않게 더 띄운다 */
   mobileBottomGap?: number;
+  /** 대화 주문을 결제·완료까지 대화 안에서 (없으면 예전처럼 주문 페이지로 넘어간다 — 미리보기) */
+  checkout?: CheckoutSettings;
+  /** 매장 전화 (완료 후 문의 버튼) */
+  storePhone?: string | null;
+  /** 결제창에서 돌아옴 — 보관해 둔 대화를 되살려 결제를 마무리한다 */
+  returningFromPayment?: boolean;
 }
 
 /** 대화형 추천 상품 카드에 필요한 것만 */
@@ -45,15 +61,21 @@ export interface RecProduct {
   id: string;
   name: string;
   price: number;
+  /** 할인 전 정가 (있으면 할인 중) */
+  original_price?: number | null;
   image_url: string | null;
   product_type: string;
   mood: string | null;
   is_recommended: boolean;
   is_popular: boolean;
+  bag_included?: boolean;
+  message_card_unavailable?: boolean;
+  preservative_unavailable?: boolean;
 }
 
 /** 대화 주문 종류 — 사장님 스타일 / 찾아본 사진 / 추천 */
-type Flow = StyleKind | "recommend";
+// intro — 첫 인사 사진에서 상품을 바로 고른 주문 (선물 정보만 묻고 주문으로)
+type Flow = StyleKind | "recommend" | "intro";
 
 type Option = {
   // 손님 말투로 — 누르면 그대로 손님 말풍선이 된다
@@ -65,7 +87,7 @@ type Option = {
   // 이동 없이 이 대화창에서 질문을 이어가는 주문 (사장님 스타일 / 찾아본 사진 / 추천)
   flow?: Flow;
   // 선택지 구분 (미리보기 설명이 버튼을 찾을 때)
-  key: "style" | "recommend" | "photo" | "menu";
+  key: "style" | "recommend" | "photo" | "menu" | "intro";
 };
 
 type Question = {
@@ -122,11 +144,12 @@ const makeQuestions = (TYPE_OPTIONS: string[]): Record<Flow, Question[]> => ({
     { key: "type", label: "상품 형태", ask: "어떤 형태로 만들어드릴까요?", options: TYPE_OPTIONS },
     BUDGET_Q,
     { key: "mood", label: "분위기", ask: "원하시는 분위기가 있을까요?", options: STYLE_MOODS, wrap: true },
-    // 색은 사장님께 맡기는 대신 피하고 싶은 색 하나만 컬러칩으로 받는다 (누르면 바로 다음, 결제 화면 요청 사항 맨 위에 글로)
-    { key: "avoid", label: "피하고 싶은 색", ask: "피하고 싶은 색감이 있다면 알려주세요.", options: [...FLOWER_COLORS], colorChips: true, multiSay: "은 피해주세요", skippable: true, skipLabel: "없어요" },
+    // 색은 사장님께 맡기는 대신 피하고 싶은 색감을 글로 받는다 (입력하거나 '없어요', 결제 화면 요청 사항 맨 위에 글로)
+    { key: "avoid", label: "피하고 싶은 색", ask: "피하고 싶은 색감이 있다면 알려주세요.", text: true, placeholder: "예) 빨간색, 너무 진한 색", skippable: true, skipLabel: "없어요" },
   ],
-  // 찾아본 사진 — 형태 → 사진 받기 → 희망 금액(볼륨감 참고 이미지를 먼저) → 선물 정보 → 특히 참고할 부분
+  // 찾아본 사진 — 형태 → 사진 받기(같은 형태의 비슷한 우리 상품 가격대 안내) → 희망 금액(볼륨감 참고 이미지를 먼저) → 선물 정보 → 특히 참고할 부분
   // 형태를 먼저 묻고(그 형태 사진을 골라 오게) 사진을 받는다. 분위기는 보낸 사진 분위기로 정해져 묻지 않는다
+  // 형태를 먼저 묻고(그 형태 사진을 골라 오게) 사진을 받는다
   photo: [
     { key: "type", label: "상품 형태", ask: "어떤 형태로 준비해드릴까요?", options: TYPE_OPTIONS },
     { key: "photo", label: "사진", ask: "", photo: true },
@@ -139,6 +162,8 @@ const makeQuestions = (TYPE_OPTIONS: string[]): Record<Flow, Question[]> => ({
   // 추천 — 상품 형태 → 희망 금액(볼륨감 참고 이미지를 먼저) → 어떤 날 · 성별 · 연령대 → 분위기(사진으로) → 상품 추천
   // 분위기를 마지막에 묻고 바로 상품을 보여준다 — 상품을 고르면 곧바로 주문으로
   // (분위기 다음의 상품 추천은 질문이 아니라 answer에서 끼워 넣는다)
+  // 첫 인사 사진에서 고른 상품 — 상품은 정해졌으니 선물 정보만 (어떤 날 · 성별 · 연령대, 모두 건너뛸 수 있다)
+  intro: [...GIFT_QUESTIONS],
   recommend: [
     { key: "type", label: "상품 형태", ask: "어떤 형태로 찾으세요?", options: TYPE_OPTIONS },
     { ...BUDGET_Q, label: "희망 금액", ask: "희망 금액은 어느 정도로 생각하세요?", volume: true },
@@ -241,17 +266,34 @@ function ChipRow({ children, align = "end", innerClassName = "gap-2" }: { childr
 }
 
 // 화면에 그릴 말 한 줄
+/** 사진 주문 — 사진 확인 결과 (같은 형태의 비슷한 우리 상품 가격대, 없으면 null) */
+/** 사진 주문 — 손님 사진의 볼륨이 가장 가까운 우리 매장 볼륨 단계 (above: 가장 큰 단계보다도 큼) */
+type PhotoInfo = { volume: { name: string; price: number; above: boolean } | null };
+
 type Item =
   | { id: string; from: "shop"; text: string }
   | { id: string; from: "shop"; photos: string[] }
   | { id: string; from: "shop"; summary: { label: string; value: string }[]; image?: string }
   | { id: string; from: "shop"; volume: VolumeRef[] }
+  // 바로가기 버튼 (예: 카카오톡으로 문의하기)
+  | { id: string; from: "shop"; link: { href: string; label: string } }
   | { id: string; from: "me"; text: string; onEdit?: () => void; tight?: boolean }
   | { id: string; from: "me"; image: string };
 
 // 매장 첫 화면 — 꽃집과 메시지 나누듯 "어떤 방식으로 주문할지"부터 고른다.
 // 추천은 맞춤주문, 직접 고르기·사진 주문은 메뉴판으로 넘어가고, '사장님 스타일'은 이 대화창에서 질문을 이어간다
-export default function StoreWelcomeClient({ slug, companyName, logoImage, themeVars, consultEnabled, photos, footer, sizeConfig, colorMinPrice = 0, photoMinPrice = 0, productTypes, products, logoNode, mobileBottomGap = 24, fromMenu = false }: Props) {
+/** 주문 정보 대화로 넘어갈 때 앞 대화가 위로 접히는 시간 */
+const FOLD_MS = 420;
+
+/** 첫 인사 사진에서 고른 상품으로 시작하는 대화 (손님 말 · 가게 대답) */
+const introOption = (name: string): Option => ({
+  text: `‘${name}’ 이걸로 할게요`,
+  reply: "좋아요! 선물하실 분에 대해\n몇 가지만 여쭤볼게요.",
+  flow: "intro",
+  key: "intro",
+});
+
+export default function StoreWelcomeClient({ slug, companyName, logoImage, themeVars, consultEnabled, photos: basePhotos, photoProducts, photoPoolProducts = [], footer, sizeConfig, colorMinPrice = 0, photoMinPrice = 0, productTypes, products, logoNode, mobileBottomGap = 24, fromMenu = false, checkout, storePhone = null, returningFromPayment = false }: Props) {
   const router = useRouter();
 
   const menuHref = `/${slug}/menu`;
@@ -288,6 +330,26 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
 
   // ── 대화 진행 상태 ──
   // 첫 인사가 몇 줄 나왔는지 (인사 → 사진 → 질문)
+  // 첫 인사 사진 — 인기·추천 상품이 있으면 그중 무작위 3장 (모자라면 기본 순서 사진으로 채운다)
+  // 첫 화면은 캐시되므로 서버가 아니라 여기(브라우저)에서 고른다 · 첫 그림은 기본 순서(서버와 같게), 바로 무작위로 바꾼다 (사진 말풍선은 0.45초 뒤에 나온다)
+  const [introProducts, setIntroProducts] = useState<IntroProduct[] | null>(photoProducts ?? null);
+  const photos = introProducts ? introProducts.map((p) => p.image_url) : basePhotos;
+  useEffect(() => {
+    if (photoPoolProducts.length === 0) return;
+    const pool = photoPoolProducts.filter((p, i, a) => a.findIndex((x) => x.image_url === p.image_url) === i);
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    const picked = pool.slice(0, 3);
+    for (const p of photoProducts ?? []) if (picked.length < 3 && !picked.some((x) => x.id === p.id)) picked.push(p);
+    setIntroProducts(picked);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // 첫 인사 사진 크게 보기 (몇 번째) · 사진에서 바로 주문할 상품 (생화 안내를 확인하면 주문 정보로)
+  const [viewerIdx, setViewerIdx] = useState<number | null>(null);
+  const [introPick, setIntroPick] = useState<IntroProduct | null>(null);
+
   // 첫 인사 순서: 인사 → (매장 작품 사진) → 주문 방식 질문
   // 메뉴판에서 '맞춤 상담'으로 온 손님은 인사·사진을 이미 봤으니 질문부터
   const intro: Item[] = fromMenu
@@ -323,6 +385,8 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
   const [refFailed, setRefFailed] = useState(false);
   // 가게가 사진을 받았다고 답했는지 — 입력 중을 마친 뒤에만 보이게 (떴다 사라지지 않게)
   const [refAck, setRefAck] = useState(false);
+  // 사진 주문 — 같은 매장·같은 형태의 비슷한 작품 가격대 (모르면 null)
+  const [photoInfo, setPhotoInfo] = useState<PhotoInfo | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   // 생화 안내 — 사진 주문은 '이대로 주문할게요' 전에 한 번 보여준다
   const [showFlowerNotice, setShowFlowerNotice] = useState(false);
@@ -334,6 +398,47 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
   const [recPicked, setRecPicked] = useState(false);
   // '새로 추천받기'로 이미 보여준 추천 상품 — 다음 추천에서 뺀다
   const [seenRecIds, setSeenRecIds] = useState<string[]>([]);
+  // ── 대화 주문 (받는 정보·결제·완료) ──
+  const [checkoutOrder, setCheckoutOrder] = useState<SingleOrder | null>(null);
+  const [checkoutRequests, setCheckoutRequests] = useState("");
+  // 결제창에서 돌아와 결제 단계부터 이어서 · 새로고침으로 되살린 완료
+  const [checkoutResume, setCheckoutResume] = useState(false);
+  const [restoredDone, setRestoredDone] = useState<Done | null>(null);
+  // 받는 정보를 묻는 동안 앞 대화는 접어 둔다 (정리 카드만 보이게)
+  const [showHistory, setShowHistory] = useState(false);
+  const inCheckout = !!checkoutOrder || checkoutResume || !!restoredDone;
+  // [이대로 주문할게요]를 누른 직후 — 앞 대화가 접히는 동안 (그다음 정리 카드만 남는다)
+  const [folding, setFolding] = useState(false);
+  const histRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!checkoutOrder || checkoutResume) return;
+    setFolding(true);
+    // 앞 대화를 위로 접는다 — 지금 보이는 화면 맨 위를 축으로 대화 전체가 위로 납작하게 접히며 사라진다
+    const el = histRef.current;
+    let anim: Animation | undefined;
+    if (el && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      const axis = Math.max(0, window.scrollY + 64 - (el.getBoundingClientRect().top + window.scrollY));
+      el.style.transformOrigin = `50% ${axis}px`;
+      anim = el.animate(
+        [
+          { transform: "none", opacity: 1 },
+          { transform: "translateY(-24px) scaleY(.04)", opacity: 0 },
+        ],
+        { duration: FOLD_MS, easing: "cubic-bezier(.55,0,.75,.4)", fill: "forwards" },
+      );
+    }
+    const t = setTimeout(() => {
+      setFolding(false);
+      // 접힌 모양을 풀어 둔다 (이전 대화 보기로 펼치면 원래대로 보이게)
+      anim?.cancel();
+      if (el) el.style.transformOrigin = "";
+      // 다 접혔으면 붙잡아 둔 대화 높이를 놓는다 (접는 동안 놓으면 페이지가 짧아져 화면이 튄다)
+      if (colRef.current) colRef.current.style.minHeight = "";
+      // 앞 대화가 사라졌다 — 새 장처럼 대화 맨 위에서 시작 (화면이 비어 있는 순간이라 튀어 보이지 않는다)
+      window.scrollTo({ top: 0, behavior: "instant" });
+    }, FOLD_MS);
+    return () => { clearTimeout(t); anim?.cancel(); };
+  }, [checkoutOrder, checkoutResume]);
   const BASE_QS = makeQuestions([...productTypes, "기타"])[flow];
   // 사장님 스타일·추천 — 희망 금액대(금액 ~ +20%)에 상품이 있는 분위기만 선택지로
   // 하나도 없으면 분위기를 묻지 않는다 (사장님 스타일은 '사장님에게 맡길게요'로 저장, 추천은 분위기 없이 추천)
@@ -368,6 +473,8 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
   };
 
   useEffect(() => {
+    // 결제창에서 돌아왔거나 이미 주문을 마친 대화 — 인사 없이 보관해 둔 대화를 되살린다
+    if (checkout && restoreChat()) return clearLater;
     // 한 줄씩 이어서 — 첫 말은 0.45초 뒤, 그다음부터 0.6초 간격
     for (let i = 1; i <= introTotal; i++) {
       later(450 + (i - 1) * 600, () => {
@@ -382,7 +489,97 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── 대화 보관·되살리기 (결제창에 다녀오는 동안 · 주문을 마친 뒤 새로고침) ──
+  const chatKey = `chat_state_${slug}`;
+  const doneKey = `chat_done_${slug}`;
+  type Snapshot = {
+    v: 1;
+    // 질문 없이 첫 화면 사진에서 바로 주문했으면 null
+    choiceKey: Option["key"] | null;
+    answers: string[];
+    asked: number;
+    photoInfo: PhotoInfo | null;
+    pickedRec: RecProduct | null;
+    recShown: boolean;
+    seenRecIds: string[];
+    order: SingleOrder;
+    requests: string;
+  };
+  const makeSnap = (): Snapshot | null => {
+    if (!checkoutOrder) return null;
+    return {
+      v: 1,
+      choiceKey: choice?.key ?? null,
+      answers,
+      asked,
+      photoInfo,
+      pickedRec,
+      recShown,
+      seenRecIds,
+      // 손님 사진(data URL)은 커서 따로 보관한 것을 쓴다
+      order: { ...checkoutOrder, product: { ...checkoutOrder.product, image_url: checkoutOrder.product.id === PHOTO_PRODUCT_ID ? null : checkoutOrder.product.image_url } },
+      requests: checkoutRequests,
+    };
+  };
+  const saveChat = () => {
+    const snap = makeSnap();
+    if (!snap) return;
+    try { sessionStorage.setItem(chatKey, JSON.stringify(snap)); } catch { /* 보관 실패해도 결제는 이어진다 (돌아오면 완료 말만) */ }
+  };
+  const readJson = <T,>(key: string): T | null => {
+    try {
+      const raw = sessionStorage.getItem(key);
+      return raw ? (JSON.parse(raw) as T) : null;
+    } catch {
+      return null;
+    }
+  };
+  /** 보관해 둔 대화를 되살린다 — 되살렸으면 true (인사·첫 질문을 건너뛴다) */
+  const restoreChat = (): boolean => {
+    const doneRec = readJson<{ snap: Snapshot | null; done: Done }>(doneKey);
+    const snap = returningFromPayment ? readJson<Snapshot>(chatKey) : doneRec?.snap ?? null;
+    if (!returningFromPayment && !doneRec) return false;
+    setIntroShown(introTotal);
+    setTyping(false);
+    if (snap && snap.v === 1) {
+      const o = snap.choiceKey === "intro" && snap.pickedRec ? introOption(snap.pickedRec.name) : options.find((x) => x.key === snap.choiceKey) ?? null;
+      setChoice(o);
+      setReplied(true);
+      setAnswers(snap.answers);
+      setAsked(snap.asked);
+      setPhotoInfo(snap.photoInfo);
+      const photo = readPhotoOrder(slug);
+      if (o?.flow === "photo") { setRefPreview(photo); setRefAck(true); }
+      setPickedRec(snap.pickedRec);
+      setRecShown(snap.recShown);
+      setRecPicked(!!snap.pickedRec);
+      setSeenRecIds(snap.seenRecIds);
+      setSummaryShown(true);
+      setConfirmed(true);
+      setCheckoutOrder({ ...snap.order, product: { ...snap.order.product, image_url: snap.order.product.id === PHOTO_PRODUCT_ID ? photo : snap.order.product.image_url } });
+      setCheckoutRequests(snap.requests);
+    }
+    if (doneRec && !returningFromPayment) setRestoredDone(doneRec.done);
+    setCheckoutResume(true);
+    return true;
+  };
+  /** 처음 화면으로 — 보관한 대화·사진을 지우고 새로 시작 */
+  const restartChat = () => {
+    try {
+      sessionStorage.removeItem(chatKey);
+      sessionStorage.removeItem(doneKey);
+      sessionStorage.removeItem(photoOrderKey(slug));
+    } catch { /* 무시 */ }
+    window.location.href = `/${slug}`;
+  };
+
   const pick = (o: Option) => {
+    // '사진 보고 직접 고를게요' — 대답 없이 바로 메뉴판으로
+    if (o.key === "menu" && o.href) {
+      router.push(o.href);
+      return;
+    }
+    holdHeight();
     setChoice(o);
     later(250, () =>
       shopSays(() => {
@@ -417,19 +614,57 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
       later(200, () => shopSays(() => setRefFailed(true), 600));
       return;
     }
-    // 보낸 사진이 이 질문의 답 — 가게가 받았다고 답한 뒤 다음 질문으로
+    holdHeight();
+    // 보낸 사진이 이 질문의 답 — 가게가 사진을 확인(같은 형태의 비슷한 우리 상품 가격대)한 뒤 다음 질문으로
     setRefPreview(data);
+    setPhotoInfo(null);
     setAnswers((a) => [...a.slice(0, asked - 1), "사진"]);
-    later(250, () =>
-      shopSays(() => {
-        setRefAck(true);
-        later(400, () => shopSays(() => setAsked(asked + 1)));
-      }, 750)
-    );
+    setTyping(true);
+    setTypingLabel("사진 확인 중");
+    let info: PhotoInfo = { volume: null };
+    // 고른 형태의 볼륨 기준이 2장 이상 있어야 비교할 수 있다 — 없으면 사진 확인 자체를 하지 않는다 (기타 포함)
+    // (사장님이 사진을 안 넣은 단계는 가격이 맞는 같은 형태 상품 사진으로 대신 — 서버와 같은 규칙)
+    const pickedType = ans("type");
+    const comparable = volumeJudgeRefs(sizeConfig, pickedType, products).length >= 2;
+    if (!comparable) {
+      // 가격대를 못 낸 이유 확인용 (브라우저 개발자 도구 콘솔)
+      console.info("[사진 가격대] 볼륨 참고 사진이 2장 미만이라 확인하지 않음:", pickedType);
+      await new Promise((r) => setTimeout(r, 400));
+    } else if (slug.startsWith("preview/")) {
+      // 미리보기 — 실제로 사진을 보내지 않고 예시 결과로 (그 형태 볼륨 단계 중 가운데쯤)
+      await new Promise((r) => setTimeout(r, 1000));
+      const tiers = volumeRefsForType(sizeConfig, pickedType);
+      const mid = tiers[Math.floor((tiers.length - 1) / 2)];
+      info = { volume: mid ? { name: mid.name, price: mid.price, above: false } : { name: "중형", price: 80000, above: false } };
+    } else try {
+      // 판단에는 작은 사진이면 충분하다 (빠르게)
+      const small = (await shrinkToDataUrl(file, 768, 0.8)) ?? data;
+      const res = await fetch("/api/ai/photo-price", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, image: small, productType: pickedType }),
+      });
+      if (res.ok) {
+        const j = await res.json();
+        if (j && "volume" in j) info = { volume: j.volume ?? null };
+        console.info("[사진 가격대]", j?.reason, j?.volume ?? "가격 없음", j?.debug ?? "");
+      }
+    } catch (e) {
+      /* 확인을 못 해도 주문은 이어진다 — 가격대만 생략 */
+      console.info("[사진 가격대] 요청 실패", e);
+    }
+    setTypingLabel(null);
+    setTyping(false);
+    setPhotoInfo(info);
+    // 다음 질문(희망 금액)의 처음 값 — 사진과 비슷한 볼륨 단계 가격
+    if (info.volume) setBudget(Math.max(info.volume.price, photoMinPrice || 0));
+    setRefAck(true);
+    later(400, () => shopSays(() => setAsked(asked + 1), 650));
   };
 
   // 지금 질문에 답한다 → 다음 질문 (마지막이면 요약)
   const answer = (v: string) => {
+    holdHeight();
     const next = [...answers.slice(0, asked - 1), v];
     setAnswers(next);
     // 추천 — 분위기(마지막 질문)까지 받으면 '어울리는 꽃 찾는 중...' 뒤에 상품 카드 (고르면 바로 주문으로)
@@ -441,9 +676,37 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
 
   // 추천에서 고른 상품 — 생화 안내를 확인하면 사장님 스타일처럼 답을 정리해 보여주고 '이대로 주문할게요'
   const pickRec = () => {
+    holdHeight();
     setShowFlowerNotice(false);
     setRecPicked(true);
     later(200, () => shopSays(() => setSummaryShown(true), 700));
+  };
+
+  // 첫 인사 사진에서 고른 상품으로 주문 — 선물 정보(어떤 날 · 받는 분 · 연령대)를 묻고 정리 카드 → 받는 정보·결제
+  const orderIntroPick = () => {
+    const p = introPick;
+    setShowFlowerNotice(false);
+    setIntroPick(null);
+    if (!p) return;
+    // 첫 인사가 다 나오기 전에 눌렀어도 인사는 마저 보여 두고 대화를 잇는다
+    clearLater();
+    setIntroShown(introTotal);
+    setTyping(false);
+    setPickedRec({
+      id: p.id,
+      name: p.name,
+      price: p.price,
+      original_price: p.original_price ?? null,
+      image_url: p.image_url,
+      product_type: p.product_type,
+      mood: p.mood ?? null,
+      is_recommended: false,
+      is_popular: false,
+      bag_included: p.bag_included,
+      message_card_unavailable: p.message_card_unavailable,
+      preservative_unavailable: p.preservative_unavailable,
+    });
+    pick(introOption(p.name));
   };
 
   // 요약대로 주문 — 받은 답을 맞춤주문 마지막 단계(예약 확인·결제)로 넘긴다
@@ -487,6 +750,44 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
       // 찾아본 사진 — 특히 참고할 부분
       similar: a("similar"),
     });
+    // 대화 주문 — 받는 정보·결제·완료까지 이 대화에서 (미리보기 등 매장 설정이 없으면 예전처럼 주문 화면으로)
+    if (checkout && !slug.startsWith("preview/")) {
+      const budgetN = Number(a("budget").replace(/\D/g, ""));
+      // 추천·첫 인사 사진 — 고른 상품으로 주문
+      const picked = (flow === "recommend" || flow === "intro") && pickedRec ? pickedRec : null;
+      const mood = flow === "photo" ? PHOTO_MOOD_SAME : flow === "intro" ? picked?.mood ?? "" : flow === "recommend" ? a("mood") : a("mood") || STYLE_MOOD_TRUST;
+      const taste = {
+        ...EMPTY_FORM,
+        purpose: a("purpose"),
+        purposeCustom: a("purpose") === "기타" ? "기타" : "",
+        recipientGender: a("gender"),
+        recipientAge: a("age"),
+        productType: a("type") || picked?.product_type || "",
+        mood,
+        // 희망 금액을 묻지 않은 주문(첫 인사 사진)은 비워 둔다
+        budget: budgetN > 0 ? "기타" : "",
+        budgetCustom: budgetN > 0 ? String(budgetN / 10000) : "",
+      };
+      const product =
+        picked
+          ? {
+              id: picked.id,
+              name: picked.name,
+              price: picked.price,
+              original_price: picked.original_price ?? null,
+              product_type: picked.product_type,
+              image_url: picked.image_url,
+              bag_included: picked.bag_included ?? false,
+              message_card_unavailable: picked.message_card_unavailable ?? false,
+              preservative_unavailable: picked.preservative_unavailable ?? false,
+            }
+          : makeStyleProduct({ kind: flow === "photo" ? "photo" : "style", productType: a("type"), mood, budget: budgetN, refImage: flow === "photo" ? readPhotoOrder(slug) : null });
+      setCheckoutRequests(picked ? "" : styleOrderRequests({ avoid: a("avoid"), similar: a("similar") }));
+      // 접기 시작을 같은 순간에 — 한 박자라도 앞 대화가 먼저 빠지면 페이지가 짧아져 화면이 튄다
+      setFolding(true);
+      setCheckoutOrder({ kind: "single", product, quantity: 1, taste, orderPath: flow === "intro" ? "intro_photo" : "recommend" });
+      return;
+    }
     // 멘트 없이 바로 주문 화면으로
     router.push(href);
   };
@@ -499,8 +800,8 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
     setAsked(qIdx + 1);
     setSummaryShown(false);
     setTypingLabel(null);
-    // 추천 상품은 지운다 (추천은 모든 질문 다음이라 어떤 답을 고쳐도 다시 추천)
-    {
+    // 추천 상품은 지운다 (추천은 모든 질문 다음이라 어떤 답을 고쳐도 다시 추천) — 첫 인사 사진에서 고른 상품은 그대로
+    if (flow !== "intro") {
       setRecShown(false);
       setPickedRec(null);
       setRecPicked(false);
@@ -524,6 +825,7 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
       setRefPreview(null);
       setRefAck(false);
       setRefFailed(false);
+      setPhotoInfo(null);
     }
   };
 
@@ -595,7 +897,28 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
       items.push({ id: `q${i}`, from: "shop", text: `좋아요! 찾아보신 ${t && t !== "기타" ? t : "꽃"} 사진을 보내주세요 📷` });
       if (refPreview && answers[i] !== undefined) items.push({ id: "ref", from: "me", image: refPreview });
       if (refFailed) items.push({ id: "ref-fail", from: "shop", text: "사진을 불러오지 못했어요 😢\n다른 사진으로 다시 보내주시겠어요?" });
-      if (refAck) items.push({ id: "ref-ok", from: "shop", text: "예쁜 사진이네요! 이 느낌으로 준비해볼게요.\n몇 가지만 더 여쭤볼게요." });
+      if (refAck) {
+        // 사진을 보고 → 볼륨으로 가늠한 가격 → 분위기 약속(마지막 말이 다음 질문 '얼마에 맞춰서'로 이어진다)
+        const v = photoInfo?.volume;
+        const mood = "사진과 비슷한 분위기로 준비해 드릴게요.";
+        if (v) {
+          // 단계 이름에 형태가 없으면 붙인다 (예: 중대형 → 중대형 꽃다발)
+          const t = ans("type");
+          const label = t && !v.name.includes(t) ? `${v.name} ${t}` : v.name;
+          const price = v.above ? `${label}(${manwon(v.price)}) 이상이에요.` : `${label}(${manwon(v.price)}) 정도예요.`;
+          // 그 단계가 사진 주문 최소 금액보다 낮으면 — 금액 칸이 최소 금액부터 시작하니 같은 말풍선에 덧붙인다
+          const min = photoMinPrice && v.price < photoMinPrice ? `\n사진 주문은 ${manwon(photoMinPrice)}부터 가능해요.` : "";
+          items.push({ id: "ref-ok", from: "shop", text: `예쁜 사진이네요!\n볼륨만 보면 ${price}${min}` });
+          items.push({ id: "ref-mood", from: "shop", text: mood });
+        } else {
+          // 볼륨을 가늠하지 못했으면 — 약속을 먼저, 카카오 채널이 있을 때만 문의 안내 (없으면 말없이 다음 질문)
+          items.push({ id: "ref-ok", from: "shop", text: `예쁜 사진이네요!\n${mood.replace("\n", " ")}` });
+          if (footer.kakaoChannelUrl) {
+            items.push({ id: "ref-price", from: "shop", text: "가격이 궁금하시면 매장에 문의해 주세요." });
+            items.push({ id: "ref-kakao", from: "shop", link: { href: footer.kakaoChannelUrl, label: "카카오톡으로 문의하기" } });
+          }
+        }
+      }
       continue;
     }
     // 희망 금액을 묻기 전에 — 볼륨감 참고 이미지 (사장님이 넣어 둔 경우만)
@@ -639,30 +962,47 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
         // 찾아본 사진 — 묻지 않은 분위기도 요약에는 보여 준다 (예산 앞에)
       ]
         .flatMap((r) => (flow === "photo" && r.label === "희망 금액" ? [{ label: "분위기", value: SUMMARY_MOOD[PHOTO_MOOD_SAME] }, r] : [r]))
+
         // 추천 — 고른 상품을 맨 아래에
-        .concat(flow === "recommend" && pickedRec ? [{ label: "고른 상품", value: pickedRec.name }] : []),
+        .concat((flow === "recommend" || flow === "intro") && pickedRec ? [{ label: "고른 상품", value: pickedRec.name }] : []),
       // 요약 카드 위 사진 — 사진 주문은 보낸 사진, 추천은 고른 상품 사진
-      image: flow === "photo" ? refPreview ?? undefined : flow === "recommend" ? pickedRec?.image_url ?? undefined : undefined,
+      image: flow === "photo" ? refPreview ?? undefined : flow === "recommend" || flow === "intro" ? pickedRec?.image_url ?? undefined : undefined,
     });
   }
   // 요약을 보고 주문
   if (confirmed) items.push({ id: "confirm", from: "me", text: CONFIRM_TEXT });
 
+  // 받는 정보를 묻는 동안은 앞 대화를 모두 접는다 (고른 내용은 위 요약 줄에 있다 · 이전 대화 보기로 펼친다)
+  const shownItems = inCheckout && !showHistory && !folding ? [] : items;
+
   // 지금 답을 기다리는 질문
-  const current = !typing && asked > 0 && answers.length < asked ? QS[asked - 1] : null;
+  const current = !typing && asked > 0 && answers.length < asked && !inCheckout ? QS[asked - 1] : null;
   // 사진을 기다리는 중 (가게가 부탁한 뒤 · 아직 못 받았을 때)
   const waitingPhoto = !!current?.photo;
-  const showLanding = !typing && introShown >= introTotal && !choice;
+  const showLanding = !typing && introShown >= introTotal && !choice && !inCheckout;
 
-  // 새 말이 붙으면 맨 아래가 보이게 (손님이 고르기 시작한 뒤부터)
+  // ── 화면 위치: 위로만, 한 번만 (주문 정보 대화와 같게) ──
+  // 답을 고르면 답 버튼이 사라진 자리는 빈 공간으로 남기고(대화 높이를 붙잡아 둔다 — 페이지가 짧아져 화면이 끌려 내려가지 않게)
+  // 내 답 · 입력 중 · 다음 질문이 그 자리에 이어 붙는다. 대화 끝이 기준선(PC 위에서 2/3 · 모바일 화면 아래)을 넘을 때만 위로 올린다.
   const endRef = useRef<HTMLDivElement>(null);
+  const colRef = useRef<HTMLDivElement>(null);
+  const holdHeight = () => {
+    const col = colRef.current;
+    if (col) col.style.minHeight = `${col.offsetHeight}px`;
+  };
   useEffect(() => {
-    // 대화 끝(지금 고를 답)이 보이게 — PC는 위에서 2/3 지점에 머물게, 모바일은 화면 맨 아래까지 내린다
     const el = endRef.current;
-    if (!choice || !el) return;
-    const mobile = window.innerWidth < 768;
-    const top = el.getBoundingClientRect().top + window.scrollY - (mobile ? window.innerHeight - mobileBottomGap : window.innerHeight * (2 / 3));
-    if (top > 0) window.scrollTo({ top, behavior: "smooth" });
+    if (!choice || !el || inCheckout) return;
+    const line = window.innerWidth < 768 ? window.innerHeight - mobileBottomGap : window.innerHeight * (2 / 3);
+    const d = el.getBoundingClientRect().top - line;
+    if (d > 2) window.scrollTo({ top: window.scrollY + d, behavior: "smooth" });
+    // 다음 질문까지 붙어 붙잡아 둔 높이를 채웠으면 놓는다
+    const col = colRef.current;
+    if (col && col.style.minHeight && !typing) {
+      const natural = el.getBoundingClientRect().bottom - col.getBoundingClientRect().top;
+      if (natural >= parseFloat(col.style.minHeight)) col.style.minHeight = "";
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items.length, typing, current, choice]);
 
   // 가게 프로필 — 로고가 있으면 로고, 없으면 가게 이름 첫 글자
@@ -678,8 +1018,8 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
   const avatarGap = <span className="shrink-0 w-10 md:w-11" />;
 
   // 가게 말이 연달아 오면 프로필·이름은 첫 말풍선에만
-  const isFirstOfRun = (i: number) => items[i].from === "shop" && (i === 0 || items[i - 1].from !== "shop");
-  const lastIsShop = items.length > 0 && items[items.length - 1].from === "shop";
+  const isFirstOfRun = (i: number) => shownItems[i].from === "shop" && (i === 0 || shownItems[i - 1].from !== "shop");
+  const lastIsShop = shownItems.length > 0 && shownItems[shownItems.length - 1].from === "shop";
 
   const bubbleText = "text-[16px] md:text-[17px] leading-relaxed";
   // 손님 답장 후보 (오른쪽, 테두리만)
@@ -692,6 +1032,17 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
         .welcome-in { animation: welcome-in .28s ease-out both; }
         @keyframes welcome-dot { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
         .welcome-dot { animation: welcome-dot 1.2s infinite; }
+        /* ③ 고른 내용이 요약 줄로 모인다 — 요약 줄이 금빛으로 커졌다 제자리로 */
+        @keyframes summary-gather {
+          0% { opacity: 0; transform: translateY(-6px) scale(1.06); background-color: rgb(226 205 160 / 0.9); }
+          45% { opacity: 1; transform: none; background-color: rgb(236 220 186 / 0.95); }
+          100% { opacity: 1; transform: none; }
+        }
+        .summary-gather { animation: summary-gather .9s cubic-bezier(.2,.8,.2,1) both; transform-origin: center top; }
+        /* 새 대화는 아래에서 부드럽게 올라온다 */
+        @keyframes chat-rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+        .chat-rise { animation: chat-rise .45s cubic-bezier(.2,.8,.2,1) both; }
+        @media (prefers-reduced-motion: reduce) { .summary-gather, .chat-rise { animation-duration: .01s; } }
         /* 모바일에서 화면을 끝까지 당겼을 때 헤더 위·푸터 아래로 보이는 바탕을 헤더·푸터와 같은 흰색으로 (이 화면에서만) */
         html, body { background-color: #fff; }
       `}</style>
@@ -713,12 +1064,20 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
           대화 칸을 최소 '큰 화면 높이(주소창이 접힌 높이, lvh) - 헤더 + 여유'로 잡고, 아래 여백도 넉넉히 둔다
           (아이폰은 주소창이 접히면 화면이 길어져 dvh 기준이면 푸터가 살짝 보인다) */}
       <main
-        className={`flex-1 w-full max-w-lg mx-auto px-4 md:px-5 pt-8 md:pt-14 min-h-[calc(100lvh-4rem+48px)] md:min-h-0 pb-[var(--chat-pb)] ${choice ? "md:pb-[36dvh]" : "md:pb-16"}`}
+        className={`flex-1 w-full max-w-lg mx-auto px-4 md:px-5 ${inCheckout ? "pt-4 md:pt-8" : "pt-8 md:pt-14"} min-h-[calc(100lvh-4rem+48px)] md:min-h-0 pb-[var(--chat-pb)] ${choice ? "md:pb-[36dvh]" : "md:pb-16"}`}
         style={{ "--chat-pb": `${mobileBottomGap + 80}px` } as React.CSSProperties}
       >
-        <div className="flex flex-col gap-1.5">
-          {items.map((m, i) =>
-            m.from === "shop" ? (
+        <div ref={colRef} className="flex flex-col gap-1.5">
+          {/* 받는 정보를 묻는 동안 — 앞 대화 펼치기/접기 */}
+          {inCheckout && items.length > 0 && !folding && (
+            <button type="button" onClick={() => setShowHistory((v) => !v)} className="welcome-in self-center mb-2 px-3 py-1.5 rounded-full bg-white/70 text-[13px] text-gray-500 hover:text-gray-700">
+              {showHistory ? "이전 대화 접기 ▴" : "이전 대화 보기 ▾"}
+            </button>
+          )}
+          <div ref={histRef} className="flex flex-col gap-1.5">
+          {shownItems.map((m, i) => (
+            <div key={m.id}>
+            {m.from === "shop" ? (
               <div key={m.id} className={`welcome-in flex items-start gap-2.5 ${isFirstOfRun(i) && i > 0 ? "mt-4" : ""}`}>
                 {isFirstOfRun(i) ? avatar : avatarGap}
                 <div className="min-w-0 flex-1">
@@ -726,18 +1085,48 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
                   {"photos" in m ? (
                     // 매장 작품 사진 — 메시지로 사진을 보내온 것처럼
                     <div className="flex gap-1 w-full max-w-[300px] rounded-2xl overflow-hidden">
-                      {m.photos.map((src) => (
-                        <div key={src} className="relative flex-1 aspect-[4/5] bg-beige-200">
-                          {/* 첫 화면에서 가장 먼저 보이는 그림이라 먼저 불러온다 (작은 사진 3장) */}
-                          <Image src={src} alt="" fill sizes="120px" priority className="object-cover" />
-                        </div>
-                      ))}
+                      {m.photos.map((src, pi) =>
+                        introProducts ? (
+                          // 누르면 크게 보며 상품 정보 · 바로 주문
+                          <button
+                            key={src}
+                            type="button"
+                            onClick={() => setViewerIdx(pi)}
+                            aria-label={`${introProducts[pi]?.name ?? "작품"} 크게 보기`}
+                            className="group relative flex-1 aspect-[4/5] bg-beige-200 overflow-hidden"
+                          >
+                            {/* 첫 화면에서 가장 먼저 보이는 그림이라 먼저 불러온다 (작은 사진 3장) */}
+                            <StoreImage thumb src={src} alt="" fill sizes="120px" priority className="object-cover group-hover:scale-[1.03] transition-transform" />
+                            {/* 누를 수 있다는 작은 표시 */}
+                            <span aria-hidden className="absolute right-1.5 bottom-1.5 w-5 h-5 rounded-full bg-black/35 text-white flex items-center justify-center">
+                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.2-5.2M10.5 18a7.5 7.5 0 1 0 0-15 7.5 7.5 0 0 0 0 15ZM10.5 7.5v6m3-3h-6" />
+                              </svg>
+                            </span>
+                          </button>
+                        ) : (
+                          <div key={src} className="relative flex-1 aspect-[4/5] bg-beige-200">
+                            <StoreImage thumb src={src} alt="" fill sizes="120px" priority className="object-cover" />
+                          </div>
+                        ),
+                      )}
                     </div>
                   ) : "volume" in m ? (
                     // 볼륨감 참고 이미지 — 한 줄로 옆으로 밀어 본다 (누르면 크게)
                     <ChipRow align="start" innerClassName="gap-2 pr-1">
                       <VolumeRefs refs={m.volume} />
                     </ChipRow>
+                  ) : "link" in m ? (
+                    // 카카오톡 문의 바로가기 — 카카오 노란 버튼
+                    <a
+                      href={m.link.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl rounded-tl-md bg-[#FEE500] text-[#191919] font-medium text-[15px] hover:brightness-95 transition"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="#191919" aria-hidden><path d="M12 3C6.477 3 2 6.477 2 10.832c0 2.838 1.793 5.325 4.5 6.774L5.5 21l3.868-2.06C10.2 19.3 11.09 19.5 12 19.5c5.523 0 10-3.477 10-7.832C22 6.477 17.523 3 12 3z" /></svg>
+                      {m.link.label}
+                    </a>
                   ) : "summary" in m ? (
                     // 받은 답 정리 — 사장님이 주문 내용을 받아 적은 메모처럼
                     <div className="w-full max-w-[300px] rounded-2xl rounded-tl-md bg-white px-4 py-3.5">
@@ -785,8 +1174,10 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
                   <p className={`max-w-[85%] break-keep px-4 py-2.5 rounded-2xl rounded-br-md bg-gold-500 text-white ${bubbleText}`}>{m.text}</p>
                 )}
               </div>
-            )
-          )}
+            )}
+            </div>
+          ))}
+          </div>
 
           {/* 가게가 입력 중 */}
           {typing && (
@@ -855,7 +1246,7 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
                     >
                       <div className="relative w-full aspect-[4/5] bg-beige-200">
                         {pick?.image_url ? (
-                          <Image src={pick.image_url} alt="" fill sizes="160px" className="object-cover" />
+                          <StoreImage thumb src={pick.image_url} alt="" fill sizes="160px" className="object-cover" />
                         ) : (
                           <span className="absolute inset-0 flex items-center justify-center text-3xl">💐</span>
                         )}
@@ -1106,7 +1497,8 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
                       onFocus={(e) => e.currentTarget.select()}
                       onBlur={() => setBudgetTyping(false)}
                       onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-                      className="w-[150px] min-w-0 text-right text-[28px] font-semibold text-gray-900 tabular-nums bg-transparent border-b-2 border-gold-400 focus:outline-none placeholder:text-gray-300"
+                      // 전역 입력칸 글자 크기(iOS 확대 방지)보다 우선해서 표시된 금액과 같은 28px로
+                      className="w-[150px] min-w-0 text-right !text-[28px] font-semibold text-gray-900 tabular-nums bg-transparent border-b-2 border-gold-400 focus:outline-none placeholder:text-gray-300"
                     />
                     <span className="text-[28px] font-semibold text-gray-900">원</span>
                   </span>
@@ -1124,7 +1516,6 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
                   </button>
                 )}
               </div>
-              <p className="-mt-2 mb-3 text-right text-xs text-gray-400">금액을 눌러 직접 입력할 수도 있어요</p>
               <div className="grid grid-cols-3 gap-2">
                 {BUDGET_STEPS.map((s) => (
                   <button
@@ -1185,12 +1576,12 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
                 {recs.map((p) => (
                   <div key={p.id} className="w-40 md:w-44 shrink-0 bg-white rounded-2xl overflow-hidden">
                     <div className="relative w-full aspect-[4/5] bg-beige-200">
-                      {p.image_url && <Image src={p.image_url} alt={p.name} fill sizes="176px" className="object-cover" />}
+                      {p.image_url && <StoreImage thumb src={p.image_url} alt={p.name} fill sizes="176px" className="object-cover" />}
                     </div>
                     <div className="p-3">
                       <p className="text-xs text-gray-400">{p.product_type}</p>
                       <p className="text-sm font-medium text-gray-900 truncate">{p.name}</p>
-                      <p className="text-sm font-bold text-gold-500 mt-0.5">{won(p.price)}</p>
+                      <p className="mt-0.5"><PriceTag price={p.price} original={p.original_price} size="sm" /></p>
                       <button
                         type="button"
                         onClick={() => {
@@ -1244,6 +1635,35 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
               <p className="welcome-in text-[13px] text-gray-400">보낸 답을 누르면 다시 고를 수 있어요</p>
             </div>
           )}
+          {/* 받는 정보 · 결제 · 완료 — 대화 안에서 */}
+          {inCheckout && checkout && (
+            <ChatCheckout
+              slug={slug}
+              companyName={companyName}
+              order={checkoutOrder}
+              settings={checkout}
+              returning={returningFromPayment}
+              resumeAtPay={checkoutResume}
+              restoredDone={restoredDone}
+              initialRequests={checkoutRequests}
+              onBeforePay={saveChat}
+              onDone={(done) => {
+                // 새로고침해도 같은 완료 대화 — 결제가 두 번 확인되지 않게 결과를 보관하고, 결제 중 보관한 대화는 지운다
+                try {
+                  sessionStorage.setItem(doneKey, JSON.stringify({ snap: readJson(chatKey) ?? makeSnap(), done }));
+                  sessionStorage.removeItem(chatKey);
+                } catch { /* 무시 */ }
+              }}
+              onRestart={restartChat}
+              kakaoChannelUrl={footer.kakaoChannelUrl}
+              storePhone={storePhone}
+              avatar={avatar}
+              avatarGap={avatarGap}
+              bubbleText={bubbleText}
+              replyBtn={replyBtn}
+              mobileBottomGap={mobileBottomGap}
+            />
+          )}
           <div ref={endRef} />
         </div>
       </main>
@@ -1254,13 +1674,33 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
       {/* 생화 안내 — 사진과 똑같이는 어렵다는 것 (맞춤주문 상품 선택 뒤와 같은 안내) */}
       {showFlowerNotice && (
         <FlowerNoticeModal
-          // 추천은 고른 상품으로, 사진 주문은 받은 사진으로 바로 주문
-          onConfirm={flow === "recommend" ? pickRec : confirm}
-          photoOrder={flow === "photo"}
+          // 첫 화면 사진에서 고른 상품은 그 상품으로, 추천은 고른 상품으로, 사진 주문은 받은 사진으로 바로 주문
+          onConfirm={introPick ? orderIntroPick : flow === "recommend" ? pickRec : confirm}
+          photoOrder={!introPick && flow === "photo"}
           onClose={() => {
             setShowFlowerNotice(false);
             setPickedRec(null);
+            setIntroPick(null);
           }}
+        />
+      )}
+
+      {/* 첫 인사 사진 크게 보기 — 상품 정보 · 이 상품으로 주문 (대화 주문을 받는 매장만) */}
+      {viewerIdx != null && introProducts && (
+        <IntroProductViewer
+          products={introProducts}
+          start={viewerIdx}
+          onClose={() => setViewerIdx(null)}
+          onOrder={
+            // 주문 방식을 고르기 전에만 (이미 대화를 시작했으면 보기만)
+            checkout && !slug.startsWith("preview/") && !choice && !inCheckout
+              ? (p) => {
+                  setViewerIdx(null);
+                  setIntroPick(p);
+                  setShowFlowerNotice(true);
+                }
+              : undefined
+          }
         />
       )}
     </div>
