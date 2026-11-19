@@ -1064,7 +1064,7 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
           대화 칸을 최소 '큰 화면 높이(주소창이 접힌 높이, lvh) - 헤더 + 여유'로 잡고, 아래 여백도 넉넉히 둔다
           (아이폰은 주소창이 접히면 화면이 길어져 dvh 기준이면 푸터가 살짝 보인다) */}
       <main
-        className={`flex-1 w-full max-w-lg mx-auto px-4 md:px-5 ${inCheckout ? "pt-4 md:pt-8" : "pt-8 md:pt-14"} min-h-[calc(100lvh-4rem+48px)] md:min-h-0 pb-[var(--chat-pb)] ${choice ? "md:pb-[36dvh]" : "md:pb-16"}`}
+        className={`flex-1 w-full max-w-lg mx-auto px-4 md:px-5 pt-4 md:pt-8 min-h-[calc(100lvh-4rem+48px)] md:min-h-0 pb-[var(--chat-pb)] ${choice ? "md:pb-[36dvh]" : "md:pb-16"}`}
         style={{ "--chat-pb": `${mobileBottomGap + 80}px` } as React.CSSProperties}
       >
         <div ref={colRef} className="flex flex-col gap-1.5">

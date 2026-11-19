@@ -523,7 +523,8 @@ export default function ChatCheckout(props: Props) {
     const productType = o.kind === "single" ? o.product.product_type : "";
     return (
       <div ref={setRootEl} className="flex flex-col gap-1.5">
-        {shop(<>{transfer ? "예약이 접수됐어요! 🎉" : "결제가 완료됐어요! 🎉"}</>)}
+        {/* 완료 — 말풍선 하나 + (무통장이면 입금 계좌) + 주문 카드(수령 장소·알림톡 안내·문의 버튼까지) */}
+        {shop(<>{transfer ? "예약이 접수됐어요!\n아래 계좌로 입금해 주시면 확정돼요." : "결제가 완료됐어요! 🎉\n사장님이 확인하고 준비를 시작할게요."}</>)}
         {transfer &&
           shopCard(<>
             <div className={`${card} w-full max-w-[320px] p-4 space-y-2`}>
@@ -542,7 +543,7 @@ export default function ChatCheckout(props: Props) {
                   )}
                 </div>
               ))}
-              <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2 break-keep">이 계좌로 입금해 주셔야 예약이 확정돼요. 주문자 이름으로 입금해 주세요.</p>
+              <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2 break-keep">주문자 이름으로 입금해 주세요.</p>
             </div>
           </>)}
         {shopCard(<>
@@ -552,8 +553,9 @@ export default function ChatCheckout(props: Props) {
               {[
                 ["상품", productType && productName ? `${productType} · ${productName}` : productName],
                 ["주문자", `${d.name} · ${formatPhone(d.phone)}`],
-                ["수령", d.form.deliveryType === "배송" ? `배송 · ${d.address}${d.addressDetail ? ` ${d.addressDetail}` : ""}` : "픽업"],
                 ["받는 날", `${dateLabel(d.form.desiredDate)} ${d.form.desiredTime}`.trim()],
+                // 수령 — 배송은 배송 주소, 픽업은 매장 주소까지
+                ["수령", d.form.deliveryType === "배송" ? `배송 · ${d.address}${d.addressDetail ? ` ${d.addressDetail}` : ""}` : storeAddress ? `픽업 · ${storeAddress}` : "픽업"],
                 // 할인받았으면 얼마 빠졌는지 (정가에서 할인 → 이 금액)
                 ...(d.lines ?? []).filter((x) => x.minus).map((x) => [x.label, `-${x.amount.toLocaleString()}원`]),
                 [transfer ? "입금 금액" : "결제 금액", `${d.finalPrice.toLocaleString()}원`],
@@ -564,32 +566,30 @@ export default function ChatCheckout(props: Props) {
                 </div>
               ))}
             </dl>
+            {/* 알림톡 안내 · 문의 — 필요할 때 찾는 정보라 카드 아래 작게 */}
+            <div className="mt-3 pt-3 border-t border-gray-100 space-y-2.5">
+              <p className="text-xs text-gray-400 break-keep">
+                {transfer ? "입금이 확인되면 사장님이 예약을 확정해요. " : ""}예약이 확정되거나 취소되면 카카오 알림톡으로 알려드려요.
+              </p>
+              {(kakaoChannelUrl || storePhone) && (
+                <div className="flex flex-wrap gap-2">
+                  {kakaoChannelUrl && (
+                    <a href={kakaoChannelUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#FEE500] text-[#191919] text-[13px] font-medium">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="#191919" aria-hidden><path d="M12 3C6.477 3 2 6.477 2 10.832c0 2.838 1.793 5.325 4.5 6.774L5.5 21l3.868-2.06C10.2 19.3 11.09 19.5 12 19.5c5.523 0 10-3.477 10-7.832C22 6.477 17.523 3 12 3z" /></svg>
+                      카카오톡 문의
+                    </a>
+                  )}
+                  {storePhone && (
+                    <a href={`tel:${storePhone}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 text-gray-700 text-[13px] font-medium">
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" /></svg>
+                      전화하기
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </>)}
-        {shop(<>
-          {transfer ? "입금이 확인되면 사장님이 예약을 확정해요." : "사장님이 확인하고 준비를 시작할게요."}
-          {"\n"}예약이 확정되거나 취소되면 카카오 알림톡으로 알려드려요.
-        </>, false)}
-        {d.form.deliveryType !== "배송" && storeAddress && shop(<>{`픽업은 매장으로 오시면 돼요.\n${storeAddress}`}</>, false)}
-        {(kakaoChannelUrl || storePhone) && (
-          <>
-            {shop(<>궁금한 점은 매장으로 연락 주세요.</>, false)}
-            {shopCard(<>
-              <div className="flex flex-wrap gap-2">
-                {kakaoChannelUrl && (
-                  <a href={kakaoChannelUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl rounded-tl-md bg-[#FEE500] text-[#191919] font-medium text-[15px]">
-                    카카오톡으로 문의하기
-                  </a>
-                )}
-                {storePhone && (
-                  <a href={`tel:${storePhone}`} className="inline-flex items-center px-4 py-2.5 rounded-2xl rounded-tl-md bg-white border border-gray-200 text-gray-700 font-medium text-[15px]">
-                    전화하기 {formatPhone(storePhone)}
-                  </a>
-                )}
-              </div>
-            </>)}
-          </>
-        )}
         <div className="flex flex-wrap justify-end gap-2 mt-5">
           <a href={`/${slug}/menu`} className={replyBtn}>상품 둘러보기</a>
           <button type="button" onClick={onRestart} className={replyBtn}>처음 화면으로</button>
