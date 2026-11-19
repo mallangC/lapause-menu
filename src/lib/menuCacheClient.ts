@@ -3,3 +3,14 @@
 export function notifyMenuChanged() {
   fetch("/api/menu-cache/purge", { method: "POST" }).catch(() => {});
 }
+
+/** 상품 사진 임베딩 다시 만들기 — 상품을 올리거나 사진을 바꾼 뒤 부른다 (사진 주문 가격대 안내용, 실패해도 저장에는 영향 없음) */
+export function refreshProductEmbedding(productId: string | null | undefined) {
+  if (!productId) return;
+  // [잠시 멈춤] 사진 주문 가격을 임베딩 대신 볼륨 참고 사진 비교로 내는 중 — 임베딩을 쓰지 않으니 만들지 않는다. 되돌릴 때 주석 해제
+  // fetch("/api/ai/product-embedding", {
+  //   method: "POST",
+  //   headers: { "Content-Type": "application/json" },
+  //   body: JSON.stringify({ productId }),
+  // }).catch(() => {});
+}

@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import Image from "next/image";
 import { formatMoney, parseMoney } from "@/lib/format";
-import { DEFAULT_VOLUME_NAMES, VOLUME_NAME_MAX, emptySizeTiers, sizeTierOrderErrors, type SizeConfig, type SizeTier } from "@/lib/sizeTiers";
+import { DEFAULT_VOLUME_NAMES, VOLUME_NAME_MAX, emptySizeTiers, sizeTierOrderErrors, volumeJudgeRefs, type RefProduct, type SizeConfig, type SizeTier } from "@/lib/sizeTiers";
 
 // 판매 설정 — 볼륨감 참고 이미지 (4단계 고정, 단계 이름·가격·사진은 사장님이 정한다)
 // 손님이 희망 금액을 정하기 전에 '이 가격이면 이 정도 볼륨' 사진으로 보여준다.
@@ -33,6 +33,8 @@ interface Props {
   hiddenTypes?: string[];
   /** 아직 올리지 않은 사진 — 미리보기 주소(blob:) → 줄인 사진. 저장할 때 부모가 올린다 */
   pending: Map<string, Blob>;
+  /** 판매 중 상품 — 사진을 안 넣은 단계에 사진 주문 가격 판단용으로 대신 쓸 상품을 알려준다 */
+  products?: RefProduct[];
 }
 
 /** 어긋난 순서가 있는 탭 이름들 (저장 막기용) */
@@ -40,7 +42,7 @@ export function sizeConfigOrderErrors(config: SizeConfig): string[] {
   return Object.entries(config.byType).filter(([, list]) => sizeTierOrderErrors(list).length > 0).map(([k]) => k);
 }
 
-export default function SizeTiersEditor({ value, onChange, types, hiddenTypes = [], pending }: Props) {
+export default function SizeTiersEditor({ value, onChange, types, hiddenTypes = [], pending, products = [] }: Props) {
   const [tab, setTab] = useState<string>(types[0] ?? "");
   const [uploading, setUploading] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -51,6 +53,9 @@ export default function SizeTiersEditor({ value, onChange, types, hiddenTypes = 
   const activeTab = types.includes(tab) ? tab : types[0] ?? "";
   // 아직 넣지 않은 유형은 빈 4단계로 보여준다 (입력하면 그 유형 값이 생긴다)
   const list = value.byType[activeTab] ?? emptySizeTiers();
+
+  // 사진을 안 넣은 단계 → 사진 주문 가격 판단에 대신 쓰는 상품 이름 (단계 가격 → 상품 이름)
+  const autoByPrice = new Map(volumeJudgeRefs(value, activeTab, products).filter((r) => r.auto).map((r) => [r.price, r.auto as string]));
 
   const setList = (next: SizeTier[]) => onChange({ ...value, byType: { ...value.byType, [activeTab]: next } });
   const update = (idx: number, patch: Partial<SizeTier>) => setList(list.map((t, i) => (i === idx ? { ...t, ...patch } : t)));
@@ -144,7 +149,8 @@ export default function SizeTiersEditor({ value, onChange, types, hiddenTypes = 
             {list.map((t, i) => {
               const bad = orderErrors.includes(i);
               return (
-                <div key={i} className="flex items-center gap-2.5 px-0 md:px-4 py-3 bg-white">
+                <div key={i} className="px-0 md:px-4 py-3 bg-white">
+                <div className="flex items-center gap-2.5">
                   {/* 단계 이름 — 사장님이 정한다 (비우면 기본 이름) */}
                   <input
                     type="text"
@@ -201,6 +207,15 @@ export default function SizeTiersEditor({ value, onChange, types, hiddenTypes = 
                       {uploading === i ? "불러오는 중..." : "+ 사진"}
                     </button>
                   )}
+                </div>
+                {/* 사진이 빈 단계 — 사진 주문 가격은 가격이 맞는 상품 사진으로 가늠한다 (손님 화면에는 안 보인다) */}
+                {!t.image && t.price != null && (
+                  <p className="mt-1.5 text-[11px] text-gray-400 break-keep">
+                    {autoByPrice.has(t.price)
+                      ? `사진이 없으면 '${autoByPrice.get(t.price)}' 상품 사진으로 사진 주문 가격을 가늠해요. 직접 넣으면 더 정확해요.`
+                      : "사진이 없고 가격이 맞는 상품도 없어 사진 주문 가격 판단에 쓰지 않아요."}
+                  </p>
+                )}
                 </div>
               );
             })}

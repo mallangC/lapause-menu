@@ -6,6 +6,7 @@ import { removeStorageFiles } from "@/lib/storageCleanup";
 import DaumPostcodeEmbed from "react-daum-postcode";
 import { Reservation, ReservationItem } from "./reservations/types";
 import { formatPhone, parsePhone, formatMoney, parseMoney } from "@/lib/format";
+import type { ParsedReservation } from "@/lib/ai/reservationPrompt";
 import DatePicker, { registerLocale } from "react-datepicker";
 import { ko } from "date-fns/locale";
 import "react-datepicker/dist/react-datepicker.css";
@@ -207,6 +208,13 @@ function parseNaverText(text: string) {
   return r;
 }
 
+/** 네이버 예약 상세를 복사한 글인지 — 이 형식이면 AI 없이 규칙으로 읽는다 */
+const looksLikeNaver = (text: string) => /예약자\s/.test(text) && /이용일시\s/.test(text);
+/** AI로 채우기 — 한 번에 넣을 수 있는 글자 수 (서버와 같다) */
+const AI_MAX_TEXT = 3000;
+/** 붙여 넣자마자 AI로 채우는 최소 글자 수 — 이보다 짧으면 일부만 붙여 넣은 걸로 보고 버튼으로만 */
+const AI_AUTO_MIN = 20;
+
 const DAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
 
 export default function AddReservationModal({
@@ -305,6 +313,116 @@ export default function AddReservationModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<string[]>([]);
+  // ── 받은 주문 붙여넣기 ──
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  // AI로 채웠는지 (확인 안내) · 수령 시간이 없어 영업 시작 시간으로 넣었는지
+  const [aiFilled, setAiFilled] = useState(false);
+  const [aiTimeGuessed, setAiTimeGuessed] = useState(false);
+
+  /** 네이버 예약 문구 — 정해진 규칙으로 바로 채운다. 이름·날짜를 하나도 못 읽으면(네이버 문구가 바뀐 경우 등) 바로 AI로 채운다 */
+  const applyNaver = (text: string) => {
+    const parsed = parseNaverText(text);
+    if (!parsed.ordererName && !parsed.selectedDate) {
+      fillWithAi(text);
+      return;
+    }
+    if (parsed.ordererName) setOrdererName(parsed.ordererName as string);
+    if (parsed.ordererPhone) setOrdererPhone(formatPhone(parsed.ordererPhone as string));
+    if (parsed.selectedDate) setSelectedDate(parsed.selectedDate as Date);
+    if (parsed.channel) setChannel(parsed.channel as string);
+    else setChannel("네이버");
+    if (parsed.requests) setRequests(parsed.requests as string);
+    if (parsed.paid) setPaid(true);
+    setItems((prev) => {
+      const first = { ...prev[0] };
+      if (parsed.productType) first.type = parsed.productType as string;
+      if (parsed.productName) first.name = parsed.productName as string;
+      if (parsed.productPrice) {
+        let price = Number(parsed.productPrice);
+        if (shoppingBagEnabled && parsed.shoppingBag === "추가") price -= shoppingBagPrice;
+        if (messageCardEnabled && parsed.messageCard === "추가") price -= messageCardPrice;
+        if (preservativeEnabled && parsed.preservative === "추가") price -= preservativePrice;
+        first.price = String(Math.max(0, price));
+      }
+      if (messageCardEnabled && parsed.messageCard) first.message_card = parsed.messageCard as string;
+      if (shoppingBagEnabled && parsed.shoppingBag) first.shopping_bag = parsed.shoppingBag as string;
+      if (preservativeEnabled && parsed.preservative) first.preservative = parsed.preservative as string;
+      return [first, ...prev.slice(1)];
+    });
+    setShowPaste(false);
+    setPasteText("");
+  };
+
+  /** 카톡·톡톡·DM 답변 — AI가 정리한 값을 폼에 채운다 (저장은 사장님이) */
+  const fillWithAi = async (source?: string) => {
+    const text = (source ?? pasteText).trim();
+    if (!text || aiLoading) return;
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const res = await fetch("/api/ai/parse-reservation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId, text, productTypes: allProductTypes }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { setAiError(data.error ?? "내용을 읽지 못했어요. 잠시 후 다시 시도해 주세요."); return; }
+      const r = data.result as ParsedReservation;
+      if (r.ordererName) setOrdererName(r.ordererName);
+      if (r.ordererPhone) setOrdererPhone(formatPhone(r.ordererPhone));
+      if (r.deliveryType) setDeliveryType(r.deliveryType);
+      // 수령 날짜·시간 — 시간이 없으면 그날 영업 시작 시간(없으면 10시)
+      let timeGuessed = false;
+      if (r.pickupDate && /^\d{4}-\d{2}-\d{2}$/.test(r.pickupDate)) {
+        const [y, m, d] = r.pickupDate.split("-").map(Number);
+        let hh = 10, mm = 0;
+        if (r.pickupTime && /^\d{1,2}:\d{2}$/.test(r.pickupTime)) {
+          [hh, mm] = r.pickupTime.split(":").map(Number);
+        } else {
+          const open = businessHours[String(new Date(y, m - 1, d).getDay())]?.open;
+          if (open && /^\d{1,2}:\d{2}$/.test(open)) [hh, mm] = open.split(":").map(Number);
+          timeGuessed = true;
+        }
+        setSelectedDate(new Date(y, m - 1, d, hh, mm));
+      }
+      if (r.recipientName) setRecipientName(r.recipientName);
+      if (r.recipientPhone) setRecipientPhone(formatPhone(r.recipientPhone));
+      if (r.address) setAddress(r.address);
+      // 동·호수·층 + (법정동·건물 이름)은 상세 주소 칸으로
+      if (r.addressDetail) setAddressDetail(r.addressDetail);
+      // 받는 분·선물 정보 — 하나라도 있으면 펼쳐서 보이게
+      if (r.recipientGender) setRecipientGender(r.recipientGender);
+      if (r.recipientAge) setRecipientAge(r.recipientAge);
+      if (r.relationship) setRelationship(r.relationship);
+      if (r.mood) setMood(r.mood);
+      if (r.purpose) { setPurpose(r.purpose); if (r.purpose !== "기타") setPurposeCustom(""); }
+      if (r.recipientGender || r.recipientAge || r.relationship || r.mood || r.purpose) setShowExtra(true);
+      // 요청 사항 — 이미 적어 둔 게 있으면 아래에 이어서
+      if (r.requests) setRequests((prev) => (prev.trim() ? `${prev.trim()}\n${r.requests}` : r.requests!));
+      // 상품 — 첫 상품 칸에
+      setItems((prev) => {
+        const first = { ...prev[0] };
+        if (r.productType && allProductTypes.includes(r.productType)) first.type = r.productType;
+        if (r.productName) first.name = r.productName;
+        if (r.price != null && r.price > 0) first.price = String(r.price);
+        if (messageCardEnabled && r.messageCard != null) first.message_card = r.messageCard ? "추가" : "없음";
+        if (r.messageCardContent) first.message_card_content = r.messageCardContent;
+        if (shoppingBagEnabled && r.shoppingBag != null) first.shopping_bag = r.shoppingBag ? "추가" : "없음";
+        if (preservativeEnabled && r.preservative != null) first.preservative = r.preservative ? "추가" : "없음";
+        return [first, ...prev.slice(1)];
+      });
+      setAiFilled(true);
+      setAiTimeGuessed(timeGuessed);
+      setShowPaste(false);
+      setPasteText("");
+    } catch {
+      setAiError("내용을 읽지 못했어요. 잠시 후 다시 시도해 주세요.");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const nameFieldRef = useRef<HTMLDivElement>(null);
   const phoneFieldRef = useRef<HTMLDivElement>(null);
   const channelFieldRef = useRef<HTMLDivElement>(null);
@@ -525,7 +643,7 @@ export default function AddReservationModal({
 
         <div className="space-y-2">
 
-        {/* 네이버 예약 자동 입력 */}
+        {/* 받은 주문 붙여넣기 — 네이버 예약은 바로(무료) 채우고, 카톡·톡톡·DM 답변은 AI로 채운다 */}
         <div className="bg-white px-5 py-4">
           <div className="border-2 border-dashed border-gray-200 rounded-xl overflow-hidden">
             <div
@@ -537,7 +655,7 @@ export default function AddReservationModal({
               }}
               className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-gray-500 hover:bg-gray-50 transition-colors cursor-pointer"
             >
-              <span className="font-medium text-gray-600">네이버 예약 자동 입력</span>
+              <span className="font-medium text-gray-600">받은 주문 붙여넣기</span>
               <div className="flex items-center gap-2">
                 <button type="button" onClick={(e) => { e.stopPropagation(); setShowCopyInfo(true); }}
                   className="w-5 h-5 rounded-full border border-gray-300 text-gray-400 hover:text-gray-600 hover:border-gray-500 flex items-center justify-center text-xs font-medium transition-colors">
@@ -550,59 +668,75 @@ export default function AddReservationModal({
             </div>
             {showPaste && (
             <div className="px-4 pb-4 border-t border-gray-100">
+              <div className="relative">
               <textarea
                 ref={pasteTextareaRef}
+                readOnly={aiLoading}
                 value={pasteText}
-                onChange={(e) => setPasteText(e.target.value)}
+                onChange={(e) => { setPasteText(e.target.value.slice(0, AI_MAX_TEXT)); setAiError(null); }}
                 onPaste={(e) => {
                   const text = e.clipboardData.getData("text");
-                  if (text.trim()) {
-                    setPasteText(text);
-                    setTimeout(() => {
-                      const parsed = parseNaverText(text);
-                      if (parsed.ordererName) setOrdererName(parsed.ordererName as string);
-                      if (parsed.ordererPhone) setOrdererPhone(formatPhone(parsed.ordererPhone as string));
-                      if (parsed.selectedDate) setSelectedDate(parsed.selectedDate as Date);
-                      if (parsed.channel) setChannel(parsed.channel as string);
-                      else setChannel("네이버");
-                      if (parsed.requests) setRequests(parsed.requests as string);
-                      if (parsed.paid) setPaid(true);
-                      setItems((prev) => {
-                        const first = { ...prev[0] };
-                        if (parsed.productType) first.type = parsed.productType as string;
-                        if (parsed.productName) first.name = parsed.productName as string;
-                        if (parsed.productPrice) {
-                          let price = Number(parsed.productPrice);
-                          if (shoppingBagEnabled && parsed.shoppingBag === "추가") price -= shoppingBagPrice;
-                          if (messageCardEnabled && parsed.messageCard === "추가") price -= messageCardPrice;
-                          if (preservativeEnabled && parsed.preservative === "추가") price -= preservativePrice;
-                          first.price = String(Math.max(0, price));
-                        }
-                        if (messageCardEnabled && parsed.messageCard) first.message_card = parsed.messageCard as string;
-                        if (shoppingBagEnabled && parsed.shoppingBag) first.shopping_bag = parsed.shoppingBag as string;
-                        if (preservativeEnabled && parsed.preservative) first.preservative = parsed.preservative as string;
-                        return [first, ...prev.slice(1)];
-                      });
-                      setShowPaste(false);
-                      setPasteText("");
-                    }, 0);
+                  if (!text.trim() || aiLoading) return;
+                  // 네이버 예약 문구는 형식이 정해져 있어 AI 없이 바로 채운다 (무료·즉시)
+                  if (looksLikeNaver(text)) {
                     e.preventDefault();
+                    setPasteText(text);
+                    setTimeout(() => applyNaver(text), 0);
+                    return;
                   }
+                  // 그 외(카톡·톡톡·DM 답변)는 붙여 넣으면 바로 AI로 채운다 — 너무 짧으면(일부만 붙여 넣은 경우) 버튼으로만
+                  const target = e.currentTarget;
+                  setTimeout(() => {
+                    const full = target.value.slice(0, AI_MAX_TEXT);
+                    if (full.trim().length >= AI_AUTO_MIN) fillWithAi(full);
+                  }, 0);
                 }}
-                placeholder="네이버 예약 내용을 전체 복사해서 붙여넣으세요"
+                placeholder={"네이버 예약 내용이나, 카톡·톡톡·DM으로 받은 주문서 답변을 붙여넣으세요"}
                 rows={5}
                 className="w-full mt-3 border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-gold-400 resize-none text-gray-700"
               />
+                {/* AI가 읽는 동안 — 칸을 덮어 '자동으로 입력 중' 표시 */}
+                {aiLoading && (
+                  <div className="absolute inset-x-0 bottom-0 top-3 rounded-lg bg-white/85 flex flex-col items-center justify-center gap-2">
+                    <span className="w-6 h-6 rounded-full border-2 border-gold-500 border-t-transparent animate-spin" />
+                    <p className="text-sm font-medium text-gold-600">자동으로 입력 중...</p>
+                    <p className="text-[11px] text-gray-400">받은 내용을 읽고 예약 칸에 채우고 있어요</p>
+                  </div>
+                )}
+              </div>
+              {/* 네이버 예약이 아니면 — AI로 채우기 (네이버인데 규칙으로 못 읽은 경우는 자동으로 AI가 읽는 중) */}
+              {/* 읽는 중에는 칸 위 덮개로만 보여주고 버튼은 숨긴다 (로딩이 두 개 돌지 않게) */}
+              {pasteText.trim() && !aiLoading && (!looksLikeNaver(pasteText) || aiError) && (
+                <div className="mt-2 space-y-1.5">
+                  <button
+                    type="button"
+                    onClick={() => fillWithAi()}
+                    disabled={aiLoading}
+                    className="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-lg bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 disabled:opacity-80 disabled:cursor-wait transition-colors"
+                  >
+                    {aiLoading && <span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />}
+                    {aiLoading ? "자동으로 입력 중..." : aiError ? "다시 시도" : "자동으로 채우기"}
+                  </button>
+                  {aiError && <p className="text-xs text-red-500">{aiError}</p>}
+                  <p className="text-[11px] text-gray-400">{pasteText.length.toLocaleString()}/{AI_MAX_TEXT.toLocaleString()}자 · 매장당 하루 100회</p>
+                </div>
+              )}
             </div>
           )}
           </div>
+          {/* AI로 채운 뒤 — 확인 안내 */}
+          {aiFilled && (
+            <p className="mt-2 text-xs text-gold-600 bg-gold-500/10 rounded-lg px-3 py-2 break-keep">
+              자동으로 채운 내용이에요. 저장 전에 한 번 확인해 주세요.{aiTimeGuessed ? " 수령 시간이 없어 그날 영업 시작 시간으로 넣었어요." : ""}
+            </p>
+          )}
         </div>
 
         {showCopyInfo && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40" onClick={() => setShowCopyInfo(false)}>
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 flex flex-col max-h-[85vh]" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
-                <h3 className="text-sm font-semibold text-gray-900">복사 방법 안내</h3>
+                <h3 className="text-sm font-semibold text-gray-900">붙여넣기 안내</h3>
                 <button type="button" onClick={() => setShowCopyInfo(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
                   <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -610,8 +744,20 @@ export default function AddReservationModal({
                 </button>
               </div>
               <div className="p-5 space-y-3 overflow-y-auto">
+                {/* 카톡·톡톡·DM — AI로 채우기 */}
                 <div className="space-y-1.5 text-sm text-gray-600 leading-relaxed">
-                  <p>네이버 예약 관리 페이지에서 예약 상세 내용을 아래 이미지의 범위대로 전체 선택 후 복사하여 붙여넣으세요.</p>
+                  <p className="font-medium text-gray-800">카톡·톡톡·DM 주문서 답변</p>
+                  <p>손님이 보낸 주문서 답변을 그대로 붙여넣으면 바로 채워져요. 고쳐 쓴 뒤에는 <span className="font-medium text-gold-600">자동으로 채우기</span>를 누르세요.</p>
+                  <ul className="list-disc list-inside text-xs text-gray-400 space-y-1 pl-1">
+                    <li>이름·연락처·상품·금액·수령 날짜와 시간·받는 분·옵션을 알맞은 칸에 채워요.</li>
+                    <li>&#39;이번 주 토요일&#39;, &#39;모레&#39; 같은 날짜도 오늘 기준으로 계산해요.</li>
+                    <li>칸에 맞지 않는 내용은 요청 사항에 모아요. 저장 전에 꼭 확인해 주세요.</li>
+                    <li>매장당 하루 100회까지 쓸 수 있어요.</li>
+                  </ul>
+                </div>
+                <div className="space-y-1.5 text-sm text-gray-600 leading-relaxed pt-3 border-t border-gray-100">
+                  <p className="font-medium text-gray-800">네이버 예약</p>
+                  <p>네이버 예약 관리 페이지에서 예약 상세 내용을 아래 이미지의 범위대로 전체 선택 후 복사하여 붙여넣으세요. 붙여넣는 즉시 채워져요.</p>
                   <ul className="list-disc list-inside text-xs text-gray-400 space-y-1 pl-1">
                     <li>&#39;예약자&#39;부터 &#39;결제/환불정보&#39;까지 드래그하여 복사</li>
                     <li>이름, 전화번호, 가격, 이용 시간이 자동으로 입력됩니다.</li>

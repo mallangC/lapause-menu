@@ -73,6 +73,42 @@ export function volumeRefsForType(config: SizeConfig, type: string | null | unde
     .sort((a, b) => a.price - b.price);
 }
 
+// ── 사진을 안 넣은 단계 — 같은 형태 상품 사진으로 대신 (사진 주문 볼륨 가격 판단에만 · 손님 화면에는 보여주지 않는다) ──
+/** 대신 쓸 상품 가격 하한 — 단계 가격의 85% (그보다 싸면 볼륨이 달라 기준이 틀어진다) */
+export const AUTO_REF_MIN_RATIO = 0.85;
+export interface RefProduct {
+  id: string;
+  name: string;
+  price: number;
+  image_url: string | null;
+  product_type: string;
+}
+/** 이 가격 단계에 대신 쓸 상품 — 같은 형태 · 사진 있음 · 단계 가격과 같거나 15% 이내로 조금 아래, 그중 단계 가격에 가장 가까운 것 */
+export function autoRefProduct<P extends RefProduct>(tierPrice: number, type: string, products: P[], usedIds: Set<string> = new Set()): P | null {
+  const fit = products
+    .filter((p) => p.product_type === type && !!p.image_url && !usedIds.has(p.id) && p.price <= tierPrice && p.price >= tierPrice * AUTO_REF_MIN_RATIO)
+    .sort((a, b) => b.price - a.price);
+  return fit[0] ?? null;
+}
+/** 볼륨 가격 판단에 쓸 기준 — 사장님 사진이 있으면 그 사진, 없으면 상품 사진으로 대신 (auto에 그 상품 이름) · 가격 순 */
+export function volumeJudgeRefs(config: SizeConfig, type: string | null | undefined, products: RefProduct[]): { name: string; price: number; image: string; auto: string | null }[] {
+  const list = (type && config.byType[type]) || [];
+  const used = new Set<string>();
+  const out: { name: string; price: number; image: string; auto: string | null }[] = [];
+  for (const t of list) {
+    if (t.price == null) continue;
+    if (t.image) {
+      out.push({ name: tierName(list, t), price: t.price, image: t.image, auto: null });
+      continue;
+    }
+    const p = type ? autoRefProduct(t.price, type, products, used) : null;
+    if (!p?.image_url) continue;
+    used.add(p.id);
+    out.push({ name: tierName(list, t), price: t.price, image: p.image_url, auto: p.name });
+  }
+  return out.sort((a, b) => a.price - b.price);
+}
+
 /** 볼륨감 참고를 하나라도 넣었는지 (유형별) */
 export const hasAnySizeTier = (config: SizeConfig) =>
   Object.values(config.byType).some((l) => l.some((t) => t.price != null && t.image));
