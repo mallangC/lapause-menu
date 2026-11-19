@@ -2,19 +2,21 @@ import { SolapiMessageService } from "solapi";
 
 // 검수 완료 후 템플릿 ID 입력
 const TEMPLATES = {
-  /** 고객 → 예약 확정 시 발송 (예전 템플릿 — 지금은 아래 #{주차정보} 템플릿만 쓴다) */
-  RESERVATION_RECEIVED: "KA01TP260326063623079sya42My8HXv",
-  /**
-   * 고객 → 예약 확정 시 발송 (매장 주소 아래 #{주차정보} 한 줄이 있는 새 템플릿)
-   * 검수 통과 후 ID를 넣으면 위 템플릿 대신 이걸로 보낸다. 비어 있으면 기존 템플릿.
-   */
+  /** 고객 → 예약 확정 시 발송 (매장 주소 아래 #{주차정보} 한 줄) */
   RESERVATION_RECEIVED_WITH_PARKING: "KA01TP2611060039104717O6R5PkzREo",
-  /** 사장님 → 새 예약 접수 시 발송 (#{결제방법} 줄이 추가된 템플릿 — 예전: KA01TP260326133524843omlSt2W5DcZ) */
+  /** 사장님 → 새 예약 접수 시 발송 (#{결제방법} 줄 포함) */
   RESERVATION_CONFIRMED_OWNER: "KA01TP261107025454875hEQUY4ULrB4",
   /** 고객 → 예약 취소 시 발송 */
   RESERVATION_CANCELLED: "KA01TP260326064935575n6c296qNkqi",
   /** 사장님 → 링크결제 완료 시 발송 */
   PAYMENT_COMPLETED_OWNER: "KA01TP260901111604774ZUP03d7NvDR",
+  /**
+   * 운영자 → 매장이 판매 신청을 하면 발송 (#{매장명} #{신청시각} · 버튼: 운영자 페이지)
+   * 검수 통과 후 ID를 넣으면 알림톡으로 보낸다. 비어 있으면 문자(SMS)로 보낸다.
+   */
+  SALES_APPLY_OPERATOR: "",
+  /** 사장님 → 판매 신청 결과(승인·반려) 안내 (#{매장명} #{결과} #{안내내용} #{LINK} · 버튼: 대시보드 보기) */
+  SALES_APPLY_RESULT: "KA01TP261115063704558CL1eqMa9TUi",
 };
 
 type AlimtalkButton = {
@@ -233,6 +235,69 @@ export async function sendReservationCancelled({
       "#{주문금액}": `${finalPrice.toLocaleString()}원`,
       "#{취소사유}": cancelReason,
       "#{매장전화번호}": companyPhone,
+    },
+  });
+}
+
+/**
+ * 운영자 → 판매 신청 접수 알림 (받는 번호: 보내는 번호와 같은 SOLAPI_SENDER_PHONE — 운영자 휴대폰)
+ * 알림톡 템플릿(SALES_APPLY_OPERATOR)이 검수 전이면 같은 내용을 문자로 보낸다.
+ */
+export async function sendSalesApplyOperator({ companyName, slug }: { companyName: string; slug: string }) {
+  const to = process.env.SOLAPI_SENDER_PHONE?.replace(/\D/g, "");
+  if (!to) return;
+  const at = new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
+  const adminUrl = "https://flo-aide.com/admin/dashboard";
+  if (TEMPLATES.SALES_APPLY_OPERATOR) {
+    return sendAlimtalk({
+      to,
+      templateId: TEMPLATES.SALES_APPLY_OPERATOR,
+      variables: { "#{매장명}": companyName, "#{신청시각}": at },
+      buttons: [{ buttonType: "WL", buttonName: "운영자 페이지", linkMo: adminUrl, linkPc: adminUrl }],
+    });
+  }
+  const client = new SolapiMessageService(process.env.SOLAPI_API_KEY!, process.env.SOLAPI_API_SECRET!);
+  return client.sendOne({
+    to,
+    from: process.env.SOLAPI_SENDER_PHONE!,
+    text: `[Flo.Aide] 판매 신청 접수\n${companyName}(${slug}) 매장이 판매 신청을 했어요.\n${at}\n${adminUrl}`,
+  });
+}
+
+/**
+ * 사장님 → 판매 신청 결과 안내 (승인·반려 하나의 템플릿)
+ * · 승인 + 승인되면 바로 시작: 판매가 시작됐다고
+ * · 승인 + 바로 시작 안 함: 판매 설정에서 켜면 된다고
+ * · 반려: (반려 사유) 고쳐서 다시 신청
+ */
+export async function sendSalesApplyResult({
+  to,
+  companyName,
+  slug,
+  approved,
+  autoStarted,
+  reason,
+}: {
+  to: string;
+  companyName: string;
+  slug: string;
+  approved: boolean;
+  autoStarted?: boolean;
+  reason?: string;
+}) {
+  const guide = approved
+    ? autoStarted
+      ? "판매가 시작되었습니다. 이제 손님이 메뉴판에서 바로 주문·결제할 수 있습니다."
+      : "판매 설정에서 판매를 켜시면 손님이 메뉴판에서 바로 주문·결제할 수 있습니다."
+    : `(${(reason ?? "").trim()}) 내용을 고쳐 다시 신청해 주세요.`;
+  return sendAlimtalk({
+    to,
+    templateId: TEMPLATES.SALES_APPLY_RESULT,
+    variables: {
+      "#{매장명}": companyName,
+      "#{결과}": approved ? "승인" : "반려",
+      "#{안내내용}": guide,
+      "#{LINK}": slug,
     },
   });
 }

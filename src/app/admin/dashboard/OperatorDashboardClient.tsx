@@ -10,6 +10,7 @@ import VerificationTab from "./VerificationTab";
 import StoreManagementTab from "./StoreManagementTab";
 import BillingLogsTab, { BillingLog } from "./BillingLogsTab";
 import PromoCodesTab from "./PromoCodesTab";
+import { ORDER_PATH_LABEL, type OrderPath } from "@/lib/trafficSource";
 import ReservationLogsTab, { ReservationLog } from "./ReservationLogsTab";
 import ConsultAnalyticsTab from "./ConsultAnalyticsTab";
 
@@ -46,6 +47,7 @@ interface Reservation {
   final_price: number;
   payment_id: string | null;
   order_type: string | null;
+  order_path: string | null;
 }
 
 interface Product {
@@ -60,10 +62,16 @@ interface Props {
   reservationLogs: ReservationLog[];
 }
 
+// 결제 경로 색 — 상품을 골라 결제(파랑 계열) · 첫 화면 대화/맞춤주문(금색 계열) · 링크결제(초록)
 const ORDER_TYPE_COLORS: Record<string, string> = {
-  "상품 선택 결제": "#60a5fa",
-  "맞춤주문": "#c9a96e",
-  "링크결제": "#34d399",
+  장바구니: "#60a5fa",
+  "상품 상세": "#93c5fd",
+  "추천 주문": "#e0c48f",
+  "사장님 스타일": "#c9a96e",
+  "사진 주문": "#a87c4a",
+  "첫 화면 사진": "#f0b46a",
+  "맞춤주문(경로 없음)": "#d6d3d1",
+  링크결제: "#34d399",
 };
 const PIE_COLORS = ["#c9a96e", "#60a5fa", "#34d399", "#a87c4a"];
 
@@ -168,17 +176,19 @@ export default function OperatorDashboardClient({ companies, reservations, produ
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gmvRange, revenueReservations, cardReservations]);
 
-  // 결제 경로별 비율 (상품 선택 결제 / 맞춤주문 / 링크결제) — order_type이 찍힌 건만 집계
-  // (order_type이 없는 건 = 관리자가 직접 추가한 예약 등, 이 통계 대상이 아님)
+  // 결제 경로별 비율 — 세부 경로(order_path)로: 장바구니 · 상품 상세 · 추천 주문 · 사장님 스타일 · 사진 주문 · 링크결제
+  // (order_type이 없는 건 = 관리자가 직접 추가한 예약 등, 이 통계 대상이 아님 · 세부 경로가 없던 예전 건은 큰 분류로)
   const orderTypeData = useMemo(() => {
-    const LABELS: Record<string, string> = { product: "상품 선택 결제", consult: "맞춤주문", link: "링크결제" };
+    const FALLBACK: Record<string, string> = { product: "장바구니", consult: "맞춤주문(경로 없음)", link: "링크결제" };
     const map: Record<string, number> = {};
     for (const r of cardReservations) {
-      if (!r.order_type || !LABELS[r.order_type]) continue;
-      const name = LABELS[r.order_type];
+      if (!r.order_type || !FALLBACK[r.order_type]) continue;
+      if (r.order_path === "manual") continue;
+      const name = (r.order_path && ORDER_PATH_LABEL[r.order_path as OrderPath]) || FALLBACK[r.order_type];
       map[name] = (map[name] ?? 0) + 1;
     }
-    return Object.entries(map).map(([name, value]) => ({ name, value }));
+    // 많은 순
+    return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cardReservations]);
 

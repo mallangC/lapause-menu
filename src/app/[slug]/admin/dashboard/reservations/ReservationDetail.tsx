@@ -42,6 +42,8 @@ interface Props {
   messageCardPrice?: number;
   shoppingBagPrice?: number;
   preservativePrice?: number;
+  /** 판매 신청 승인됨 — 승인된 매장만 결제 링크를 만들 수 있다 */
+  payLinkEnabled?: boolean;
 }
 
 function addonCount(value?: string | null) {
@@ -84,6 +86,7 @@ export default function ReservationDetail({
   shoppingBagPrice = 0,
   preservativePrice = 0,
   onMarkPaid,
+  payLinkEnabled = false,
 }: Props) {
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
   const statusDropdownRef = useRef<HTMLDivElement>(null);
@@ -734,6 +737,7 @@ export default function ReservationDetail({
                   {deliveryFeeMissing && (
                     <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2">배송비가 아직 없어요. 결제 링크를 만들기 전에 위에서 배송비를 넣어주세요.</p>
                   )}
+                  {payLinkEnabled ? (
                   <button
                     type="button"
                     data-coach="rv-paylink"
@@ -745,6 +749,23 @@ export default function ReservationDetail({
                     </svg>
                     이 금액으로 결제 링크 만들기
                   </button>
+                  ) : (
+                    // 판매 신청 승인 전 — 같은 버튼을 회색·자물쇠로 보여 주고(눌리지 않음) 바로 아래 안내 한 줄
+                    <div className="space-y-1.5">
+                      <button
+                        type="button"
+                        disabled
+                        aria-disabled
+                        className="w-full flex items-center justify-center gap-1.5 text-sm font-medium py-2 rounded-lg bg-gray-50 text-gray-400 border border-gray-200 cursor-not-allowed"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+                        </svg>
+                        이 금액으로 결제 링크 만들기
+                      </button>
+                      <p className="text-xs text-gray-400 text-center">판매 신청이 승인되면 카드 결제 링크를 보낼 수 있어요.</p>
+                    </div>
+                  )}
                 </>
               )}
             </SectionCard>

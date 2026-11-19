@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { PAY_LINK_BLOCKED_MESSAGE, payLinkAllowed } from "@/lib/payLinkAllowed";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 
 export async function GET(
@@ -30,6 +31,11 @@ export async function GET(
     const expires = data.payment_link_expires_at ? new Date(data.payment_link_expires_at) : null;
     if (expires && expires < new Date()) {
       return NextResponse.json({ error: "만료된 결제 링크입니다." }, { status: 400 });
+    }
+
+    // 판매 신청이 승인된 매장만 결제받는다
+    if (!(await payLinkAllowed(adminClient, data.company_id))) {
+      return NextResponse.json({ error: "지금은 결제할 수 없는 링크예요. 매장에 문의해 주세요." }, { status: 403 });
     }
 
     const { data: company } = await adminClient

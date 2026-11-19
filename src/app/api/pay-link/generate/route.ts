@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { PAY_LINK_BLOCKED_MESSAGE, payLinkAllowed } from "@/lib/payLinkAllowed";
 import { createClient } from "@/lib/supabase/server";
 import { randomUUID } from "crypto";
 
@@ -15,6 +16,13 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+    }
+
+    // 판매 신청이 승인된 매장만 (사장님 본인 예약인지는 RLS가 확인 — 못 읽으면 없는 예약)
+    const { data: rv } = await supabase.from("reservations").select("company_id").eq("id", reservationId).maybeSingle();
+    if (!rv) return NextResponse.json({ error: "예약을 찾지 못했습니다." }, { status: 404 });
+    if (!(await payLinkAllowed(supabase, rv.company_id as string))) {
+      return NextResponse.json({ error: PAY_LINK_BLOCKED_MESSAGE }, { status: 403 });
     }
 
     const token = randomUUID();

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { PAY_LINK_BLOCKED_MESSAGE, payLinkAllowed } from "@/lib/payLinkAllowed";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { productTypeSummary, sendPaymentCompletedOwner } from "@/lib/solapi";
 
@@ -36,6 +37,11 @@ export async function POST(request: NextRequest) {
 
     if (amount < reservation.final_price) {
       return NextResponse.json({ error: "결제 금액이 주문 금액보다 작습니다." }, { status: 400 });
+    }
+
+    // 판매 신청이 승인된 매장만 결제받는다 (승인 전에 결제창까지 갔어도 승인 처리하지 않는다 — 토스 결제는 승인 요청이 없으면 자동 취소)
+    if (!(await payLinkAllowed(adminClient, reservation.company_id))) {
+      return NextResponse.json({ error: "지금은 결제할 수 없는 링크예요. 매장에 문의해 주세요." }, { status: 403 });
     }
 
     // 데모 매장 여부 확인 (클라이언트가 보낸 값이 아니라 서버에서 직접 조회)

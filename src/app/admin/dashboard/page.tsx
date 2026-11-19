@@ -28,7 +28,7 @@ export default async function OperatorDashboardPage() {
       .order("created_at", { ascending: false }),
     supabase
       .from("reservations")
-      .select("id, company_id, created_at, desired_date, status, final_price, payment_id, order_type")
+      .select("id, company_id, created_at, desired_date, status, final_price, payment_id, order_type, order_path")
       .neq("status", "취소")
       .is("deleted_at", null),
     supabase

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { sendSalesApplyOperator } from "@/lib/solapi";
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -12,7 +13,7 @@ export async function POST(request: NextRequest) {
   // 오너 확인
   const { data: company } = await supabase
     .from("companies")
-    .select("id")
+    .select("id, name, slug")
     .eq("id", company_id)
     .eq("owner_id", user.id)
     .single();
@@ -44,5 +45,12 @@ export async function POST(request: NextRequest) {
     .eq("company_id", company_id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // 운영자에게 판매 신청 접수 알림 — 실패해도 신청은 그대로 접수된다
+  try {
+    await sendSalesApplyOperator({ companyName: company.name ?? "", slug: company.slug ?? "" });
+  } catch (e) {
+    console.error("[consult-apply] 운영자 알림 실패:", e);
+  }
   return NextResponse.json({ ok: true });
 }

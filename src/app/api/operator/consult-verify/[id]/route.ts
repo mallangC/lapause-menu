@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 import { purgeMenuCacheByCompanyId } from "@/lib/menuCache";
+import { sendSalesApplyResult } from "@/lib/solapi";
 
 async function verifyOperator() {
   const supabase = await createServerClient();
@@ -10,6 +11,25 @@ async function verifyOperator() {
   const { data: profile } = await supabase
     .from("profiles").select("role").eq("user_id", user.id).single();
   return profile?.role === "operator";
+}
+
+/** 판매 신청 결과를 사장님께 알림톡으로 — 실패해도 승인·반려는 그대로 (데모 매장은 보내지 않는다) */
+async function notifyOwner(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  adminClient: ReturnType<typeof createClient<any>>,
+  companyId: string,
+  result: { approved: boolean; autoStarted?: boolean; reason?: string },
+) {
+  try {
+    const { data: company } = await adminClient.from("companies").select("name, slug, is_demo").eq("id", companyId).single();
+    const c = company as { name?: string; slug?: string; is_demo?: boolean } | null;
+    if (!c?.slug || c.is_demo) return;
+    const { data: phone } = await adminClient.rpc("get_owner_phone_by_slug", { p_slug: c.slug });
+    if (!phone) return;
+    await sendSalesApplyResult({ to: String(phone), companyName: c.name ?? "", slug: c.slug, ...result });
+  } catch (e) {
+    console.error("[consult-verify] 결과 알림톡 실패:", e);
+  }
 }
 
 export async function PATCH(
@@ -47,6 +67,7 @@ export async function PATCH(
       .eq("company_id", company_id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     if (autoStart) await purgeMenuCacheByCompanyId(company_id);
+    await notifyOwner(adminClient, company_id, { approved: true, autoStarted: autoStart });
 
   } else if (action === "reject") {
     if (!reason?.trim()) {
@@ -57,6 +78,7 @@ export async function PATCH(
       .update({ consult_apply_status: "rejected", consult_reject_reason: reason })
       .eq("company_id", company_id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    await notifyOwner(adminClient, company_id, { approved: false, reason });
 
   } else {
     return NextResponse.json({ error: "알 수 없는 액션입니다." }, { status: 400 });

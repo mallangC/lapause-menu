@@ -26,6 +26,17 @@ export default function VerificationTab() {
   const [rejectModal, setRejectModal] = useState<Application | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  // 새로고침 중 — 목록은 그대로 두고 버튼만 돈다
+  const [refreshing, setRefreshing] = useState(false);
+  const refresh = async () => {
+    setRefreshing(true);
+    try {
+      const res = await fetch("/api/operator/consult-verify", { cache: "no-store" });
+      if (res.ok) setApplications(await res.json());
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const fetchApplications = useCallback(async () => {
     setLoading(true);
@@ -121,6 +132,18 @@ export default function VerificationTab() {
             <p className="text-xs text-yellow-600 mt-0.5">검토 대기 {pendingCount}건</p>
           )}
         </div>
+        <button
+          type="button"
+          onClick={refresh}
+          disabled={refreshing || loading}
+          aria-label="새로고침"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-60"
+        >
+          <svg className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992V4.356M2.985 19.644v-4.992h4.992m0 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182" />
+          </svg>
+          새로고침
+        </button>
       </div>
 
       {/* 필터 */}
