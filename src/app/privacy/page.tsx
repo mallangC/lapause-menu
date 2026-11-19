@@ -22,7 +22,7 @@ export default function PrivacyPage() {
         <div>
           <p className="text-xs font-semibold tracking-[0.2em] text-gold-500 uppercase mb-3">Privacy Policy</p>
           <h1 className="text-2xl font-light text-gray-900 mb-2">개인정보처리방침</h1>
-          <p className="text-sm text-gray-400">최종 업데이트: 2026년 11월 2일</p>
+          <p className="text-sm text-gray-400">최종 업데이트: 2026년 11월 20일</p>
         </div>
 
         <div className="bg-white border-t border-b border-beige-200 text-sm text-gray-600 leading-relaxed">
@@ -36,6 +36,7 @@ export default function PrivacyPage() {
               <li>휴대폰 번호</li>
               <li>배송 주소 (배송 선택 시)</li>
               <li>주문 내용 (상품 유형, 예산, 수령 일시 등)</li>
+              <li>참고 사진 (찾아본 사진으로 주문하는 경우 손님이 직접 보낸 사진)</li>
             </ul>
             <p className="font-medium text-gray-800 pt-2">나. 사장님(회원)</p>
             <p>회원 가입과 매장 운영, 판매 신청 시 아래 항목을 수집합니다.</p>
@@ -115,6 +116,19 @@ export default function PrivacyPage() {
               <p><span className="font-medium text-gray-700">수탁업체:</span> 토스페이먼츠 · <span className="font-medium text-gray-700">위탁 업무:</span> 결제 처리 및 정산</p>
               <p><span className="font-medium text-gray-700">수탁업체:</span> 솔라피(누리고 주식회사) · <span className="font-medium text-gray-700">위탁 업무:</span> 카카오 알림톡·문자 메시지 발송</p>
               <p><span className="font-medium text-gray-700">수탁업체:</span> Resend, Inc. · <span className="font-medium text-gray-700">위탁 업무:</span> 이메일 발송 (로그인 인증번호, 결제·환불 안내)</p>
+              <p><span className="font-medium text-gray-700">수탁업체:</span> Google LLC (Gemini API) · <span className="font-medium text-gray-700">위탁 업무:</span> 사장님이 붙여넣은 주문 내용을 예약 항목으로 정리, 손님이 보낸 참고 사진의 꽃 볼륨 확인</p>
+            </div>
+            {/* 국외 이전 — 개인정보 보호법 제28조의8 (이전받는 자·국가·일시와 방법·항목·목적·보유 기간) */}
+            <p className="font-medium text-gray-800 pt-2">개인정보의 국외 이전</p>
+            <p>위 업무 중 Gemini API를 통한 처리는 아래와 같이 국외에서 이루어집니다.</p>
+            <div className="bg-beige-50 rounded-xl p-4 text-xs text-gray-500 space-y-1.5">
+              <p><span className="font-medium text-gray-700">이전받는 자:</span> Google LLC (privacy@google.com)</p>
+              <p><span className="font-medium text-gray-700">이전 국가:</span> 미국 등 Google 데이터센터 소재 국가</p>
+              <p><span className="font-medium text-gray-700">이전 일시·방법:</span> 사장님이 주문 자동 채우기를 쓰거나 손님이 사진 주문에 사진을 보낼 때, 암호화된 네트워크로 전송</p>
+              <p><span className="font-medium text-gray-700">이전 항목:</span> 붙여넣은 주문 내용에 들어 있는 정보(이름·연락처·주소·주문 내용 등), 손님이 보낸 참고 사진</p>
+              <p><span className="font-medium text-gray-700">이전 목적:</span> 예약 항목 정리, 참고 사진의 꽃 볼륨 확인</p>
+              <p><span className="font-medium text-gray-700">보유·이용 기간:</span> 처리 즉시 결과를 돌려받으며, Google은 이 정보를 AI 학습에 쓰지 않습니다. 다만 Google이 오남용 방지를 위해 최대 55일간 보관한 뒤 삭제합니다.</p>
+              <p className="pt-1">국외 이전을 원하지 않으시면 손님은 사진을 보내지 않는 다른 주문 방식(사장님 스타일·추천·메뉴판)을, 사장님은 주문 직접 입력을 이용하시면 됩니다. 이 경우 해당 정보는 국외로 이전되지 않습니다.</p>
             </div>
           </section>
 
