@@ -16,6 +16,9 @@ const nextConfig: NextConfig = {
     reactCompiler: true,
   },
   images: {
+    // 사진 변환(/_next/image)은 Cloudflare Worker CPU를 써서 끈다 — 사진은 원래 주소(Supabase·public)에서 바로 받는다.
+    // 대신 업로드할 때 크기를 줄이고(상품 1200px·로고 512px WebP) 목록용 작은 사진(_thumb)을 함께 만든다 (src/lib/imageThumb.ts)
+    unoptimized: true,
     remotePatterns: [
       { protocol: "https", hostname: "*.supabase.co" },
     ],

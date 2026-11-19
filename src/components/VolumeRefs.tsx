@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
+import StoreImage from "@/components/StoreImage";
 
 // 볼륨감 참고 이미지 — 희망 금액을 정하기 전에 '이 가격이면 이 정도 볼륨' 사진을 나란히 보여준다.
 // 카드만 그린다 — 한 줄로 옆으로 밀어 보는 줄(ChipRow)은 쓰는 쪽에서 감싼다.
@@ -45,7 +46,13 @@ export default function VolumeRefs({ refs }: { refs: VolumeRef[] }) {
             className="group w-32 md:w-36 shrink-0 bg-white rounded-2xl overflow-hidden text-left"
           >
             <div className="relative w-full aspect-[4/5] bg-beige-200">
-              <Image src={r.image} alt="" fill sizes="150px" className="object-cover group-hover:scale-[1.03] transition-transform" />
+              <StoreImage thumb src={r.image} alt="" fill sizes="150px" className="object-cover group-hover:scale-[1.03] transition-transform" />
+              {/* 누르면 크게 볼 수 있다는 작은 표시 (첫 인사 사진과 같은 돋보기) */}
+              <span aria-hidden className="absolute right-1.5 bottom-1.5 w-5 h-5 rounded-full bg-black/35 text-white flex items-center justify-center">
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.2-5.2M10.5 18a7.5 7.5 0 1 0 0-15 7.5 7.5 0 0 0 0 15ZM10.5 7.5v6m3-3h-6" />
+                </svg>
+              </span>
             </div>
             <div className="px-3 py-2">
               <p className="text-[13px] text-gray-500 truncate">{r.name}</p>

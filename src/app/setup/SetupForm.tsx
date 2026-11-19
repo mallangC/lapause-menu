@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
+import { resizeToWebp } from "@/lib/imageThumb";
 import { RESERVED_SLUGS } from "@/lib/constants";
 
 type SlugStatus = "idle" | "checking" | "available" | "taken" | "reserved";
@@ -58,10 +59,18 @@ export default function SetupForm({ initialOwnerName = "", initialOwnerPhone = "
     if (!file) return;
     setUploading(true);
 
-    const path = `logos/${Date.now()}.${file.name.split(".").pop()}`;
+    // 로고는 작게 보이므로 긴 변 512px WebP로 줄여서 저장 (투명 배경 유지, 사진은 Supabase에서 바로 받는다)
+    let upload: Blob = file;
+    try {
+      upload = await resizeToWebp(file, 512, 0.9);
+    } catch {
+      /* 줄이지 못하면 원본 그대로 */
+    }
+    const ext = upload === file ? file.name.split(".").pop() : "webp";
+    const path = `logos/${Date.now()}.${ext}`;
     const { error: uploadError } = await supabase.storage
       .from("product_menu")
-      .upload(path, file, { upsert: false });
+      .upload(path, upload, { upsert: false, contentType: upload === file ? file.type : "image/webp" });
 
     if (uploadError) {
       setError("로고 업로드 실패: " + uploadError.message);

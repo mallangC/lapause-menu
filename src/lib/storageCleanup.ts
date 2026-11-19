@@ -2,6 +2,7 @@
 // 공개 주소(…/storage/v1/object/public/{bucket}/{path})에서 경로를 뽑아 지운다. 실패해도 화면 동작에는 영향 없게 조용히 넘어간다.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { thumbPath } from "@/lib/imageThumb";
 
 export function storagePathFromPublicUrl(url: string, bucket: string): string | null {
   const marker = `/storage/v1/object/public/${bucket}/`;
@@ -10,7 +11,11 @@ export function storagePathFromPublicUrl(url: string, bucket: string): string | 
 }
 
 export async function removeStorageFiles(db: SupabaseClient, bucket: string, urls: string[]) {
-  const paths = urls.map((u) => storagePathFromPublicUrl(u, bucket)).filter((p): p is string => !!p);
+  const paths = urls
+    .map((u) => storagePathFromPublicUrl(u, bucket))
+    .filter((p): p is string => !!p)
+    // 사진은 함께 만든 목록용 썸네일도 지운다 (없으면 그냥 넘어간다)
+    .flatMap((p) => { const t = thumbPath(p); return t ? [p, t] : [p]; });
   if (paths.length === 0) return;
   try {
     await db.storage.from(bucket).remove(paths);
