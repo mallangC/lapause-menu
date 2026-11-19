@@ -18,7 +18,10 @@ export type ProductStatus = "active" | "inactive" | "soldout";
 export interface Product {
   id: string;
   name: string;
+  /** 손님이 실제로 내는 가격 (할인 중이면 할인가) */
   price: number;
+  /** 할인 전 정가 — 있으면 할인 중 (price보다 크다), 없으면 할인 없음 */
+  original_price?: number | null;
   image_url: string | null;
   product_type: string;
   flower_colors: string[];

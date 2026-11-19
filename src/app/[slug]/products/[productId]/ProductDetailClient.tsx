@@ -1,5 +1,6 @@
 "use client";
 
+import PriceTag from "@/components/PriceTag";
 import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -53,6 +54,7 @@ export default function ProductDetailClient({
       productId: product.id,
       name: product.name,
       price: product.price ?? 0,
+      original_price: product.original_price ?? null,
       image_url: product.image_url ?? null,
       product_type: product.product_type,
       bag_included: product.bag_included ?? false,
@@ -149,8 +151,8 @@ export default function ProductDetailClient({
               <div>
                 <p className="text-xs text-gray-400 mb-2 tracking-wider uppercase">{product.product_type}</p>
                 <h1 className="text-2xl font-medium text-gray-900 leading-snug mb-4">{product.name}</h1>
-                <p className="text-2xl font-bold text-gray-900">
-                  {product.price ? `${product.price.toLocaleString()}원` : "가격 문의"}
+                <p>
+                  <PriceTag price={product.price} original={product.original_price} size="lg" stack />
                 </p>
               </div>
 
@@ -287,8 +289,8 @@ export default function ProductDetailClient({
                 <div className="px-3 pt-3 pb-5">
                   <p className="text-xs text-gray-400 mb-0.5">{p.product_type}</p>
                   <p className="text-sm text-gray-900 leading-snug">{p.name}</p>
-                  <p className="text-sm font-semibold text-gray-900 mt-1.5">
-                    {p.price ? `${p.price.toLocaleString()}원` : "가격 문의"}
+                  <p className="mt-1.5">
+                    <PriceTag price={p.price} original={p.original_price} size="sm" />
                   </p>
                 </div>
               </div>
@@ -307,6 +309,7 @@ export default function ProductDetailClient({
                 productId: product.id,
                 name: product.name,
                 price: product.price ?? 0,
+                original_price: product.original_price ?? null,
                 image_url: product.image_url ?? null,
                 product_type: product.product_type,
                 bag_included: product.bag_included ?? false,

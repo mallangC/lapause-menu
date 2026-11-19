@@ -3,11 +3,13 @@
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { Product, ProductInput } from "@/types";
+import { resizeToWebp, THUMB_MAX_PX, thumbPath } from "@/lib/imageThumb";
 import { removeStorageFiles } from "@/lib/storageCleanup";
 import { PRODUCT_TYPES, FLOWER_COLORS, WRAPPING_COLORS, FLOWER_COLOR_MAP, SEASONS, STORAGE_BUCKET, MOODS } from "@/lib/constants";
 import { sortByOrder } from "@/lib/productTypes";
 import { useCategoryOrder } from "@/hooks/useCategoryOrder";
 import { createClient } from "@/lib/supabase/client";
+import { discountRate, isDiscounted, priceFromRate } from "@/lib/discount";
 
 function SelectDropdown({ value, options, onChange, placeholder }: {
   value: string;
@@ -156,7 +158,8 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
     initialData
       ? {
           name: initialData.name,
-          price: initialData.price,
+          // 폼의 '상품 가격'은 정가 — 할인 중이면 정가를, 아니면 가격을 보여준다 (저장할 때 할인가와 나눈다)
+          price: isDiscounted(initialData.price, initialData.original_price) ? initialData.original_price : initialData.price,
           image_url: initialData.image_url,
           product_type: initialData.product_type,
           flower_colors: initialData.flower_colors,
@@ -179,6 +182,12 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
   const [loading, setLoading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<string[]>([]);
+  // 할인 — 할인율(%)과 할인가(원) 중 하나를 적으면 다른 하나를 채운다 (할인가는 100원 단위)
+  const initDiscounted = !!initialData && isDiscounted(initialData.price, initialData.original_price);
+  const [salePrice, setSalePrice] = useState<number>(initDiscounted ? initialData!.price : 0);
+  const [rateText, setRateText] = useState<string>(initDiscounted ? String(discountRate(initialData!.price, initialData!.original_price)) : "");
+  const [discountError, setDiscountError] = useState<string | null>(null);
+  const discountOn = salePrice > 0 && salePrice < data.price;
   const [customCategories, setCustomCategories] = useState<{ category_type: string; name: string }[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const nameFieldRef = useRef<HTMLDivElement>(null);
@@ -272,11 +281,19 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
     setUploading(true);
     const path = `${Date.now()}.webp`;
     const { error } = await supabase.storage.from(STORAGE_BUCKET).upload(path, pendingImage, { upsert: false, contentType: "image/webp" });
-    setUploading(false);
     if (error) {
+      setUploading(false);
       setUploadError("업로드 실패: " + error.message);
       return false;
     }
+    // 목록·카드용 작은 사진도 함께 (실패해도 화면은 원본으로 보여줘서 저장은 계속)
+    try {
+      const thumb = await resizeToWebp(pendingImage, THUMB_MAX_PX);
+      await supabase.storage.from(STORAGE_BUCKET).upload(thumbPath(path)!, thumb, { upsert: true, contentType: "image/webp" });
+    } catch {
+      /* 썸네일 실패는 무시 */
+    }
+    setUploading(false);
     return supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path).data.publicUrl;
   };
 
@@ -292,11 +309,21 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
       return;
     }
     setFieldErrors([]);
+    // 할인가는 가격보다 낮아야 한다 (같거나 높으면 저장하지 않고 알린다)
+    if (salePrice > 0 && salePrice >= data.price) {
+      setDiscountError("할인가는 상품 가격보다 낮아야 해요.");
+      return;
+    }
     setLoading(true);
     try {
       const imageUrl = await uploadPendingImage();
       if (imageUrl === false) return;
-      await onSubmit({ ...data, image_url: imageUrl });
+      // 할인 중이면 가격 = 할인가, 정가 = 적은 상품 가격 / 아니면 정가 없음
+      await onSubmit({
+        ...data,
+        image_url: imageUrl,
+        ...(discountOn ? { price: salePrice, original_price: data.price } : { original_price: null }),
+      });
       // 사진을 바꾸거나 지웠으면 예전 사진은 저장소에서 정리
       const oldUrl = initialData?.image_url ?? null;
       if (oldUrl && oldUrl !== imageUrl) removeStorageFiles(supabase, STORAGE_BUCKET, [oldUrl]);
@@ -343,13 +370,84 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
                   value={data.price === 0 ? "" : data.price.toLocaleString()}
                   onChange={(e) => {
                     const raw = e.target.value.replace(/,/g, "");
-                    if (/^\d*$/.test(raw)) setData({ ...data, price: Number(raw) || 0 });
+                    if (!/^\d*$/.test(raw)) return;
+                    const list = Number(raw) || 0;
+                    setData({ ...data, price: list });
+                    setDiscountError(null);
+                    // 할인율을 적어 두었으면 바뀐 가격으로 할인가를 다시 계산
+                    const rate = Number(rateText);
+                    if (rate > 0 && list > 0) setSalePrice(priceFromRate(list, rate));
+                    else if (salePrice > 0 && list > 0) setRateText(salePrice < list ? String(discountRate(salePrice, list)) : "");
                   }}
                   placeholder="0"
                   className={inputCls}
                 />
                 <span className="text-sm text-gray-500 shrink-0">원</span>
               </div>
+            </div>
+            {/* 할인 (선택) — 할인율이나 할인가 중 하나만 적으면 다른 하나가 채워진다 */}
+            <div>
+              <label className={fieldLabelCls}>할인 (선택)</label>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 w-28 shrink-0">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={rateText}
+                    disabled={data.price <= 0}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/[^\d]/g, "").slice(0, 2);
+                      setRateText(raw);
+                      setDiscountError(null);
+                      const rate = Number(raw);
+                      setSalePrice(rate > 0 && data.price > 0 ? priceFromRate(data.price, rate) : 0);
+                    }}
+                    placeholder="0"
+                    aria-label="할인율"
+                    className={`${inputCls} text-right disabled:bg-gray-50`}
+                  />
+                  <span className="text-sm text-gray-500 shrink-0">%</span>
+                </div>
+                <span className="text-xs text-gray-300 shrink-0">또는</span>
+                <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={salePrice === 0 ? "" : salePrice.toLocaleString()}
+                    disabled={data.price <= 0}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/,/g, "");
+                      if (!/^\d*$/.test(raw)) return;
+                      const sale = Number(raw) || 0;
+                      setSalePrice(sale);
+                      setDiscountError(null);
+                      setRateText(sale > 0 && sale < data.price ? String(discountRate(sale, data.price)) : "");
+                    }}
+                    placeholder="할인가"
+                    aria-label="할인가"
+                    className={`${inputCls} text-right disabled:bg-gray-50`}
+                  />
+                  <span className="text-sm text-gray-500 shrink-0">원</span>
+                </div>
+              </div>
+              {discountError ? (
+                <p className="mt-1 text-xs text-red-500">{discountError}</p>
+              ) : discountOn ? (
+                <p className="mt-1 text-xs text-gold-600">
+                  {salePrice.toLocaleString()}원에 팔아요 ({(data.price - salePrice).toLocaleString()}원 할인)
+                  <button
+                    type="button"
+                    onClick={() => { setSalePrice(0); setRateText(""); setDiscountError(null); }}
+                    className="ml-2 text-gray-400 underline hover:text-gray-600"
+                  >
+                    할인 없애기
+                  </button>
+                </p>
+              ) : salePrice > 0 ? (
+                <p className="mt-1 text-xs text-red-500">할인가는 상품 가격보다 낮아야 해요.</p>
+              ) : (
+                <p className="mt-1 text-xs text-gray-400">할인율이나 할인가 중 하나만 적으면 나머지가 채워져요. (100원 단위)</p>
+              )}
             </div>
           </div>
 

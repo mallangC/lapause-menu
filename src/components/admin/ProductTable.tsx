@@ -1,7 +1,8 @@
 "use client";
 
+import PriceTag from "@/components/PriceTag";
 import React, { useState, useEffect, useRef } from "react";
-import Image from "next/image";
+import StoreImage from "@/components/StoreImage";
 import { Product, ProductStatus } from "@/types";
 import { BADGE_COLORS, MOODS, PRODUCT_TYPES, SEASONS } from "@/lib/constants";
 import { sortByOrder } from "@/lib/productTypes";
@@ -322,7 +323,7 @@ export default function ProductTable({ products, onEdit, onDelete, onStatusChang
                     {/* 이미지 */}
                     <div className="w-14 h-14 rounded-xl overflow-hidden bg-gray-100 shrink-0">
                       {product.image_url ? (
-                        <Image src={product.image_url} alt={product.name} width={56} height={56} className="w-full h-full object-cover" />
+                        <StoreImage thumb src={product.image_url} alt={product.name} width={56} height={56} className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full" />
                       )}
@@ -348,7 +349,7 @@ export default function ProductTable({ products, onEdit, onDelete, onStatusChang
                           ? <span className="text-red-400">{product.product_type} (삭제됨)</span>
                           : product.product_type
                         }
-                        {" · "}{product.price.toLocaleString()}원
+                        {" · "}<PriceTag price={product.price} original={product.original_price} size="xs" className="!font-normal" />
                       </p>
                     </div>
 
@@ -402,7 +403,7 @@ export default function ProductTable({ products, onEdit, onDelete, onStatusChang
                       <td className="py-3">
                         <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 mx-auto">
                           {product.image_url ? (
-                            <Image src={product.image_url} alt={product.name} width={64} height={64} className="w-full h-full object-cover" />
+                            <StoreImage thumb src={product.image_url} alt={product.name} width={64} height={64} className="w-full h-full object-cover" />
                           ) : (
                             <div className="w-full h-full" />
                           )}
@@ -429,7 +430,7 @@ export default function ProductTable({ products, onEdit, onDelete, onStatusChang
                           : <span className="text-gray-700">{product.product_type}</span>
                         }
                       </td>
-                      <td className="py-3 px-2 whitespace-nowrap">{product.price.toLocaleString()}원</td>
+                      <td className="py-3 px-2 whitespace-nowrap"><PriceTag price={product.price} original={product.original_price} size="sm" empty="0원" /></td>
                       <td className="py-3 px-2 text-center">
                         <StatusToggle
                           status={product.status ?? "active"}

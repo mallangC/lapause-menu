@@ -1,6 +1,7 @@
 "use client";
 
-import Image from "next/image";
+import PriceTag from "@/components/PriceTag";
+import StoreImage from "@/components/StoreImage";
 import { useRouter } from "next/navigation";
 import { Product } from "@/types";
 import { FLOWER_COLOR_MAP, BADGE_COLORS } from "@/lib/constants";
@@ -26,6 +27,7 @@ export default function ProductCard({ product, consultEnabled, slug }: ProductCa
         productId: product.id,
         name: product.name,
         price: product.price,
+        original_price: product.original_price ?? null,
         image_url: product.image_url,
         product_type: product.product_type,
         bag_included: product.bag_included,
@@ -43,7 +45,7 @@ export default function ProductCard({ product, consultEnabled, slug }: ProductCa
       {/* 이미지 */}
       <div className="relative aspect-square bg-white overflow-hidden">
         {product.image_url ? (
-          <Image
+          <StoreImage thumb
             src={product.image_url}
             alt={product.name}
             fill
@@ -106,8 +108,9 @@ export default function ProductCard({ product, consultEnabled, slug }: ProductCa
               ))}
             </div>
           )}
-          <p className="text-sm font-semibold text-gray-900">
-            {product.price ? `${product.price.toLocaleString()}원` : "가격 문의"}
+          <p className="text-sm">
+            {/* 할인 중이면 정가를 위 줄에 — 이름 칸이 좁아지지 않게 */}
+            <PriceTag price={product.price} original={product.original_price} size="sm" stack align="end" />
           </p>
         </div>
       </div>

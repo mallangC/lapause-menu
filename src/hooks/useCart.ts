@@ -6,6 +6,8 @@ export interface CartItem {
   productId: string;
   name: string;
   price: number;
+  /** 할인 전 정가 (있으면 할인 중) */
+  original_price?: number | null;
   image_url: string | null;
   product_type: string;
   bag_included: boolean;
