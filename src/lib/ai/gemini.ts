@@ -1,36 +1,14 @@
-// Gemini 호출 모음 (서버 전용) — 사진 임베딩 · 사진 볼륨 가격 판단
+// Gemini 호출 모음 (서버 전용) — 사진 볼륨 가격 판단
 // 키는 GEMINI_API_KEY (서버 환경변수). 브라우저에서 부르지 않는다.
 
 const API = "https://generativelanguage.googleapis.com/v1beta/models";
-/** 사진 임베딩 모델 · 차원 (DB product_embeddings.embedding vector(768)와 같아야 한다) */
-export const EMBED_MODEL = "gemini-embedding-2";
-export const EMBED_DIM = 768;
-
 const key = () => {
   const k = process.env.GEMINI_API_KEY;
   if (!k) throw new Error("GEMINI_API_KEY가 없어요");
   return k;
 };
 
-/** 사진(base64) → 임베딩 768개 숫자 */
-export async function embedImage(base64: string, mimeType: string): Promise<number[]> {
-  const res = await fetch(`${API}/${EMBED_MODEL}:embedContent`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-goog-api-key": key() },
-    body: JSON.stringify({
-      content: { parts: [{ inline_data: { mime_type: mimeType, data: base64 } }] },
-      outputDimensionality: EMBED_DIM,
-    }),
-    signal: AbortSignal.timeout(20000),
-  });
-  if (!res.ok) throw new Error(`임베딩 실패 ${res.status}: ${(await res.text()).slice(0, 200)}`);
-  const data = (await res.json()) as { embedding?: { values?: number[] } };
-  const v = data.embedding?.values;
-  if (!v || v.length !== EMBED_DIM) throw new Error("임베딩 결과가 비었어요");
-  return v;
-}
-
-/** 공개 주소의 사진을 받아 base64로 (상품 사진 임베딩용) */
+/** 공개 주소의 사진을 받아 base64로 (볼륨 참고 사진) */
 export async function fetchImageBase64(url: string): Promise<{ base64: string; mimeType: string }> {
   const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
   if (!res.ok) throw new Error(`사진을 받지 못했어요 ${res.status}`);
@@ -39,8 +17,6 @@ export async function fetchImageBase64(url: string): Promise<{ base64: string; m
   return { base64: buf.toString("base64"), mimeType };
 }
 
-/** pgvector에 넣을 글자 ('[0.1,0.2,…]') */
-export const toVector = (v: number[]) => `[${v.join(",")}]`;
 
 // ── 사진 주문 볼륨 가격 — 매장 볼륨감 참고 사진(가격 붙음)과 손님 사진을 함께 보여주고, 볼륨만 보고 어느 가격쯤인지 묻는다 ──
 /** 볼륨 판단 모델 — 가볍고 빠른 모델 (3.8-flash는 같은 사진도 3.6~10초로 들쭉날쭉, 3.1-flash-lite는 2초 안팎) · 바꿀 때는 환경변수 GEMINI_VISION_MODEL */

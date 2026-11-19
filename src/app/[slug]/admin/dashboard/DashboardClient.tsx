@@ -25,7 +25,7 @@ import PlanTab from "./PlanTab";
 import type { AppliedPromo } from "@/lib/appliedPromo";
 import DashboardOverviewTab from "./DashboardOverviewTab";
 import { TodayColorsPrompt } from "./TodayColors";
-import { notifyMenuChanged, refreshProductEmbedding } from "@/lib/menuCacheClient";
+import { notifyMenuChanged } from "@/lib/menuCacheClient";
 
 type Tab = "dashboard" | "reservations" | "products" | "stats" | "settlement" | "company" | "ordersettings" | "business" | "reservation" | "menusettings" | "settings" | "plan" | "myinfo";
 const TABS: Tab[] = ["dashboard", "reservations", "products", "stats", "settlement", "company", "ordersettings", "business", "reservation", "menusettings", "settings", "plan", "myinfo"];
@@ -174,8 +174,6 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
       .single();
     if (err) { setError(err.message); return; }
     notifyMenuChanged();
-    // 사진 주문 가격대 안내용 사진 임베딩
-    if ((newProduct as Product).image_url) refreshProductEmbedding((newProduct as Product).id);
     setProducts((prev) => [...prev, newProduct as Product]);
     setShowForm(false);
   };
@@ -191,8 +189,6 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
       .single();
     if (err) { setError(err.message); return; }
     notifyMenuChanged();
-    // 사진을 바꾸거나 지웠으면 임베딩도 다시 (지웠으면 서버가 지운다)
-    if ((updated as Product).image_url !== editingProduct.image_url) refreshProductEmbedding(editingProduct.id);
     setProducts((prev) => prev.map((p) => (p.id === editingProduct.id ? (updated as Product) : p)));
     setEditingProduct(null);
   };

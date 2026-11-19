@@ -5,8 +5,6 @@ import { storeProductTypes } from "@/lib/productTypes";
 import { fetchImageBase64, judgeVolumePrice } from "@/lib/ai/gemini";
 import { normalizeSizeConfig, volumeJudgeRefs } from "@/lib/sizeTiers";
 import { thumbUrl } from "@/lib/imageThumb";
-// [잠시 멈춤] 임베딩으로 비슷한 상품을 찾아 가격대를 내던 방식 — 크기(볼륨)를 구분하지 못해 아래 볼륨 판단으로 바꿨다. 되돌릴 때 주석 해제
-// import { embedImage, toVector } from "@/lib/ai/gemini";
 
 export const dynamic = "force-dynamic";
 
@@ -17,11 +15,6 @@ export const dynamic = "force-dynamic";
 
 const PER_MINUTE = 3;
 const PER_DAY = 20;
-// [잠시 멈춤 — 임베딩 방식]
-// /** 이 정도 이상 닮아야 '비슷한 작품'으로 본다 (0~1) */
-// const MIN_SIMILARITY = 0.85;
-// /** 가격대를 만들 때 쓰는 비슷한 상품 수 */
-// const TOP_K = 3;
 /** 볼륨 판단에 필요한 참고 사진 최소 수 */
 const MIN_REFS = 2;
 /** 손님 사진 data URL 최대 길이 (약 2MB) */
@@ -78,28 +71,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ volume: null, limited: true, reason: "limited" });
   }
 
-  // [잠시 멈춤 — 임베딩 방식] 비슷한 상품 3개의 가격대
-  // try {
-  //   // 사진 임베딩 → 같은 매장 · 같은 형태 상품 중 비슷한 것 → 가격대
-  //   const embedding = await embedImage(base64, mimeType);
-  //   const { data: matches, error } = await admin.rpc("match_store_products", {
-  //     p_company_id: menu.company.id,
-  //     p_embedding: toVector(embedding),
-  //     p_product_type: productType,
-  //     p_limit: TOP_K,
-  //   });
-  //   if (error) throw new Error(error.message);
-  //   const all = (matches ?? []) as { product_id: string; price: number; similarity: number }[];
-  //   const close = all.filter((x) => x.similarity >= MIN_SIMILARITY);
-  //   const priceRange = close.length > 0
-  //     ? { min: Math.min(...close.map((x) => x.price)), max: Math.max(...close.map((x) => x.price)) }
-  //     : null;
-  //   // 가장 닮은 상품들과 점수 (기준 MIN_SIMILARITY 이상만 가격대에 쓴다)
-  //   const names = new Map(menu.products.map((p) => [p.id, p.name]));
-  //   const top = all.map((x) => ({ name: names.get(x.product_id) ?? x.product_id, price: x.price, similarity: Math.round(x.similarity * 1000) / 1000 }));
-  //   const reason: Reason = priceRange ? "ok" : "no_match";
-  //   log(slug, reason, { productType, min: MIN_SIMILARITY, top });
-  //   return NextResponse.json({ priceRange, reason, ...(DEV ? { debug: { productType, minSimilarity: MIN_SIMILARITY, top } } : {}) });
   try {
     // 참고 사진(작은 사진이면 충분) + 손님 사진 → 볼륨만 보고 가격
     const refImgs = await Promise.all(

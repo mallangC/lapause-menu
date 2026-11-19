@@ -8,7 +8,7 @@ import imageCompression from "browser-image-compression";
 import { createClient } from "@/lib/supabase/client";
 import ProductForm from "@/components/admin/ProductForm";
 import { ProductInput } from "@/types";
-import { notifyMenuChanged, refreshProductEmbedding } from "@/lib/menuCacheClient";
+import { notifyMenuChanged } from "@/lib/menuCacheClient";
 import { formatMoney, formatPhone, parseMoney, parsePhone } from "@/lib/format";
 import type { BusinessHours } from "@/lib/businessHours";
 import { DEFAULT_TYPE_KEY } from "@/lib/productTypes";
@@ -509,11 +509,9 @@ export default function OnboardingClient({ slug, companyId, companyName, logoIma
   // ── 첫 상품 · 링크 ──
   const saveProduct = async (data: ProductInput) => {
     setError(null);
-    const { data: created, error: err } = await supabase.from("products").insert({ ...data, company_id: companyId }).select("id").single();
+    const { error: err } = await supabase.from("products").insert({ ...data, company_id: companyId });
     if (err) { setError("상품을 저장하지 못했어요: " + err.message); return; }
     notifyMenuChanged();
-    // 사진 주문 가격대 안내용 사진 임베딩
-    if (data.image_url) refreshProductEmbedding(created?.id);
     setProductCount((c) => c + 1);
     answer(`'${data.name}' 올렸어요`);
   };
