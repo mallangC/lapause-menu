@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
 
   const type = req.nextUrl.searchParams.get("type") ?? "charge_success";
 
-  const companyName = "라포즈 플뢰르";
+  const companyName = "라포즈 플레르";
   const planLabel = "Pro";
   const amount = 9900;
   const expiresAt = new Date();
