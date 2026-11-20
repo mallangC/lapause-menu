@@ -244,7 +244,7 @@ export async function POST(request: NextRequest) {
       recipient_gender: giftText(body.gift?.recipientGender),
       recipient_age: giftText(body.gift?.recipientAge),
       traffic_source: normalizeTrafficSource(body.trafficSource) ?? "direct",
-    }).select("id");
+    }).select("id, order_token");
 
     if (insertError) {
       console.error("[order] insert 실패:", insertError.message);
@@ -259,6 +259,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "주문 저장 중 오류가 발생했습니다." }, { status: 500 });
     }
     savedReservationId = insertData?.[0]?.id ?? null;
+    // 손님 주문 확인 페이지 코드 (/{매장}/order/{코드})
+    const savedOrderToken = (insertData?.[0] as { order_token?: string } | undefined)?.order_token ?? null;
 
     // 사장님 알림톡 (데모 매장은 발송하지 않음)
     try {
@@ -290,7 +292,7 @@ export async function POST(request: NextRequest) {
       bank = { bankName: b?.bank_name ?? null, bankAccount: b?.bank_account ?? null, bankHolder: b?.bank_holder ?? null };
     }
 
-    return NextResponse.json({ success: true, reservationId: savedReservationId, ...(bank ?? {}) });
+    return NextResponse.json({ success: true, reservationId: savedReservationId, orderToken: savedOrderToken, ...(bank ?? {}) });
   } catch (err) {
     console.error("[order] 오류:", err);
     return NextResponse.json({ error: "서버 오류가 발생했습니다." }, { status: 500 });

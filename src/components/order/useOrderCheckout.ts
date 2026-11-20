@@ -92,6 +92,8 @@ export type PriceLine = { label: string; amount: number; plus?: boolean; minus?:
 export interface Done {
   draft: Draft;
   transfer: { bankName: string | null; bankAccount: string | null; bankHolder: string | null } | null;
+  /** 손님 주문 확인 페이지 코드 (/{매장}/order/{코드}) */
+  orderToken?: string | null;
 }
 
 export interface DayHours {
@@ -458,15 +460,15 @@ export function useOrderCheckout(props: OrderCheckoutProps) {
     }
     const data = await res.json();
     if (!res.ok) throw new Error(data.error ?? "예약 저장 실패");
-    return data as { bankName?: string | null; bankAccount?: string | null; bankHolder?: string | null };
+    return data as { bankName?: string | null; bankAccount?: string | null; bankHolder?: string | null; orderToken?: string | null };
   };
 
-  const finish = (d: Draft, transfer: Done["transfer"]) => {
+  const finish = (d: Draft, transfer: Done["transfer"], orderToken: string | null = null) => {
     // 주문이 끝났으니 보관해 둔 사진은 비운다
     if (d.order.kind === "single" && d.order.product.id === PHOTO_PRODUCT_ID) {
       try { sessionStorage.removeItem(photoOrderKey(slug)); } catch { /* 무시 */ }
     }
-    setDone({ draft: d, transfer });
+    setDone({ draft: d, transfer, orderToken });
     onPaid?.();
     if (!keepScrollOnDone) window.scrollTo(0, 0);
   };
@@ -506,8 +508,8 @@ export function useOrderCheckout(props: OrderCheckoutProps) {
     (async () => {
       setSubmitting(true);
       try {
-        await send(draft, { paymentKey, paymentOrderId: returnedOrderId, paymentAmount: returnedAmount || draft.finalPrice });
-        finish(draft, null);
+        const data = await send(draft, { paymentKey, paymentOrderId: returnedOrderId, paymentAmount: returnedAmount || draft.finalPrice });
+        finish(draft, null, data.orderToken ?? null);
       } catch (err) {
         // 저장 실패 — 입력한 내용 그대로 결제 화면에서 오류를 보여준다 (결제는 서버가 이미 취소했다)
         restore(draft);
@@ -564,7 +566,7 @@ export function useOrderCheckout(props: OrderCheckoutProps) {
     if (paymentMethod === "transfer") {
       try {
         const data = await send(draft, { transfer: cashReceipt });
-        finish(draft, { bankName: data.bankName ?? null, bankAccount: data.bankAccount ?? null, bankHolder: data.bankHolder ?? null });
+        finish(draft, { bankName: data.bankName ?? null, bankAccount: data.bankAccount ?? null, bankHolder: data.bankHolder ?? null }, data.orderToken ?? null);
       } catch (err) {
         setError(err instanceof Error ? err.message : "예약 중 오류가 발생했습니다.");
       } finally {

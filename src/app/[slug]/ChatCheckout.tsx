@@ -571,6 +571,12 @@ export default function ChatCheckout(props: Props) {
               <p className="text-xs text-gray-400 break-keep">
                 {transfer ? "입금이 확인되면 사장님이 예약을 확정해요. " : ""}예약이 확정되거나 취소되면 카카오 알림톡으로 알려드려요.
               </p>
+              {/* 손님 주문 확인 페이지 — 진행 단계·매장 안내 (알림톡 버튼과 같은 곳) */}
+              {done.orderToken && (
+                <a href={`/${slug}/order/${done.orderToken}`} className="flex items-center justify-center gap-1 w-full py-2.5 rounded-xl bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors">
+                  주문 진행 확인하기
+                </a>
+              )}
               {(kakaoChannelUrl || storePhone) && (
                 <div className="flex flex-wrap gap-2">
                   {kakaoChannelUrl && (

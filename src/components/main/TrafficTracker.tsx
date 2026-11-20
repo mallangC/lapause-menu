@@ -10,7 +10,8 @@ export default function TrafficTracker({ slug }: { slug: string }) {
   useEffect(() => {
     const path = window.location.pathname;
     // 사장님 관리 화면과 결제 링크 페이지는 손님 유입이 아니므로 제외
-    if (path.startsWith(`/${slug}/admin`) || path.startsWith(`/${slug}/pay/`)) return;
+    // 관리자·결제 링크·주문 확인 페이지는 방문으로 세지 않는다
+    if (path.startsWith(`/${slug}/admin`) || path.startsWith(`/${slug}/pay/`) || path.startsWith(`/${slug}/order/`)) return;
 
     const params = new URLSearchParams(window.location.search);
     const fromUrl = normalizeTrafficSource(params.get("utm_source") ?? params.get("from"));

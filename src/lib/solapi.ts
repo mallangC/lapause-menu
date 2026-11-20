@@ -2,8 +2,8 @@ import { SolapiMessageService } from "solapi";
 
 // 검수 완료 후 템플릿 ID 입력
 const TEMPLATES = {
-  /** 고객 → 예약 확정 시 발송 (매장 주소 아래 #{주차정보} 한 줄) */
-  RESERVATION_RECEIVED_WITH_PARKING: "KA01TP2611060039104717O6R5PkzREo",
+  /** 고객 → 예약 확정 시 발송 (#{주차정보} 줄 · [주문 확인하기] 버튼 https://www.flo-aide.com/#{LINK}, #{LINK} = 매장/order/주문코드) */
+  RESERVATION_RECEIVED: "KA01TP261119215013966yyrjZOj2BJf",
   /** 사장님 → 새 예약 접수 시 발송 (#{결제방법} 줄 포함) */
   RESERVATION_CONFIRMED_OWNER: "KA01TP261107025454875hEQUY4ULrB4",
   /** 고객 → 예약 취소 시 발송 */
@@ -14,7 +14,7 @@ const TEMPLATES = {
    * 운영자 → 매장이 판매 신청을 하면 발송 (#{매장명} #{신청시각} · 버튼: 운영자 페이지)
    * 검수 통과 후 ID를 넣으면 알림톡으로 보낸다. 비어 있으면 문자(SMS)로 보낸다.
    */
-  SALES_APPLY_OPERATOR: "",
+  SALES_APPLY_OPERATOR: "KA01TP261119083541146Cb4eZJLJMir",
   /** 사장님 → 판매 신청 결과(승인·반려) 안내 (#{매장명} #{결과} #{안내내용} #{LINK} · 버튼: 대시보드 보기) */
   SALES_APPLY_RESULT: "KA01TP261115063704558CL1eqMa9TUi",
 };
@@ -85,6 +85,7 @@ export async function sendReservationReceived({
   companyAddress,
   parking,
   afterHoursNote,
+  orderLink,
 }: {
   to: string;
   ordererName: string;
@@ -95,10 +96,12 @@ export async function sendReservationReceived({
   desiredDateTime: string;
   companyPhone: string;
   companyAddress: string;
-  /** 매장 주차 정보 ('주차 가능' | '잠시 주차 가능' | '주차 불가' | null) */
+  /** 매장 주차 정보 ('주차 가능' | '잠시 주차 가능' | '주차 불가' | 사장님이 직접 쓴 안내 | null) */
   parking?: string | null;
   /** 영업시간 외 수령 주문이면 사장님이 써 둔 안내 (아니면 null) */
   afterHoursNote?: string | null;
+  /** 주문 확인 페이지 경로 '매장/order/주문코드' — [주문 확인하기] 버튼 #{LINK} */
+  orderLink: string;
 }) {
   // #{주차정보} 칸 — 주문에 맞는 안내를 줄줄이 (마지막 연락 줄은 늘 들어가서 칸이 비지 않는다)
   //  · 주차 정보가 있으면 → 주차 : 가능
@@ -106,13 +109,15 @@ export async function sendReservationReceived({
   //  · 항상 → 궁금한 점은 매장으로 연락 주세요 : 전화번호
   const PARKING_LINE: Record<string, string> = { "주차 가능": "주차 : 가능", "잠시 주차 가능": "주차 : 잠시 가능", "주차 불가": "주차 : 불가" };
   const lines: string[] = [];
-  if (parking && PARKING_LINE[parking]) lines.push(PARKING_LINE[parking]);
+  // 정해진 세 가지는 짧게, 사장님이 직접 쓴 안내는 그대로
+  if (parking?.trim()) lines.push(PARKING_LINE[parking] ?? `주차 : ${parking.trim()}`);
   if (afterHoursNote?.trim()) lines.push(`[영업시간 외 수령 안내]\n${afterHoursNote.trim()}`);
   lines.push(companyPhone ? `궁금한 점은 매장으로 연락 주세요 : ${companyPhone}` : "궁금한 점은 매장으로 연락 주세요.");
   return sendAlimtalk({
     to,
-    templateId: TEMPLATES.RESERVATION_RECEIVED_WITH_PARKING,
+    templateId: TEMPLATES.RESERVATION_RECEIVED,
     variables: {
+      "#{LINK}": orderLink,
       "#{주차정보}": lines.join("\n"),
       "#{고객성함}": ordererName,
       "#{매장명}": companyName,
@@ -252,8 +257,8 @@ export async function sendSalesApplyOperator({ companyName, slug }: { companyNam
     return sendAlimtalk({
       to,
       templateId: TEMPLATES.SALES_APPLY_OPERATOR,
+      // 버튼(운영자 페이지)은 템플릿에 들어 있다
       variables: { "#{매장명}": companyName, "#{신청시각}": at },
-      buttons: [{ buttonType: "WL", buttonName: "운영자 페이지", linkMo: adminUrl, linkPc: adminUrl }],
     });
   }
   const client = new SolapiMessageService(process.env.SOLAPI_API_KEY!, process.env.SOLAPI_API_SECRET!);

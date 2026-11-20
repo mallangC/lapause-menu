@@ -153,6 +153,12 @@ export default function OrderCheckout(props: OrderCheckoutProps) {
           </div>
         </div>
 
+        {/* 손님 주문 확인 페이지 — 진행 단계·매장 안내 */}
+        {done.orderToken && (
+          <Link href={`/${slug}/order/${done.orderToken}`} className="block w-full text-center py-3.5 rounded-2xl bg-gold-500 text-white text-base font-medium hover:bg-gold-600 transition-colors">
+            주문 진행 확인하기
+          </Link>
+        )}
         <Link href={`/${slug}`} className="block text-center text-gold-500 text-base py-3 hover:text-gold-600 transition-colors">
           홈으로 돌아가기 →
         </Link>

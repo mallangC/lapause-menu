@@ -134,7 +134,7 @@ export async function PATCH(
   try {
     const { data: reservation } = await supabase
       .from("reservations")
-      .select("orderer_name, orderer_phone, items, final_price, delivery_type, desired_date, desired_time, customer_profile_id, company_id, after_hours_pickup")
+      .select("orderer_name, orderer_phone, items, final_price, delivery_type, desired_date, desired_time, customer_profile_id, company_id, after_hours_pickup, order_token")
       .eq("id", id)
       .single();
 
@@ -142,7 +142,7 @@ export async function PATCH(
 
     const { data: companyRaw } = await supabase
       .from("companies")
-      .select("name, phone, is_demo, settings:company_settings(address, parking, after_hours_note)")
+      .select("name, slug, phone, is_demo, settings:company_settings(address, parking, after_hours_note)")
       .eq("id", reservation.company_id)
       .single();
 
@@ -177,6 +177,8 @@ export async function PATCH(
         parking: company?.parking ?? null,
         // 영업시간 외 수령 주문에만 사장님 안내를 붙인다
         afterHoursNote: reservation.after_hours_pickup ? company?.afterHoursNote ?? null : null,
+        // [주문 확인하기] 버튼 — 주문 확인 페이지 (주문 코드는 모든 예약에 있다)
+        orderLink: `${companyRaw?.slug ?? ""}/order/${reservation.order_token}`,
       });
     } else if (status === "취소") {
       await sendReservationCancelled({

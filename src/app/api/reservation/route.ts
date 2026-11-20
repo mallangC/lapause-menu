@@ -285,6 +285,8 @@ export async function POST(request: NextRequest) {
 
     // DB에 예약 저장
     let savedReservationId: string | null = null;
+    // 손님 주문 확인 페이지 코드 (/{매장}/order/{코드})
+    let savedOrderToken: string | null = null;
     if (companyId) {
       const { form, orderer, delivery, finalPrice } = body;
       // 손님은 예약 테이블에 직접 쓸 수 없으므로 서버 전용 클라이언트로 저장
@@ -343,7 +345,7 @@ export async function POST(request: NextRequest) {
         // 주문 경로 — 사장님 스타일·찾아본 사진 주문은 상품 id로 서버가 정한다
         order_path: isPhotoOrder ? "photo_request" : isStyleOrder ? "owner_style" : body.orderPath === "product_detail" || body.orderPath === "intro_photo" ? body.orderPath : "recommend",
         traffic_source: normalizeTrafficSource(body.trafficSource) ?? "direct",
-      }).select("id");
+      }).select("id, order_token");
 
       if (insertError) {
         console.error("[reservation] insert 실패:", insertError.message);
@@ -360,6 +362,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "예약 저장 중 오류가 발생했습니다." }, { status: 500 });
       }
       savedReservationId = insertData?.[0]?.id ?? null;
+      savedOrderToken = (insertData?.[0] as { order_token?: string } | undefined)?.order_token ?? null;
     }
 
     // 사장님에게 카카오 알림 발송 (데모 매장은 발송하지 않음)
@@ -389,6 +392,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       reservationId: savedReservationId,
+      orderToken: savedOrderToken,
       bankName: companyInfo?.bank_name ?? null,
       // 무통장 입금 주문은 입금해야 하므로 계좌번호 전체를, 그 외에는 가려서
       bankAccount: companyInfo?.bank_account
