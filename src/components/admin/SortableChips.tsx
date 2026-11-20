@@ -60,14 +60,14 @@ export default function SortableChips({ items, onReorder, children }: { items: C
               aria-label={`${n} 순서 바꾸기`}
               title="끌어서 순서 바꾸기"
               onPointerDown={(e) => onDown(e, n)}
-              className="absolute left-1 top-1/2 -translate-y-1/2 w-5 h-7 flex items-center justify-center text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing touch-none select-none text-sm leading-none"
+              className="absolute left-1 top-1/2 -translate-y-1/2 w-5 h-7 flex items-center justify-center text-gray-500 hover:text-gray-800 cursor-grab active:cursor-grabbing touch-none select-none text-sm leading-none"
             >
               ⠿
             </button>
             <button
               onClick={item.onDelete}
               disabled={item.deleting}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors text-base leading-none"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors text-base leading-none"
               title="삭제"
             >
               ×
