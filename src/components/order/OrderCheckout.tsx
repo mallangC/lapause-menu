@@ -325,7 +325,8 @@ export default function OrderCheckout(props: OrderCheckoutProps) {
             <TimeSlotGrid
               slots={slots}
               extraSlots={extraSlots}
-              afterHoursNote={afterHours.note}
+              afterHoursNote={c.extraNote}
+              extraLabel={c.extraLabel}
               value={form.desiredTime}
               onSelect={(slot) => { set("desiredTime", slot); clearFe("time"); }}
               error={fe.time}

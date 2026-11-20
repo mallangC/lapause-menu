@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { getMenuData } from "@/lib/menuCache";
 import { DEFAULT_COLOR_LEAD_DAYS, isTodayColorsEnabled, todayColorsFor } from "@/lib/todayColors";
-import { readAfterHours } from "@/lib/afterHours";
+import { readAfterHours, readUnattended } from "@/lib/afterHours";
 import { generateThemeVars, DEFAULT_THEME_BG, DEFAULT_THEME_ACCENT } from "@/lib/theme";
 import CheckoutClient from "./CheckoutClient";
 
@@ -59,6 +59,9 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
       isDemo={raw.is_demo ?? false}
       // 시즌이 걸린 상품 — 정해진 모습 그대로 파는 상품이라 꽃 색을 고르지 않는다
       seasonalProductIds={menu.products.filter((pr) => pr.seasons?.length).map((pr) => pr.id)}
+      // 바로 구매 메뉴 상품 — 제작시간 없이, 무인 픽업
+      instantProductIds={menu.products.filter((pr) => pr.instant).map((pr) => pr.id)}
+      unattended={readUnattended(s)}
       initialPaymentKey={sp.paymentKey ?? null}
       initialOrderId={sp.orderId ?? null}
       initialAmount={sp.amount ? Number(sp.amount) : null}

@@ -6,7 +6,7 @@ import { productTypeSummary, sendReservationConfirmedOwner } from "@/lib/solapi"
 import { cancelTossPayment, cartItemsTotal, isPastPickup, isValidDeliveryPart, loadCompanyProducts, loadOptionPrices } from "@/lib/orderPricing";
 import { isValidPreparedColor, preparedColorToSave } from "@/lib/todayColors";
 import { parsePaymentChoice } from "@/lib/payment";
-import { isAfterHoursPickup } from "@/lib/afterHours";
+import { isAfterHoursPickup, isUnattendedPickup, readUnattended, UNATTENDED_OFF, type Unattended } from "@/lib/afterHours";
 import type { BusinessHours, DateOverrides } from "@/lib/businessHours";
 import { normalizeTrafficSource } from "@/lib/trafficSource";
 
@@ -91,15 +91,20 @@ export async function POST(request: NextRequest) {
 
     // 영업시간 밖 수령인지 — 저장해 두고 확정 알림톡에 사장님 안내를 함께 보낸다
     let afterHoursPickup = false;
+    // 무인 픽업 — 바로 구매 상품만, 영업시간 밖 무인 픽업 시간 (상품을 확인한 뒤 정한다)
+    let unattended: Unattended = UNATTENDED_OFF;
+    let pickupHours: { business_hours?: unknown; date_overrides?: unknown } = {};
     // 색 맞춤 최소 금액 (상품 금액이 이보다 작으면 고른 색 대신 '사장님께 맡길게요'로 저장)
     let colorMinPrice = 0;
     if (companyId && body.desiredDate) {
       const { data: settingsRow } = await supabase
         .from("company_settings")
-        .select("closed_dates, business_hours, date_overrides, color_min_price")
+        .select("closed_dates, business_hours, date_overrides, color_min_price, unattended_enabled, unattended_start, unattended_end")
         .eq("company_id", companyId)
         .single();
       colorMinPrice = (settingsRow?.color_min_price as number | null) ?? 0;
+      unattended = readUnattended((settingsRow ?? {}) as Record<string, unknown>);
+      pickupHours = settingsRow ?? {};
       const closedDates = (settingsRow?.closed_dates as string[] | null) ?? [];
       const businessHours = (settingsRow?.business_hours as Record<string, { closed: boolean }> | null) ?? {};
       const desiredDow = new Date(`${body.desiredDate}T00:00:00`).getDay();
@@ -130,6 +135,14 @@ export async function POST(request: NextRequest) {
       loadCompanyProducts(adminClient, companyId, items.map((i) => i.productId)),
     ]);
     const itemsTotal = cartItemsTotal(items, dbProducts, optionPrices);
+    const unattendedPickup = body.deliveryType !== "배송" && isUnattendedPickup(
+      items.length > 0 && items.every((i) => dbProducts.get(i.productId)?.instant === true),
+      unattended,
+      body.desiredDate,
+      body.desiredTime,
+      pickupHours.business_hours as BusinessHours | null,
+      pickupHours.date_overrides as DateOverrides | null
+    );
     if (itemsTotal === null) {
       return NextResponse.json({ error: "주문 상품 정보가 올바르지 않습니다. 장바구니를 다시 확인해주세요." }, { status: 400 });
     }
@@ -225,7 +238,8 @@ export async function POST(request: NextRequest) {
       desired_date: desiredDate,
       desired_time: desiredTime || null,
       // 영업시간 외 수령 (그런 주문만 표시 — 확정 알림톡에 안내를 붙인다)
-      ...(afterHoursPickup ? { after_hours_pickup: true } : {}),
+      // 무인 픽업이면 영업시간 외 수령 대신 무인 픽업으로 (알림톡 안내도 무인 픽업 안내)
+      ...(unattendedPickup ? { unattended_pickup: true } : afterHoursPickup ? { after_hours_pickup: true } : {}),
       requests: requests || null,
       // 오늘 있는 색으로 준비하는 주문 — 손님이 고른 색 (정해진 값만, 고른 주문에만 넣는다)
       // 최소 금액보다 작은 주문이면 '사장님께 맡길게요'로 (상품 금액 기준 — 추가 옵션·배송비 제외)

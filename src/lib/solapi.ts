@@ -85,6 +85,7 @@ export async function sendReservationReceived({
   companyAddress,
   parking,
   afterHoursNote,
+  unattendedNote,
   orderLink,
 }: {
   to: string;
@@ -100,18 +101,22 @@ export async function sendReservationReceived({
   parking?: string | null;
   /** 영업시간 외 수령 주문이면 사장님이 써 둔 안내 (아니면 null) */
   afterHoursNote?: string | null;
+  /** 무인 픽업 주문이면 사장님이 써 둔 가져가는 방법 (아니면 null) */
+  unattendedNote?: string | null;
   /** 주문 확인 페이지 경로 '매장/order/주문코드' — [주문 확인하기] 버튼 #{LINK} */
   orderLink: string;
 }) {
   // #{주차정보} 칸 — 주문에 맞는 안내를 줄줄이 (마지막 연락 줄은 늘 들어가서 칸이 비지 않는다)
   //  · 주차 정보가 있으면 → 주차 : 가능
   //  · 영업시간 외 수령이면 → [영업시간 외 수령 안내] + 사장님 안내
+  //  · 무인 픽업이면 → [무인 픽업 안내] + 사장님 안내
   //  · 항상 → 궁금한 점은 매장으로 연락 주세요 : 전화번호
   const PARKING_LINE: Record<string, string> = { "주차 가능": "주차 : 가능", "잠시 주차 가능": "주차 : 잠시 가능", "주차 불가": "주차 : 불가" };
   const lines: string[] = [];
   // 정해진 세 가지는 짧게, 사장님이 직접 쓴 안내는 그대로
   if (parking?.trim()) lines.push(PARKING_LINE[parking] ?? `주차 : ${parking.trim()}`);
   if (afterHoursNote?.trim()) lines.push(`[영업시간 외 수령 안내]\n${afterHoursNote.trim()}`);
+  if (unattendedNote?.trim()) lines.push(`[무인 픽업 안내]\n${unattendedNote.trim()}`);
   lines.push(companyPhone ? `궁금한 점은 매장으로 연락 주세요 : ${companyPhone}` : "궁금한 점은 매장으로 연락 주세요.");
   return sendAlimtalk({
     to,

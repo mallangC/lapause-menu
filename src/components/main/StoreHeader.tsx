@@ -12,6 +12,8 @@ interface StoreHeaderProps {
   productTypeList: string[];
   seasonList: string[];
   consultEnabled: boolean;
+  /** 바로 구매 메뉴 이름 — 숨겼거나 상품이 없으면 null */
+  instantMenu?: string | null;
 }
 
 export default function StoreHeader({
@@ -21,6 +23,7 @@ export default function StoreHeader({
   productTypeList,
   seasonList,
   consultEnabled,
+  instantMenu = null,
 }: StoreHeaderProps) {
   // 로고 → 첫 화면 대화 (판매를 꺼 둔 매장은 대화가 없어 메뉴판으로)
   const homeHref = consultEnabled ? `/${slug}` : `/${slug}/menu`;
@@ -121,6 +124,15 @@ export default function StoreHeader({
           >
             전체 상품
           </Link>
+          {instantMenu && (
+            <Link
+              href={`/${slug}/menu?tab=instant`}
+              className="px-4 py-3.5 text-lg md:text-xl font-medium text-gray-800 hover:bg-gray-50 rounded-xl transition-colors"
+              onClick={() => setMenuOpen(false)}
+            >
+              {instantMenu}
+            </Link>
+          )}
           {productTypeList.map((type) => (
             <Link
               key={type}

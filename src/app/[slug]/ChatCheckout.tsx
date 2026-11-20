@@ -430,7 +430,8 @@ export default function ChatCheckout(props: Props) {
                 <TimeSlotGrid
                   slots={slots}
                   extraSlots={extraSlots}
-                  afterHoursNote={afterHours.note}
+                  afterHoursNote={c.extraNote}
+                  extraLabel={c.extraLabel}
                   value={form.desiredTime}
                   onSelect={(slot) => {
                     set("desiredTime", slot);

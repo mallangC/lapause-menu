@@ -12,7 +12,7 @@ import { resolveDayHours, type DateOverrides } from "@/lib/businessHours";
 import { leadHoursFor } from "@/lib/productTypes";
 import { colorPickMode, isNearColorDate } from "@/lib/todayColors";
 import { cashReceiptError, type CashReceipt, type PaymentMethod } from "@/lib/payment";
-import { afterHoursSlots, type AfterHours } from "@/lib/afterHours";
+import { afterHoursSlots, unattendedSlots, UNATTENDED_OFF, type AfterHours, type Unattended } from "@/lib/afterHours";
 import { readTrafficSource } from "@/lib/trafficSource";
 import { PHOTO_PRODUCT_ID, STYLE_PRODUCT_ID, isVirtualProductId, photoOrderKey, readPhotoOrder } from "@/lib/styleOrder";
 import { ymd, type ConsultForm, type OrderProduct } from "./orderTypes";
@@ -128,6 +128,10 @@ export interface OrderCheckoutProps {
   emptyFallback?: React.ReactNode;
   /** 시즌이 걸린 상품 id — 정해진 모습 그대로 파는 상품이라 꽃 색을 고르지 않는다 */
   seasonalProductIds?: string[];
+  /** 바로 구매 메뉴 상품 — 이미 만들어 둔 상품 (제작시간 없음 · 꽃 색 고르기 없음 · 무인 픽업) */
+  instantProductIds?: string[];
+  /** 무인 픽업 — 바로 구매 상품만 담긴 주문이면 영업시간 밖 이 시간에도 가져갈 수 있다 */
+  unattended?: Unattended;
   // 매장 설정
   businessHours: Record<string, DayHours>;
   closedDates: string[];
@@ -177,7 +181,7 @@ export const cartLineAmount = (i: CartItem, prices: { bag: number; preservative:
  */
 export function useOrderCheckout(props: OrderCheckoutProps) {
   const {
-    slug, companyName, notificationEmail = null, order: orderProp, returning, draftKey, header, stepBar, themeVars, initialRequests = "", onRestore, onPaid, keepScrollOnDone = false, emptyFallback, seasonalProductIds = [],
+    slug, companyName, notificationEmail = null, order: orderProp, returning, draftKey, header, stepBar, themeVars, initialRequests = "", onRestore, onPaid, keepScrollOnDone = false, emptyFallback, seasonalProductIds = [], instantProductIds = [], unattended = UNATTENDED_OFF,
     businessHours, closedDates, dateOverrides = {}, minLeadTimes, consultNotice, storeAddress, deliveryEnabled, deliveryFees,
     messageCardEnabled, messageCardPrice, shoppingBagEnabled, shoppingBagPrice, preservativeEnabled, preservativePrice,
     todayColors, colorLeadDays, colorPickEnabled, colorMinPrice, afterHours, transferAvailable, isDemo,
@@ -297,7 +301,13 @@ export function useOrderCheckout(props: OrderCheckoutProps) {
   // 받는 날이 색 맞춤 가능 일수 안쪽이면 오늘 있는 색, 그 이후면 모든 색 중에서 고른다
   // 사장님 스타일은 색을 고르지 않는다 (사장님께 맡기는 주문 — 피하고 싶은 것만 대화에서 받았다)
   // 시즌 상품은 정해진 모습 그대로 파는 상품이라 색을 고르지 않는다 (장바구니에 하나라도 있으면 주문 전체)
-  const hasSeasonal = single ? !!product && seasonalProductIds.includes(product.id) : checkedItems.some((i) => seasonalProductIds.includes(i.productId));
+  // 바로 구매 상품도 이미 만들어 둔 모습 그대로라 색을 고르지 않는다
+  const fixedIds = [...seasonalProductIds, ...instantProductIds];
+  const hasSeasonal = single ? !!product && fixedIds.includes(product.id) : checkedItems.some((i) => fixedIds.includes(i.productId));
+  // 바로 구매 상품만 담긴 주문 — 제작시간 없이 지금부터, 무인 픽업을 켠 매장은 무인 픽업 시간도
+  const orderIds = single ? (product ? [product.id] : []) : checkedItems.map((i) => i.productId);
+  const isInstant = (id: string) => instantProductIds.includes(id);
+  const allInstant = orderIds.length > 0 && orderIds.every(isInstant);
   const colorMode = isStyleOrder || hasSeasonal ? null : colorPickMode(colorPickEnabled, todayColors, colorLeadDays, desiredDate);
   const needsColor = colorMode !== null;
   // 찾아본 사진 주문 — 가까운 날인데 오늘 색이 없으면 색 고르기 대신 '매장에 준비된 꽃으로' 안내
@@ -332,7 +342,8 @@ export function useOrderCheckout(props: OrderCheckoutProps) {
   const day = selectedDate ? resolveDayHours(selectedDate, businessHours, dateOverrides) : null;
   const isToday = !!selectedDate && ymd(selectedDate) === ymd(now);
   // 당일 준비 시간 — 주문 상품 유형 중 가장 오래 걸리는 것 (유형별로 정하지 않았으면 기본)
-  const itemTypes = single ? [product?.product_type ?? ""] : checkedItems.map((i) => i.product_type);
+  // 바로 구매 상품은 준비 시간이 없다 — 섞여 있으면 주문 제작 상품 기준
+  const itemTypes = single ? (product && !isInstant(product.id) ? [product.product_type ?? ""] : []) : checkedItems.filter((i) => !isInstant(i.productId)).map((i) => i.product_type);
   const leadHours = Math.max(0, ...itemTypes.map((t) => leadHoursFor(minLeadTimes, t)));
   const minTimeDate = isToday ? new Date(now.getTime() + leadHours * 3600_000) : null;
   // 준비 시간을 더했더니 다음 날로 넘어가면 오늘 고를 시간은 없다
@@ -347,7 +358,16 @@ export function useOrderCheckout(props: OrderCheckoutProps) {
     }
   }
   // 영업시간 외 수령 — 오늘이면 준비 시간 이후만, 준비는 마감 전까지 끝나야 (사장님 설정에 따라)
-  const extraSlots = selectedDate && !leadOverflow ? afterHoursSlots(day, afterHours, leadStart, { selectedDate, leadHours, businessHours, dateOverrides }) : [];
+  // 무인 픽업 — 바로 구매 상품만이고 매장이 켜 두었으면 영업시간 외 수령 대신 무인 픽업 시간
+  const unattendedOn = allInstant && !!unattended.start && form.deliveryType !== "배송";
+  const extraSlots = !selectedDate || leadOverflow
+    ? []
+    : unattendedOn
+    ? unattendedSlots(day, unattended, leadStart)
+    : afterHoursSlots(day, afterHours, leadStart, { selectedDate, leadHours, businessHours, dateOverrides });
+  // 점선 시간 이름·고르면 보여 줄 사장님 안내
+  const extraLabel = unattendedOn ? "무인 픽업" : "영업시간 외 수령";
+  const extraNote = unattendedOn ? unattended.note : afterHours.note;
 
   // ── 보관한 주문서 되살리기 (결제 실패·저장 실패) ──
   const restore = (d: Draft) => {
@@ -629,7 +649,7 @@ export function useOrderCheckout(props: OrderCheckoutProps) {
 
 
   return {
-    restoredOrder, setRestoredOrder, order, single, cart, product, quantity, isPhotoOrder, isStyleOrder, form, setForm, set, selectedDate, setSelectedDate, desiredDate, name, setName, phone, setPhone, recipientName, setRecipientName, recipientPhone, setRecipientPhone, address, setAddress, addressDetail, setAddressDetail, deliveryFee, setDeliveryFee, deliveryDistance, setDeliveryDistance, distanceLoading, setDistanceLoading, messageCardCount, setMessageCardCount, shoppingBagCount, setShoppingBagCount, preservativeCount, setPreservativeCount, messageCardContents, setMessageCardContents, privacyAgreed, setPrivacyAgreed, cancellationAgreed, setCancellationAgreed, noticeAgreed, setNoticeAgreed, paymentMethod, setPaymentMethod, cashReceipt, setCashReceipt, fe, setFe, clearFe, submitting, setSubmitting, error, setError, processing, setProcessing, done, setDone, widgetReady, setWidgetReady, widgetRef, paymentOrderId, photoData, setPhotoData, refNotice, refName, refPhone, refDeliveryType, refDeliveryInfo, refDate, refTime, refPayment, refAgreement, effMsg, effBag, effPreservative, optionPrices, checkedItems, msgCardAmt, bagAmt, preservativeAmt, goodsAmt, deliveryAmt, finalPrice, lines, hasSeasonal, colorMode, needsColor, photoNoColorNotice, colorAmount, pickAddress, dateAllowed, now, day, isToday, itemTypes, leadHours, minTimeDate, leadOverflow, leadStart, slots, extraSlots, restore, readDraft, send, finish, makeDraft, submit, confirm,
+    restoredOrder, setRestoredOrder, order, single, cart, product, quantity, isPhotoOrder, isStyleOrder, form, setForm, set, selectedDate, setSelectedDate, desiredDate, name, setName, phone, setPhone, recipientName, setRecipientName, recipientPhone, setRecipientPhone, address, setAddress, addressDetail, setAddressDetail, deliveryFee, setDeliveryFee, deliveryDistance, setDeliveryDistance, distanceLoading, setDistanceLoading, messageCardCount, setMessageCardCount, shoppingBagCount, setShoppingBagCount, preservativeCount, setPreservativeCount, messageCardContents, setMessageCardContents, privacyAgreed, setPrivacyAgreed, cancellationAgreed, setCancellationAgreed, noticeAgreed, setNoticeAgreed, paymentMethod, setPaymentMethod, cashReceipt, setCashReceipt, fe, setFe, clearFe, submitting, setSubmitting, error, setError, processing, setProcessing, done, setDone, widgetReady, setWidgetReady, widgetRef, paymentOrderId, photoData, setPhotoData, refNotice, refName, refPhone, refDeliveryType, refDeliveryInfo, refDate, refTime, refPayment, refAgreement, effMsg, effBag, effPreservative, optionPrices, checkedItems, msgCardAmt, bagAmt, preservativeAmt, goodsAmt, deliveryAmt, finalPrice, lines, hasSeasonal, colorMode, needsColor, photoNoColorNotice, colorAmount, pickAddress, dateAllowed, now, day, isToday, itemTypes, leadHours, minTimeDate, leadOverflow, leadStart, slots, extraSlots, extraLabel, extraNote, allInstant, restore, readDraft, send, finish, makeDraft, submit, confirm,
   };
 }
 

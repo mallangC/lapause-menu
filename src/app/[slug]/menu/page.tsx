@@ -5,6 +5,7 @@ import ProductsClient from "../products/ProductsClient";
 import ServiceSuspended from "@/components/main/ServiceSuspended";
 import { generateThemeVars, DEFAULT_THEME_BG, DEFAULT_THEME_ACCENT } from "@/lib/theme";
 import { formatPhone } from "@/lib/format";
+import { instantMenuName, readUnattended } from "@/lib/afterHours";
 import type { Metadata } from "next";
 
 interface Props {
@@ -71,6 +72,8 @@ export default async function CompanyMenuPage({ params }: Props) {
         productTypeOrder={(s.product_type_order as string[] | null) ?? []}
         seasonOrder={(s.season_order as string[] | null) ?? []}
         consultEnabled={(s.consult_enabled as boolean) ?? false}
+        // 바로 구매 메뉴 — 사장님이 숨겼으면 없음 (상품이 하나도 없으면 메뉴에 안 보인다)
+        instantMenu={s.instant_menu_hidden ? null : { name: instantMenuName(s), unattended: !!readUnattended(s).start }}
         locationUrl={(s.location_url as string | null) ?? null}
         kakaoChannelUrl={(s.kakao_channel_url as string | null) ?? null}
         instagramUrl={(s.instagram_url as string | null) ?? null}

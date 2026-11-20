@@ -26,6 +26,8 @@ interface ProductsClientProps {
   productTypeOrder?: string[];
   seasonOrder?: string[];
   consultEnabled: boolean;
+  /** 바로 구매 메뉴 — 이름과 안내 (숨겼으면 null) */
+  instantMenu?: { name: string; unattended: boolean } | null;
   locationUrl?: string | null;
   kakaoChannelUrl?: string | null;
   instagramUrl?: string | null;
@@ -52,6 +54,7 @@ export default function ProductsClient({
   productTypeOrder,
   seasonOrder,
   consultEnabled,
+  instantMenu = null,
   locationUrl,
   kakaoChannelUrl,
   instagramUrl,
@@ -63,14 +66,15 @@ export default function ProductsClient({
   address,
 }: ProductsClientProps) {
   const searchParams = useSearchParams();
-  const tab = searchParams.get("tab") as "featured" | "season" | null;
+  const tab = searchParams.get("tab") as "featured" | "season" | "instant" | null;
   const typeParam = searchParams.get("type");
-  const activeTab = tab === "featured" ? "featured" : tab === "season" ? "season" : "all";
+  const activeTab = tab === "featured" ? "featured" : tab === "season" ? "season" : tab === "instant" && instantMenu ? "instant" : "all";
 
   const [filter, setFilter] = useState<FilterState>({
     ...EMPTY_FILTER,
     featured: activeTab === "featured",
     isSeason: activeTab === "season",
+    isInstant: activeTab === "instant",
     productTypes: typeParam ? [typeParam] : [],
   });
 
@@ -79,6 +83,7 @@ export default function ProductsClient({
       ...EMPTY_FILTER,
       featured: activeTab === "featured",
       isSeason: activeTab === "season",
+      isInstant: activeTab === "instant",
       productTypes: typeParam ? [typeParam] : [],
     });
   }, [activeTab, typeParam]);
@@ -92,7 +97,7 @@ export default function ProductsClient({
 
   const filteredProducts = applyFilter(products, filter)
     .filter((p) => {
-      if (!filter.isSeason && hiddenProductTypes.includes(p.product_type)) return false;
+      if (!filter.isSeason && !filter.isInstant && hiddenProductTypes.includes(p.product_type)) return false;
       if (p.seasons.length > 0 && p.seasons.every((s) => hiddenSeasons.includes(s))) return false;
       return true;
     })
@@ -131,6 +136,7 @@ export default function ProductsClient({
           productTypeList={productTypeList}
           seasonList={seasonList}
           consultEnabled={consultEnabled}
+          instantMenu={instantMenu && products.some((p) => p.instant) ? instantMenu.name : null}
         />
 
         {/* PC 필터 띠 */}
@@ -262,6 +268,19 @@ export default function ProductsClient({
       {/* 상품 목록 — 남는 높이를 채워 푸터를 화면 바닥으로 민다 */}
       <div className="max-w-6xl mx-auto w-full flex-1 flex flex-col">
         {(() => {
+          if (activeTab === "instant" && instantMenu) {
+            return (
+              <>
+                <div className="pt-3.5 pb-2.5 px-4 md:px-2">
+                  <p className="text-lg font-semibold text-gray-800">{instantMenu.name}</p>
+                  <p className="text-xs text-gray-500 mt-0.5 break-keep">
+                    {instantMenu.unattended ? "이미 만들어 둔 꽃이에요. 결제하고 바로 가져가실 수 있어요. 매장에 사람이 없는 시간에도 가져가실 수 있어요." : "이미 만들어 둔 꽃이에요. 결제하고 바로 가져가실 수 있어요."}
+                  </p>
+                </div>
+                <ProductGrid products={filteredProducts} consultEnabled={consultEnabled} slug={slug} />
+              </>
+            );
+          }
           if (activeTab !== "all" || hasFilter || !!typeParam) {
             return <ProductGrid products={filteredProducts} consultEnabled={consultEnabled} slug={slug} />;
           }

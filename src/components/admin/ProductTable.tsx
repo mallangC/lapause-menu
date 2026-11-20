@@ -1,5 +1,6 @@
 "use client";
 
+import { DEFAULT_INSTANT_MENU_NAME } from "@/lib/afterHours";
 import PriceTag from "@/components/PriceTag";
 import React, { useState, useEffect, useRef } from "react";
 import StoreImage from "@/components/StoreImage";
@@ -168,16 +169,20 @@ export default function ProductTable({ products, onEdit, onDelete, onStatusChang
       });
     supabase
       .from("company_settings")
-      .select("hidden_seasons")
+      .select("hidden_seasons, instant_menu_name")
       .eq("company_id", companyId)
       .maybeSingle()
-      .then(({ data }) => setHiddenSeasons((data?.hidden_seasons as string[] | null) ?? []));
+      .then(({ data }) => {
+        setHiddenSeasons((data?.hidden_seasons as string[] | null) ?? []);
+        setInstantName((data?.instant_menu_name as string | null)?.trim() || DEFAULT_INSTANT_MENU_NAME);
+      });
   }, [companyId]);
 
   const isValidType = (type: string) =>
     (PRODUCT_TYPES as readonly string[]).includes(type) || knownCustomTypes.includes(type);
   const [filterType, setFilterType] = useState("");
   const [filterSeason, setFilterSeason] = useState("");
+  const [instantName, setInstantName] = useState<string>(DEFAULT_INSTANT_MENU_NAME);
   // 분위기 — '' 전체 / 분위기 이름 / '__none' 분위기를 안 정한 상품
   const [filterMood, setFilterMood] = useState("");
   const [filterBadge, setFilterBadge] = useState("");
@@ -189,7 +194,8 @@ export default function ProductTable({ products, onEdit, onDelete, onStatusChang
   const filtered = [...products]
     .filter((p) => {
       if (filterType && p.product_type !== filterType) return false;
-      if (filterSeason && !(p.seasons ?? []).includes(filterSeason)) return false;
+      // '__instant' — 바로 구매 메뉴 상품
+      if (filterSeason === "__instant" ? !p.instant : filterSeason && !(p.seasons ?? []).includes(filterSeason)) return false;
       if (filterMood === "__none" ? !!p.mood : filterMood && p.mood !== filterMood) return false;
       if (filterBadge === "popular" && !p.is_popular) return false;
       if (filterBadge === "recommended" && !p.is_recommended) return false;
@@ -265,9 +271,13 @@ export default function ProductTable({ products, onEdit, onDelete, onStatusChang
             <Chip key={t} label={t} active={filterType === t} onClick={() => { setFilterType(filterType === t ? "" : t); resetPage(); }} />
           ))}
 
-          {seasonChips.length > 0 && (
+          {(seasonChips.length > 0 || products.some((p) => p.instant)) && (
             <>
               <div className="h-4 w-px bg-gray-300 shrink-0 mx-0.5" />
+              {/* 바로 구매 메뉴에 넣은 상품 */}
+              {products.some((p) => p.instant) && (
+                <Chip label={instantName} active={filterSeason === "__instant"} onClick={() => { setFilterSeason(filterSeason === "__instant" ? "" : "__instant"); resetPage(); }} />
+              )}
               {seasonChips.map((x) => (
                 <Chip key={`season-${x}`} label={x} active={filterSeason === x} onClick={() => { setFilterSeason(filterSeason === x ? "" : x); resetPage(); }} />
               ))}

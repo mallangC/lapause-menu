@@ -802,6 +802,7 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
                         {r.desired_time && <span className="text-xs text-gray-400">{formatTimeOnly(r.desired_time)}</span>}
                         {/* 영업시간 밖 수령 — 점선 뱃지 (손님 주문 화면의 점선 시간과 같은 표시) */}
                         {r.after_hours_pickup && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full border border-dashed border-gold-400 text-gold-600">영업시간 외</span>}
+                        {r.unattended_pickup && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full border border-dashed border-gold-400 text-gold-600">무인 픽업</span>}
                       </div>
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${isCancelled ? "border border-gray-300 text-gray-400" : r.delivery_type === "배송" ? "border border-blue-400 text-blue-500" : "border border-gray-400 text-gray-500"}`}>
                         {r.delivery_type}
@@ -885,6 +886,7 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
                           {time || "—"}
                           {/* 영업시간 밖 수령 */}
                           {r.after_hours_pickup && <span className="block mt-0.5 text-[10px] font-medium text-gold-600">영업시간 외</span>}
+                          {r.unattended_pickup && <span className="block mt-0.5 text-[10px] font-medium text-gold-600">무인 픽업</span>}
                         </td>
                         <td className="py-3 pr-3 whitespace-nowrap text-center">
                           {/* 확인하지 않은 네이버 예약·취소 — 이름 앞 빨간 점 */}

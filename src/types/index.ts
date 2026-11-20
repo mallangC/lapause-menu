@@ -27,6 +27,8 @@ export interface Product {
   flower_colors: string[];
   wrapping_color: "밝은 계열" | "어두운 계열" | "기타" | null;
   seasons: string[];
+  /** 바로 구매 메뉴 — 이미 만들어 둔 상품 (제작시간 없이 바로, 무인 픽업 가능) */
+  instant?: boolean;
   mood: string | null;
   company_id: string;
   is_popular: boolean;
@@ -47,6 +49,8 @@ export interface FilterState {
   seasons: string[];
   featured: boolean;
   isSeason: boolean;
+  /** 바로 구매 메뉴 탭 */
+  isInstant?: boolean;
 }
 
 export type ProductInput = Omit<Product, "id" | "created_at" | "company_id">;

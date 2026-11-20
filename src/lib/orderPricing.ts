@@ -42,13 +42,15 @@ export interface DbProduct {
   bag_included: boolean | null;
   message_card_unavailable: boolean | null;
   preservative_unavailable: boolean | null;
+  /** 바로 구매 메뉴 상품 (무인 픽업 판단) */
+  instant?: boolean | null;
 }
 
 /** 이 매장의 상품만 가져온다 (다른 매장 상품 id로 바꿔치기 방지) */
 export async function loadCompanyProducts(db: SupabaseClient, companyId: string, ids: string[]) {
   const { data } = await db
     .from("products")
-    .select("id, price, name, product_type, bag_included, message_card_unavailable, preservative_unavailable")
+    .select("id, price, name, product_type, bag_included, message_card_unavailable, preservative_unavailable, instant")
     .eq("company_id", companyId)
     .in("id", ids);
   return new Map((data as DbProduct[] | null ?? []).map((p) => [p.id, p]));

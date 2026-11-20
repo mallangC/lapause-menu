@@ -11,6 +11,9 @@ export const EMPTY_FILTER: FilterState = {
 };
 
 export function applyFilter(products: Product[], filter: FilterState): Product[] {
+  // 바로 구매 메뉴 — 이미 만들어 둔 상품만 (다른 탭에는 나오지 않는다)
+  if (filter.isInstant) return products.filter((p) => p.instant);
+  products = products.filter((p) => !p.instant);
   if (filter.isSeason) {
     if (filter.seasons.length > 0) {
       return products.filter((p) => filter.seasons.some((s) => p.seasons.includes(s)));

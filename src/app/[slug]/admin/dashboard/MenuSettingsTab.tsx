@@ -9,6 +9,7 @@ import { normalizeSizeConfig, sizeConfigImages } from "@/lib/sizeTiers";
 import { removeStorageFiles } from "@/lib/storageCleanup";
 import { PRODUCT_TYPES_CHANGED, sortByOrder } from "@/lib/productTypes";
 import SortableChips, { type ChipItem } from "@/components/admin/SortableChips";
+import InstantMenuSettings from "./InstantMenuSettings";
 
 interface Props {
   companyId: string;
@@ -304,6 +305,9 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
           </div>
         </div>
       </div>
+
+      {/* 바로 구매 메뉴 — 이미 만들어 둔 상품 (제작시간 없이 바로 · 무인 픽업) */}
+      <InstantMenuSettings companyId={companyId} onSettingsSaved={onSettingsSaved} />
 
       {/* 연결된 상품이 있어 유형을 지울 수 없을 때 */}
       {blockedDelete && (

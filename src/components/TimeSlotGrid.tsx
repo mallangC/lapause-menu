@@ -15,9 +15,11 @@ interface Props {
   error?: boolean;
   /** 영업시간 외 수령 안내 (사장님이 쓴 찾아가는 방법 등) — 영업시간 외 시간을 고르면 보여준다 */
   afterHoursNote?: string;
+  /** 점선 시간의 이름 — 기본 '영업시간 외 수령', 바로 구매 상품만이면 '무인 픽업' */
+  extraLabel?: string;
 }
 
-export default function TimeSlotGrid({ slots, extraSlots, value, onSelect, error, afterHoursNote }: Props) {
+export default function TimeSlotGrid({ slots, extraSlots, value, onSelect, error, afterHoursNote, extraLabel = "영업시간 외 수령" }: Props) {
   const all = [...slots, ...extraSlots].sort();
   const isExtra = (s: string) => extraSlots.includes(s);
   return (
@@ -25,7 +27,7 @@ export default function TimeSlotGrid({ slots, extraSlots, value, onSelect, error
       {extraSlots.length > 0 && (
         <p className="text-xs text-gray-500 bg-[color-mix(in_srgb,var(--color-gold-500)_6%,#fff)] rounded-lg px-3 py-2 break-keep">
           <span className="inline-block w-5 h-3 align-[-1px] rounded-[3px] border border-dashed border-gold-400 bg-white mr-1" aria-hidden />
-          점선 시간은 영업시간 외 수령이에요.
+          점선 시간은 {extraLabel}이에요.
         </p>
       )}
       <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
@@ -54,7 +56,7 @@ export default function TimeSlotGrid({ slots, extraSlots, value, onSelect, error
       {/* 영업시간 외 시간을 골랐을 때 — 사장님 안내 */}
       {extraSlots.includes(value) && afterHoursNote?.trim() && (
         <div className="rounded-lg border border-dashed border-gold-400 bg-white px-3 py-2.5">
-          <p className="text-xs font-medium text-gold-600">영업시간 외 수령 안내</p>
+          <p className="text-xs font-medium text-gold-600">{extraLabel} 안내</p>
           <p className="text-sm text-gray-700 mt-1 whitespace-pre-line break-keep">{afterHoursNote}</p>
         </div>
       )}

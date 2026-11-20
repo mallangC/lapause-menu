@@ -5,7 +5,7 @@ import { sortByOrder } from "@/lib/productTypes";
 import ConsultClient from "./ConsultClient";
 import { parseChatAnswers, parseStyleOrder } from "@/lib/styleOrder";
 import { DEFAULT_COLOR_LEAD_DAYS, isTodayColorsEnabled, todayColorsFor } from "@/lib/todayColors";
-import { readAfterHours } from "@/lib/afterHours";
+import { readAfterHours, readUnattended } from "@/lib/afterHours";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -77,6 +77,7 @@ export default async function ConsultPage({ params, searchParams }: Props) {
       colorPickEnabled={isTodayColorsEnabled(s as { today_colors_enabled?: boolean | null })}
       colorMinPrice={(s.color_min_price as number | undefined) ?? 0}
       afterHours={readAfterHours(s)}
+      unattended={readUnattended(s)}
       // 무통장 입금 — 매장 계좌(은행·계좌번호·예금주)가 모두 등록돼 있어야 받는다
       transferAvailable={!!(s.bank_name && s.bank_account && s.bank_holder)}
       initialQuantity={quantity ? Math.max(1, parseInt(quantity)) : 1}

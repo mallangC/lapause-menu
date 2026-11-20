@@ -14,7 +14,7 @@ import FlowerNoticeModal from "@/components/FlowerNoticeModal";
 import StoreHeader from "@/components/main/StoreHeader";
 import ColorMinPriceHint from "@/components/ColorMinPriceHint";
 import { recommendProducts } from "@/lib/recommend";
-import { AFTER_HOURS_OFF, type AfterHours } from "@/lib/afterHours";
+import { AFTER_HOURS_OFF, UNATTENDED_OFF, type AfterHours, type Unattended } from "@/lib/afterHours";
 import { PHOTO_PRODUCT_ID, isVirtualProductId, makeStyleProduct, readPhotoOrder, type ChatAnswers, type StyleOrder, styleOrderRequests } from "@/lib/styleOrder";
 
 
@@ -64,6 +64,8 @@ interface Props {
   colorMinPrice?: number;
   /** 영업시간 외 수령 가능 범위 (꺼져 있으면 범위 없음) */
   afterHours?: AfterHours;
+  /** 무인 픽업 — 바로 구매 상품 주문 */
+  unattended?: Unattended;
   /** 무통장 입금를 받을 수 있는지 (매장 계좌가 등록돼 있을 때) */
   transferAvailable?: boolean;
   initialQuantity?: number;
@@ -116,7 +118,7 @@ function scoreProducts(products: Product[], form: ConsultForm): Product[] {
   return recommendProducts(products, { productType: form.productType, mood: form.mood, budget });
 }
 
-export default function ConsultClient({ slug, companyName, logoImage = null, productTypeList = [], seasonList = [], notificationEmail, products, businessHours, closedDates, dateOverrides = {}, minLeadTimes = {}, consultNotice, storeAddress = null, deliveryEnabled = false, deliveryFees = {}, messageCardEnabled = false, messageCardPrice = 2000, shoppingBagEnabled = false, shoppingBagPrice = 2000, preservativeEnabled = false, preservativePrice = 500, isDemo = false, preselectedProduct = null, styleOrder = null, chatAnswers = null, todayColors = [], colorLeadDays = 0, colorPickEnabled = true, colorMinPrice = 0, afterHours = AFTER_HOURS_OFF, transferAvailable = false, initialQuantity = 1, initialPaymentId = null }: Props) {
+export default function ConsultClient({ slug, companyName, logoImage = null, productTypeList = [], seasonList = [], notificationEmail, products, businessHours, closedDates, dateOverrides = {}, minLeadTimes = {}, consultNotice, storeAddress = null, deliveryEnabled = false, deliveryFees = {}, messageCardEnabled = false, messageCardPrice = 2000, shoppingBagEnabled = false, shoppingBagPrice = 2000, preservativeEnabled = false, preservativePrice = 500, isDemo = false, preselectedProduct = null, styleOrder = null, chatAnswers = null, todayColors = [], colorLeadDays = 0, colorPickEnabled = true, colorMinPrice = 0, afterHours = AFTER_HOURS_OFF, unattended = UNATTENDED_OFF, transferAvailable = false, initialQuantity = 1, initialPaymentId = null }: Props) {
   // 첫 화면 대화에서 선물 정보·취향을 이미 받고 온 주문 (사장님 스타일·사진 주문·대화형 추천)
   const chat = styleOrder ?? chatAnswers;
   const fromChat = !!chat;
@@ -321,6 +323,8 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
           transferAvailable={transferAvailable}
           isDemo={isDemo}
           seasonalProductIds={products.filter((p) => p.seasons?.length).map((p) => p.id)}
+          instantProductIds={products.filter((p) => p.instant).map((p) => p.id)}
+          unattended={unattended}
         />
       </>
     );

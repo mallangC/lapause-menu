@@ -45,6 +45,8 @@ export interface Reservation {
   prepared_color?: string | null;
   /** 영업시간 밖 수령 주문 (주문할 때 기준) */
   after_hours_pickup?: boolean | null;
+  /** 무인 픽업 (바로 구매 상품만, 영업시간 밖 무인 픽업 시간) */
+  unattended_pickup?: boolean | null;
   /** 결제 방법 — 'transfer'(무통장 입금)만 저장, 비어 있으면 카드 결제 */
   payment_method?: string | null;
   /** 무통장 입금 현금영수증 — '소득공제' | '지출증빙' | '신청 안 함' */

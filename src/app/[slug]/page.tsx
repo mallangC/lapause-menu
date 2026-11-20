@@ -7,7 +7,7 @@ import { formatPhone } from "@/lib/format";
 import { normalizeSizeConfig } from "@/lib/sizeTiers";
 import { storeProductTypes } from "@/lib/productTypes";
 import { DEFAULT_COLOR_LEAD_DAYS, isTodayColorsEnabled, todayColorsFor } from "@/lib/todayColors";
-import { readAfterHours } from "@/lib/afterHours";
+import { readAfterHours, readUnattended } from "@/lib/afterHours";
 import type { Metadata } from "next";
 
 interface Props {
@@ -159,6 +159,9 @@ export default async function StoreWelcomePage({ params, searchParams }: Props) 
               isDemo: raw.is_demo ?? false,
               // 시즌이 걸린 상품 — 꽃 색을 고르지 않는다
               seasonalProductIds: menu.products.filter((pr) => pr.seasons?.length).map((pr) => pr.id),
+              // 바로 구매 메뉴 상품 — 제작시간 없이, 무인 픽업
+              instantProductIds: menu.products.filter((pr) => pr.instant).map((pr) => pr.id),
+              unattended: readUnattended(s),
             }
           : undefined
       }

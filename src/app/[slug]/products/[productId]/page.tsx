@@ -1,3 +1,4 @@
+import { instantMenuName } from "@/lib/afterHours";
 import { notFound } from "next/navigation";
 import { getMenuData } from "@/lib/menuCache";
 import { generateThemeVars, DEFAULT_THEME_BG, DEFAULT_THEME_ACCENT } from "@/lib/theme";
@@ -56,6 +57,7 @@ export default async function ProductDetailPage({ params }: Props) {
       customSeasons={customSeasons}
       productTypeOrder={(s.product_type_order as string[] | null) ?? []}
       seasonOrder={(s.season_order as string[] | null) ?? []}
+      instantMenu={!s.instant_menu_hidden && menu.products.some((p) => p.instant) ? instantMenuName(s) : null}
     />
   );
 }

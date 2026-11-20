@@ -8,7 +8,7 @@ import OrderCheckout from "@/components/order/OrderCheckout";
 import { preloadOrderInputs } from "@/components/LazyOrderInputs";
 import { useCart } from "@/hooks/useCart";
 import type { DateOverrides } from "@/lib/businessHours";
-import type { AfterHours } from "@/lib/afterHours";
+import type { AfterHours, Unattended } from "@/lib/afterHours";
 import { useEffect } from "react";
 
 // 장바구니 결제 · 상품 상세 바로 예약(2개 이상)
@@ -61,6 +61,8 @@ interface CheckoutClientProps {
   failMessage: string | null;
   /** 시즌이 걸린 상품 id — 꽃 색을 고르지 않는다 */
   seasonalProductIds?: string[];
+  instantProductIds?: string[];
+  unattended?: Unattended;
 }
 
 export default function CheckoutClient(p: CheckoutClientProps) {
@@ -143,6 +145,8 @@ export default function CheckoutClient(p: CheckoutClientProps) {
       transferAvailable={p.transferAvailable}
       isDemo={p.isDemo}
       seasonalProductIds={p.seasonalProductIds}
+      instantProductIds={p.instantProductIds}
+      unattended={p.unattended}
     />
   );
 }

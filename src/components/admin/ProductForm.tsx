@@ -1,5 +1,6 @@
 "use client";
 
+import { DEFAULT_INSTANT_MENU_NAME } from "@/lib/afterHours";
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { Product, ProductInput } from "@/types";
@@ -144,6 +145,7 @@ const DEFAULT_INPUT: ProductInput = {
   flower_colors: [],
   wrapping_color: "밝은 계열",
   seasons: [],
+  instant: false,
   mood: null,
   is_popular: false,
   is_recommended: false,
@@ -165,6 +167,7 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
           flower_colors: initialData.flower_colors,
           wrapping_color: initialData.wrapping_color,
           seasons: initialData.seasons,
+          instant: initialData.instant ?? false,
           mood: initialData.mood ?? null,
           is_popular: initialData.is_popular,
           is_recommended: initialData.is_recommended,
@@ -191,6 +194,8 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
   const [discountEnabled, setDiscountEnabled] = useState(initDiscounted);
   const rateInputRef = useRef<HTMLInputElement>(null);
   const discountOn = discountEnabled && salePrice > 0 && salePrice < data.price;
+  // 바로 구매 메뉴 이름 (사장님이 메뉴 설정에서 바꿀 수 있다)
+  const [instantName, setInstantName] = useState<string>(DEFAULT_INSTANT_MENU_NAME);
   const [customCategories, setCustomCategories] = useState<{ category_type: string; name: string }[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const nameFieldRef = useRef<HTMLDivElement>(null);
@@ -204,6 +209,12 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
       .eq("company_id", companyId)
       .eq("hidden", false)
       .then(({ data }) => { if (data) setCustomCategories(data); });
+    supabase
+      .from("company_settings")
+      .select("instant_menu_name")
+      .eq("company_id", companyId)
+      .maybeSingle()
+      .then(({ data }) => setInstantName((data?.instant_menu_name as string | null)?.trim() || DEFAULT_INSTANT_MENU_NAME));
   }, [companyId]);
 
   // 사장님이 메뉴 설정에서 정한 순서대로
@@ -603,6 +614,24 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
             </div>
           </div>
 
+          {/* 바로 구매 메뉴 — 이미 만들어 둔 상품 (제작시간 없이 바로 · 무인 픽업). 시즌과 함께 쓰지 않는다 */}
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm text-gray-700">{instantName} 메뉴에 넣기</p>
+              <p className="text-xs text-gray-400 mt-0.5 break-keep">이미 만들어 둔 상품이에요. 제작시간 없이 바로 받을 수 있어요.</p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={!!data.instant}
+              onClick={() => setData({ ...data, instant: !data.instant, seasons: !data.instant ? [] : data.seasons })}
+              className={`shrink-0 w-12 h-6 rounded-full transition-colors relative ${data.instant ? "bg-gold-500" : "bg-gray-200"}`}
+            >
+              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${data.instant ? "left-6" : "left-0.5"}`} />
+            </button>
+          </div>
+
+          {!data.instant && (
           <div>
             <label className={fieldLabelCls}>시즌</label>
             <div className="grid grid-cols-3 gap-2">
@@ -626,6 +655,7 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
               })}
             </div>
           </div>
+          )}
         </div>
       </div>
 

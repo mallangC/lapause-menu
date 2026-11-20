@@ -27,6 +27,8 @@ interface ProductDetailClientProps {
   /** 사장님이 정한 상품 유형·시즌 순서 */
   productTypeOrder?: string[];
   seasonOrder?: string[];
+  /** 바로 구매 메뉴 이름 (숨겼거나 상품이 없으면 null) — 메뉴 서랍에 */
+  instantMenu?: string | null;
 }
 
 export default function ProductDetailClient({
@@ -43,6 +45,7 @@ export default function ProductDetailClient({
   customSeasons,
   productTypeOrder,
   seasonOrder,
+  instantMenu = null,
 }: ProductDetailClientProps) {
   const router = useRouter();
   const [noticeOpen, setNoticeOpen] = useState(false);
@@ -134,6 +137,7 @@ export default function ProductDetailClient({
         productTypeList={productTypeList}
         seasonList={seasonList}
         consultEnabled={consultEnabled}
+        instantMenu={instantMenu}
       />
 
       {/* 상품 상세 — 2단 레이아웃 */}
