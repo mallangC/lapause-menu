@@ -11,6 +11,7 @@ import StoreManagementTab from "./StoreManagementTab";
 import BillingLogsTab, { BillingLog } from "./BillingLogsTab";
 import PromoCodesTab from "./PromoCodesTab";
 import { ORDER_PATH_LABEL, type OrderPath } from "@/lib/trafficSource";
+import { inquiryItems, type InquirySettings } from "@/lib/inquiryChecklist";
 import ReservationLogsTab, { ReservationLog } from "./ReservationLogsTab";
 import ConsultAnalyticsTab from "./ConsultAnalyticsTab";
 
@@ -26,7 +27,9 @@ interface Company {
   ownerUserId: string | null;
   isSuspended: boolean;
   suspendReason: string | null;
-  settings: { consult_enabled: boolean } | null;
+  is_demo?: boolean;
+  /** 손님 문의 줄이기 판단에 쓰는 설정 (consult_enabled 포함) */
+  settings: (InquirySettings & { consult_enabled: boolean }) | null;
   subscription: {
     plan: "none" | "monthly" | "annual" | "free" | null;
     billing_key: string | null;
@@ -175,6 +178,24 @@ export default function OperatorDashboardClient({ companies, reservations, produ
     return { label, allGMV, cardGMV, manualGMV, cardRate };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gmvRange, revenueReservations, cardReservations]);
+
+  // 손님 문의 줄이기 활용도 — 구독 중(무료 포함)인 실제 매장 기준, 기능별로 켠 매장 비율 (사장님 체크리스트와 같은 기준)
+  const inquiryAdoption = useMemo(() => {
+    const target = companies.filter((c) => !c.is_demo && c.subscription?.plan && c.subscription.plan !== "none" && c.settings);
+    const rows = new Map<string, { label: string; on: number; partial: number; off: number; stale: number }>();
+    for (const c of target) {
+      for (const it of inquiryItems(c.settings!)) {
+        const r = rows.get(it.key) ?? { label: it.label, on: 0, partial: 0, off: 0, stale: 0 };
+        if (it.on) r.on += 1;
+        else if (it.off) r.off += 1;
+        else if (it.progress && it.progress[0] > 0) r.partial += 1;
+        // 오늘 꽃 색상 — 켜 놓고 오늘 고르지 않음 (귀찮아서 안 쓰는 신호)
+        else if (it.key === "colors") r.stale += 1;
+        rows.set(it.key, r);
+      }
+    }
+    return { total: target.length, rows: [...rows.values()] };
+  }, [companies]);
 
   // 결제 경로별 비율 — 세부 경로(order_path)로: 장바구니 · 상품 상세 · 추천 주문 · 사장님 스타일 · 사진 주문 · 링크결제
   // (order_type이 없는 건 = 관리자가 직접 추가한 예약 등, 이 통계 대상이 아님 · 세부 경로가 없던 예전 건은 큰 분류로)
@@ -477,6 +498,40 @@ export default function OperatorDashboardClient({ companies, reservations, produ
                 <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, paddingTop: 4 }} formatter={(value) => <span style={{ color: "#555" }}>{value}</span>} />
               </PieChart>
             </ResponsiveContainer>
+          )}
+        </div>
+
+        {/* 손님 문의 줄이기 활용도 — 기능별로 몇 % 매장이 켰는지 */}
+        <div className="bg-white border border-gray-200 rounded-2xl p-6">
+          <h2 className="text-sm font-medium text-gray-900 mb-1">손님 문의 줄이기 활용도</h2>
+          <p className="text-xs text-gray-400 mb-4">구독 중인 매장 {inquiryAdoption.total}곳 기준 (데모 제외) · 사장님 대시보드 체크리스트와 같은 기준</p>
+          {inquiryAdoption.total === 0 ? (
+            <p className="text-sm text-gray-300 text-center py-8">데이터 없음</p>
+          ) : (
+            <div className="space-y-3">
+              {[...inquiryAdoption.rows].sort((a, b) => a.on - b.on).map((r) => {
+                const pct = Math.round((r.on / inquiryAdoption.total) * 100);
+                const notes = [
+                  r.partial > 0 ? `하나만 한 곳 ${r.partial}` : "",
+                  r.stale > 0 ? `켜 놓고 오늘 안 고름 ${r.stale}` : "",
+                  r.off > 0 ? `기능 끔 ${r.off}` : "",
+                ].filter(Boolean);
+                return (
+                  <div key={r.label}>
+                    <div className="flex items-baseline justify-between gap-3 text-sm">
+                      <span className="text-gray-700 truncate">{r.label}</span>
+                      <span className={`shrink-0 tabular-nums font-medium ${pct < 40 ? "text-red-500" : "text-gray-900"}`}>
+                        {pct}% <span className="text-xs font-normal text-gray-400">({r.on}/{inquiryAdoption.total})</span>
+                      </span>
+                    </div>
+                    <div className="mt-1 h-2 rounded-full bg-gray-100 overflow-hidden">
+                      <div className={`h-full rounded-full ${pct < 40 ? "bg-red-300" : "bg-gold-400"}`} style={{ width: `${pct}%` }} />
+                    </div>
+                    {notes.length > 0 && <p className="mt-1 text-[11px] text-gray-400">{notes.join(" · ")}</p>}
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
 

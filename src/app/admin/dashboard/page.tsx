@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { INQUIRY_SETTING_COLUMNS } from "@/lib/inquiryChecklist";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import OperatorDashboardClient from "./OperatorDashboardClient";
@@ -24,7 +25,7 @@ export default async function OperatorDashboardPage() {
   const [{ data: companies }, { data: reservations }, { data: products }, { data: profiles }, { data: billingLogs }, { data: reservationLogs }, { data: promoSubs }] = await Promise.all([
     supabase
       .from("companies")
-      .select("id, name, slug, created_at, owner_id, operator_memo, is_demo, settings:company_settings(consult_enabled), subscription:company_subscriptions(plan, billing_key, plan_expires_at, trial_ends_at, subscription_plan)")
+      .select(`id, name, slug, created_at, owner_id, operator_memo, is_demo, settings:company_settings(${INQUIRY_SETTING_COLUMNS}), subscription:company_subscriptions(plan, billing_key, plan_expires_at, trial_ends_at, subscription_plan)`)
       .order("created_at", { ascending: false }),
     supabase
       .from("reservations")

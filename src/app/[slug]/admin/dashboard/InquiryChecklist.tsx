@@ -1,49 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { hasAnySizeTier, normalizeSizeConfig } from "@/lib/sizeTiers";
-import { isTodayColorsDecided, isTodayColorsEnabled } from "@/lib/todayColors";
+import { inquiryItems, type InquirySettings } from "@/lib/inquiryChecklist";
 import type { CompanySettings } from "./companySettings";
 
 // 대시보드 — 손님 문의 줄이기
 // 기능마다 '켜면 사라지는 손님 질문'을 함께 보여 줘서, 아직 안 켠 기능을 켜고 싶게 만든다.
 // 안 켠 기능을 위에, 켠 기능은 아래에 회색으로. 줄을 누르면 그 설정 탭으로 간다.
 
-interface Item {
-  label: string;
-  /** 켜면 사라지는 손님 질문 */
-  question: string;
-  on: boolean;
-  /** 설정할 탭 */
-  tab: string;
-  /** 여러 개를 다 채워야 켜지는 항목 — [채운 수, 전체] */
-  progress?: [number, number];
-}
-
-function buildItems(s: CompanySettings): Item[] {
-  const fees = (s.delivery_fees ?? {}) as Record<string, number | null>;
-  const hasFee = Object.values(fees).some((v) => v != null);
-  return [
-    { label: "배송 기능 · 배송비", question: "“배송 돼요? 배송비 얼마예요?”", on: !!s.delivery_enabled && hasFee, tab: "reservation" },
-    { label: "맞춤 주문", question: "“이 금액으로 어떤 꽃이 돼요?”", on: !!s.consult_enabled, tab: "reservation" },
-    { label: "볼륨감 참고 이미지", question: "“이 가격이면 크기 어느 정도예요?”", on: hasAnySizeTier(normalizeSizeConfig(s.size_tiers)), tab: "reservation" },
-    // 오늘 꽃 색상 기능을 꺼 둔 매장은 이 항목을 빼요 (쓰지 않기로 한 것)
-    ...(isTodayColorsEnabled(s)
-      ? [{ label: "오늘 가능한 꽃 색상", question: "“오늘 무슨 색 꽃 있어요?”", on: isTodayColorsDecided(s) && (s.today_colors ?? []).length > 0, tab: "dashboard" }]
-      : []),
-    { label: "추가 옵션 (카드·쇼핑백·연장제)", question: "“메시지 카드 써주세요? 쇼핑백 있어요?”", on: !!(s.message_card_enabled || s.shopping_bag_enabled || s.preservative_enabled), tab: "reservation" },
-    (() => {
-      // 영업시간 외 수령 · 손님 안내 — 둘 다 해야 체크
-      const done = Number(!!s.after_hours_enabled) + Number(!!(s.after_hours_note ?? "").trim());
-      return { label: "영업시간 외 수령 · 안내", question: "“일찍·늦게 찾아가도 돼요? 꽃 어떻게 가져가요?”", on: done === 2, tab: "business", progress: [done, 2] as [number, number] };
-    })(),
-    (() => {
-      // 매장 위치·주차 정보 — 둘 다 채워야 체크
-      const done = Number(!!s.location_url) + Number(!!s.parking);
-      return { label: "매장 위치 · 주차 정보", question: "“매장 어디예요? 주차 돼요?”", on: done === 2, tab: "company", progress: [done, 2] as [number, number] };
-    })(),
-  ];
-}
+// 판단 기준은 운영자 활용도 요약과 같다 (lib/inquiryChecklist)
+// 오늘 꽃 색상 기능을 꺼 둔 매장은 그 항목을 빼요 (쓰지 않기로 한 것)
+const buildItems = (s: CompanySettings) => inquiryItems(s as InquirySettings).filter((i) => !i.off);
 
 export default function InquiryChecklist({ settings, onNavigate }: { settings: CompanySettings; onNavigate: (tab: string) => void }) {
   const items = buildItems(settings);
