@@ -12,7 +12,8 @@ const SOCIAL_PROVIDERS = [
 ] as const;
 
 interface Props {
-  slug: string;
+  /** 로그인 화면 — 비밀번호를 바꾼 뒤·소셜 연결이 막혔을 때 돌아갈 곳 (사장님 /{slug}/admin, 운영자 /login) */
+  loginPath: string;
   email: string;
   isOAuth: boolean;
   profileName: string;
@@ -20,7 +21,7 @@ interface Props {
   initialTwoFactorEnabled: boolean;
 }
 
-export default function MyInfoTab({ slug, email, isOAuth, profileName, profilePhone, initialTwoFactorEnabled }: Props) {
+export default function MyInfoTab({ loginPath, email, isOAuth, profileName, profilePhone, initialTwoFactorEnabled }: Props) {
   const [showPwForm, setShowPwForm] = useState(false);
   const [pwNew, setPwNew] = useState("");
   const [pwConfirm, setPwConfirm] = useState("");
@@ -48,7 +49,7 @@ export default function MyInfoTab({ slug, email, isOAuth, profileName, profilePh
   const handleLinkIdentity = async (provider: "google" | "kakao") => {
     setLinkingProvider(provider);
     setLinkError(null);
-    setOAuthIntent({ mode: "link", provider, from: `/${slug}/admin` });
+    setOAuthIntent({ mode: "link", provider, from: loginPath });
     const { error } = await supabase.auth.linkIdentity({
       provider,
       options: { redirectTo: `${window.location.origin}/auth/callback` },
@@ -118,7 +119,7 @@ export default function MyInfoTab({ slug, email, isOAuth, profileName, profilePh
       setPwNew("");
       setPwConfirm("");
       await supabase.auth.signOut();
-      router.push(`/${slug}/admin`);
+      router.push(loginPath);
     }
     setPwLoading(false);
   };
@@ -207,7 +208,7 @@ export default function MyInfoTab({ slug, email, isOAuth, profileName, profilePh
       <div className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:p-6">
         <div className="max-w-md">
           <div>
-            <div className="flex items-center justify-between mb-4">
+            <div className={`flex items-center justify-between ${showPwForm ? "mb-4" : ""}`}>
               <h3 className="text-sm font-medium text-gray-900">비밀번호 변경</h3>
               {!showPwForm && (
                 <button
@@ -314,6 +315,22 @@ export default function MyInfoTab({ slug, email, isOAuth, profileName, profilePh
               <p className="text-xs text-gold-600 mt-2">사용 중 — 인증을 완료한 기기는 선택에 따라 최대 30일간 다시 묻지 않습니다.</p>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* 로그아웃 — 위쪽 알림 종 옆에 있으면 잘못 누르기 쉬워 여기로 */}
+      <div className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:p-6">
+        <div className="max-w-md">
+          <button
+            type="button"
+            onClick={async () => {
+              await supabase.auth.signOut();
+              window.location.href = "/";
+            }}
+            className="shrink-0 px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            로그아웃
+          </button>
         </div>
       </div>
     </div>

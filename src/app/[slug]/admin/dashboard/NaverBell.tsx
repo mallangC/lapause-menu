@@ -6,7 +6,7 @@ import NaverMailPanel from "./NaverMailPanel";
 import type { Reservation } from "./reservations/types";
 import type { CompanySettings } from "./companySettings";
 
-// 위쪽 알림 종 (로그아웃 왼쪽) — 어느 탭에서든 보인다
+// 위쪽 알림 종 (헤더 오른쪽) — 어느 탭에서든 보인다
 // · 확인하지 않은 네이버 예약 (메일로 자동으로 들어온 새 예약·취소)
 // · 읽지 못한 네이버 메일 (자동으로 처리하지 못한 메일)
 // 목록을 밀지 않고 눌러서 본다 — 휴대폰도 종에서 펼쳐지는 창

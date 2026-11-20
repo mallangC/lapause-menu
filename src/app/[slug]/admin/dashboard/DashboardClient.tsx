@@ -306,11 +306,6 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
     }
   };
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    window.location.href = "/";
-  };
-
   const handleConsultToggle = (enabled: boolean) => {
     setCurrentConsultEnabled(enabled);
     if (!enabled && (activeTab === "stats" || activeTab === "settlement")) goTab("reservations", true);
@@ -355,22 +350,17 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
           <Link href={`/${slug}`} className="text-lg font-medium text-gray-900 hover:text-gray-600 transition-colors">
             {companyName} — 관리자
           </Link>
-          <div className="flex items-center gap-3">
-            {/* 알림 — 어느 탭에서든 (확인하지 않은 네이버 예약 · 읽지 못한 네이버 메일) */}
-            <NaverBell
-              companyId={companyId}
-              settings={companySettings}
-              unchecked={naverUnchecked}
-              onCheck={checkNaver}
-              onOpenReservation={(r) => {
-                goTab("reservations");
-                setNaverOpenRequest({ reservation: r, nonce: Date.now() });
-              }}
-            />
-            <button onClick={handleSignOut} className="text-sm text-gray-400 hover:text-gray-700 transition-colors">
-              로그아웃
-            </button>
-          </div>
+          {/* 알림 — 어느 탭에서든 (확인하지 않은 네이버 예약 · 읽지 못한 네이버 메일). 로그아웃은 내 정보 탭에 */}
+          <NaverBell
+            companyId={companyId}
+            settings={companySettings}
+            unchecked={naverUnchecked}
+            onCheck={checkNaver}
+            onOpenReservation={(r) => {
+              goTab("reservations");
+              setNaverOpenRequest({ reservation: r, nonce: Date.now() });
+            }}
+          />
         </div>
       </header>
 
@@ -751,7 +741,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
           {visitedTabs.has("myinfo") && (
             <div className={activeTab === "myinfo" ? "" : "hidden"}>
               <MyInfoTab
-                slug={slug}
+                loginPath={`/${slug}/admin`}
                 email={userEmail}
                 isOAuth={isOAuth}
                 profileName={profileName}
