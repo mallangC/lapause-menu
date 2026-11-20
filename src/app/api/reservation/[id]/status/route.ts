@@ -134,11 +134,17 @@ export async function PATCH(
   try {
     const { data: reservation } = await supabase
       .from("reservations")
-      .select("orderer_name, orderer_phone, items, final_price, delivery_type, desired_date, desired_time, customer_profile_id, company_id, after_hours_pickup, order_token")
+      .select("orderer_name, orderer_phone, items, final_price, delivery_type, desired_date, desired_time, customer_profile_id, company_id, after_hours_pickup, order_token, order_type")
       .eq("id", id)
       .single();
 
     if (!reservation) return NextResponse.json({ ok: true });
+    // 손님 알림톡은 플로에이드에서 주문·결제한 예약만 (맞춤주문·상품 주문)
+    // 사장님이 직접 추가한 예약(네이버·카카오·워크인)·네이버 메일 예약은 보내지 않고,
+    // 링크결제 예약은 결제가 끝날 때 확정 알림톡만 보낸다 (취소 알림톡 없음)
+    if (!["consult", "product"].includes((reservation as { order_type?: string | null }).order_type ?? "") || !reservation.orderer_phone) {
+      return NextResponse.json({ ok: true });
+    }
 
     const { data: companyRaw } = await supabase
       .from("companies")

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PAY_LINK_BLOCKED_MESSAGE, payLinkAllowed } from "@/lib/payLinkAllowed";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
-import { productTypeSummary, sendPaymentCompletedOwner } from "@/lib/solapi";
+import { productTypeSummary, sendPaymentCompletedOwner, sendReservationReceived } from "@/lib/solapi";
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
 
     const { data: reservation, error: fetchError } = await adminClient
       .from("reservations")
-      .select("id, orderer_name, orderer_phone, final_price, items, payment_link_expires_at, paid, company_id, delivery_type, desired_date, desired_time")
+      .select("id, orderer_name, orderer_phone, final_price, items, payment_link_expires_at, paid, company_id, delivery_type, desired_date, desired_time, after_hours_pickup, order_token")
       .eq("payment_token", token)
       .single();
 
@@ -125,6 +125,37 @@ export async function POST(request: NextRequest) {
       }
     } catch (alimErr) {
       console.warn("[pay-link/confirm] 사장님 알림톡 실패:", alimErr);
+    }
+
+    // 손님 — 결제가 끝나면 바로 예약 확정 알림톡 (주문 확인 페이지 버튼 포함 — 진행 단계·완성 사진)
+    // 링크결제 주문은 확정 알림톡만 보낸다 (취소 알림톡은 보내지 않는다)
+    if (!isDemoCompany && reservation.orderer_phone) {
+      try {
+        const { data: c } = await adminClient
+          .from("companies")
+          .select("name, slug, phone, settings:company_settings(address, parking, after_hours_note)")
+          .eq("id", reservation.company_id)
+          .single();
+        const cs = (Array.isArray(c?.settings) ? c?.settings[0] : c?.settings) as { address?: string | null; parking?: string | null; after_hours_note?: string | null } | null;
+        if (c?.slug) {
+          await sendReservationReceived({
+            to: reservation.orderer_phone,
+            ordererName: reservation.orderer_name,
+            companyName: c.name,
+            finalPrice: paidAmount ?? reservation.final_price,
+            productType: productTypeSummary(reservation.items as { type?: string; quantity?: number }[] | null) || "상품",
+            deliveryType: reservation.delivery_type,
+            desiredDateTime: `${reservation.desired_date}${reservation.desired_time ? ` ${reservation.desired_time}` : ""}`,
+            companyPhone: c.phone ?? "",
+            companyAddress: cs?.address ?? "",
+            parking: cs?.parking ?? null,
+            afterHoursNote: reservation.after_hours_pickup ? cs?.after_hours_note ?? null : null,
+            orderLink: `${c.slug}/order/${reservation.order_token}`,
+          });
+        }
+      } catch (alimErr) {
+        console.warn("[pay-link/confirm] 손님 확정 알림톡 실패:", alimErr);
+      }
     }
 
     return NextResponse.json({ success: true });
