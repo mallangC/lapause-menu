@@ -3,6 +3,7 @@
 import { DEFAULT_INSTANT_MENU_NAME } from "@/lib/afterHours";
 import PriceTag from "@/components/PriceTag";
 import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import StoreImage from "@/components/StoreImage";
 import { Product, ProductStatus } from "@/types";
 import { BADGE_COLORS, MOODS, PRODUCT_TYPES, SEASONS } from "@/lib/constants";
@@ -129,18 +130,97 @@ const SORT_OPTIONS = [
   { key: "price_desc", label: "가격 높은순" },
 ] as const;
 
-function Chip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+interface FilterSection {
+  /** 묶음 안 작은 제목 (표시: 뱃지 / 상태) */
+  title?: string;
+  options: { value: string; label: string }[];
+  selected: string;
+  onSelect: (value: string) => void;
+}
+
+/**
+ * 필터 버튼 하나 — 누르면 바로 아래로 선택지가 펼쳐진다 (고르면 닫힘, 같은 걸 다시 고르면 해제)
+ * 고른 게 있으면 버튼이 진하게 바뀌고 고른 이름이 보인다 · ✕로 바로 해제
+ * 창은 화면 맨 위층에 띄운다 (목록 상자에 잘리지 않게) — 스크롤·화면 크기가 바뀌면 닫는다
+ */
+function FilterMenu({ title, sections }: { title: string; sections: FilterSection[] }) {
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const picked = sections.flatMap((s) => s.options.filter((o) => o.value && o.value === s.selected).map((o) => o.label));
+  const active = picked.length > 0;
+
+  useEffect(() => {
+    if (!pos) return;
+    const close = () => setPos(null);
+    window.addEventListener("scroll", close, { passive: true });
+    window.addEventListener("resize", close);
+    return () => {
+      window.removeEventListener("scroll", close);
+      window.removeEventListener("resize", close);
+    };
+  }, [pos]);
+
+  const open = (el: HTMLElement) => {
+    if (pos) return setPos(null);
+    const r = el.getBoundingClientRect();
+    const width = 208;
+    setPos({ top: r.bottom + 6, left: Math.max(16, Math.min(r.left, window.innerWidth - 16 - width)) });
+  };
+
   return (
-    <button
-      onClick={onClick}
-      className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors whitespace-nowrap ${
-        active
-          ? "bg-gray-900 text-white border-gray-900"
-          : "bg-white text-gray-500 border-gray-200 hover:border-gray-400 hover:text-gray-700"
-      }`}
-    >
-      {label}
-    </button>
+    <>
+      <span
+        className={`shrink-0 inline-flex items-center rounded-full text-xs font-medium border transition-colors whitespace-nowrap ${
+          active ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"
+        }`}
+      >
+        <button type="button" onClick={(e) => open(e.currentTarget.parentElement as HTMLElement)} className={`flex items-center gap-1 py-1.5 ${active ? "pl-3 pr-1" : "px-3"}`}>
+          {active ? picked.join(" · ") : title}
+          {!active && (
+            <svg className="w-3 h-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          )}
+        </button>
+        {active && (
+          <button
+            type="button"
+            aria-label={`${title} 필터 해제`}
+            onClick={() => sections.forEach((s) => s.selected && s.onSelect(""))}
+            className="pr-2.5 pl-1 py-1.5 text-white/70 hover:text-white"
+          >
+            ✕
+          </button>
+        )}
+      </span>
+      {pos && typeof document !== "undefined" &&
+        createPortal(
+          <>
+            <div className="fixed inset-0 z-[60]" onClick={() => setPos(null)} />
+            <div style={{ top: pos.top, left: pos.left }} className="fixed z-[61] w-52 max-h-[60vh] overflow-y-auto bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 animate-[bell-pop_.12s_ease-out] origin-top-left">
+              {sections.map((s, i) => (
+                <div key={i} className={i > 0 ? "border-t border-gray-100 mt-1.5 pt-1.5" : ""}>
+                  {s.title && <p className="px-3 pt-1 pb-0.5 text-[11px] text-gray-400">{s.title}</p>}
+                  {s.options.map((o) => {
+                    const on = s.selected === o.value;
+                    return (
+                      <button
+                        key={o.value}
+                        type="button"
+                        onClick={() => { s.onSelect(on ? "" : o.value); setPos(null); }}
+                        className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-sm transition-colors ${on ? "text-gray-900 font-medium bg-gray-50" : "text-gray-600 hover:bg-gray-50"}`}
+                      >
+                        <span className="truncate">{o.label}</span>
+                        {on && <span className="text-gold-500 text-xs">✓</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          </>,
+          document.body,
+        )}
+    </>
   );
 }
 
@@ -265,47 +345,43 @@ export default function ProductTable({ products, onEdit, onDelete, onStatusChang
 
         <div className="h-4 w-px bg-gray-300 shrink-0" />
 
-        {/* 필터 칩들 — 가로 스크롤 */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-          {sortByOrder([...PRODUCT_TYPES, ...knownCustomTypes], categoryOrder.productTypes).map((t) => (
-            <Chip key={t} label={t} active={filterType === t} onClick={() => { setFilterType(filterType === t ? "" : t); resetPage(); }} />
-          ))}
-
+        {/* 묶음별 필터 — 유형·시즌이 늘어도 버튼 수는 그대로 (누르면 아래로 펼쳐 고른다) */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <FilterMenu
+            title="유형"
+            sections={[{ options: sortByOrder([...PRODUCT_TYPES, ...knownCustomTypes], categoryOrder.productTypes).map((t) => ({ value: t, label: t })), selected: filterType, onSelect: (v) => { setFilterType(v); resetPage(); } }]}
+          />
           {(seasonChips.length > 0 || products.some((p) => p.instant)) && (
-            <>
-              <div className="h-4 w-px bg-gray-300 shrink-0 mx-0.5" />
-              {/* 바로 구매 메뉴에 넣은 상품 */}
-              {products.some((p) => p.instant) && (
-                <Chip label={instantName} active={filterSeason === "__instant"} onClick={() => { setFilterSeason(filterSeason === "__instant" ? "" : "__instant"); resetPage(); }} />
-              )}
-              {seasonChips.map((x) => (
-                <Chip key={`season-${x}`} label={x} active={filterSeason === x} onClick={() => { setFilterSeason(filterSeason === x ? "" : x); resetPage(); }} />
-              ))}
-            </>
+            <FilterMenu
+              title="메뉴"
+              sections={[{
+                options: [
+                  // 바로 구매 메뉴에 넣은 상품
+                  ...(products.some((p) => p.instant) ? [{ value: "__instant", label: instantName }] : []),
+                  ...seasonChips.map((x) => ({ value: x, label: x })),
+                ],
+                selected: filterSeason,
+                onSelect: (v) => { setFilterSeason(v); resetPage(); },
+              }]}
+            />
           )}
-
           {/* 분위기 — 상품마다 분위기를 다시 고를 때 묶어 보기 좋게 ('분위기 없음'은 아직 안 정한 상품) */}
-          <div className="h-4 w-px bg-gray-300 shrink-0 mx-0.5" />
-          {[...MOODS, "__none"].map((m) => (
-            <Chip key={`mood-${m}`} label={m === "__none" ? "분위기 없음" : m} active={filterMood === m} onClick={() => { setFilterMood(filterMood === m ? "" : m); resetPage(); }} />
-          ))}
-
-          <div className="h-4 w-px bg-gray-300 shrink-0 mx-0.5" />
-
-          <Chip label="인기" active={filterBadge === "popular"} onClick={() => { setFilterBadge(filterBadge === "popular" ? "" : "popular"); resetPage(); }} />
-          <Chip label="추천" active={filterBadge === "recommended"} onClick={() => { setFilterBadge(filterBadge === "recommended" ? "" : "recommended"); resetPage(); }} />
-          <Chip label="노출" active={filterStatus === "active"} onClick={() => { setFilterStatus(filterStatus === "active" ? "" : "active"); resetPage(); }} />
-          <Chip label="숨김" active={filterStatus === "inactive"} onClick={() => { setFilterStatus(filterStatus === "inactive" ? "" : "inactive"); resetPage(); }} />
-
+          <FilterMenu
+            title="분위기"
+            sections={[{ options: [...MOODS, "__none"].map((m) => ({ value: m, label: m === "__none" ? "분위기 없음" : m })), selected: filterMood, onSelect: (v) => { setFilterMood(v); resetPage(); } }]}
+          />
+          <FilterMenu
+            title="표시"
+            sections={[
+              { title: "뱃지", options: [{ value: "popular", label: "인기" }, { value: "recommended", label: "추천" }], selected: filterBadge, onSelect: (v) => { setFilterBadge(v); resetPage(); } },
+              { title: "상태", options: [{ value: "active", label: "노출" }, { value: "inactive", label: "숨김" }], selected: filterStatus, onSelect: (v) => { setFilterStatus(v); resetPage(); } },
+            ]}
+          />
           {hasFilter && (
-            <>
-              <div className="h-4 w-px bg-gray-300 shrink-0 mx-0.5" />
-              <button onClick={clearFilters} className="shrink-0 text-xs text-gray-400 hover:text-gray-600 transition-colors whitespace-nowrap">
-                초기화 ✕
-              </button>
-            </>
+            <button onClick={clearFilters} className="shrink-0 text-xs text-gray-400 hover:text-gray-600 transition-colors whitespace-nowrap px-1">
+              초기화 ✕
+            </button>
           )}
-
         </div>
 
       </div>
