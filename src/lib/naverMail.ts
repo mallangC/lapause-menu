@@ -62,6 +62,8 @@ const won = (s: string | null | undefined) => {
 
 export function parseNaverMail(raw: string): NaverMail {
   const lines = raw
+    // 메일 본문 속 HTML 주석(<!-- 아웃룩용 … -->, <!--[if mso]> …)은 화면에 안 보이는 글 — 먼저 지운다
+    .replace(/<!--[\s\S]*?-->/g, "")
     .replace(/\r/g, "")
     .split("\n")
     .map((l) => l.replace(/ /g, " ").trim())
@@ -103,7 +105,9 @@ export function parseNaverMail(raw: string): NaverMail {
     else extras.push(entry.name);
   }
 
-  const storeName = lines[0] ?? null;
+  // 매장 이름 — '새로운 예약이 확정…' / '고객님이 예약을 취소…' 바로 위 줄 (없으면 첫 줄)
+  const headIdx = lines.findIndex((l) => /예약이\s*확정\s*되었습니다|예약을\s*취소\s*하셨습니다/.test(l));
+  const storeName = (headIdx > 0 ? lines[headIdx - 1] : lines[0]) ?? null;
   const bookingId = (field("예약번호") ?? "").match(/\d{6,}/)?.[0] ?? null;
   const payStatus = field("결제상태") ?? "";
   return {
