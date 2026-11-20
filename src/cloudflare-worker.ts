@@ -29,11 +29,13 @@ export default {
 
   // 네이버 예약 알림 메일 — n-{매장코드}@booking.flo-aide.com 으로 오면 읽어서 앱(/api/naver-mail)에 넘긴다
   // (예약 추가·취소·확인 필요 보관은 앱이 한다 — 워커는 메일을 풀어서 전달만)
-  async email(message: ForwardableEmailMessage, env: Env, _ctx: unknown) {
+  async email(message: ForwardableEmailMessage, env: Env, ctx: unknown) {
     try {
       const raw = await new Response(message.raw).arrayBuffer();
       const mail = await PostalMime.parse(raw);
-      const res = await fetch("https://www.flo-aide.com/api/naver-mail", {
+      // 인터넷을 거치지 않고 같은 워커 안에서 앱(/api/naver-mail)을 바로 부른다
+      // (메일 처리 중에 자기 도메인을 fetch하면 연결이 막혀 522가 난다)
+      const req = new Request("https://www.flo-aide.com/api/naver-mail", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-internal-secret": env.INTERNAL_API_SECRET },
         body: JSON.stringify({
@@ -44,6 +46,7 @@ export default {
           html: mail.html ?? "",
         }),
       });
+      const res: Response = await (nextWorker as { fetch: (r: Request, e: unknown, c: unknown) => Promise<Response> }).fetch(req, env, ctx);
       console.log(`[email] ${message.to} ← ${message.from} · ${res.status}:`, await res.text());
     } catch (err) {
       console.error("[email] 네이버 메일 처리 실패:", err);
