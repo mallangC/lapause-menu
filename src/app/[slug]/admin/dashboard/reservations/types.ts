@@ -32,6 +32,8 @@ export interface Reservation {
   channel: string | null;
   /** 네이버 예약 메일로 들어온 예약의 네이버 예약번호 (이 예약은 연락처가 없을 수 있다) */
   naver_booking_id?: string | null;
+  /** 네이버 메일로 자동으로 들어온 새 예약·취소 — 사장님이 열어 볼 때까지 true */
+  naver_unchecked?: boolean;
   delivery_type: string;
   delivery_fee: number | null;
   admin_memo: string | null;
