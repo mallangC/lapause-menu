@@ -27,6 +27,11 @@ interface Props {
   onSave: (name: string, logo: string | null, locationUrl: string | null, kakaoChannelUrl: string | null, instagramUrl: string | null, youtubeUrl: string | null) => void;
 }
 
+/** 주차 — 정해진 세 가지 (그 외는 사장님이 직접 쓴 안내) */
+const PARKING_PRESETS = ["주차 가능", "잠시 주차 가능", "주차 불가"] as const;
+/** 직접 입력 글자 수 (알림톡 한 줄에 들어가게) */
+const PARKING_MAX = 40;
+
 export default function CompanyInfoTab({ companyId, initialName, initialLogo, slug, initialNaverTalkUrl, initialKakaoChannelUrl, initialInstagramUrl, initialYoutubeUrl, initialParking, onSettingsSaved, onSave }: Props) {
   const [name, setName] = useState(initialName);
   const [logoUrl, setLogoUrl] = useState<string | null>(initialLogo);
@@ -36,6 +41,9 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
   const [youtubeUrl, setYoutubeUrl] = useState(initialYoutubeUrl ?? "");
   // 주차 가능 여부 — 매장 위치처럼 손님이 찾아올 때 보는 정보라 여기에 (언제든 바꿀 수 있다)
   const [parking, setParking] = useState(initialParking ?? "");
+  // 주차 — 정해진 세 가지 외에 사장님이 직접 쓴 안내 (예: 건물 뒤 공영주차장 30분 무료)
+  const isPresetParking = (v: string) => (PARKING_PRESETS as readonly string[]).includes(v);
+  const [parkingCustom, setParkingCustom] = useState(!!initialParking && !isPresetParking(initialParking));
   // 마지막으로 저장된 값 (되돌리기용) · 바뀐 내용이 있는지
   const saved = useRef({ name: initialName, logoUrl: initialLogo, locationUrl: initialNaverTalkUrl ?? "", kakaoChannelUrl: initialKakaoChannelUrl ?? "", instagramUrl: initialInstagramUrl ?? "", youtubeUrl: initialYoutubeUrl ?? "", parking: initialParking ?? "" });
   const { dirty, clean } = useDirty("company", JSON.stringify({ name, logoUrl, locationUrl, kakaoChannelUrl, instagramUrl, youtubeUrl, parking }));
@@ -48,6 +56,7 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
     setInstagramUrl(v.instagramUrl);
     setYoutubeUrl(v.youtubeUrl);
     setParking(v.parking);
+    setParkingCustom(!!v.parking && !isPresetParking(v.parking));
     setError(null);
   };
   const [uploading, setUploading] = useState(false);
@@ -99,7 +108,7 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
         kakao_channel_url: kakaoChannelUrl || null,
         instagram_url: instagramUrl || null,
         youtube_url: youtubeUrl || null,
-        parking: parking || null,
+        parking: parking.trim() || null,
       }).eq("company_id", companyId),
     ]);
 
@@ -285,19 +294,46 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
                 <p className="text-xs text-gray-400 mt-0.5">손님이 매장에 찾아올 때 자주 묻는 정보예요.</p>
               </div>
               <div className="flex flex-wrap gap-2">
-                {["주차 가능", "잠시 주차 가능", "주차 불가"].map((opt) => (
+                {PARKING_PRESETS.map((opt) => (
                   <button
                     key={opt}
                     type="button"
-                    onClick={() => setParking(parking === opt ? "" : opt)}
+                    onClick={() => { setParkingCustom(false); setParking(parking === opt ? "" : opt); }}
                     className={`px-3.5 py-2 rounded-lg border text-sm transition-colors ${
-                      parking === opt ? "border-gold-500 bg-gold-500/10 text-gold-600 font-medium" : "border-gray-300 text-gray-600 bg-white hover:border-gray-400"
+                      !parkingCustom && parking === opt ? "border-gold-500 bg-gold-500/10 text-gold-600 font-medium" : "border-gray-300 text-gray-600 bg-white hover:border-gray-400"
                     }`}
                   >
                     {opt}
                   </button>
                 ))}
+                {/* 직접 입력 — 설명이 필요할 때 */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (parkingCustom) { setParkingCustom(false); setParking(""); return; }
+                    setParkingCustom(true);
+                    if (isPresetParking(parking)) setParking("");
+                  }}
+                  className={`px-3.5 py-2 rounded-lg border text-sm transition-colors ${
+                    parkingCustom ? "border-gold-500 bg-gold-500/10 text-gold-600 font-medium" : "border-gray-300 text-gray-600 bg-white hover:border-gray-400"
+                  }`}
+                >
+                  직접 입력
+                </button>
               </div>
+              {parkingCustom && (
+                <div>
+                  <input
+                    type="text"
+                    value={parking}
+                    onChange={(e) => setParking(e.target.value.slice(0, PARKING_MAX))}
+                    maxLength={PARKING_MAX}
+                    placeholder="예) 건물 뒤 공영주차장 이용 (30분 무료)"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400 bg-white placeholder:text-gray-300"
+                  />
+                  <p className="mt-1 text-right text-[11px] text-gray-400 tabular-nums">{parking.length}/{PARKING_MAX}</p>
+                </div>
+              )}
             </div>
 
             <div className="sticky bottom-0 bg-white border-t border-gray-100 -mx-0 pt-4 pb-1 flex items-center gap-3">

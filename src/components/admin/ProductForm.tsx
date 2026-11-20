@@ -187,7 +187,10 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
   const [salePrice, setSalePrice] = useState<number>(initDiscounted ? initialData!.price : 0);
   const [rateText, setRateText] = useState<string>(initDiscounted ? String(discountRate(initialData!.price, initialData!.original_price)) : "");
   const [discountError, setDiscountError] = useState<string | null>(null);
-  const discountOn = salePrice > 0 && salePrice < data.price;
+  // 할인 스위치 — 켜야 할인 칸이 열린다 (끄면 정가로 판매, 적어 둔 값은 다시 켤 때를 위해 남겨 둔다)
+  const [discountEnabled, setDiscountEnabled] = useState(initDiscounted);
+  const rateInputRef = useRef<HTMLInputElement>(null);
+  const discountOn = discountEnabled && salePrice > 0 && salePrice < data.price;
   const [customCategories, setCustomCategories] = useState<{ category_type: string; name: string }[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const nameFieldRef = useRef<HTMLDivElement>(null);
@@ -310,7 +313,7 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
     }
     setFieldErrors([]);
     // 할인가는 가격보다 낮아야 한다 (같거나 높으면 저장하지 않고 알린다)
-    if (salePrice > 0 && salePrice >= data.price) {
+    if (discountEnabled && salePrice > 0 && salePrice >= data.price) {
       setDiscountError("할인가는 상품 가격보다 낮아야 해요.");
       return;
     }
@@ -362,7 +365,29 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
               />
             </div>
             <div>
-              <label className={fieldLabelCls}>상품 가격</label>
+              {/* 제목 줄 오른쪽 끝에 할인 스위치 */}
+              <div className="flex items-center justify-between mb-1">
+                <label className={fieldLabelCls.replace("mb-1", "mb-0")}>상품 가격</label>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={discountEnabled}
+                  disabled={data.price <= 0}
+                  onClick={() => {
+                    const next = !discountEnabled;
+                    setDiscountEnabled(next);
+                    setDiscountError(null);
+                    // 켜면 할인율 칸에 바로 쓰게
+                    if (next) setTimeout(() => rateInputRef.current?.focus(), 0);
+                  }}
+                  className="flex items-center gap-1.5 text-xs text-gray-500 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  할인
+                  <span className={`relative w-9 h-5 rounded-full transition-colors ${discountEnabled ? "bg-gold-500" : "bg-gray-200"}`}>
+                    <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${discountEnabled ? "left-[18px]" : "left-0.5"}`} />
+                  </span>
+                </button>
+              </div>
               <div className="flex items-center gap-2">
                 <input
                   type="text"
@@ -385,9 +410,9 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
                 <span className="text-sm text-gray-500 shrink-0">원</span>
               </div>
             </div>
-            {/* 할인 (선택) — 할인율이나 할인가 중 하나만 적으면 다른 하나가 채워진다 */}
+            {/* 할인 — 스위치를 켰을 때만. 할인율이나 할인가 중 하나만 적으면 다른 하나가 채워진다 */}
+            {discountEnabled && (
             <div>
-              <label className={fieldLabelCls}>할인 (선택)</label>
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1.5 w-28 shrink-0">
                   <input
@@ -402,6 +427,7 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
                       const rate = Number(raw);
                       setSalePrice(rate > 0 && data.price > 0 ? priceFromRate(data.price, rate) : 0);
                     }}
+                    ref={rateInputRef}
                     placeholder="0"
                     aria-label="할인율"
                     className={`${inputCls} text-right disabled:bg-gray-50`}
@@ -435,13 +461,6 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
               ) : discountOn ? (
                 <p className="mt-1 text-xs text-gold-600">
                   {salePrice.toLocaleString()}원에 팔아요 ({(data.price - salePrice).toLocaleString()}원 할인)
-                  <button
-                    type="button"
-                    onClick={() => { setSalePrice(0); setRateText(""); setDiscountError(null); }}
-                    className="ml-2 text-gray-400 underline hover:text-gray-600"
-                  >
-                    할인 없애기
-                  </button>
                 </p>
               ) : salePrice > 0 ? (
                 <p className="mt-1 text-xs text-red-500">할인가는 상품 가격보다 낮아야 해요.</p>
@@ -449,6 +468,7 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
                 <p className="mt-1 text-xs text-gray-400">할인율이나 할인가 중 하나만 적으면 나머지가 채워져요. (100원 단위)</p>
               )}
             </div>
+            )}
           </div>
 
           {/* 이미지 업로드 */}
