@@ -431,7 +431,7 @@ export default function ChatCheckout(props: Props) {
                   slots={slots}
                   extraSlots={extraSlots}
                   afterHoursNote={c.extraNote}
-                  extraLabel={c.extraLabel}
+                  noteTitle={c.extraNoteTitle}
                   value={form.desiredTime}
                   onSelect={(slot) => {
                     set("desiredTime", slot);

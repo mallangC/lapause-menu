@@ -326,7 +326,7 @@ export default function OrderCheckout(props: OrderCheckoutProps) {
               slots={slots}
               extraSlots={extraSlots}
               afterHoursNote={c.extraNote}
-              extraLabel={c.extraLabel}
+              noteTitle={c.extraNoteTitle}
               value={form.desiredTime}
               onSelect={(slot) => { set("desiredTime", slot); clearFe("time"); }}
               error={fe.time}

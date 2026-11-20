@@ -303,11 +303,11 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
               ) : null}
             </SortableChips>
           </div>
+
+          {/* 바로 구매 메뉴 — 이름·보이기만 (무인 픽업 시간은 영업 설정) */}
+          <InstantMenuSettings companyId={companyId} onSettingsSaved={onSettingsSaved} />
         </div>
       </div>
-
-      {/* 바로 구매 메뉴 — 이미 만들어 둔 상품 (제작시간 없이 바로 · 무인 픽업) */}
-      <InstantMenuSettings companyId={companyId} onSettingsSaved={onSettingsSaved} />
 
       {/* 연결된 상품이 있어 유형을 지울 수 없을 때 */}
       {blockedDelete && (

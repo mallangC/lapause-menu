@@ -184,8 +184,8 @@ export async function PATCH(
         parking: company?.parking ?? null,
         // 영업시간 외 수령 주문에만 사장님 안내를 붙인다
         afterHoursNote: reservation.after_hours_pickup ? company?.afterHoursNote ?? null : null,
-        // 무인 픽업 주문에는 가져가는 방법 안내
-        unattendedNote: (reservation as { unattended_pickup?: boolean | null }).unattended_pickup ? company?.unattendedNote ?? null : null,
+        // 무인 픽업(바로 구매 상품만) 주문 — 무인 픽업 안내 (안 적었으면 영업시간 외 픽업 안내)
+        unattendedNote: (reservation as { unattended_pickup?: boolean | null }).unattended_pickup ? (company?.unattendedNote?.trim() || company?.afterHoursNote) ?? null : null,
         // [주문 확인하기] 버튼 — 주문 확인 페이지 (주문 코드는 모든 예약에 있다)
         orderLink: `${companyRaw?.slug ?? ""}/order/${reservation.order_token}`,
       });

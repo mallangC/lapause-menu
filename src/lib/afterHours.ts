@@ -5,7 +5,7 @@
 // 준비는 영업시간 안에 끝나야 한다 — 마감 후에는 사장님이 없으니까.
 //   · 오늘 마감 후 수령: 지금 + 준비 시간이 오늘 마감 안에 끝날 때만
 //   · 내일 오픈 전 수령: 전날(오늘) 마감 전에 준비가 끝날 때만 (오늘 주문해야 하고, 오늘 마감 안에 끝나야)
-// 이미 만들어 둔 상품(바로 구매 메뉴)을 사람 없이 가져가는 건 '무인 픽업' — 아래 unattendedSlots
+// 이미 만들어 둔 상품(바로 구매 메뉴)만 담긴 주문은 준비 조건 없이 같은 시간 범위를 쓴다 ('무인 픽업') — 아래 unattendedSlots
 // 영업시간 외 수령을 고르면 사장님이 써 둔 안내(찾아가는 방법 등)를 손님에게 보여준다.
 
 import { resolveDayHours, type BusinessHours, type DateOverrides } from "@/lib/businessHours";
@@ -121,38 +121,32 @@ export function isAfterHoursPickup(
   return t < toMin(day.open) || t > toMin(day.close);
 }
 
-// ── 무인 픽업 — 바로 구매 메뉴(이미 만들어 둔 상품)만 담긴 주문 ──
-// 준비 시간이 없어 지금부터 고를 수 있고, 무인 픽업을 켠 매장은 영업시간 밖이라도 '무인 픽업 시간' 안이면 가져갈 수 있다.
-// 휴무일은 열지 않는다 (다른 주문과 같다).
+// ── 바로 구매 메뉴 상품의 영업시간 외 수령 (무인 픽업) ──
+// '영업시간 외 수령 및 판매'를 켜면 같은 시간 범위가 두 가지로 쓰인다:
+//   · 주문 제작 상품 — 영업시간 외 수령 (준비는 마감 전에 끝나야: afterHoursSlots)
+//   · 바로 구매 메뉴 상품만 담긴 주문 — 이미 만들어 둔 상품이라 준비 조건 없이 그 시간 안이면 사람 없이 가져간다 (unattendedSlots)
+// 켜기·시간은 영업시간 외 수령 설정 하나를 함께 쓰고, 손님 안내만 따로 적는다 (무인 픽업 안내). 휴무일은 열지 않는다.
 
 export interface Unattended {
-  /** 무인 픽업 시작 'HH:MM' (꺼져 있으면 null) */
+  /** 시작 'HH:MM' (꺼져 있으면 null) */
   start: string | null;
-  /** 무인 픽업 끝 'HH:MM' (24:00 = 자정까지) */
+  /** 끝 'HH:MM' (24:00 = 자정까지) */
   end: string | null;
-  /** 무인 픽업 손님에게 전할 안내 (가져가는 방법 등) */
+  /** 무인 픽업 손님에게 전할 안내 (가져가는 방법 등) — 비었으면 영업시간 외 픽업 안내 */
   note: string;
 }
 
 export const UNATTENDED_OFF: Unattended = { start: null, end: null, note: "" };
-export const DEFAULT_UNATTENDED_START = "00:00";
-export const DEFAULT_UNATTENDED_END = "24:00";
-/** 무인 픽업 시간 — 시작 00:00 ~ 23:30, 끝 00:30 ~ 24:00 */
-export const UNATTENDED_START_OPTIONS = halfHours(0, 47);
-export const UNATTENDED_END_OPTIONS = halfHours(1, 48);
 /** 바로 구매 메뉴 기본 이름 */
 export const DEFAULT_INSTANT_MENU_NAME = "바로 구매";
 export const INSTANT_MENU_NAME_MAX = 12;
 
-/** 매장 설정에서 읽기 — 꺼져 있으면 범위 없음 */
+/** 매장 설정에서 읽기 — 영업시간 외 수령 및 판매와 같은 시간, 안내는 무인 픽업 안내 (꺼져 있으면 범위 없음) */
 export function readUnattended(s: Record<string, unknown>): Unattended {
-  if (!s.unattended_enabled) return UNATTENDED_OFF;
-  const ok = (v: unknown) => typeof v === "string" && /^\d{2}:\d{2}$/.test(v);
-  return {
-    start: ok(s.unattended_start) ? (s.unattended_start as string) : DEFAULT_UNATTENDED_START,
-    end: ok(s.unattended_end) ? (s.unattended_end as string) : DEFAULT_UNATTENDED_END,
-    note: typeof s.unattended_note === "string" ? s.unattended_note.slice(0, AFTER_HOURS_NOTE_MAX) : "",
-  };
+  const a = readAfterHours(s);
+  if (!a.start) return UNATTENDED_OFF;
+  const own = typeof s.unattended_note === "string" ? s.unattended_note.trim().slice(0, AFTER_HOURS_NOTE_MAX) : "";
+  return { start: a.start, end: a.end, note: own || a.note };
 }
 
 /** 바로 구매 메뉴 이름 (비었으면 기본) */
@@ -160,7 +154,7 @@ export const instantMenuName = (s: Record<string, unknown>) =>
   (typeof s.instant_menu_name === "string" && s.instant_menu_name.trim()) || DEFAULT_INSTANT_MENU_NAME;
 
 /**
- * 그날의 무인 픽업 시간 (30분 단위) — 무인 픽업 범위 중 영업시간 밖
+ * 바로 구매 상품만 담긴 주문의 영업시간 외 시간 (30분 단위) — 범위 중 영업시간 밖, 준비 조건 없음
  * @param earliest 오늘이면 지금 이후 가장 이른 시각(분), 아니면 null
  */
 export function unattendedSlots(
@@ -178,7 +172,7 @@ export function unattendedSlots(
   return slots.filter((t) => earliest === null || t >= earliest).map(toHHMM);
 }
 
-/** 이 수령 시간이 무인 픽업인지 — 바로 구매 상품만 담겼고, 무인 픽업을 켰고, 영업시간 밖이면서 무인 픽업 범위 안 */
+/** 이 수령 시간이 무인 픽업인지 — 바로 구매 상품만 담겼고, 영업시간 외 수령 및 판매를 켰고, 영업시간 밖이면서 그 범위 안 */
 export function isUnattendedPickup(
   allInstant: boolean,
   unattended: Unattended,

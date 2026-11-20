@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
     if (companyId && body.desiredDate) {
       const { data: settingsRow } = await supabase
         .from("company_settings")
-        .select("closed_dates, business_hours, date_overrides, color_min_price, unattended_enabled, unattended_start, unattended_end")
+        .select("closed_dates, business_hours, date_overrides, color_min_price, after_hours_enabled, after_hours_start, after_hours_end")
         .eq("company_id", companyId)
         .single();
       colorMinPrice = (settingsRow?.color_min_price as number | null) ?? 0;

@@ -14,7 +14,7 @@ import { useSettingsSync } from "./useSettingsSync";
 import { DEFAULT_COLOR_LEAD_DAYS } from "@/lib/todayColors";
 import { DEFAULT_TYPE_KEY } from "@/lib/productTypes";
 import { useStoreProductTypes } from "./useStoreProductTypes";
-import { AFTER_HOURS_END_OPTIONS, AFTER_HOURS_NOTE_MAX, AFTER_HOURS_START_OPTIONS, DEFAULT_AFTER_HOURS_END, DEFAULT_AFTER_HOURS_START } from "@/lib/afterHours";
+import { AFTER_HOURS_END_OPTIONS, AFTER_HOURS_NOTE_MAX, AFTER_HOURS_START_OPTIONS, DEFAULT_AFTER_HOURS_END, DEFAULT_AFTER_HOURS_START, DEFAULT_INSTANT_MENU_NAME } from "@/lib/afterHours";
 
 registerLocale("ko", ko);
 
@@ -112,10 +112,15 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
   const [afterHoursEnabled, setAfterHoursEnabled] = useState(false);
   const [afterHoursStart, setAfterHoursStart] = useState(DEFAULT_AFTER_HOURS_START);
   const [afterHoursEnd, setAfterHoursEnd] = useState(DEFAULT_AFTER_HOURS_END);
-  // 마감 후에도 매장에서 준비할 수 있는지 (끄면 준비는 마감 전까지 끝나야 하는 시간만 열린다)
   // 영업시간 외 수령 손님에게 전할 안내 (찾아가는 방법 등)
   const [afterHoursNote, setAfterHoursNote] = useState("");
+  // 무인 픽업 안내 — 바로 구매 메뉴 상품만 담긴 주문을 영업시간 밖에 가져가는 손님에게 (켜기·시간은 영업시간 외 수령과 같다)
+  const [unattendedNote, setUnattendedNote] = useState("");
   const [error, setError] = useState<string | null>(null);
+  // 색·사진 맞춤 최소 금액 설명 (ⓘ로 펼치기)
+  const [colorInfoOpen, setColorInfoOpen] = useState(false);
+  // 영업시간 외 수령 및 판매 — 상품별 규칙 설명 (ⓘ로 펼치기)
+  const [afterHoursInfoOpen, setAfterHoursInfoOpen] = useState(false);
 
   const supabase = createClient();
 
@@ -133,6 +138,7 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
     if (typeof data.after_hours_start === "string") setAfterHoursStart(data.after_hours_start);
     if (typeof data.after_hours_end === "string") setAfterHoursEnd(data.after_hours_end);
     setAfterHoursNote(typeof data.after_hours_note === "string" ? data.after_hours_note : "");
+    setUnattendedNote(typeof data.unattended_note === "string" ? data.unattended_note : "");
     if (data.min_lead_times && typeof data.min_lead_times === "object")
       setMinLeadTimes(
         Object.fromEntries(
@@ -143,7 +149,7 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
   };
   const markOwnSave = useSettingsSync(settings, applySettings);
   // 바뀐 내용이 있는지 — 저장되는 값만 비교
-  const { dirty, clean } = useDirty("business", JSON.stringify({ businessHours, closedDates, dateOverrides, minLeadTimes, colorLeadDays, colorMinPrice, afterHoursEnabled, afterHoursStart, afterHoursEnd, afterHoursNote }));
+  const { dirty, clean } = useDirty("business", JSON.stringify({ businessHours, closedDates, dateOverrides, minLeadTimes, colorLeadDays, colorMinPrice, afterHoursEnabled, afterHoursStart, afterHoursEnd, afterHoursNote, unattendedNote }));
   // 되돌리기 — 마지막으로 저장된 값으로
   const revert = () => {
     setError(null);
@@ -223,6 +229,7 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
         after_hours_start: afterHoursStart,
         after_hours_end: afterHoursEnd,
         after_hours_note: afterHoursNote.trim() || null,
+        unattended_note: unattendedNote.trim() || null,
       };
     const { error: err } = await supabase
       .from("company_settings")
@@ -300,13 +307,27 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
       <div className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:p-6">
         <div className="max-w-lg space-y-3">
           <div>
-            <h3 className="text-sm font-medium text-gray-700">색·사진 맞춤 최소 금액</h3>
-            <p className="text-xs text-gray-400 mt-0.5 break-keep">
-              상품 금액(추가 옵션·배송비 제외)이 이 금액 이상인 주문만 아래 두 가지를 할 수 있어요.
-              <br />· 원하는 꽃 색 고르기 (모자라면 색은 사장님께 맡겨요)
-              <br />· 찾아본 사진으로 주문하기
-              <br />비워 두면 금액과 관계없이 모두 할 수 있어요.
-            </p>
+            {/* 설명이 길어 ⓘ를 눌러야 펼친다 */}
+            <h3 className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+              색·사진 맞춤 최소 금액
+              <button
+                type="button"
+                onClick={() => setColorInfoOpen((v) => !v)}
+                aria-expanded={colorInfoOpen}
+                aria-label="색·사진 맞춤 최소 금액 설명"
+                className={`w-4 h-4 rounded-full border text-[10px] font-semibold leading-none flex items-center justify-center transition-colors ${colorInfoOpen ? "border-gold-500 bg-gold-500 text-white" : "border-gray-300 text-gray-400 hover:border-gray-400 hover:text-gray-600"}`}
+              >
+                i
+              </button>
+            </h3>
+            {colorInfoOpen && (
+              <p className="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2 mt-1.5 break-keep">
+                상품 금액(추가 옵션·배송비 제외)이 이 금액 이상인 주문만 아래 두 가지를 할 수 있어요.
+                <br />· 원하는 꽃 색 고르기 (모자라면 색은 사장님께 맡겨요)
+                <br />· 찾아본 사진으로 주문하기
+                <br />비워 두면 금액과 관계없이 모두 할 수 있어요.
+              </p>
+            )}
           </div>
           <div className="flex items-center justify-between border-t border-gray-100 md:border md:border-gray-200 md:rounded-xl px-0 md:px-4 py-3">
             <span className="text-sm text-gray-700">색 고르기 · 사진 주문</span>
@@ -405,15 +426,34 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
         </div>
       </div>
 
-      {/* 영업시간 외 수령 — 요일별 영업 시간 바로 아래 (영업시간 앞뒤로 얼마나 더 받을지) */}
+      {/* 영업시간 외 수령 및 판매 — 요일별 영업 시간 바로 아래 (영업시간 앞뒤로 얼마나 더 받고 팔지)
+          켜기·시간은 하나 — 주문 제작 상품은 '마감 전 준비' 조건이 붙고, 바로 구매 메뉴 상품만 담긴 주문은 조건 없이 (무인 픽업). 안내만 따로 */}
       <div className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:p-6">
         <div className="max-w-lg space-y-3">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h3 className="text-sm font-medium text-gray-700">영업시간 외 수령</h3>
+              {/* 상품별 규칙은 길어 ⓘ를 눌러야 펼친다 */}
+              <h3 className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                영업시간 외 수령 및 판매
+                <button
+                  type="button"
+                  onClick={() => setAfterHoursInfoOpen((v) => !v)}
+                  aria-expanded={afterHoursInfoOpen}
+                  aria-label="영업시간 외 수령 및 판매 설명"
+                  className={`w-4 h-4 rounded-full border text-[10px] font-semibold leading-none flex items-center justify-center transition-colors ${afterHoursInfoOpen ? "border-gold-500 bg-gold-500 text-white" : "border-gray-300 text-gray-400 hover:border-gray-400 hover:text-gray-600"}`}
+                >
+                  i
+                </button>
+              </h3>
               <p className="text-xs text-gray-400 mt-0.5 break-keep">
-                받을 수 있는 시간을 정하면 그중 영업시간 앞뒤도 손님이 수령 시간으로 고를 수 있어요. 추가 요금은 없고, 다른 예약처럼 확인 후 확정·취소하면 돼요.
+                받을 수 있는 시간을 정하면 영업시간 앞뒤로 손님이 꽃을 받아 갈 수 있어요.<br />추가 요금은 없고, 다른 예약처럼 확인 후 확정·취소하면 돼요.
               </p>
+              {afterHoursInfoOpen && (
+                <ul className="mt-1.5 space-y-1 text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2 break-keep">
+                  <li><span className="text-gray-700 font-medium">주문 제작 상품</span> — 마감 전에 준비가 끝나는 주문만 받아요. 마감 후부터 다음 날 영업 시작 전까지는 미리 만들어 둘 수 있는 주문만 열려요.</li>
+                  <li><span className="text-gray-700 font-medium">{(settings.instant_menu_name as string | null)?.trim() || DEFAULT_INSTANT_MENU_NAME} 메뉴 상품</span> — 이미 만들어 둔 상품이라 이 시간 안이면 언제든 결제하고 사람 없이 가져갈 수 있어요(무인 픽업). 메뉴를 숨기면 영업시간 밖 판매도 멈춰요.</li>
+                </ul>
+              )}
             </div>
             <button
               type="button"
@@ -461,7 +501,7 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
               {/* 손님에게 전할 안내 — 영업시간 외 시간을 고르면 주문 화면에 보인다 */}
               <div className="pt-3 border-t border-gray-100">
                 <p className="text-sm text-gray-700">영업시간 외 픽업 안내</p>
-                <p className="text-xs text-gray-400 mt-0.5 mb-2 break-keep">영업시간 외 픽업을 고른 손님에게 픽업 방법에 대해서 알림톡으로 전달해요.</p>
+                <p className="text-xs text-gray-400 mt-0.5 mb-2 break-keep">주문 제작 상품을 영업시간 밖에 받아 가는 손님에게 픽업 방법을 알림톡으로 전달해요.</p>
                 <textarea
                   value={afterHoursNote}
                   onChange={(e) => setAfterHoursNote(e.target.value.slice(0, AFTER_HOURS_NOTE_MAX))}
@@ -471,8 +511,25 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
                 />
                 <p className="text-right text-[11px] text-gray-300">{afterHoursNote.length}/{AFTER_HOURS_NOTE_MAX}</p>
               </div>
+
+              {/* 무인 픽업 안내 — 바로 구매 메뉴 상품만 담긴 주문 (가져가는 방법이 달라 따로 적는다) */}
+              <div className="pt-3 border-t border-gray-100">
+                <p className="text-sm text-gray-700">무인 픽업 안내</p>
+                <p className="text-xs text-gray-400 mt-0.5 mb-2 break-keep">
+                  {(settings.instant_menu_name as string | null)?.trim() || DEFAULT_INSTANT_MENU_NAME} 메뉴 상품만 영업시간 밖에 가져가는 손님에게 알림톡으로 전달해요.<br />비워 두면 위 영업시간 외 픽업 안내를 보내요.
+                </p>
+                <textarea
+                  value={unattendedNote}
+                  onChange={(e) => setUnattendedNote(e.target.value.slice(0, AFTER_HOURS_NOTE_MAX))}
+                  rows={3}
+                  placeholder="예) 매장 앞 냉장고에서 꽃다발을 꺼내 가 주세요. 쇼핑백은 옆 선반에 있어요."
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none focus:border-gray-400 bg-white placeholder:text-gray-300"
+                />
+                <p className="text-right text-[11px] text-gray-300">{unattendedNote.length}/{AFTER_HOURS_NOTE_MAX}</p>
+              </div>
             </div>
           )}
+
         </div>
       </div>
 

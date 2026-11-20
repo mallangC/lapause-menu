@@ -358,16 +358,16 @@ export function useOrderCheckout(props: OrderCheckoutProps) {
     }
   }
   // 영업시간 외 수령 — 오늘이면 준비 시간 이후만, 준비는 마감 전까지 끝나야 (사장님 설정에 따라)
-  // 무인 픽업 — 바로 구매 상품만이고 매장이 켜 두었으면 영업시간 외 수령 대신 무인 픽업 시간
+  // 바로 구매 상품만 — 영업시간 외 수령 및 판매를 켰으면 같은 시간을 준비 조건 없이 (무인 픽업)
   const unattendedOn = allInstant && !!unattended.start && form.deliveryType !== "배송";
   const extraSlots = !selectedDate || leadOverflow
     ? []
     : unattendedOn
     ? unattendedSlots(day, unattended, leadStart)
     : afterHoursSlots(day, afterHours, leadStart, { selectedDate, leadHours, businessHours, dateOverrides });
-  // 점선 시간 이름·고르면 보여 줄 사장님 안내
-  const extraLabel = unattendedOn ? "무인 픽업" : "영업시간 외 수령";
+  // 점선 시간을 고르면 보여 줄 사장님 안내 — 무인 픽업이면 무인 픽업 안내
   const extraNote = unattendedOn ? unattended.note : afterHours.note;
+  const extraNoteTitle = unattendedOn ? "무인 픽업 안내" : "영업시간 외 수령 안내";
 
   // ── 보관한 주문서 되살리기 (결제 실패·저장 실패) ──
   const restore = (d: Draft) => {
@@ -649,7 +649,7 @@ export function useOrderCheckout(props: OrderCheckoutProps) {
 
 
   return {
-    restoredOrder, setRestoredOrder, order, single, cart, product, quantity, isPhotoOrder, isStyleOrder, form, setForm, set, selectedDate, setSelectedDate, desiredDate, name, setName, phone, setPhone, recipientName, setRecipientName, recipientPhone, setRecipientPhone, address, setAddress, addressDetail, setAddressDetail, deliveryFee, setDeliveryFee, deliveryDistance, setDeliveryDistance, distanceLoading, setDistanceLoading, messageCardCount, setMessageCardCount, shoppingBagCount, setShoppingBagCount, preservativeCount, setPreservativeCount, messageCardContents, setMessageCardContents, privacyAgreed, setPrivacyAgreed, cancellationAgreed, setCancellationAgreed, noticeAgreed, setNoticeAgreed, paymentMethod, setPaymentMethod, cashReceipt, setCashReceipt, fe, setFe, clearFe, submitting, setSubmitting, error, setError, processing, setProcessing, done, setDone, widgetReady, setWidgetReady, widgetRef, paymentOrderId, photoData, setPhotoData, refNotice, refName, refPhone, refDeliveryType, refDeliveryInfo, refDate, refTime, refPayment, refAgreement, effMsg, effBag, effPreservative, optionPrices, checkedItems, msgCardAmt, bagAmt, preservativeAmt, goodsAmt, deliveryAmt, finalPrice, lines, hasSeasonal, colorMode, needsColor, photoNoColorNotice, colorAmount, pickAddress, dateAllowed, now, day, isToday, itemTypes, leadHours, minTimeDate, leadOverflow, leadStart, slots, extraSlots, extraLabel, extraNote, allInstant, restore, readDraft, send, finish, makeDraft, submit, confirm,
+    restoredOrder, setRestoredOrder, order, single, cart, product, quantity, isPhotoOrder, isStyleOrder, form, setForm, set, selectedDate, setSelectedDate, desiredDate, name, setName, phone, setPhone, recipientName, setRecipientName, recipientPhone, setRecipientPhone, address, setAddress, addressDetail, setAddressDetail, deliveryFee, setDeliveryFee, deliveryDistance, setDeliveryDistance, distanceLoading, setDistanceLoading, messageCardCount, setMessageCardCount, shoppingBagCount, setShoppingBagCount, preservativeCount, setPreservativeCount, messageCardContents, setMessageCardContents, privacyAgreed, setPrivacyAgreed, cancellationAgreed, setCancellationAgreed, noticeAgreed, setNoticeAgreed, paymentMethod, setPaymentMethod, cashReceipt, setCashReceipt, fe, setFe, clearFe, submitting, setSubmitting, error, setError, processing, setProcessing, done, setDone, widgetReady, setWidgetReady, widgetRef, paymentOrderId, photoData, setPhotoData, refNotice, refName, refPhone, refDeliveryType, refDeliveryInfo, refDate, refTime, refPayment, refAgreement, effMsg, effBag, effPreservative, optionPrices, checkedItems, msgCardAmt, bagAmt, preservativeAmt, goodsAmt, deliveryAmt, finalPrice, lines, hasSeasonal, colorMode, needsColor, photoNoColorNotice, colorAmount, pickAddress, dateAllowed, now, day, isToday, itemTypes, leadHours, minTimeDate, leadOverflow, leadStart, slots, extraSlots, extraNote, extraNoteTitle, allInstant, restore, readDraft, send, finish, makeDraft, submit, confirm,
   };
 }
 
