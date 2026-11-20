@@ -533,6 +533,7 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
                 shoppingBagPrice={shoppingBagPrice}
                 preservativePrice={preservativePrice}
                 payLinkEnabled={settings.consult_apply_status === "approved"}
+                companyId={companyId}
               />
             </div>
           </div>
@@ -937,6 +938,7 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
                               shoppingBagPrice={shoppingBagPrice}
                               preservativePrice={preservativePrice}
                 payLinkEnabled={settings.consult_apply_status === "approved"}
+                companyId={companyId}
                             />
                           </td>
                         </tr>

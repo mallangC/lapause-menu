@@ -1,7 +1,8 @@
 "use client";
 
 import PriceTag from "@/components/PriceTag";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import StoreImage from "@/components/StoreImage";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Product } from "@/types";
@@ -46,6 +47,29 @@ export default function ProductDetailClient({
   const router = useRouter();
   const [noticeOpen, setNoticeOpen] = useState(false);
   const [quantity, setQuantity] = useState(1);
+  // 실제로 받은 상품 — 이 상품을 주문한 손님에게 사장님이 보낸 완성 사진 중 공개한 것 (최근 몇 장)
+  const [realPhotos, setRealPhotos] = useState<string[]>([]);
+  // 크게 보는 사진 번호 (없으면 닫힘)
+  const [realIdx, setRealIdx] = useState<number | null>(null);
+  const realGo = (d: number) => setRealIdx((i) => (i == null ? i : Math.min(realPhotos.length - 1, Math.max(0, i + d))));
+  const [realTouchX, setRealTouchX] = useState<number | null>(null);
+  // 키보드 — ←→ 넘기기, Esc 닫기
+  useEffect(() => {
+    if (realIdx == null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") realGo(-1);
+      else if (e.key === "ArrowRight") realGo(1);
+      else if (e.key === "Escape") setRealIdx(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+  useEffect(() => {
+    fetch(`/api/products/${product.id}/finished-photos`)
+      .then((r) => (r.ok ? r.json() : { photos: [] }))
+      .then((d: { photos?: string[] }) => setRealPhotos(d.photos ?? []))
+      .catch(() => {});
+  }, [product.id]);
   const [added, setAdded] = useState(false);
   const { addItem } = useCart(slug);
 
@@ -257,6 +281,78 @@ export default function ProductDetailClient({
             </div>
           </div>
       </div>
+
+      {/* 실제로 받은 상품 — 사장님이 올린 완성 사진 (공개한 것만, 있을 때만) */}
+      {realPhotos.length > 0 && (
+        <div className="py-10 border-t border-gray-100 px-4">
+          <h2 className="text-base font-medium text-gray-900">실제로 받은 상품</h2>
+          <p className="text-xs text-gray-400 mt-1 mb-3 break-keep">해당 상품을 주문한 손님께 보내 드린 실제 사진이에요. 꽃 구성은 계절에 따라 조금씩 달라요.</p>
+          <div className="grid grid-cols-3 gap-1.5 max-w-xl">
+            {realPhotos.map((url, i) => (
+              <button key={url} type="button" onClick={() => setRealIdx(i)} className="relative aspect-square rounded-lg overflow-hidden bg-beige-100" aria-label={`실제 사진 ${i + 1} 크게 보기`}>
+                <StoreImage thumb src={url} alt="" fill sizes="(max-width: 768px) 33vw, 190px" className="object-cover" />
+                {/* 누르면 크게 볼 수 있다는 작은 표시 (첫 인사 사진·볼륨감 참고 사진과 같은 돋보기) */}
+                <span aria-hidden className="absolute right-1.5 bottom-1.5 w-5 h-5 rounded-full bg-black/35 text-white flex items-center justify-center">
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.2-5.2M10.5 18a7.5 7.5 0 1 0 0-15 7.5 7.5 0 0 0 0 15ZM10.5 7.5v6m3-3h-6" />
+                  </svg>
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {/* 크게 보기 — 닫기(×) · 좌우 넘기기(버튼·밀기·←→) */}
+      {realIdx != null && realPhotos[realIdx] && (
+        <div
+          className="fixed inset-0 z-60 flex items-center justify-center bg-black/80 p-4"
+          onClick={() => setRealIdx(null)}
+          onTouchStart={(e) => setRealTouchX(e.touches[0].clientX)}
+          onTouchEnd={(e) => {
+            if (realTouchX == null) return;
+            const dx = e.changedTouches[0].clientX - realTouchX;
+            setRealTouchX(null);
+            if (Math.abs(dx) > 40) realGo(dx < 0 ? 1 : -1);
+          }}
+        >
+          {/* 사진 + 사진 오른쪽 위 닫기(×) */}
+          <div className="relative max-w-full" onClick={(e) => e.stopPropagation()}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img key={realPhotos[realIdx]} src={realPhotos[realIdx]} alt={`실제로 받은 상품 ${realIdx + 1}`} className="block max-w-full max-h-[80vh] rounded-2xl object-contain select-none" />
+            <button
+              type="button"
+              onClick={() => setRealIdx(null)}
+              aria-label="닫기"
+              className="absolute top-2.5 right-2.5 w-9 h-9 rounded-full bg-white/90 text-gray-800 flex items-center justify-center shadow"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+            </button>
+          </div>
+          {realIdx > 0 && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); realGo(-1); }}
+              aria-label="이전 사진"
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 text-gray-800 flex items-center justify-center shadow"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" /></svg>
+            </button>
+          )}
+          {realIdx < realPhotos.length - 1 && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); realGo(1); }}
+              aria-label="다음 사진"
+              className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 text-gray-800 flex items-center justify-center shadow"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /></svg>
+            </button>
+          )}
+          {realPhotos.length > 1 && (
+            <p className="absolute bottom-6 inset-x-0 text-center text-sm text-white/80 tabular-nums">{realIdx + 1} / {realPhotos.length}</p>
+          )}
+        </div>
+      )}
 
       {/* 이런 상품은 어떠세요? */}
       {suggestedProducts.length > 0 && (

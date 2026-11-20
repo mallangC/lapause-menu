@@ -6,6 +6,7 @@ import { Reservation } from "./types";
 import { STATUS_OPTIONS } from "./constants";
 import { formatDateTime, formatPhone } from "./utils";
 import CopyButton from "./CopyButton";
+import FinishedPhotos from "./FinishedPhotos";
 import { createClient } from "@/lib/supabase/client";
 import { Product } from "@/types";
 import { FLOWER_COLOR_MAP } from "@/lib/constants";
@@ -44,6 +45,8 @@ interface Props {
   preservativePrice?: number;
   /** 판매 신청 승인됨 — 승인된 매장만 결제 링크를 만들 수 있다 */
   payLinkEnabled?: boolean;
+  /** 매장 id — 완성 사진을 올릴 때 */
+  companyId?: string;
 }
 
 function addonCount(value?: string | null) {
@@ -87,6 +90,7 @@ export default function ReservationDetail({
   preservativePrice = 0,
   onMarkPaid,
   payLinkEnabled = false,
+  companyId,
 }: Props) {
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
   const statusDropdownRef = useRef<HTMLDivElement>(null);
@@ -180,6 +184,11 @@ export default function ReservationDetail({
     }
   };
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  // 제작 완료 — 완성 사진을 함께 올리는 창 (사진은 선택)
+  const [showMadeModal, setShowMadeModal] = useState(false);
+  // 완성 사진을 상품 상세에 붙일 상품 — 상품을 골라 한 주문(상품이 하나)만
+  const photoProductIds = [...new Set((r.items ?? []).map((i) => i.product_id).filter((x): x is string => !!x))];
+  const photoProductId = photoProductIds.length === 1 ? photoProductIds[0] : null;
   const [productDetail, setProductDetail] = useState<Product | null>(null);
 
   useEffect(() => {
@@ -202,6 +211,9 @@ export default function ReservationDetail({
     } else if (status === "준비중" && r.status === "미확인") {
       setPendingStatus("준비중");
       setShowConfirmModal(true);
+    } else if (status === "제작완료" && companyId) {
+      // 제작 완료 — 같은 창에서 완성 사진을 올리고(선택) 처리
+      setShowMadeModal(true);
     } else {
       runUpdate(status);
     }
@@ -379,6 +391,36 @@ export default function ReservationDetail({
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* 제작 완료 — 완성 사진 올리기(선택) + 처리 */}
+      {showMadeModal && companyId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => !updating && setShowMadeModal(false)}>
+          <div className="bg-white rounded-2xl shadow-xl p-5 w-full max-w-md space-y-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div>
+              <h3 className="text-base font-semibold text-gray-900">제작 완료</h3>
+              <p className="text-sm text-gray-500 mt-0.5">완성 사진이 있으면 함께 올려 주세요. (선택)</p>
+            </div>
+            <FinishedPhotos reservationId={r.id} companyId={companyId} productId={photoProductId} />
+            <div className="flex gap-2 pt-1">
+              <button type="button" onClick={() => setShowMadeModal(false)} disabled={!!updating} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50">
+                닫기
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const ok = await runUpdate("제작완료");
+                  if (ok) setShowMadeModal(false);
+                }}
+                disabled={!!updating}
+                className="flex-1 inline-flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 disabled:opacity-80"
+              >
+                {updating === "제작완료" && <span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />}
+                제작 완료로 바꾸기
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -784,6 +826,14 @@ export default function ReservationDetail({
                 className="w-20 h-20 object-cover rounded-xl border border-gray-100 cursor-zoom-in hover:opacity-90 transition-opacity"
               />
             ))}
+          </div>
+        )}
+
+        {/* 완성 사진 — 제작 완료 뒤에도 올리고·공개를 바꾸고·지울 수 있다 */}
+        {companyId && (r.status === "제작완료" || r.status === "픽업/배송완료") && (
+          <div className="pt-1 space-y-2">
+            <p className="text-sm font-medium text-gray-700">완성 사진</p>
+            <FinishedPhotos reservationId={r.id} companyId={companyId} productId={photoProductId} />
           </div>
         )}
 
