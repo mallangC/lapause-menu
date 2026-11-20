@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import Image from "next/image";
 import { formatMoney, parseMoney } from "@/lib/format";
-import { DEFAULT_VOLUME_NAMES, VOLUME_NAME_MAX, emptySizeTiers, sizeTierOrderErrors, volumeJudgeRefs, type RefProduct, type SizeConfig, type SizeTier } from "@/lib/sizeTiers";
+import { DEFAULT_VOLUME_NAMES, VOLUME_NAME_MAX, emptySizeTiers, sizeTierOrderErrors, type RefProduct, type SizeConfig, type SizeTier } from "@/lib/sizeTiers";
 
 // 판매 설정 — 볼륨감 참고 이미지 (4단계 고정, 단계 이름·가격·사진은 사장님이 정한다)
 // 손님이 희망 금액을 정하기 전에 '이 가격이면 이 정도 볼륨' 사진으로 보여준다.
@@ -54,8 +54,6 @@ export default function SizeTiersEditor({ value, onChange, types, hiddenTypes = 
   // 아직 넣지 않은 유형은 빈 4단계로 보여준다 (입력하면 그 유형 값이 생긴다)
   const list = value.byType[activeTab] ?? emptySizeTiers();
 
-  // 사진을 안 넣은 단계 → 사진 주문 가격 판단에 대신 쓰는 상품 이름 (단계 가격 → 상품 이름)
-  const autoByPrice = new Map(volumeJudgeRefs(value, activeTab, products).filter((r) => r.auto).map((r) => [r.price, r.auto as string]));
 
   const setList = (next: SizeTier[]) => onChange({ ...value, byType: { ...value.byType, [activeTab]: next } });
   const update = (idx: number, patch: Partial<SizeTier>) => setList(list.map((t, i) => (i === idx ? { ...t, ...patch } : t)));
@@ -93,6 +91,10 @@ export default function SizeTiersEditor({ value, onChange, types, hiddenTypes = 
         <h3 className="text-sm font-medium text-gray-700">볼륨감 참고 이미지</h3>
         <p className="text-xs text-gray-400 mt-0.5 break-keep">
           손님이 희망 금액을 정하기 전에 볼륨감을 참고할 수 있는 사진을 보여줘요.
+        </p>
+        {/* 사진이 빈 단계 — 사진 주문 가격은 가격이 같은 상품 사진으로 가늠한다 (손님 화면에는 안 보인다) */}
+        <p className="text-xs text-gray-400 mt-0.5 break-keep">
+          사진이 없는 단계는 가격이 같은 상품 사진으로 사진 주문 가격을 가늠해요. 직접 넣으면 더 정확해요.
         </p>
         {/* 참고 사진 찍는 요령 — 사람과 함께 찍어야 손님이 크기를 가늠할 수 있다 */}
         <p className="flex items-start gap-2 text-xs text-gold-600 bg-gold-500/10 rounded-lg px-3 py-2 mt-2 break-keep">
@@ -208,14 +210,6 @@ export default function SizeTiersEditor({ value, onChange, types, hiddenTypes = 
                     </button>
                   )}
                 </div>
-                {/* 사진이 빈 단계 — 사진 주문 가격은 가격이 맞는 상품 사진으로 가늠한다 (손님 화면에는 안 보인다) */}
-                {!t.image && t.price != null && (
-                  <p className="mt-1.5 text-[11px] text-gray-400 break-keep">
-                    {autoByPrice.has(t.price)
-                      ? `사진이 없으면 '${autoByPrice.get(t.price)}' 상품 사진으로 사진 주문 가격을 가늠해요. 직접 넣으면 더 정확해요.`
-                      : "사진이 없고 가격이 맞는 상품도 없어 사진 주문 가격 판단에 쓰지 않아요."}
-                  </p>
-                )}
                 </div>
               );
             })}
