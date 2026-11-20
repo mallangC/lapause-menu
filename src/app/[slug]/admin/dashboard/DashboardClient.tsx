@@ -1,5 +1,7 @@
 "use client";
 
+import NaverMailPanel from "./NaverMailPanel";
+import NaverBell from "./NaverBell";
 import { hasUnsaved } from "@/components/admin/useDirty";
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
@@ -168,6 +170,39 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
   const monthRef = useRef(reservationMonth);
   monthRef.current = reservationMonth;
   const [liveToast, setLiveToast] = useState<string | null>(null);
+  // 확인하지 않은 네이버 예약 (메일로 자동으로 들어온 새 예약·취소) — 열어 볼 때까지 예약 관리 탭에 빨간 숫자·목록 위 안내
+  const [naverUnchecked, setNaverUnchecked] = useState<Reservation[]>([]);
+  const loadNaverUnchecked = () =>
+    supabase
+      .from("reservations")
+      .select("*")
+      .eq("company_id", companyId)
+      .eq("naver_unchecked", true)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(50)
+      .then(({ data }) => setNaverUnchecked((data as Reservation[] | null) ?? []));
+  useEffect(() => {
+    loadNaverUnchecked();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companyId]);
+  // 알림에서 고른 예약 — 예약 관리 탭이 받아서 그 달로 옮겨 상세를 연다
+  const [naverOpenRequest, setNaverOpenRequest] = useState<{ reservation: Reservation; nonce: number } | null>(null);
+  /** 확인했어요 — 한 건(id) 또는 전부 */
+  const checkNaver = async (id?: string) => {
+    const ids = id ? [id] : naverUnchecked.map((r) => r.id);
+    if (!ids.length) return;
+    setNaverUnchecked((prev) => prev.filter((r) => !ids.includes(r.id)));
+    setAllReservations((prev) => prev.map((r) => (ids.includes(r.id) ? { ...r, naver_unchecked: false } : r)));
+    const { error } = await supabase.from("reservations").update({ naver_unchecked: false }).in("id", ids);
+    if (error) {
+      // 저장이 안 됐으면 원래대로 (사라졌다가 새로고침하면 다시 나타나는 일이 없게)
+      console.error("[naver] 확인 처리 실패:", error.message);
+      setAllReservations((prev) => prev.map((r) => (ids.includes(r.id) ? { ...r, naver_unchecked: true } : r)));
+      loadNaverUnchecked();
+      alert("확인 처리를 저장하지 못했어요. 잠시 후 다시 시도해 주세요.");
+    }
+  };
   useEffect(() => {
     const channel = supabase
       .channel(`reservations-${companyId}`)
@@ -193,6 +228,8 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
             });
           }
           setReservationsVersion((v) => v + 1);
+          // 확인 필요 목록도 새로
+          loadNaverUnchecked();
 
           // 알림 — 손님이 낸 주문·네이버 메일 예약만 (사장님이 직접 추가·수정한 건 알리지 않는다)
           const row = payload.new as { orderer_name?: string; desired_date?: string; desired_time?: string | null; status?: string; order_type?: string | null; naver_booking_id?: string | null } | null;
@@ -318,9 +355,22 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
           <Link href={`/${slug}`} className="text-lg font-medium text-gray-900 hover:text-gray-600 transition-colors">
             {companyName} — 관리자
           </Link>
-          <button onClick={handleSignOut} className="text-sm text-gray-400 hover:text-gray-700 transition-colors">
-            로그아웃
-          </button>
+          <div className="flex items-center gap-3">
+            {/* 알림 — 어느 탭에서든 (확인하지 않은 네이버 예약 · 읽지 못한 네이버 메일) */}
+            <NaverBell
+              companyId={companyId}
+              settings={companySettings}
+              unchecked={naverUnchecked}
+              onCheck={checkNaver}
+              onOpenReservation={(r) => {
+                goTab("reservations");
+                setNaverOpenRequest({ reservation: r, nonce: Date.now() });
+              }}
+            />
+            <button onClick={handleSignOut} className="text-sm text-gray-400 hover:text-gray-700 transition-colors">
+              로그아웃
+            </button>
+          </div>
         </div>
       </header>
 
@@ -543,6 +593,9 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
                 loading={reservationsLoading}
                 onRefresh={() => { fetchReservations(); setReservationsVersion((v) => v + 1); }}
                 settings={companySettings}
+                onCheckNaver={checkNaver}
+                openRequest={naverOpenRequest}
+                onOpenRequestDone={() => setNaverOpenRequest(null)}
                 onMonthChange={(year, month) => setReservationMonth((prev) =>
                   prev.year === year && prev.month === month ? prev : { year, month }
                 )}
@@ -611,6 +664,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
                 initialYoutubeUrl={currentYoutubeUrl}
                 initialPhone={companyPhone}
                 initialParking={(companySettings.parking as string | null) ?? null}
+                naverConnect={<NaverMailPanel part="connect" companyId={companyId} settings={companySettings} />}
                 onSettingsSaved={handleSettingsSaved}
                 plan={plan}
                 onSave={(name, logo, naver, kakao, instagram, youtube) => {

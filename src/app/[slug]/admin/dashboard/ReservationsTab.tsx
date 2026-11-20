@@ -1,6 +1,5 @@
 "use client";
 
-import NaverMailPanel from "./NaverMailPanel";
 import React, { useState, useEffect, useRef, Dispatch, SetStateAction } from "react";
 import { createClient } from "@/lib/supabase/client";
 import AddReservationModal from "./AddReservationModal";
@@ -108,6 +107,12 @@ interface Props {
   /** 보고 있는 달이 바뀌면 호출 — 부모가 해당 달 예약만 다시 불러온다 */
   onMonthChange: (year: number, month: number) => void;
   settings: CompanySettings;
+  /** 예약을 열어 보면 네이버 '확인 필요'를 끈다 */
+  onCheckNaver?: (id?: string) => void;
+  /** 위쪽 알림 종에서 고른 예약 — 그 달로 옮겨 상세를 연다 (nonce: 같은 예약을 다시 골라도) */
+  openRequest?: { reservation: Reservation; nonce: number } | null;
+  /** 요청을 처리했어요 — 탭이 다시 그려져도 같은 요청을 또 열지 않게 */
+  onOpenRequestDone?: () => void;
   initialStatusFilter?: string;
   onClearStatusFilter?: () => void;
 }
@@ -138,7 +143,11 @@ const itemLabel = (item?: { name?: string; type?: string; quantity?: number }, f
   return item?.quantity && item.quantity >= 2 ? `${name} × ${item.quantity}` : name;
 };
 
-export default function ReservationsTab({ companyId, allReservations, setAllReservations, loading, onRefresh, onMonthChange, settings, initialStatusFilter, onClearStatusFilter }: Props) {
+export default function ReservationsTab({ companyId, allReservations, setAllReservations, loading, onRefresh, onMonthChange, settings, initialStatusFilter, onClearStatusFilter, onCheckNaver, openRequest, onOpenRequestDone }: Props) {
+  // 예약을 열어 보면 '확인 필요'를 끈다
+  const openedCheck = (r: Reservation) => { if (r.naver_unchecked) onCheckNaver?.(r.id); };
+  // 알림에서 고른 예약 — 그 달로 옮겨 불러온 뒤 상세를 연다
+  const [pendingOpenId, setPendingOpenId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const sortKey: SortKey = "desired_date";
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -366,6 +375,38 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
     ? allReservations.find((r) => r.id === mobileDetailId) ?? null
     : null;
 
+  /** 알림에서 예약을 고르면 — 확인 처리, 그 예약이 보이게(그 달·필터 해제) 옮긴 뒤 상세를 연다 */
+  const openFromNotice = (r: Reservation) => {
+    setSearchIds(null);
+    setStatusFilter(undefined);
+    setShowPast(true);
+    const [y, mo] = r.desired_date.split("-").map(Number);
+    if (y !== viewYear || mo !== viewMonth) {
+      setViewYear(y);
+      setViewMonth(mo);
+    }
+    setPendingOpenId(r.id);
+  };
+  // 위쪽 알림 종에서 고른 예약 (다른 탭에서 눌렀어도 이 탭으로 넘어온 뒤)
+  useEffect(() => {
+    if (!openRequest) return;
+    openFromNotice(openRequest.reservation);
+    onOpenRequestDone?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openRequest?.nonce]);
+  // 그 달 예약을 불러와 목록에 들어오면 상세를 연다 (휴대폰은 아래 시트, PC는 행 펼치기 + 그 줄로 스크롤)
+  useEffect(() => {
+    if (!pendingOpenId || !allReservations.some((r) => r.id === pendingOpenId)) return;
+    const id = pendingOpenId;
+    setPendingOpenId(null);
+    if (window.innerWidth < 768) {
+      setMobileDetailId(id);
+    } else {
+      setExpandedId(id);
+      setTimeout(() => document.getElementById(`rv-${id}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
+    }
+  }, [pendingOpenId, allReservations]);
+
   const STATUS_DOT: Record<string, string> = {
     미확인: "bg-red-400",
     준비중: "bg-gray-400",
@@ -586,8 +627,7 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
           </div>
         </div>
 
-        {/* 네이버 예약 메일 연동 — 받는 주소·연결 상태 · 확인이 필요한 메일 */}
-        <NaverMailPanel companyId={companyId} settings={settings} />
+
 
         <div className="bg-white -mx-4 md:mx-0 py-4 px-4 md:rounded-2xl md:px-5 space-y-4">
         {/* 상태 필터 배지 */}
@@ -753,7 +793,7 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
                   deleting={deletingId === r.id}
                 >
                   <div
-                    onClick={() => setMobileDetailId(r.id)}
+                    onClick={() => { setMobileDetailId(r.id); openedCheck(r); }}
                     className={`border-b border-gray-200 p-3.5 cursor-pointer active:brightness-95 transition-all ${isCancelled ? "bg-gray-100" : (STATUS_ROW_BG[r.status] ?? "bg-white")}`}
                   >
                     <div className="flex items-center justify-between mb-2">
@@ -768,7 +808,11 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className={`text-sm font-semibold ${isCancelled ? "text-gray-400" : "text-gray-900"}`}>{r.orderer_name}</span>
+                      <span className={`text-sm font-semibold ${isCancelled ? "text-gray-400" : "text-gray-900"}`}>
+                        {/* 확인하지 않은 네이버 예약·취소 — 이름 앞 빨간 점 */}
+                        {r.naver_unchecked && <span title={r.status === "취소" ? "확인하지 않은 네이버 취소" : "확인하지 않은 네이버 예약"} aria-label="확인하지 않은 네이버 예약" className="inline-block w-2 h-2 rounded-full bg-red-500 mr-1.5 align-middle shrink-0" />}
+                        {r.orderer_name}
+                      </span>
                       <span className="text-xs text-gray-400 truncate max-w-[150px]">{productSummary}</span>
                     </div>
                     <div className="flex items-center justify-between mt-1.5">
@@ -830,7 +874,8 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
                     <React.Fragment key={r.id}>
                       {/* 예약 헤더 행 */}
                       <tr
-                        onClick={() => setExpandedId(expanded ? null : r.id)}
+                        id={`rv-${r.id}`}
+                        onClick={() => { setExpandedId(expanded ? null : r.id); openedCheck(r); }}
                         className={`${rowBg} ${isMultiItem ? "border-b border-gray-50" : expanded ? "" : groupBorder} cursor-pointer hover:brightness-95 transition-all ${cancelCls}`}
                       >
                         <td className="py-3 pl-2 md:pl-0 text-xs whitespace-nowrap text-center font-medium text-gray-700">
@@ -842,6 +887,8 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
                           {r.after_hours_pickup && <span className="block mt-0.5 text-[10px] font-medium text-gold-600">영업시간 외</span>}
                         </td>
                         <td className="py-3 pr-3 whitespace-nowrap text-center">
+                          {/* 확인하지 않은 네이버 예약·취소 — 이름 앞 빨간 점 */}
+                          {r.naver_unchecked && <span title={r.status === "취소" ? "확인하지 않은 네이버 취소" : "확인하지 않은 네이버 예약"} aria-label="확인하지 않은 네이버 예약" className="inline-block w-2 h-2 rounded-full bg-red-500 mr-1.5 align-middle" />}
                           {r.customer_profile_id ? (
                             <button
                               type="button"

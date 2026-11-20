@@ -25,6 +25,8 @@ interface Props {
   /** 공유 매장 설정 갱신 (대시보드 '손님 문의 줄이기'가 바로 반영되게) */
   onSettingsSaved?: (patch: Record<string, unknown>) => void;
   onSave: (name: string, logo: string | null, locationUrl: string | null, kakaoChannelUrl: string | null, instagramUrl: string | null, youtubeUrl: string | null) => void;
+  /** 네이버 예약 자동 연동 칸 (한 번 설정하면 끝이라 매장 정보에) */
+  naverConnect?: React.ReactNode;
 }
 
 /** 주차 — 정해진 세 가지 (그 외는 사장님이 직접 쓴 안내) */
@@ -32,7 +34,7 @@ const PARKING_PRESETS = ["주차 가능", "잠시 주차 가능", "주차 불가
 /** 직접 입력 글자 수 (알림톡 한 줄에 들어가게) */
 const PARKING_MAX = 40;
 
-export default function CompanyInfoTab({ companyId, initialName, initialLogo, slug, initialNaverTalkUrl, initialKakaoChannelUrl, initialInstagramUrl, initialYoutubeUrl, initialParking, onSettingsSaved, onSave }: Props) {
+export default function CompanyInfoTab({ companyId, initialName, initialLogo, slug, initialNaverTalkUrl, initialKakaoChannelUrl, initialInstagramUrl, initialYoutubeUrl, initialParking, onSettingsSaved, onSave, naverConnect }: Props) {
   const [name, setName] = useState(initialName);
   const [logoUrl, setLogoUrl] = useState<string | null>(initialLogo);
   const [locationUrl, setNaverTalkUrl] = useState(initialNaverTalkUrl ?? "");
@@ -286,6 +288,9 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
               </div>
               </div>
             </div>
+
+            {/* 네이버 예약 자동 연동 — 받는 주소·연결 상태 (저장 버튼과 관계없이 바로 쓰는 정보) */}
+            {naverConnect}
 
             {/* 주차 가능 여부 */}
             <div className="space-y-3">
