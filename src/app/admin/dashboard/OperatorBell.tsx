@@ -1,0 +1,100 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+
+// 운영자 알림 종 — 판매 신청(검토 중)이 오면 숫자로 알린다
+// 승인·반려로 처리하면 '검토 중'이 아니게 되어 알림에서 저절로 빠진다
+
+export interface PendingApply {
+  company_id: string;
+  name: string;
+}
+
+export default function OperatorBell({
+  pending,
+  onOpen,
+}: {
+  pending: PendingApply[];
+  /** 알림을 고르면 — 검증 관리 탭으로 */
+  onOpen: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const count = pending.length;
+  // 창 위치 — 종 바로 아래, 화면 안에 들어오게
+  const [pos, setPos] = useState<{ top: number; right: number; width: number; originX: number } | null>(null);
+
+  const toggle = (el: HTMLElement) => {
+    if (open) return setOpen(false);
+    const r = el.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const width = Math.min(340, vw - 32);
+    const right = Math.min(Math.max(16, vw - r.right), vw - 16 - width);
+    const left = vw - right - width;
+    setPos({ top: r.bottom + 8, right, width, originX: r.left + r.width / 2 - left });
+    setOpen(true);
+  };
+
+  // 창은 화면에 고정된 위치라 — 스크롤·화면 크기가 바뀌면 닫는다
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    window.addEventListener("scroll", close, { passive: true });
+    window.addEventListener("resize", close);
+    return () => {
+      window.removeEventListener("scroll", close);
+      window.removeEventListener("resize", close);
+    };
+  }, [open]);
+
+  const go = () => {
+    setOpen(false);
+    onOpen();
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={(e) => toggle(e.currentTarget)}
+        aria-label={`알림 ${count}건`}
+        className={`relative p-1.5 rounded-lg transition-colors ${count > 0 ? "text-gray-700 hover:bg-gray-100" : "text-gray-300 hover:text-gray-500 hover:bg-gray-100"}`}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+        </svg>
+        {count > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 min-w-[17px] h-[17px] px-1 rounded-full bg-red-500 text-white text-[10px] font-semibold flex items-center justify-center animate-pulse">{count}</span>
+        )}
+      </button>
+
+      {open && pos && createPortal(
+        <>
+          <div className="fixed inset-0 z-[60]" onClick={() => setOpen(false)} />
+          <div
+            style={{ top: pos.top, right: pos.right, width: pos.width, transformOrigin: `${pos.originX}px 0` }}
+            className="fixed z-[61] bg-white rounded-2xl shadow-xl border border-gray-100 max-h-[70vh] overflow-y-auto animate-[bell-pop_.16s_ease-out]"
+          >
+            <p className="px-4 pt-3 pb-2 text-sm font-semibold text-gray-900 border-b border-gray-100">알림</p>
+            {count === 0 ? (
+              <p className="px-4 py-6 text-center text-sm text-gray-400">새 알림이 없어요.</p>
+            ) : (
+              <ul className="divide-y divide-gray-50">
+                {pending.map((p) => (
+                  <li key={p.company_id}>
+                    <button type="button" onClick={go} className="w-full flex items-center gap-2.5 px-4 py-3 text-left text-sm hover:bg-gray-50">
+                      <span className="w-14 shrink-0 text-[11px] font-semibold text-red-600">판매 신청</span>
+                      <span className="flex-1 min-w-0 truncate text-gray-800">{p.name || "(이름 없는 매장)"}</span>
+                      <span className="shrink-0 text-xs text-gray-400">검토 →</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </>,
+        document.body,
+      )}
+    </>
+  );
+}

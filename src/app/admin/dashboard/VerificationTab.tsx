@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 
-interface Application {
+export interface Application {
   company_id: string;
   business_number: string | null;
   business_verified_at: string | null;
@@ -19,7 +19,7 @@ interface Application {
 
 type StatusFilter = "all" | "pending" | "approved" | "rejected";
 
-export default function VerificationTab() {
+export default function VerificationTab({ onApplications }: { onApplications?: (apps: Application[]) => void } = {}) {
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("pending");
@@ -46,6 +46,11 @@ export default function VerificationTab() {
   }, []);
 
   useEffect(() => { fetchApplications(); }, [fetchApplications]);
+  // 승인·반려·새로고침으로 목록이 바뀌면 위쪽 알림 종도 맞춘다
+  useEffect(() => {
+    if (!loading) onApplications?.(applications);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [applications, loading]);
 
   const handleApprove = async (app: Application) => {
     setActionLoading(app.company_id);

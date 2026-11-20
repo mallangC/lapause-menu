@@ -12,7 +12,7 @@ export default async function OperatorDashboardPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role")
+    .select("role, name, phone_number, two_factor_enabled")
     .eq("user_id", user.id)
     .single();
   if (profile?.role !== "operator") redirect("/login");
@@ -102,6 +102,13 @@ export default async function OperatorDashboardPage() {
       products={realProducts}
       billingLogs={mappedBillingLogs}
       reservationLogs={mappedReservationLogs}
+      me={{
+        email: user.email ?? "",
+        isOAuth: user.app_metadata?.provider !== "email",
+        name: profile?.name ?? "",
+        phone: profile?.phone_number ?? "",
+        twoFactorEnabled: profile?.two_factor_enabled ?? false,
+      }}
     />
   );
 }

@@ -87,6 +87,10 @@ export async function GET(request: NextRequest) {
             .or("email.is.null,email.eq.");
         }
 
+        // 운영자 — 매장이 없으니 운영자 대시보드로 (내 정보에서 소셜 계정을 연결한 뒤 등)
+        const { data: me } = await supabase.from("profiles").select("role").eq("user_id", user.id).maybeSingle();
+        if (me?.role === "operator") return NextResponse.redirect(`${origin}/admin/dashboard`);
+
         const { data: company } = await supabase
           .from("companies")
           .select("slug, subscription:company_subscriptions(plan)")

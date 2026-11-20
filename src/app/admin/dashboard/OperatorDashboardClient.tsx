@@ -1,12 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { createClient } from "@/lib/supabase/client";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, Legend } from "recharts";
 import SettlementsTab from "./SettlementsTab";
-import VerificationTab from "./VerificationTab";
+import VerificationTab, { type Application } from "./VerificationTab";
+import OperatorBell, { type PendingApply } from "./OperatorBell";
+import MyInfoTab from "@/app/[slug]/admin/dashboard/MyInfoTab";
 import StoreManagementTab from "./StoreManagementTab";
 import BillingLogsTab, { BillingLog } from "./BillingLogsTab";
 import PromoCodesTab from "./PromoCodesTab";
@@ -63,6 +63,8 @@ interface Props {
   products: Product[];
   billingLogs: BillingLog[];
   reservationLogs: ReservationLog[];
+  /** 내 정보 — 운영자 본인 */
+  me: { email: string; isOAuth: boolean; name: string; phone: string; twoFactorEnabled: boolean };
 }
 
 // 결제 경로 색 — 상품을 골라 결제(파랑 계열) · 첫 화면 대화/맞춤주문(금색 계열) · 링크결제(초록)
@@ -78,10 +80,33 @@ const ORDER_TYPE_COLORS: Record<string, string> = {
 };
 const PIE_COLORS = ["#c9a96e", "#60a5fa", "#34d399", "#a87c4a"];
 
-export default function OperatorDashboardClient({ companies, reservations, products, billingLogs, reservationLogs }: Props) {
-  const router = useRouter();
-  const supabase = createClient();
-  const [activeTab, setActiveTab] = useState<"overview" | "stores" | "billing" | "promoCodes" | "settlements" | "verification" | "reservationLogs" | "consultAnalytics">("overview");
+export default function OperatorDashboardClient({ companies, reservations, products, billingLogs, reservationLogs, me }: Props) {
+  const [activeTab, setActiveTab] = useState<"overview" | "stores" | "billing" | "promoCodes" | "settlements" | "verification" | "reservationLogs" | "consultAnalytics" | "myinfo">("overview");
+
+  // 알림 — 판매 신청(검토 중). 처리(승인·반려)하면 빠진다
+  // 처음·1분마다·화면으로 돌아올 때 새로 받고, 검증 관리 탭에서 처리하면 바로 맞춘다
+  const [pendingApplies, setPendingApplies] = useState<PendingApply[]>([]);
+  const applyPending = (apps: Application[]) =>
+    setPendingApplies(apps.filter((a) => a.consult_apply_status === "pending").map((a) => ({ company_id: a.company_id, name: a.companies?.name ?? "" })));
+  const loadPending = async () => {
+    try {
+      const res = await fetch("/api/operator/consult-verify", { cache: "no-store" });
+      if (res.ok) applyPending((await res.json()) as Application[]);
+    } catch {
+      /* 다음에 다시 */
+    }
+  };
+  useEffect(() => {
+    loadPending();
+    const t = setInterval(loadPending, 60_000);
+    const onVisible = () => { if (document.visibilityState === "visible") loadPending(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [gmvRange, setGmvRange] = useState<"month" | "6m" | "1y">("month");
 
   const now = new Date();
@@ -268,11 +293,6 @@ export default function OperatorDashboardClient({ companies, reservations, produ
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companies, reservations, revenueReservations, cardReservations, products]);
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push("/");
-  };
-
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr);
     return `${String(d.getFullYear()).slice(2)}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
@@ -300,9 +320,21 @@ export default function OperatorDashboardClient({ companies, reservations, produ
             <Image src="/logo-light.png" alt="Flo.Aide" width={80} height={28} className="object-contain" />
             <span className="ml-2 text-xs text-gray-400">운영자 대시보드</span>
           </div>
-          <button onClick={handleLogout} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">
-            로그아웃
-          </button>
+          {/* 알림 · 내 정보 (로그아웃은 내 정보 안에) */}
+          <div className="flex items-center gap-1.5">
+            <OperatorBell pending={pendingApplies} onOpen={() => setActiveTab("verification")} />
+            <button
+              type="button"
+              onClick={() => setActiveTab("myinfo")}
+              aria-label="내 정보"
+              title="내 정보"
+              className={`p-1 rounded-full transition-colors ${activeTab === "myinfo" ? "text-gray-900 bg-gray-100" : "text-gray-500 hover:text-gray-800 hover:bg-gray-100"}`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.6} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+              </svg>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -374,11 +406,22 @@ export default function OperatorDashboardClient({ companies, reservations, produ
         )}
 
         {activeTab === "verification" && (
-          <VerificationTab />
+          <VerificationTab onApplications={applyPending} />
         )}
 
         {activeTab === "reservationLogs" && (
           <ReservationLogsTab logs={reservationLogs} />
+        )}
+
+        {activeTab === "myinfo" && (
+          <MyInfoTab
+            loginPath="/login"
+            email={me.email}
+            isOAuth={me.isOAuth}
+            profileName={me.name}
+            profilePhone={me.phone}
+            initialTwoFactorEnabled={me.twoFactorEnabled}
+          />
         )}
 
         {activeTab === "consultAnalytics" && (
