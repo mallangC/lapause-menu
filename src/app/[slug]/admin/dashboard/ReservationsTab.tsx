@@ -1,5 +1,6 @@
 "use client";
 
+import NaverMailPanel from "./NaverMailPanel";
 import React, { useState, useEffect, useRef, Dispatch, SetStateAction } from "react";
 import { createClient } from "@/lib/supabase/client";
 import AddReservationModal from "./AddReservationModal";
@@ -584,6 +585,9 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
             </button>
           </div>
         </div>
+
+        {/* 네이버 예약 메일 연동 — 받는 주소·연결 상태 · 확인이 필요한 메일 */}
+        <NaverMailPanel companyId={companyId} settings={settings} />
 
         <div className="bg-white -mx-4 md:mx-0 py-4 px-4 md:rounded-2xl md:px-5 space-y-4">
         {/* 상태 필터 배지 */}

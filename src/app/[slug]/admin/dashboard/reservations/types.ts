@@ -30,6 +30,8 @@ export interface Reservation {
   mood: string;
   budget: string;
   channel: string | null;
+  /** 네이버 예약 메일로 들어온 예약의 네이버 예약번호 (이 예약은 연락처가 없을 수 있다) */
+  naver_booking_id?: string | null;
   delivery_type: string;
   delivery_fee: number | null;
   admin_memo: string | null;

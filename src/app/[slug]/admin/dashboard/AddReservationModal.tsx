@@ -510,14 +510,16 @@ export default function AddReservationModal({
     const missing: string[] = [];
     if (!channel) missing.push("채널");
     if (!ordererName) missing.push("예약자 이름");
-    if (!ordererPhone) missing.push("전화번호");
+    // 네이버 예약 메일로 들어온 예약은 메일에 연락처가 없어 비워 둔 채 고칠 수 있다 (직접 추가는 지금처럼 필수)
+    const phoneOptional = !!initialData?.naver_booking_id;
+    if (!ordererPhone && !phoneOptional) missing.push("전화번호");
     if (!selectedDate) missing.push("예약 일시");
     if (items.some((item) => !item.type)) missing.push("상품 유형");
     if (missing.length > 0) {
       setFieldErrors(missing);
       let target: HTMLElement | null = null;
       if (!ordererName) target = nameFieldRef.current;
-      else if (!ordererPhone) target = phoneFieldRef.current;
+      else if (!ordererPhone && !phoneOptional) target = phoneFieldRef.current;
       else if (!channel) target = channelFieldRef.current;
       else if (items.some((item) => !item.type)) target = itemTypeFieldRefs.current[items.findIndex((item) => !item.type)] ?? null;
       else if (!selectedDate) target = dateFieldRef.current;
@@ -538,7 +540,7 @@ export default function AddReservationModal({
         body: JSON.stringify({
           channel,
           orderer_name: ordererName,
-          orderer_phone: parsePhone(ordererPhone),
+          orderer_phone: parsePhone(ordererPhone) || null,
           items: itemsPayload,
           purpose: purpose === "기타" ? purposeCustom : purpose,
           paid,
@@ -786,7 +788,7 @@ export default function AddReservationModal({
               />
             </div>
             <div ref={phoneFieldRef}>
-              <label className={fieldErrors.includes("전화번호") ? "block text-xs text-red-500 mb-1" : fieldLabelCls}>연락처 <span className="text-red-500">*</span></label>
+              <label className={fieldErrors.includes("전화번호") ? "block text-xs text-red-500 mb-1" : fieldLabelCls}>연락처 {initialData?.naver_booking_id ? <span className="text-gray-400">(네이버 예약 · 선택)</span> : <span className="text-red-500">*</span>}</label>
               <input
                 className={fieldErrors.includes("전화번호") ? `${inputCls} border-red-400 focus:border-red-500` : inputCls}
                 type="tel"

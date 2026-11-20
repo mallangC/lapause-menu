@@ -576,12 +576,17 @@ export default function ReservationDetail({
             {/* 주문자 */}
             <SectionCard>
               <Row label="연락처">
-                <span className="flex items-center gap-1">
-                  {formatPhone(r.orderer_phone)}
-                  <CopyButton text={r.orderer_phone} />
-                </span>
+                {r.orderer_phone ? (
+                  <span className="flex items-center gap-1">
+                    {formatPhone(r.orderer_phone)}
+                    <CopyButton text={r.orderer_phone} />
+                  </span>
+                ) : (
+                  // 네이버 예약 메일로 들어온 예약 — 메일에 연락처가 없다 (필요하면 수정에서 넣는다)
+                  <span className="text-gray-400">연락처 없음{r.naver_booking_id ? " · 네이버 예약" : ""}</span>
+                )}
               </Row>
-              {r.channel && <Row label="채널">{r.channel}</Row>}
+              {r.channel && <Row label="채널">{r.channel}{r.naver_booking_id ? ` · 예약번호 ${r.naver_booking_id}` : ""}</Row>}
               <Row label="주문 경로">{ORDER_PATH_LABEL[r.order_path as OrderPath] ?? "—"}</Row>
               {/* 유입 — 손님이 직접 한 주문만 (사장님 추가·링크결제는 유입이 없어 줄을 뺀다) */}
               {r.order_path !== "manual" && r.order_path !== "pay_link" && <Row label="유입">{trafficSourceLabel(r.traffic_source)}</Row>}

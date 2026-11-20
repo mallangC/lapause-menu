@@ -164,6 +164,59 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId, reservationMonth.year, reservationMonth.month, reservationsTabOpened]);
 
+  // ── 예약 실시간 반영 — 새 예약(플로에이드 주문·네이버 메일 예약)·취소가 새로고침 없이 바로 보이게 ──
+  const monthRef = useRef(reservationMonth);
+  monthRef.current = reservationMonth;
+  const [liveToast, setLiveToast] = useState<string | null>(null);
+  useEffect(() => {
+    const channel = supabase
+      .channel(`reservations-${companyId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "reservations", filter: `company_id=eq.${companyId}` },
+        (payload) => {
+          // 목록을 다시 불러오지 않고 바뀐 예약 한 건만 끼워 넣는다
+          // (불러오는 동안 목록이 사라졌다 다시 그려지면 펼쳐 둔 상세·입력 중인 칸·제작 완료 창이 날아간다)
+          const m = monthRef.current;
+          const inMonth = (d?: string | null) => !!d && d.slice(0, 7) === `${m.year}-${String(m.month).padStart(2, "0")}`;
+          if (payload.eventType === "DELETE") {
+            const id = (payload.old as { id?: string } | null)?.id;
+            if (id) setAllReservations((prev) => prev.filter((r) => r.id !== id));
+          } else {
+            const row = payload.new as Reservation & { deleted_at?: string | null };
+            setAllReservations((prev) => {
+              const has = prev.some((r) => r.id === row.id);
+              // 지웠거나 보고 있는 달이 아니면 목록에서 뺀다
+              if (row.deleted_at || !inMonth(row.desired_date)) return has ? prev.filter((r) => r.id !== row.id) : prev;
+              // 있던 예약은 그 자리에서 내용만, 새 예약은 맨 위에 (목록은 최근 접수 순)
+              return has ? prev.map((r) => (r.id === row.id ? { ...r, ...row } : r)) : [row, ...prev];
+            });
+          }
+          setReservationsVersion((v) => v + 1);
+
+          // 알림 — 손님이 낸 주문·네이버 메일 예약만 (사장님이 직접 추가·수정한 건 알리지 않는다)
+          const row = payload.new as { orderer_name?: string; desired_date?: string; desired_time?: string | null; status?: string; order_type?: string | null; naver_booking_id?: string | null } | null;
+          if (!row) return;
+          const fromOutside = !!row.naver_booking_id || ["consult", "product", "link"].includes(row.order_type ?? "");
+          if (!fromOutside) return;
+          const when = `${row.desired_date ? Number(row.desired_date.slice(5, 7)) + "/" + Number(row.desired_date.slice(8, 10)) : ""}${row.desired_time ? ` ${row.desired_time}` : ""}`;
+          if (payload.eventType === "INSERT") {
+            setLiveToast(`${row.naver_booking_id ? "네이버 예약" : "새 예약"}이 들어왔어요 · ${row.orderer_name ?? ""} · ${when}`);
+          } else if (payload.eventType === "UPDATE" && row.status === "취소" && row.naver_booking_id && (payload.old as { status?: string } | null)?.status !== "취소") {
+            setLiveToast(`네이버 예약이 취소됐어요 · ${row.orderer_name ?? ""} · ${when}`);
+          }
+        },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companyId]);
+  useEffect(() => {
+    if (!liveToast) return;
+    const t = setTimeout(() => setLiveToast(null), 6000);
+    return () => clearTimeout(t);
+  }, [liveToast]);
+
 
   const handleAdd = async (data: ProductInput) => {
     setError(null);
@@ -249,6 +302,17 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col" style={themeVars as React.CSSProperties}>
+      {/* 실시간 예약 알림 — 누르면 예약 관리로 */}
+      {liveToast && (
+        <button
+          type="button"
+          onClick={() => { setLiveToast(null); goTab("reservations"); }}
+          className="fixed top-4 left-1/2 -translate-x-1/2 z-[70] max-w-[92vw] px-4 py-3 rounded-2xl bg-gray-900 text-white text-sm shadow-lg flex items-center gap-2"
+        >
+          <span className="w-2 h-2 rounded-full bg-gold-400 shrink-0" />
+          <span className="truncate">{liveToast}</span>
+        </button>
+      )}
       <header className="border-b border-gray-200 bg-white shrink-0 sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link href={`/${slug}`} className="text-lg font-medium text-gray-900 hover:text-gray-600 transition-colors">
