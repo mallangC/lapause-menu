@@ -68,6 +68,14 @@ export default async function OnboardingPage({ params, searchParams }: Props) {
     shoppingBag: { enabled: s.shopping_bag_enabled === true, price: num("shopping_bag_price") },
     preservative: { enabled: s.preservative_enabled === true, price: num("preservative_price") },
     consultNotice: str("consult_notice"),
+    naverMailKey: str("naver_mail_key"),
+    naverMailLastAt: str("naver_mail_last_at"),
+    afterHours: {
+      enabled: s.after_hours_enabled === true,
+      start: str("after_hours_start"),
+      end: str("after_hours_end"),
+      note: str("after_hours_note"),
+    },
   };
 
   return (

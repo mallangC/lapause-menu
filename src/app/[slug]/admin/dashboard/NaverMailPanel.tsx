@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { naverMailAddress } from "@/lib/naverMail";
 import type { CompanySettings } from "./companySettings";
+import NaverConnectGuide from "@/components/admin/NaverConnectGuide";
 
 // 네이버 예약 메일 연동
-// · 매장 받는 주소(복사) · 마지막으로 받은 시각(연결 상태) · 연결 방법
+// · 매장 받는 주소(복사) · 연결 방법
 // · 확인이 필요한 네이버 메일 (형식이 다르거나 취소할 예약을 못 찾은 메일) — 사장님 메일함을 거치지 않으니 알림 종에서 꼭 보여준다
 
 interface InboxMail {
@@ -21,7 +22,7 @@ const stamp = (iso: string) =>
   new Date(iso).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
 
 /**
- * part="connect" — 매장 정보 탭: 받는 주소(복사)·연결 상태·연결 방법 (한 번 설정하면 끝이라 설정 화면에)
+ * part="connect" — 매장 정보 탭: 받는 주소(복사)·연결 방법 (한 번 설정하면 끝이라 설정 화면에)
  * part="inbox"   — 위쪽 알림 종: 자동으로 처리하지 못한 메일 목록 창 (메일 수는 종 숫자에 더한다)
  */
 export default function NaverMailPanel({
@@ -43,8 +44,8 @@ export default function NaverMailPanel({
 }) {
   const supabase = createClient();
   const key = (settings as { naver_mail_key?: string | null }).naver_mail_key ?? null;
-  const lastAt = (settings as { naver_mail_last_at?: string | null }).naver_mail_last_at ?? null;
-  const [copied, setCopied] = useState(false);
+  // 연결 방법 안내 창 ('연결 방법 보기')
+  const [guideOpen, setGuideOpen] = useState(false);
   const [inbox, setInbox] = useState<InboxMail[]>([]);
   // 목록 창 — 밖에서 열고 닫는다 (알림 종의 '읽지 못한 메일 보기')
   const inboxOpen = !!openProp;
@@ -100,35 +101,20 @@ export default function NaverMailPanel({
   if (part === "connect") {
     return (
       <div className="space-y-3">
-        <div>
-          <h3 className="text-sm font-medium text-gray-700">네이버 예약 자동 연동</h3>
-          <p className="text-xs text-gray-400 mt-0.5">{lastAt ? `마지막으로 받은 메일 ${stamp(lastAt)}` : "아직 받은 메일이 없어요"}</p>
-        </div>
+        <h3 className="text-sm font-medium text-gray-700">네이버 예약 자동 연동</h3>
+        <NaverConnectGuide open={guideOpen} onClose={() => setGuideOpen(false)} address={address} />
         <p className="text-sm text-gray-600 break-keep">
-          네이버 예약 알림 메일을 아래 주소로 받게 하면, 예약이 확정되거나 손님이 취소할 때 예약 관리에 바로 반영돼요.
-          네이버 예약은 메일에 연락처가 없어 연락처 없이 들어오고, 손님 안내는 네이버가 보내요.
+          네이버 스마트플레이스의 이메일 알림에 우리 매장 전용 주소를 추가하면, 예약이 확정되거나 손님이 취소할 때 예약 관리에 바로 반영돼요.
         </p>
-        <div className="flex items-center gap-2 max-w-md">
-          <code className="flex-1 min-w-0 truncate px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 text-[13px] text-gray-800">{address}</code>
-          <button
-            type="button"
-            onClick={() => {
-              navigator.clipboard?.writeText(address).then(() => {
-                setCopied(true);
-                setTimeout(() => setCopied(false), 1500);
-              }).catch(() => {});
-            }}
-            className="shrink-0 px-3 py-2 rounded-lg border border-gray-200 text-xs text-gray-700 hover:bg-gray-50"
-          >
-            {copied ? "복사됨" : "복사"}
-          </button>
-        </div>
-        <ol className="list-decimal list-inside space-y-1 text-xs text-gray-500 break-keep">
-          <li>네이버 스마트플레이스(예약) 알림 설정에서 이메일 알림을 켜고 위 주소를 넣어 주세요.</li>
-          <li>예약 확정 메일 → 예약 관리에 추가, 손님 취소 메일 → 해당 예약을 &lsquo;취소&rsquo;로 바꿔요. 둘 다 확인하실 때까지 &lsquo;확인 필요&rsquo;로 표시돼요.</li>
-          <li>새로 들어온 예약·취소와 읽지 못한 메일은 화면 위쪽 알림(종)에서 볼 수 있어요.</li>
-        </ol>
-        <p className="text-xs text-gray-400 break-keep">이 주소는 이 매장 전용이에요. 다른 곳에 알리지 마세요.</p>
+        {/* 주소는 화면에 늘 띄워 두지 않는다 (캡처·화면 공유로 새지 않게) — 창에서 확인·복사 */}
+        <button
+          type="button"
+          onClick={() => setGuideOpen(true)}
+          className="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 hover:border-gray-400 hover:bg-gray-50 transition-colors"
+        >
+          연결 방법 보기 →
+        </button>
+
       </div>
     );
   }

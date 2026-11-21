@@ -1,7 +1,7 @@
 // 시작 설정(대화형 온보딩) 질문 순서 — 시작 설정 화면과 대시보드 '이어서 하기' 카드가 함께 쓴다.
 // 질문은 하나씩, 묶음 단위로 진행 막대를 보여준다.
-//   메뉴판 열기: 매장 정보 → 영업시간 → 첫 상품 → 메뉴판 완성
-//   판매 시작하기: 판매 신청(사업자·계좌·서류) → 판매 준비(준비 시간·배송·추가 옵션·안내 문구·판매 켜기)
+//   메뉴판 열기: 매장 정보 → 영업시간 → 첫 상품 → 메뉴판 완성(링크 · 네이버 예약 연동)
+//   판매 시작하기: 판매 신청(사업자·계좌·서류) → 판매 준비(준비 시간·영업시간 외 수령·배송·추가 옵션·안내 문구·판매 켜기)
 // 대화를 끝까지 하면 승인만 남는다 — '승인되면 바로 시작'을 고르면 승인 순간 판매가 켜진다.
 // company_settings.onboarding_step에는 마지막으로 보던 질문 id를 저장한다.
 
@@ -16,6 +16,7 @@ export const ONBOARDING_QUESTIONS = [
   { id: "closed", section: "hours" },
   { id: "product", section: "product" },
   { id: "ready", section: "ready" },
+  { id: "naver", section: "ready" },
   { id: "sales", section: "apply" },
   { id: "contact", section: "apply" },
   { id: "bizno", section: "apply" },
@@ -25,6 +26,7 @@ export const ONBOARDING_QUESTIONS = [
   { id: "mailorder", section: "apply" },
   { id: "submit", section: "apply" },
   { id: "lead", section: "setup" },
+  { id: "afterhours", section: "setup" },
   { id: "delivery", section: "setup" },
   { id: "fees", section: "setup" },
   { id: "options", section: "setup" },

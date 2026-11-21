@@ -13,6 +13,9 @@ import { formatMoney, formatPhone, parseMoney, parsePhone } from "@/lib/format";
 import type { BusinessHours } from "@/lib/businessHours";
 import { DEFAULT_TYPE_KEY } from "@/lib/productTypes";
 import { ONBOARDING_QUESTIONS, ONBOARDING_SECTIONS, type OnboardingQuestionId } from "@/lib/onboarding";
+import { naverMailAddress } from "@/lib/naverMail";
+import NaverConnectGuide from "@/components/admin/NaverConnectGuide";
+import { AFTER_HOURS_END_OPTIONS, AFTER_HOURS_NOTE_MAX, AFTER_HOURS_START_OPTIONS, DEFAULT_AFTER_HOURS_END, DEFAULT_AFTER_HOURS_START } from "@/lib/afterHours";
 
 // 시작 설정 — 손님 첫 화면 대화처럼, 질문 하나에 답 하나.
 // 입력 중(…) → 질문 → 답할 칸 순서로 나오고, 답하면 내 말풍선이 붙고 다음 질문으로.
@@ -49,6 +52,11 @@ export interface OnboardingInitial {
   shoppingBag: OptionValue;
   preservative: OptionValue;
   consultNotice: string | null;
+  /** 네이버 예약 메일 받는 주소 코드 (매장마다 하나) */
+  naverMailKey: string | null;
+  /** 마지막으로 받은 네이버 메일 시각 — 있으면 이미 연결된 매장 */
+  naverMailLastAt: string | null;
+  afterHours: { enabled: boolean; start: string | null; end: string | null; note: string | null };
 }
 
 interface Props {
@@ -258,6 +266,16 @@ export default function OnboardingClient({ slug, companyId, companyName, logoIma
     preservative: { enabled: initial.preservative.enabled, price: initial.preservative.price ? formatMoney(String(initial.preservative.price)) : "" },
   });
   const [notice, setNotice] = useState(initial.consultNotice ?? "");
+  // 영업시간 외 수령 및 판매 — '네'를 고르면 시간·안내 칸이 열린다
+  const [ahOpen, setAhOpen] = useState(false);
+  const [ahStart, setAhStart] = useState(initial.afterHours.start ?? DEFAULT_AFTER_HOURS_START);
+  const [ahEnd, setAhEnd] = useState(initial.afterHours.end ?? DEFAULT_AFTER_HOURS_END);
+  const [ahNote, setAhNote] = useState(initial.afterHours.note ?? "");
+  // 네이버 예약 연동 — '받아요'를 고르면 주소·연결 방법이 열린다
+  const [naverOpen, setNaverOpen] = useState(false);
+  // 연결 방법 화면 사진 (매장 정보 탭 ⓘ와 같은 창)
+  const [naverGuideOpen, setNaverGuideOpen] = useState(false);
+  const naverAddress = initial.naverMailKey ? naverMailAddress(initial.naverMailKey) : "";
   // 마지막에 고른 것 — 끝인사 문구에 쓴다
   const [autoStart, setAutoStart] = useState<boolean | null>(null);
 
@@ -270,6 +288,8 @@ export default function OnboardingClient({ slug, companyId, companyName, logoIma
     // 매장 연락처는 앞에서 넣었으면 다시 묻지 않는다 (판매에는 꼭 필요)
     if (id === "contact") return !!(parsePhone(phone).length >= 9 && address);
     if (id === "fees") return !c.deliveryOn;
+    // 받는 주소 코드가 없는 매장은 네이버 연동을 묻지 않는다
+    if (id === "naver") return !initial.naverMailKey;
     if (id === "golive") return c.status === "approved" && c.consultEnabled;
     return false;
   };
@@ -326,6 +346,10 @@ export default function OnboardingClient({ slug, companyId, companyName, logoIma
       case "closed": return "쉬는 요일이 있으면 골라 주세요.";
       case "product": return productCount > 0 ? `메뉴판에 상품이 ${productCount}개 있어요. 더 올릴까요?` : "메뉴판에 올릴 첫 상품을 등록해 볼까요?";
       case "ready": return "어디에 올리실 거예요? 누르면 링크가 복사돼요.";
+      case "naver":
+        return initial.naverMailLastAt
+          ? "네이버 예약은 이미 연결돼 있어요. 네이버 예약이 예약 관리에 자동으로 추가돼요."
+          : "네이버 예약도 받으세요?\n연결하면 네이버 예약이 예약 관리에 자동으로 추가되고, 손님이 취소하면 자동으로 취소돼요.";
       case "sales":
         if (status === "pending") return "판매 신청은 검토 중이에요. 기다리는 동안 판매 준비를 마쳐 둘까요? 승인되면 바로 팔 수 있어요.";
         if (status === "approved") return consultEnabled ? "지금 판매 중이에요. 판매 준비 내용을 대화로 다시 볼까요?" : "판매 신청이 승인됐어요! 판매 준비를 마쳐 볼까요?";
@@ -339,18 +363,19 @@ export default function OnboardingClient({ slug, companyId, companyName, logoIma
       case "mailorder": return "통신판매업 신고번호가 있나요?\n없으면 나중에 넣어도 돼요. 다만 신고 없이는 50개까지만 팔 수 있어요.";
       case "submit": return "이대로 신청할게요. 확인해 주세요.";
       case "lead": return "주문을 받고 꽃을 준비하는 데 최소 몇 시간이 필요해요?";
+      case "afterhours": return "영업시간 앞뒤에도 손님이 꽃을 받아 가게 할까요?\n예) 출근길 아침 7시, 퇴근길 밤 9시";
       case "delivery": return "배송도 하세요?";
       case "fees": return "거리별 배송비를 알려주세요. 비워 둔 거리는 배송을 받지 않아요.";
       case "options": return "메시지 카드·쇼핑백·생화 수명연장제를 따로 파시나요?";
       case "notice": return "주문하는 손님께 꼭 알릴 말이 있나요? 결제 직전에 보여요.";
       case "golive":
         return status === "approved"
-          ? "지금 판매를 켤까요? 켜면 손님이 메뉴판에서 바로 주문할 수 있어요."
+          ? "지금 판매를 활성화할까요? 활성화하면 손님이 메뉴판에서 바로 주문할 수 있어요."
           : "승인되면 바로 판매를 시작할까요?";
       case "done":
         if (status === "approved" && consultEnabled) return "다 됐어요! 이제 손님이 메뉴판에서 바로 주문할 수 있어요.";
         if (status === "pending" && autoStart) return "다 됐어요! 승인되면 판매가 바로 시작돼요. 검토 결과는 대시보드에서 볼 수 있어요.";
-        if (status === "pending") return "다 됐어요! 승인되면 설정 > 판매 설정에서 판매를 켜 주세요.";
+        if (status === "pending") return "다 됐어요! 승인되면 설정 > 판매 설정에서 판매를 활성화해 주세요.";
         return "다 됐어요! 판매는 설정 > 판매 설정에서 언제든 켤 수 있어요.";
     }
   };
@@ -642,6 +667,19 @@ export default function OnboardingClient({ slug, companyId, companyName, logoIma
     const on = OPTION_ITEMS.filter(([key]) => o[key].enabled).map(([key, label]) => `${label} ${won(parseMoney(o[key].price))}`);
     if (none) setOptions(o);
     saveThen(updateSettings(patch), on.length ? on.join(" · ") : "따로 팔지 않아요");
+  };
+
+  // 영업시간 외 수령 및 판매
+  const saveAfterHours = (on: boolean) => {
+    if (!on) {
+      saveThen(updateSettings({ after_hours_enabled: false }), "영업시간에만 받을게요");
+      return;
+    }
+    if (ahStart >= ahEnd) { setError("끝나는 시간이 시작 시간보다 늦어야 해요."); return; }
+    saveThen(
+      updateSettings({ after_hours_enabled: true, after_hours_start: ahStart, after_hours_end: ahEnd, after_hours_note: ahNote.trim() || null }),
+      `${ahStart} ~ ${ahEnd} 사이에 받을게요`,
+    );
   };
 
   const saveNotice = (value: string | null) =>
@@ -946,6 +984,46 @@ export default function OnboardingClient({ slug, companyId, companyName, logoIma
               </>
             )}
 
+            {q.id === "naver" && (
+              initial.naverMailLastAt ? (
+                options3([["좋아요", () => answer("좋아요")]])
+              ) : naverOpen ? (
+                <>
+                  <div className={card}>
+                    <div className="rounded-xl bg-beige-50 border border-beige-200 px-4 py-3">
+                      <p className="text-xs text-gray-400 mb-0.5">이메일 알림 주소</p>
+                      <p className="text-sm text-gray-800 font-mono break-all">{naverAddress}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard?.writeText(naverAddress).then(() => setCopied("naver-mail")).catch(() => {});
+                      }}
+                      className={`w-full py-3 rounded-xl border text-sm transition-colors ${copied === "naver-mail" ? "border-gold-500 bg-gold-500/10 text-gold-600 font-medium" : "border-gray-200 text-gray-700 hover:border-gray-400"}`}
+                    >
+                      {copied === "naver-mail" ? "복사됨 ✓" : "주소 복사하기"}
+                    </button>
+                    {/* 연결 방법 — 사진으로 단계별 (매장 정보 탭의 '연결 방법 보기'와 같은 창) */}
+                    <button type="button" onClick={() => setNaverGuideOpen(true)} className={primaryBtn}>
+                      연결 방법 보기
+                    </button>
+                    <NaverConnectGuide open={naverGuideOpen} onClose={() => setNaverGuideOpen(false)} address={naverAddress} />
+                    <p className="text-xs text-gray-400 break-keep">네이버 예약 메일에는 손님 전화번호가 없어 전화번호 없이 추가되고, 손님 안내는 네이버가 보내요. 이 주소는 이 매장 전용이에요. 다른 곳에 알리지 마세요.</p>
+                  </div>
+                  {options3([
+                    ["연결했어요", () => answer("연결했어요")],
+                    ["나중에 할게요", () => answer(SKIPPED)],
+                  ])}
+                  <p className="text-xs text-gray-400 text-right px-1">연결 방법은 설정 &gt; 매장 정보에서 다시 볼 수 있어요.</p>
+                </>
+              ) : (
+                options3([
+                  ["네, 받아요", () => setNaverOpen(true)],
+                  ["네이버 예약은 안 써요", () => answer("네이버 예약은 안 써요")],
+                ])
+              )
+            )}
+
             {/* ───── 판매 신청 ───── */}
             {q.id === "sales" && (
               status === "pending" || status === "approved" ? (
@@ -1085,6 +1163,49 @@ export default function OnboardingClient({ slug, companyId, companyName, logoIma
                 <p className="text-xs text-gray-400 text-right px-1">상품 유형마다 다르게는 영업 설정에서 정할 수 있어요.</p>
                 {skip}
               </>
+            )}
+
+            {q.id === "afterhours" && (
+              ahOpen ? (
+                <>
+                  <div className={card}>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-700 shrink-0">받을 수 있는 시간</span>
+                      <select aria-label="시작 시간" value={ahStart} onChange={(e) => setAhStart(e.target.value)} className="flex-1 min-w-0 border border-gray-300 rounded-xl px-3 py-3 text-base text-gray-800 bg-white focus:outline-none focus:border-gold-400 cursor-pointer">
+                        {AFTER_HOURS_START_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                      <span className="text-gray-300">~</span>
+                      <select aria-label="끝 시간" value={ahEnd} onChange={(e) => setAhEnd(e.target.value)} className="flex-1 min-w-0 border border-gray-300 rounded-xl px-3 py-3 text-base text-gray-800 bg-white focus:outline-none focus:border-gold-400 cursor-pointer">
+                        {AFTER_HOURS_END_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </div>
+                    <p className="text-xs text-gray-400 break-keep">
+                      이 시간 중 영업시간 앞뒤가 손님 수령 시간으로 열려요. 준비는 마감 전에 끝나는 주문만 받아요. 추가 요금은 없어요.
+                    </p>
+                    <textarea
+                      value={ahNote}
+                      onChange={(e) => setAhNote(e.target.value.slice(0, AFTER_HOURS_NOTE_MAX))}
+                      rows={3}
+                      placeholder={"영업시간 밖에 찾아가는 방법을 알려주세요 (선택)\n예) 가게 앞 보관함에 이름표 붙여 둘게요."}
+                      aria-label="영업시간 외 픽업 안내"
+                      className={`${inputCls} resize-none`}
+                    />
+                    <button type="button" onClick={() => saveAfterHours(true)} disabled={busy} className={primaryBtn}>
+                      {saving ? "저장 중..." : "이대로 할게요"}
+                    </button>
+                  </div>
+                  {options3([["영업시간에만 받을게요", () => saveAfterHours(false)]])}
+                  <p className="text-xs text-gray-400 text-right px-1">무인 픽업 안내는 설정 &gt; 영업 설정에서 따로 적을 수 있어요.</p>
+                </>
+              ) : (
+                <>
+                  {options3([
+                    ["네, 받을게요", () => setAhOpen(true)],
+                    ["영업시간에만 받을게요", () => saveAfterHours(false)],
+                  ])}
+                  {skip}
+                </>
+              )
             )}
 
             {q.id === "delivery" && (
