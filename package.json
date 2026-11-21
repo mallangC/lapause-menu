@@ -18,7 +18,7 @@
     "browser-image-compression": "^2.0.2",
     "date-fns": "^4.1.0",
     "lucide-react": "^1.24.0",
-    "next": "^15.5.27",
+    "next": "^15.5.29",
     "postal-mime": "^2.7.6",
     "qrcode": "^1.5.4",
     "react": "19.2.3",
