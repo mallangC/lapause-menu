@@ -34,7 +34,7 @@ export default function InquiryChecklist({ settings, onNavigate }: { settings: C
         <div>
           <h3 className="text-sm font-semibold text-gray-700">손님 문의 줄이기</h3>
           <p className="text-xs text-gray-400 mt-0.5">
-            {allDone ? "모두 켜 두셨어요 · 손님이 묻기 전에 화면에서 알려줘요" : "켜 둘수록 손님이 전화·DM으로 묻는 일이 줄어요"}
+            {allDone ? "모두 활성화하셨어요 · 손님이 묻기 전에 화면에서 알려줘요" : "활성화할수록 손님이 전화·DM으로 묻는 일이 줄어요"}
           </p>
         </div>
         <span className="shrink-0 flex items-center gap-1.5 text-sm font-semibold text-gold-600 tabular-nums">
@@ -82,7 +82,7 @@ export default function InquiryChecklist({ settings, onNavigate }: { settings: C
                 </span>
                 <span className={`block text-xs mt-0.5 break-keep ${i.on ? "text-gray-300 line-through" : "text-gray-500"}`}>{i.question}</span>
               </span>
-              {!i.on && <span className="shrink-0 text-xs text-gray-400 group-hover:text-gold-500 transition-colors">켜기 →</span>}
+              {!i.on && <span className="shrink-0 text-xs text-gray-400 group-hover:text-gold-500 transition-colors">활성화 →</span>}
             </button>
           </li>
         ))}

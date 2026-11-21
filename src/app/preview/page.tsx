@@ -24,7 +24,7 @@ const PATHS = [
     href: "/preview/owner",
     tag: "Owner",
     title: "사장님 화면",
-    desc: "들어온 예약을 확인하고\n매출과 정산까지 한눈에",
+    desc: "접수된 예약을 확인하고\n매출과 정산까지 한눈에",
     points: ["예약 확정 · 상태 관리", "통계 · 유입 분석", "정산"],
     img: "/preview/cover-owner.webp",
     alt: "사장님이 쓰는 예약 관리 화면",

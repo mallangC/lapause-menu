@@ -10,7 +10,7 @@ const STEPS: CoachStep[] = [
     mobileRadius: 0,
     mobilePadX: 16,
     title: "판매 기능",
-    body: "판매 신청이 승인돼야 활성화할 수 있어요.\n활성화하면 메뉴판에서 주문과 결제를 받을 수 있어요.\n잠시 주문을 쉬고 싶을 땐 끄면 메뉴판만 보여요.",
+    body: "판매 신청이 승인돼야 활성화할 수 있어요.\n활성화하면 메뉴판에서 주문과 결제를 받을 수 있어요.\n잠시 주문을 쉬고 싶을 땐 비활성화하면 메뉴판만 보여요.",
   },
   {
     selectors: ['[data-coach="rs-delivery"]'],
@@ -63,7 +63,7 @@ export default function SalesSettingsCoach() {
       steps={STEPS}
       outro={{
         title: "직접 바꿔보세요",
-        body: "옵션을 켜고 끄거나 배송비를 바꿔보세요.\n미리보기라 실제로 저장되지는 않아요.",
+        body: "옵션을 활성화·비활성화하거나 배송비를 바꿔보세요.\n미리보기라 실제로 저장되지는 않아요.",
       }}
     />
   );

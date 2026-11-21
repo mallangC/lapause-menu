@@ -178,7 +178,7 @@ const DONE: CoachStep[] = [
     selectors: ['[data-coach="done-header"]'],
     pad: 0,
     title: "결제 완료",
-    body: "결제가 끝나면 예약이 사장님께 들어가고,\n사장님이 내용을 확인한 뒤 확정 또는 취소할 수 있어요.\n예약이 확정·취소되면 손님에게 자동으로\n카카오 알림톡이 발송돼요.",
+    body: "결제가 끝나면 예약이 사장님께 접수되고,\n사장님이 내용을 확인한 뒤 확정 또는 취소할 수 있어요.\n예약이 확정·취소되면 손님에게 자동으로\n카카오 알림톡이 발송돼요.",
   },
   {
     selectors: ['[data-coach="done-info"]'],
@@ -296,7 +296,7 @@ const COACHES: Record<number, CoachConfig> = {
   5: {
     intro: {
       title: "결제 완료 화면이에요",
-      body: "손님이 결제를 마치면 보는 화면이에요.\n미리보기라 실제 예약은 들어가지 않았어요.",
+      body: "손님이 결제를 마치면 보는 화면이에요.\n미리보기라 실제 예약은 추가되지 않았어요.",
     },
     steps: DONE,
     outro: {

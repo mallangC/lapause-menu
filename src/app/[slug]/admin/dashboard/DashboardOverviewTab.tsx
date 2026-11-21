@@ -310,7 +310,7 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
             <div className="pr-6">
               <h3 className="text-sm font-semibold text-gray-900">링크를 올릴 곳을 선택해주세요</h3>
               <p className="text-xs text-gray-600 mt-1 leading-relaxed">
-                이 주소로 들어온 손님만 통계 탭 &lsquo;유입 분석&rsquo;에 채널별 방문·주문으로 집계돼요. 기본 주소로 들어오면 &lsquo;직접 유입&rsquo;으로만 잡혀요.
+                이 주소로 방문한 손님만 통계 탭 &lsquo;유입 분석&rsquo;에 채널별 방문·주문으로 집계돼요. 기본 주소로 방문하면 &lsquo;직접 유입&rsquo;으로만 잡혀요.
               </p>
             </div>
 

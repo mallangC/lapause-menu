@@ -556,8 +556,8 @@ export default function OperatorDashboardClient({ companies, reservations, produ
                 const pct = Math.round((r.on / inquiryAdoption.total) * 100);
                 const notes = [
                   r.partial > 0 ? `하나만 한 곳 ${r.partial}` : "",
-                  r.stale > 0 ? `켜 놓고 오늘 안 고름 ${r.stale}` : "",
-                  r.off > 0 ? `기능 끔 ${r.off}` : "",
+                  r.stale > 0 ? `활성화 후 오늘 선택 안함 ${r.stale}` : "",
+                  r.off > 0 ? `비활성화 ${r.off}` : "",
                 ].filter(Boolean);
                 return (
                   <div key={r.label}>

@@ -292,7 +292,7 @@ export default function MyInfoTab({ loginPath, email, isOAuth, profileName, prof
               <div>
                 <h3 className="text-sm font-medium text-gray-900">로그인 2단계 인증</h3>
                 <p className="text-xs text-gray-400 mt-0.5">
-                  켜두면 새 기기에서 로그인할 때마다 {email}로 받은 인증번호를 추가로 입력해야 합니다.
+                  활성화하면 새 기기에서 로그인할 때마다 {email}로 받은 인증번호를 추가로 입력해야 합니다.
                 </p>
               </div>
               <button

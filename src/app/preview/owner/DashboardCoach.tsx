@@ -48,7 +48,7 @@ const STEPS: CoachStep[] = [
     pad: 0,
     onEnter: () => revealTab("reservations"),
     title: "예약 관리",
-    body: "들어온 예약을 한곳에서 관리해요.",
+    body: "접수된 예약을 한곳에서 관리해요.",
   },
   {
     selectors: tab("products"),
@@ -62,7 +62,7 @@ const STEPS: CoachStep[] = [
     pad: 0,
     onEnter: () => revealTab("stats"),
     title: "통계",
-    body: "매출과 손님이 들어온 경로 등을 숫자로 확인해요.",
+    body: "매출과 손님이 방문한 경로 등을 숫자로 확인해요.",
   },
 ];
 
@@ -79,7 +79,7 @@ export const DASHBOARD_EXTRA_STEPS: CoachStep[] = [
     noDot: true,
     pad: 0,
     title: "기능 현황",
-    body: "주요 기능이 켜져 있는지 한눈에 확인해요.\n설정을 누르면 바로 켜고 끌 수 있어요.",
+    body: "주요 기능이 활성화돼 있는지 한눈에 확인해요.\n설정을 누르면 바로 활성화·비활성화할 수 있어요.",
   },
 ];
 
@@ -136,7 +136,7 @@ export default function DashboardCoach() {
       storageKey="preview_coach_owner_dashboard"
       intro={{
         title: "사장님 관리자 화면이에요",
-        body: "들어온 예약 확인부터 상품·매장 설정까지\n여기서 모두 관리해요.\n지금 보이는 화면은 모두 테스트 화면이예요",
+        body: "접수된 예약 확인부터 상품·매장 설정까지\n여기서 모두 관리해요.\n지금 보이는 화면은 모두 테스트 화면이예요",
       }}
       steps={STEPS}
       outro={{

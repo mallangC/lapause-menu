@@ -3,7 +3,7 @@
 const STEPS = [
   { title: "정보 입력", body: "매장 연락처와 정산받을 계좌, 사업자 정보를 한 번 입력해요." },
   { title: "운영자 확인", body: "입력한 정보를 Flo.Aide에서 확인해요." },
-  { title: "판매 시작", body: "승인되면 판매 설정에서 예약·결제 기능을 켜고 바로 주문을 받아요." },
+  { title: "판매 시작", body: "승인되면 판매 설정에서 예약·결제 기능을 활성화하고 바로 주문을 받아요." },
 ];
 
 export default function PreviewOrderSettingsInfo() {

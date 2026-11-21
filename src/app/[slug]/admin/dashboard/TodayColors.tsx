@@ -102,7 +102,7 @@ export function TodayColorsCard({ companyId, settings, onSaved, inGrid = false }
 
   const [m, d] = colorBusinessDate().slice(5).split("-").map(Number);
   const status = !enabled
-    ? "꺼져 있어요 · 손님 화면에 색을 고르는 칸이 나오지 않아요"
+    ? "비활성화돼 있어요 · 손님 화면에 색을 고르는 칸이 나오지 않아요"
     : saving
     ? "저장 중..."
     : !decided

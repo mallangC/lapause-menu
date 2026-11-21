@@ -36,7 +36,7 @@ export const STATS_STEPS: CoachStep[] = [
     pad: 0,
     mobileRadius: 0,
     title: "유입 분석",
-    body: "손님이 어느 채널로 들어와 주문했는지 보여줘요.\n주문으로 잘 이어지는 채널에 홍보를 집중하세요.",
+    body: "손님이 어느 채널로 방문해 주문했는지 보여줘요.\n주문으로 잘 이어지는 채널에 홍보를 집중하세요.",
   },
   {
     selectors: ['[data-coach="st-types"]'],
