@@ -86,7 +86,18 @@ export async function activateBillingKey(
     promo_code_id: quote.promoCodeId,
   };
   const planLabel = subscriptionPlan === "annual" ? "연간" : "월간";
-  const orderId = `r${companyId.replace(/-/g, "").slice(0, 20)}${Date.now().toString().slice(-8)}`;
+  // 주문번호를 5분 단위로 같게 — 버튼 연타로 두 요청이 동시에 들어와도 토스가 같은 주문번호의 두 번째 결제를 거절한다
+  // (바로 위 '5분 안 성공 결제' 확인은 두 요청이 정확히 동시에 오면 둘 다 통과할 수 있어 한 번 더 막는다)
+  // 카드 거절 뒤 다시 시도하는 건 막지 않게 — 이 5분 안에 실패한 횟수를 붙여 새 번호로
+  const bucket = Math.floor(now.getTime() / (5 * 60 * 1000));
+  const { count: recentFails } = await supabase
+    .from("billing_logs")
+    .select("id", { count: "exact", head: true })
+    .eq("company_id", companyId)
+    .eq("type", "charge")
+    .eq("success", false)
+    .gte("created_at", new Date(bucket * 5 * 60 * 1000).toISOString());
+  const orderId = `r${companyId.replace(/-/g, "").slice(0, 20)}${bucket}f${recentFails ?? 0}`;
 
   const { error: upsertError } = await supabase
     .from("company_subscriptions")

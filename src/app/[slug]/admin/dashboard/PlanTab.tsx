@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import BillingKeyFlow from "@/components/BillingKeyFlow";
 import PromoCodeBox from "@/components/PromoCodeBox";
 import { ANNUAL_DISCOUNT_RATE, PLAN_PRICES, PLAN_FEATURES } from "@/lib/constants";
@@ -38,7 +37,6 @@ export default function PlanTab({ companyId, customerName, plan, subscriptionPla
   // 코드 적용 직후 새로고침 없이 금액 안내가 바뀌도록 로컬 상태로 둔다
   const [promoState, setPromoState] = useState<AppliedPromo>(appliedPromo);
   const router = useRouter();
-  const supabase = createClient();
 
   const now = new Date();
   const trialDaysLeft = trialEndsAt
@@ -95,22 +93,34 @@ export default function PlanTab({ companyId, customerName, plan, subscriptionPla
 
   const handleCancel = async () => {
     setLoading(true);
-    await supabase
-      .from("company_subscriptions")
-      .update({ cancel_at_period_end: true })
-      .eq("company_id", companyId);
+    // 구독은 서버에서만 바꾼다
+    const res = await fetch("/api/billing/cancel", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ companyId, cancel: true }),
+    }).catch(() => null);
     setLoading(false);
+    if (!res?.ok) {
+      alert("해지 예약를 저장하지 못했어요. 다시 시도해 주세요.");
+      return;
+    }
     setShowCancelModal(false);
     router.refresh();
   };
 
   const handleUndoCancel = async () => {
     setLoading(true);
-    await supabase
-      .from("company_subscriptions")
-      .update({ cancel_at_period_end: false })
-      .eq("company_id", companyId);
+    // 구독은 서버에서만 바꾼다
+    const res = await fetch("/api/billing/cancel", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ companyId, cancel: false }),
+    }).catch(() => null);
     setLoading(false);
+    if (!res?.ok) {
+      alert("해지 취소를 저장하지 못했어요. 다시 시도해 주세요.");
+      return;
+    }
     router.refresh();
   };
 
