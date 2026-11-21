@@ -97,7 +97,8 @@ export async function POST(request: NextRequest) {
     // 색 맞춤 최소 금액 (상품 금액이 이보다 작으면 고른 색 대신 '사장님께 맡길게요'로 저장)
     let colorMinPrice = 0;
     if (companyId && body.desiredDate) {
-      const { data: settingsRow } = await supabase
+      // 매장 설정은 서버 키로 읽는다 (손님 키로는 매장 설정을 읽을 수 없다)
+      const { data: settingsRow } = await adminClient
         .from("company_settings")
         .select("closed_dates, business_hours, date_overrides, color_min_price, after_hours_enabled, after_hours_start, after_hours_end")
         .eq("company_id", companyId)

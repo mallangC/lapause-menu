@@ -23,7 +23,8 @@ export default async function OperatorDashboardPage() {
   );
 
   const [{ data: companies }, { data: reservations }, { data: products }, { data: profiles }, { data: billingLogs }, { data: reservationLogs }, { data: promoSubs }] = await Promise.all([
-    supabase
+    // 운영자 메모·매장 설정은 사장님·손님 키로는 읽을 수 없어 서버 키로 (위에서 운영자인지 확인함)
+    supabaseAdmin
       .from("companies")
       .select(`id, name, slug, created_at, owner_id, operator_memo, is_demo, settings:company_settings(${INQUIRY_SETTING_COLUMNS}), subscription:company_subscriptions(plan, billing_key, plan_expires_at, trial_ends_at, subscription_plan)`)
       .order("created_at", { ascending: false }),

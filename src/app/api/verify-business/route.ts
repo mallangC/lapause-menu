@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -50,9 +51,11 @@ export async function POST(request: NextRequest) {
   const status = statusMap[result.b_stt_cd] ?? result.b_stt ?? "알 수 없음";
   const isActive = result.b_stt_cd === "01";
 
-  // 인증 성공 시 DB에 기록
+  // 인증 성공 시 DB에 기록 — 인증 칸은 사장님 키로 쓸 수 없게 막혀 있어 서버 키로 (본인 매장인지 먼저 확인)
   if (isActive) {
-    await supabase
+    const { data: own } = await supabase.from("companies").select("id").eq("id", company_id).eq("owner_id", user.id).maybeSingle();
+    if (!own) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    await createAdminClient()
       .from("company_settings")
       .update({
         business_number: business_number,
