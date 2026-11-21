@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { normalizeTrafficSource } from "@/lib/trafficSource";
 import { ipAllowed } from "@/lib/transferRateLimit";
 
@@ -11,6 +12,8 @@ const BOT_UA = /bot|crawl|spider|slurp|preview|facebookexternalhit|headless|ligh
 // 메뉴판 방문 1회 기록 — 매장·날짜·유입 출처별 숫자만 올린다 (개인정보 저장 없음)
 export async function POST(req: NextRequest) {
   if (BOT_UA.test(req.headers.get("user-agent") ?? "")) return new NextResponse(null, { status: 204 });
+  // 개발 서버(localhost)도 운영 DB를 쓰므로, 개발하며 연 메뉴판은 운영 통계에 세지 않는다
+  if (process.env.NODE_ENV !== "production") return new NextResponse(null, { status: 204 });
 
   const { slug, source } = await req.json().catch(() => ({}));
   if (typeof slug !== "string" || !slug || slug.length > 100) return new NextResponse(null, { status: 204 });
@@ -22,8 +25,16 @@ export async function POST(req: NextRequest) {
   if (!companyId) return new NextResponse(null, { status: 204 });
 
   // 데모 매장 방문은 집계하지 않음
-  const { data: company } = await db.from("companies").select("is_demo").eq("id", companyId).single();
+  const { data: company } = await db.from("companies").select("is_demo, owner_id").eq("id", companyId).single();
   if (company?.is_demo) return new NextResponse(null, { status: 204 });
+
+  // 이 매장 사장님·운영자가 연 메뉴판은 손님 방문이 아니라 세지 않는다 (로그인한 경우만 — 손님은 로그인하지 않는다)
+  const { data: { user } } = await (await createClient()).auth.getUser();
+  if (user) {
+    if (user.id === company?.owner_id) return new NextResponse(null, { status: 204 });
+    const { data: me } = await db.from("profiles").select("role").eq("user_id", user.id).maybeSingle();
+    if (me?.role === "operator") return new NextResponse(null, { status: 204 });
+  }
 
   const { error } = await db.rpc("record_menu_visit", {
     p_company_id: companyId,
