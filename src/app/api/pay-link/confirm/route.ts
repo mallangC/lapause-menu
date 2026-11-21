@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PAY_LINK_BLOCKED_MESSAGE, payLinkAllowed } from "@/lib/payLinkAllowed";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { cancelTossPayment } from "@/lib/orderPricing";
 import { productTypeSummary, sendPaymentCompletedOwner, sendReservationReceived } from "@/lib/solapi";
 
 export async function POST(request: NextRequest) {
@@ -18,7 +19,7 @@ export async function POST(request: NextRequest) {
 
     const { data: reservation, error: fetchError } = await adminClient
       .from("reservations")
-      .select("id, orderer_name, orderer_phone, final_price, items, payment_link_expires_at, paid, company_id, delivery_type, desired_date, desired_time, after_hours_pickup, order_token")
+      .select("id, orderer_name, orderer_phone, final_price, items, payment_link_expires_at, paid, company_id, delivery_type, desired_date, desired_time, after_hours_pickup, order_token, status, deleted_at")
       .eq("payment_token", token)
       .single();
 
@@ -28,6 +29,10 @@ export async function POST(request: NextRequest) {
 
     if (reservation.paid) {
       return NextResponse.json({ error: "이미 결제가 완료된 예약입니다." }, { status: 400 });
+    }
+    // 사장님이 취소·삭제한 예약은 링크로 결제할 수 없다
+    if (reservation.status === "취소" || reservation.deleted_at) {
+      return NextResponse.json({ error: "취소된 예약이에요. 매장에 문의해 주세요." }, { status: 400 });
     }
 
     const expires = reservation.payment_link_expires_at ? new Date(reservation.payment_link_expires_at) : null;
@@ -76,8 +81,8 @@ export async function POST(request: NextRequest) {
       paidAmount = tossData.totalAmount;
     }
 
-    // 예약 결제 완료 처리
-    await adminClient
+    // 예약 결제 완료 처리 — '아직 결제 안 된 예약'일 때만 (두 탭에서 동시에 결제하면 먼저 끝난 결제만 남기고 나머지는 취소)
+    const { data: claimed, error: claimError } = await adminClient
       .from("reservations")
       .update({
         paid: true,
@@ -92,7 +97,21 @@ export async function POST(request: NextRequest) {
         payment_token: null,
         payment_link_expires_at: null,
       })
-      .eq("id", reservation.id);
+      .eq("id", reservation.id)
+      .eq("paid", false)
+      .select("id");
+    if (claimError || !claimed?.length) {
+      // 저장에 실패했거나 다른 결제가 먼저 끝났다 — 방금 승인한 결제는 되돌린다 (돈이 두 번 나가지 않게)
+      const cancelled = isDemoCompany ? true : await cancelTossPayment(process.env.TOSS_WIDGET_SECRET_KEY!, paymentKey, claimError ? "결제 저장 실패" : "중복 결제");
+      return NextResponse.json(
+        {
+          error: claimError
+            ? cancelled ? "결제 저장 중 오류가 발생해 결제를 취소했어요. 다시 시도해 주세요." : "결제 저장 중 오류가 발생했어요. 결제 취소가 필요하니 매장에 문의해 주세요."
+            : cancelled ? "이미 결제가 완료된 예약이라 방금 결제는 취소했어요." : "이미 결제가 완료된 예약이에요. 중복 결제 취소가 필요하니 매장에 문의해 주세요.",
+        },
+        { status: 409 },
+      );
+    }
 
     // 사장님 알림톡
     try {

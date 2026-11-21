@@ -1,5 +1,6 @@
 "use client";
 
+import Spinner from "@/components/Spinner";
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import AgreementCheckbox from "@/components/AgreementCheckbox";
@@ -71,6 +72,8 @@ export default function PayClient({
   const [agreementError, setAgreementError] = useState(false);
   const [widgetReady, setWidgetReady] = useState(false);
   const [opening, setOpening] = useState(false);
+  // 결제하기 잠금 — 누르는 순간 바뀌어 연타를 막는다 (opening 은 화면을 다시 그린 뒤에야 바뀐다)
+  const payLock = useRef(false);
   const widgetRef = useRef<TossPaymentWidgetHandle>(null);
   const [orderId] = useState(() => `pay-${token.slice(0, 8)}-${Date.now()}`);
 
@@ -85,9 +88,12 @@ export default function PayClient({
       .finally(() => setLoading(false));
   }, [token]);
 
-  // 토스 결제 리다이렉트 처리
+  // 토스 결제 리다이렉트 처리 — 한 번만 (같은 결제를 두 번 승인 요청하지 않게)
+  const returnHandled = useRef(false);
   useEffect(() => {
     if (!initialPaymentKey || !initialOrderId || !initialAmount) return;
+    if (returnHandled.current) return;
+    returnHandled.current = true;
     if (failCode) {
       setPayError(failMessage ?? "결제가 취소되었습니다.");
       return;
@@ -117,11 +123,13 @@ export default function PayClient({
   }, []);
 
   const handlePay = async () => {
-    if (!info) return;
+    if (!info || payLock.current) return;
     if (!privacyAgreed || !cancellationAgreed) {
       setAgreementError(true);
       return;
     }
+    // 누르는 순간 잠금 — 결제창이 두 번 열리지 않게
+    payLock.current = true;
     setOpening(true);
     setPayError(null);
 
@@ -140,6 +148,7 @@ export default function PayClient({
     } catch (err) {
       setPayError(err instanceof Error ? err.message : "결제 중 오류가 발생했습니다.");
       setOpening(false);
+      payLock.current = false;
     }
   };
 
@@ -376,9 +385,10 @@ export default function PayClient({
           type="button"
           onClick={handlePay}
           disabled={opening || !widgetReady}
-          className="w-full bg-gold-500 hover:bg-gold-600 disabled:opacity-50 text-white font-semibold py-3.5 rounded-2xl text-sm transition-colors shadow-sm"
+          aria-busy={opening}
+          className="w-full bg-gold-500 hover:bg-gold-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3.5 rounded-2xl text-sm transition-colors shadow-sm flex items-center justify-center gap-2"
         >
-          {opening ? "결제창 여는 중..." : `${info.finalPrice.toLocaleString()}원 결제하기`}
+          {opening ? <><Spinner />결제창 여는 중...</> : `${info.finalPrice.toLocaleString()}원 결제하기`}
         </button>
 
         <p className="text-center text-xs text-gray-300">

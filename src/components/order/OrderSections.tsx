@@ -1,5 +1,6 @@
 "use client";
 
+import Spinner from "@/components/Spinner";
 import { useState } from "react";
 import Link from "next/link";
 import AgreementCheckbox from "@/components/AgreementCheckbox";
@@ -380,9 +381,17 @@ function PayButton({ total, payment, onConfirm, submitting, cardNotReady }: Pick
       type="button"
       onClick={onConfirm}
       disabled={submitting || (!transfer && cardNotReady)}
-      className="w-full bg-gold-500 text-white py-3.5 rounded-xl font-medium hover:bg-gold-600 disabled:opacity-50 transition-colors"
+      aria-busy={submitting}
+      className="w-full bg-gold-500 text-white py-3.5 rounded-xl font-medium hover:bg-gold-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
     >
-      {submitting ? (transfer ? "예약 중..." : "결제 중...") : `${total.toLocaleString()}원 ${transfer ? "예약하기" : "결제하기"}`}
+      {submitting ? (
+        <>
+          <Spinner />
+          {transfer ? "예약 중..." : "결제창 여는 중..."}
+        </>
+      ) : (
+        `${total.toLocaleString()}원 ${transfer ? "예약하기" : "결제하기"}`
+      )}
     </button>
   );
 }

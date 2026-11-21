@@ -571,13 +571,16 @@ export function useOrderCheckout(props: OrderCheckoutProps) {
     source: readTrafficSource(slug),
   });
 
+  // 결제·예약 잠금 — 상태(submitting)는 화면을 다시 그린 뒤에야 바뀌어, 그 사이 연타를 막으려고 즉시 바뀌는 값으로 한 번 더 잠근다
+  const submitLock = useRef(false);
   const submit = async () => {
-    if (!order || submitting) return;
+    if (!order || submitting || submitLock.current) return;
     // 찾아본 사진 주문인데 보관된 사진이 없으면 (다른 탭·기기에서 열었을 때) 결제 전에 막는다
     if (isPhotoOrder && !readPhotoOrder(slug)) {
       setError("보내주신 사진이 없어요. 처음 화면에서 사진을 다시 보내주세요.");
       return;
     }
+    submitLock.current = true;
     setSubmitting(true);
     setError(null);
     const draft = makeDraft(order);
@@ -591,6 +594,7 @@ export function useOrderCheckout(props: OrderCheckoutProps) {
         setError(err instanceof Error ? err.message : "예약 중 오류가 발생했습니다.");
       } finally {
         setSubmitting(false);
+        submitLock.current = false;
       }
       return;
     }
@@ -619,11 +623,13 @@ export function useOrderCheckout(props: OrderCheckoutProps) {
       setError(err instanceof Error ? err.message : "결제 중 오류가 발생했습니다. 다시 시도해주세요.");
     } finally {
       setSubmitting(false);
+      submitLock.current = false;
     }
   };
 
   // 빠진 칸 확인 → 첫 칸으로 이동, 다 채웠으면 결제
   const confirm = () => {
+    if (submitting || submitLock.current) return;
     const e: Record<string, boolean> = {};
     const digits = parsePhone(phone).length;
     if (consultNotice && !noticeAgreed) e.notice = true;

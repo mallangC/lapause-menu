@@ -1,3 +1,5 @@
+import { findOrderByPayment, findRecentTransferOrder, TOSS_ALREADY_PROCESSED } from "@/lib/orderIdempotency";
+import { transferOrderAllowed } from "@/lib/transferRateLimit";
 import { NextRequest, NextResponse } from "next/server";
 import { MESSAGE_CARD_MAX } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
@@ -94,6 +96,10 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient();
     // 매장 조회·고객 등록·사장님 연락처 RPC는 익명 실행 권한을 막아뒀으므로 서버 전용 클라이언트로 호출
     const adminClient = createAdminClient();
+    // 무통장 입금 주문은 결제 없이 접수되므로 IP별 횟수 제한 (가짜 주문 도배 방지)
+    if (isTransfer && !(await transferOrderAllowed(adminClient, request))) {
+      return NextResponse.json({ error: "주문이 너무 많이 들어왔어요. 잠시 후 다시 시도해 주세요." }, { status: 429 });
+    }
 
     // 휴무일 검증 (결제 승인 전에 막아 불필요한 결제를 방지)
     const { data: companyId } = await adminClient
@@ -208,6 +214,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // 같은 주문 두 번 저장 막기 — 같은 결제로 이미 저장됐으면 그 주문을 돌려주고, 방금 들어온 같은 무통장 입금 주문은 거절
+    if (paymentKey && !isDemoCompany) {
+      const existing = await findOrderByPayment(adminClient, paymentKey);
+      if (existing) return NextResponse.json({ success: true, reservationId: existing.id, orderToken: existing.order_token });
+    }
+    if (isTransfer && (await findRecentTransferOrder(adminClient, companyId, orderer.phone, body.finalPrice as number))) {
+      return NextResponse.json({ error: "같은 주문이 방금 접수됐어요. 주문 확인 알림을 확인해 주세요." }, { status: 409 });
+    }
+
     // 토스 결제 승인 및 검증 (데모 매장은 실제 결제가 없으므로 건너뛴다)
     let paidAmount: number | null = null;
     if (paymentKey && !isDemoCompany) {
@@ -233,6 +248,12 @@ export async function POST(request: NextRequest) {
       });
       if (!tossRes.ok) {
         const tossError = await tossRes.json().catch(() => ({}));
+        // 동시에 두 번 들어와 다른 요청이 먼저 승인한 결제 — 그 요청이 저장한 주문을 돌려준다
+        if ((tossError as { code?: string }).code === TOSS_ALREADY_PROCESSED) {
+          await new Promise((r) => setTimeout(r, 1500));
+          const existing = await findOrderByPayment(adminClient, paymentKey);
+          if (existing) return NextResponse.json({ success: true, reservationId: existing.id, orderToken: existing.order_token });
+        }
         return NextResponse.json({ error: (tossError as { message?: string }).message ?? "결제 확인에 실패했습니다." }, { status: 400 });
       }
       const tossData = await tossRes.json();
