@@ -31,6 +31,8 @@ import { notifyMenuChanged } from "@/lib/menuCacheClient";
 
 type Tab = "dashboard" | "reservations" | "products" | "stats" | "settlement" | "company" | "ordersettings" | "business" | "reservation" | "menusettings" | "settings" | "plan" | "myinfo";
 const TABS: Tab[] = ["dashboard", "reservations", "products", "stats", "settlement", "company", "ordersettings", "business", "reservation", "menusettings", "settings", "plan", "myinfo"];
+/** 아래에 저장 줄이 붙는 설정 탭 */
+const SAVE_BAR_TABS: Tab[] = ["company", "ordersettings", "business", "reservation", "settings"];
 // 주소의 ?tab= 값을 탭으로 — 없거나 모르는 값이면 대시보드
 const toTab = (v: string | null): Tab => (v && (TABS as string[]).includes(v) ? (v as Tab) : "dashboard");
 
@@ -431,7 +433,8 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
         </div>
       </div>
 
-      <div className="flex flex-1 max-w-6xl w-full mx-auto px-4 py-6 gap-6">
+      {/* 저장 줄이 있는 설정 탭 — 모바일은 저장 줄이 화면 맨 끝 (푸터처럼, 아래 여백 없음) */}
+      <div className={`flex flex-1 max-w-6xl w-full mx-auto px-4 pt-6 gap-6 ${SAVE_BAR_TABS.includes(activeTab) ? "pb-0 md:pb-6" : "pb-6"}`}>
         {/* 데스크탑 사이드 탭 — 흰 패널로 감싸 회색 바탕과 구분 (오른쪽 콘텐츠 카드와 같은 모양) */}
         <nav className="hidden md:block w-48 shrink-0 self-start">
           <ul className="space-y-1 bg-white rounded-2xl p-2">
