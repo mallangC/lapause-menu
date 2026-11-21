@@ -53,15 +53,24 @@ export async function PATCH(
     // (컬럼이 아직 없으면 읽기가 실패해 자동 시작 없이 승인만 한다)
     const { data: auto } = await adminClient
       .from("company_settings")
-      .select("sales_auto_start")
+      .select("sales_auto_start, bank_name, bank_account, bank_holder")
       .eq("company_id", company_id)
       .single();
-    const autoStart = (auto as { sales_auto_start?: boolean } | null)?.sales_auto_start === true;
+    const row = auto as { sales_auto_start?: boolean; bank_name?: string | null; bank_account?: string | null; bank_holder?: string | null } | null;
+    const autoStart = row?.sales_auto_start === true;
+    // 정산 계좌 — 지금 검토한 계좌를 그대로 고정한다 (사장님이 나중에 계좌를 바꿔도 다시 승인할 때까지 이 계좌로 정산)
+    if (!row?.bank_name || !row?.bank_account || !row?.bank_holder) {
+      return NextResponse.json({ error: "계좌 정보가 없어 승인할 수 없어요." }, { status: 400 });
+    }
     const { error } = await adminClient
       .from("company_settings")
       .update({
         consult_apply_status: "approved",
         consult_reject_reason: null,
+        settlement_bank_name: row.bank_name,
+        settlement_bank_account: row.bank_account,
+        settlement_bank_holder: row.bank_holder,
+        settlement_bank_approved_at: new Date().toISOString(),
         ...(autoStart ? { consult_enabled: true } : {}),
       })
       .eq("company_id", company_id);

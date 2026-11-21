@@ -20,6 +20,10 @@ interface PendingItem {
   total_amount: number;
   net_amount: number;
   reservation_ids: string[];
+  /** 판매 신청이 승인된 정산 계좌가 없음 — 정산에서 뺀다 */
+  bank_unapproved?: boolean;
+  /** 승인 뒤 사장님이 계좌를 바꿈 — 승인된 계좌(위 bank_*)로 이체, 바꾼 계좌는 다시 승인받아야 쓴다 */
+  bank_changed?: boolean;
 }
 
 interface Settlement {
@@ -128,9 +132,10 @@ export default function SettlementsTab({ companies }: Props) {
   }, [historyMonth]);
 
   const handleDownloadExcel = () => {
-    if (!pendingItems?.length) return;
+    if (!payableItems.length) return;
 
-    const rows = pendingItems.map((item) => ({
+    // 승인된 정산 계좌가 있는 매장만 이체 파일에 넣는다
+    const rows = payableItems.map((item) => ({
       입금은행: item.bank_name ?? "",
       입금계좌: item.bank_account ?? "",
       고객관리성명: item.bank_holder ?? "",
@@ -163,14 +168,14 @@ export default function SettlementsTab({ companies }: Props) {
   };
 
   const handleComplete = async () => {
-    if (!pendingItems?.length || !transferredAt) return;
+    if (!payableItems.length || !transferredAt) return;
     setCompleteLoading(true);
 
     const res = await fetch("/api/operator/settlements/batch", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        items: pendingItems.map(i => ({
+        items: payableItems.map(i => ({
           company_id: i.company_id,
           total_amount: i.net_amount,
           reservation_ids: i.reservation_ids,
@@ -278,8 +283,11 @@ export default function SettlementsTab({ companies }: Props) {
 
   const fmt = (s: string | null) => s ? s.slice(0, 10) : "—";
   const fmtMoney = (n: number) => n.toLocaleString() + "원";
-  const totalAmount = pendingItems?.reduce((sum, i) => sum + i.net_amount, 0) ?? 0;
-  const totalGross = pendingItems?.reduce((sum, i) => sum + i.total_amount, 0) ?? 0;
+  // 정산할 매장 — 판매 신청이 승인된 정산 계좌가 있는 곳만 (계좌가 없는 매장은 표에만 보이고 이체·완료 처리에서 빠진다)
+  const payableItems = (pendingItems ?? []).filter((i) => !i.bank_unapproved);
+  const excludedCount = (pendingItems?.length ?? 0) - payableItems.length;
+  const totalAmount = payableItems.reduce((sum, i) => sum + i.net_amount, 0);
+  const totalGross = payableItems.reduce((sum, i) => sum + i.total_amount, 0);
 
   // 월 옵션 (최근 12개월)
   const monthOptions = Array.from({ length: 12 }, (_, i) => {
@@ -382,11 +390,17 @@ export default function SettlementsTab({ companies }: Props) {
                         </thead>
                         <tbody className="divide-y divide-gray-50">
                           {pendingItems.map(item => (
-                            <tr key={item.company_id} className="hover:bg-gray-50">
+                            <tr key={item.company_id} className={item.bank_unapproved ? "bg-red-50/40 text-gray-400" : "hover:bg-gray-50"}>
                               <td className="px-6 py-3.5">
-                                <div className="font-medium text-gray-900">{item.company_name}</div>
+                                <div className={`font-medium ${item.bank_unapproved ? "text-gray-400 line-through" : "text-gray-900"}`}>{item.company_name}</div>
                                 {item.business_number && (
                                   <div className="text-xs text-gray-400">{item.business_number}</div>
+                                )}
+                                {item.bank_unapproved && (
+                                  <div className="mt-1 text-xs text-red-500 font-medium">승인된 정산 계좌 없음 · 이번 정산에서 제외</div>
+                                )}
+                                {item.bank_changed && (
+                                  <div className="mt-1 text-xs text-amber-600 font-medium">사장님이 계좌를 바꿈 · 승인된 계좌로 이체 (새 계좌는 재승인 필요)</div>
                                 )}
                               </td>
                               <td className="px-6 py-3.5 text-gray-600">{item.bank_name ?? <span className="text-gray-300">—</span>}</td>
@@ -401,7 +415,7 @@ export default function SettlementsTab({ companies }: Props) {
                         <tfoot>
                           <tr className="border-t-2 border-gray-100 bg-gray-50">
                             <td colSpan={5} className="px-6 py-3 text-sm text-gray-500 font-medium">
-                              총 {pendingItems.length}개 매장
+                              총 {payableItems.length}개 매장{excludedCount > 0 && <span className="text-red-500"> · 정산 계좌 미승인 {excludedCount}곳 제외</span>}
                             </td>
                             <td className="px-6 py-3 text-right text-sm text-gray-400">
                               {fmtMoney(totalGross)}
@@ -576,7 +590,7 @@ export default function SettlementsTab({ companies }: Props) {
           <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl">
             <h3 className="text-base font-semibold text-gray-900 mb-1">이체 완료 처리</h3>
             <p className="text-xs text-gray-400 mb-4">
-              {pendingItems?.length}개 매장 · 합계 {fmtMoney(totalAmount)}
+              {payableItems.length}개 매장 · 합계 {fmtMoney(totalAmount)}
             </p>
             <div className="space-y-3">
               <div>

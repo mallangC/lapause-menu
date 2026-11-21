@@ -56,10 +56,20 @@ export async function POST(request: NextRequest) {
   const companyIds = items.map((item) => item.company_id);
   const { data: demoCompanies } = await adminClient.from("companies").select("id").in("id", companyIds).eq("is_demo", true);
   const demoCompanyIds = new Set((demoCompanies ?? []).map((c) => c.id));
+  // 정산 계좌 — 판매 신청 승인 때 고정한 계좌만 (없으면 정산하지 않는다)
+  const { data: bankRows } = await adminClient
+    .from("company_settings")
+    .select("company_id, settlement_bank_name, settlement_bank_account, settlement_bank_holder")
+    .in("company_id", companyIds);
+  const bankMap = new Map((bankRows ?? []).map((b) => [b.company_id as string, b]));
 
   for (const item of items) {
     if (demoCompanyIds.has(item.company_id)) {
       return NextResponse.json({ error: "데모 매장은 정산 대상이 아닙니다." }, { status: 400 });
+    }
+    const bank = bankMap.get(item.company_id);
+    if (!bank?.settlement_bank_account) {
+      return NextResponse.json({ error: "판매 신청이 승인된 정산 계좌가 없는 매장이 포함되어 있습니다. 정산 대상을 다시 조회해주세요." }, { status: 400 });
     }
 
     // 결제 총액은 클라이언트를 신뢰하지 않고 연결된 예약에서 다시 집계
@@ -103,6 +113,10 @@ export async function POST(request: NextRequest) {
         status: "completed",
         transferred_at,
         transfer_memo: transfer_memo || null,
+        // 보낸 계좌 기록 (나중에 계좌가 바뀌어도 내역은 그대로)
+        bank_name: bank.settlement_bank_name,
+        bank_account: bank.settlement_bank_account,
+        bank_holder: bank.settlement_bank_holder,
       })
       .select()
       .single();

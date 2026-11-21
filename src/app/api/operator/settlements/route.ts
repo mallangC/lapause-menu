@@ -38,7 +38,7 @@ export async function GET() {
   const [{ data: companies }, { data: reservationMappings }] = await Promise.all([
     adminClient
       .from("companies")
-      .select("id, name, company_settings(bank_name, bank_account, bank_holder, business_number)")
+      .select("id, name, company_settings(business_number, settlement_bank_name, settlement_bank_account, settlement_bank_holder)")
       .in("id", companyIds),
     adminClient
       .from("reservations")
@@ -62,9 +62,10 @@ export async function GET() {
     return {
       ...s,
       company_name: company?.name ?? "",
-      bank_name: settings?.bank_name ?? null,
-      bank_account: settings?.bank_account ?? null,
-      bank_holder: settings?.bank_holder ?? null,
+      // 정산할 때 보낸 계좌 (예전 내역은 기록이 없으면 지금 정산 계좌)
+      bank_name: s.bank_name ?? settings?.settlement_bank_name ?? null,
+      bank_account: s.bank_account ?? settings?.settlement_bank_account ?? null,
+      bank_holder: s.bank_holder ?? settings?.settlement_bank_holder ?? null,
       business_number: settings?.business_number ?? null,
       reservation_count: countMap.get(s.id) ?? 0,
     };
@@ -93,6 +94,15 @@ export async function POST(request: NextRequest) {
   const { data: companyRow } = await adminClient.from("companies").select("is_demo").eq("id", company_id).single();
   if (companyRow?.is_demo) {
     return NextResponse.json({ error: "데모 매장은 정산 대상이 아닙니다." }, { status: 400 });
+  }
+  // 정산 계좌 — 판매 신청 승인 때 고정한 계좌만
+  const { data: bank } = await adminClient
+    .from("company_settings")
+    .select("settlement_bank_name, settlement_bank_account, settlement_bank_holder")
+    .eq("company_id", company_id)
+    .single();
+  if (!bank?.settlement_bank_account) {
+    return NextResponse.json({ error: "판매 신청이 승인된 정산 계좌가 없습니다." }, { status: 400 });
   }
 
   const { data: reservations, error: rErr } = await adminClient
@@ -123,7 +133,7 @@ export async function POST(request: NextRequest) {
 
   const { data: settlement, error: sErr } = await adminClient
     .from("settlements")
-    .insert({ company_id, period_start, period_end, year_month, total_amount: total })
+    .insert({ company_id, period_start, period_end, year_month, total_amount: total, bank_name: bank.settlement_bank_name, bank_account: bank.settlement_bank_account, bank_holder: bank.settlement_bank_holder })
     .select()
     .single();
 

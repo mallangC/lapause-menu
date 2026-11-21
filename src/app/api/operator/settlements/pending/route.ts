@@ -109,7 +109,7 @@ export async function GET(request: NextRequest) {
   const companyIds = [...companyMap.keys()];
   const { data: companies } = await adminClient
     .from("companies")
-    .select("id, name, company_settings(bank_name, bank_account, bank_holder, business_number)")
+    .select("id, name, company_settings(bank_name, bank_account, bank_holder, business_number, settlement_bank_name, settlement_bank_account, settlement_bank_holder)")
     .in("id", companyIds);
 
   const result = (companies ?? []).map(c => {
@@ -120,9 +120,18 @@ export async function GET(request: NextRequest) {
     return {
       company_id: c.id,
       company_name: c.name,
-      bank_name: settings?.bank_name ?? null,
-      bank_account: settings?.bank_account ?? null,
-      bank_holder: settings?.bank_holder ?? null,
+      // 정산은 판매 신청 승인 때 고정한 계좌로만 (승인 뒤 사장님이 바꾼 계좌로는 보내지 않는다)
+      bank_name: settings?.settlement_bank_name ?? null,
+      bank_account: settings?.settlement_bank_account ?? null,
+      bank_holder: settings?.settlement_bank_holder ?? null,
+      // 승인된 정산 계좌가 없음 — 정산하지 않는다
+      bank_unapproved: !settings?.settlement_bank_account,
+      // 승인 뒤 사장님이 계좌를 바꿈 — 승인된 계좌로 보내고, 바꾼 계좌는 다시 승인받아야 쓴다
+      bank_changed: !!settings?.settlement_bank_account && (
+        (settings?.bank_name ?? "") !== (settings?.settlement_bank_name ?? "") ||
+        (settings?.bank_account ?? "") !== (settings?.settlement_bank_account ?? "") ||
+        (settings?.bank_holder ?? "") !== (settings?.settlement_bank_holder ?? "")
+      ),
       business_number: settings?.business_number ?? null,
       reservation_count: agg.count,
       total_amount: agg.total,
