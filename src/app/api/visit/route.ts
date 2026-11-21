@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizeTrafficSource } from "@/lib/trafficSource";
+import { ipAllowed } from "@/lib/transferRateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,8 @@ export async function POST(req: NextRequest) {
   if (typeof slug !== "string" || !slug || slug.length > 100) return new NextResponse(null, { status: 204 });
 
   const db = createAdminClient();
+  // 방문 수 부풀리기 막기 — IP별 1분 20회·하루 200회 (넘으면 조용히 세지 않는다)
+  if (!(await ipAllowed(db, req, "visit", 20, 200))) return new NextResponse(null, { status: 204 });
   const { data: companyId } = await db.rpc("get_company_id_by_slug", { p_slug: slug });
   if (!companyId) return new NextResponse(null, { status: 204 });
 

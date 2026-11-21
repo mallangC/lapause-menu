@@ -11,6 +11,9 @@ import {
 
 export const dynamic = "force-dynamic";
 
+/** 한 인증번호로 틀릴 수 있는 횟수 */
+const MAX_ATTEMPTS = 5;
+
 export async function POST(request: NextRequest) {
   const supabase = await createServerAuthClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -26,14 +29,23 @@ export async function POST(request: NextRequest) {
 
   const { data: otp } = await adminClient
     .from("login_otp_codes")
-    .select("id, code, expires_at, consumed")
+    .select("id, code, expires_at, consumed, attempts")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  if (!otp || otp.consumed || otp.code !== code || new Date(otp.expires_at) < new Date()) {
+  if (!otp || otp.consumed || new Date(otp.expires_at) < new Date()) {
     return NextResponse.json({ error: "인증번호가 올바르지 않거나 만료되었습니다." }, { status: 400 });
+  }
+  // 틀린 번호 — 5번 틀리면 이 번호는 폐기 (번호를 자동으로 대입해 맞히지 못하게)
+  if (otp.code !== code) {
+    const attempts = ((otp as { attempts?: number }).attempts ?? 0) + 1;
+    await adminClient.from("login_otp_codes").update({ attempts, ...(attempts >= MAX_ATTEMPTS ? { consumed: true } : {}) }).eq("id", otp.id);
+    return NextResponse.json(
+      { error: attempts >= MAX_ATTEMPTS ? "인증번호를 여러 번 틀렸어요. 인증번호를 다시 받아 주세요." : "인증번호가 올바르지 않거나 만료되었습니다." },
+      { status: 400 },
+    );
   }
 
   await adminClient.from("login_otp_codes").update({ consumed: true }).eq("id", otp.id);
