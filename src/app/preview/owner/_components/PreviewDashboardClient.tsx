@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import Link from "next/link";
 import { generateThemeVars, DEFAULT_THEME_BG, DEFAULT_THEME_ACCENT } from "@/lib/theme";
 import PreviewDashboardOverview from "./PreviewDashboardOverview";
 import { MOCK_COMPANY_NAME, MOCK_SETTINGS } from "../_mock";
 import { makeMockProductList, makeMockReservations } from "../_mockReservations";
+import NaverBell from "@/app/[slug]/admin/dashboard/NaverBell";
 import PreviewProductsTab from "./PreviewProductsTab";
 import PreviewStatsTab from "./PreviewStatsTab";
 import PreviewBusinessSettingsTab from "./PreviewBusinessSettingsTab";
@@ -90,6 +90,10 @@ export default function PreviewDashboardClient() {
 
   // 목업 예약 (9~12월, 오늘 = 2026-11-10 고정) — 대시보드 요약과 예약 관리가 같은 데이터를 쓴다
   const [reservations, setReservations] = useState(() => makeMockReservations());
+  // 확인 전 네이버 예약 (알림 종) — 목업 예약 중 naver_unchecked 인 것. 확인하면 화면 안에서만 지운다
+  const naverUnchecked = reservations.filter((r) => r.naver_unchecked);
+  const checkNaver = (id?: string) =>
+    setReservations((prev) => prev.map((r) => (r.naver_unchecked && (!id || r.id === id) ? { ...r, naver_unchecked: false } : r)));
   const [reservationStatusFilter, setReservationStatusFilter] = useState<string | undefined>(undefined);
   // 한 번 연 예약 관리 탭은 숨기기만 하고 유지 (실제 화면과 같이 보던 달·펼친 예약이 남는다)
   const [reservationsOpened, setReservationsOpened] = useState(false);
@@ -133,10 +137,19 @@ export default function PreviewDashboardClient() {
           <span className="text-lg font-medium text-gray-900">
             {MOCK_COMPANY_NAME} — 관리자
           </span>
-          {/* 미리보기라 로그아웃 대신 미리보기 처음으로 */}
-          <Link href="/preview" className="text-sm text-gray-400 hover:text-gray-700 transition-colors">
-            로그아웃
-          </Link>
+          <div className="flex items-center gap-3">
+            {/* 알림 — 네이버 예약 목업 2건 (읽지 못한 메일 목록은 서버를 쓰므로 미리보기에서는 끈다) */}
+            <span data-coach="naver-bell" className="inline-flex">
+            <NaverBell
+              companyId="preview"
+              settings={{}}
+              unchecked={naverUnchecked}
+              onCheck={checkNaver}
+              onOpenReservation={() => goTab("reservations")}
+              inbox={false}
+            />
+            </span>
+          </div>
         </div>
       </header>
 

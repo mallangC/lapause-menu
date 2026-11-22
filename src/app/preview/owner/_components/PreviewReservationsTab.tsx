@@ -649,7 +649,7 @@ export default function PreviewReservationsTab({ allReservations, setAllReservat
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className={`text-sm font-semibold ${isCancelled ? "text-gray-400" : "text-gray-900"}`}>{r.orderer_name}</span>
+                      <span className={`text-sm font-semibold ${isCancelled ? "text-gray-400" : "text-gray-900"}`}>{r.naver_unchecked && <span title={r.status === "취소" ? "확인하지 않은 네이버 취소" : "확인하지 않은 네이버 예약"} className="inline-block w-2 h-2 rounded-full bg-red-500 mr-1.5 align-middle" />}{r.orderer_name}</span>
                       <span className="text-xs text-gray-400 truncate max-w-[150px]">{productSummary}</span>
                     </div>
                     <div className="flex items-center justify-between mt-1.5">
@@ -736,7 +736,7 @@ export default function PreviewReservationsTab({ allReservations, setAllReservat
                               {r.orderer_name}
                             </button>
                           ) : (
-                            <span className="font-medium text-gray-800">{r.orderer_name}</span>
+                            <span className="font-medium text-gray-800">{r.naver_unchecked && <span title={r.status === "취소" ? "확인하지 않은 네이버 취소" : "확인하지 않은 네이버 예약"} className="inline-block w-2 h-2 rounded-full bg-red-500 mr-1.5 align-middle" />}{r.orderer_name}</span>
                           )}
                         </td>
                         <td className="py-3 pr-3 whitespace-nowrap text-center">

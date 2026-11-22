@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 const SOCIAL_PROVIDERS = [
@@ -158,7 +159,7 @@ export default function PreviewMyInfoTab({ onNotice }: Props) {
       <div className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:p-6">
         <div className="max-w-md">
           <div data-coach="mi-password">
-            <div className="flex items-center justify-between mb-4">
+            <div className={`flex items-center justify-between ${showPwForm ? "mb-4" : ""}`}>
               <h3 className="text-sm font-medium text-gray-900">비밀번호 변경</h3>
               {!showPwForm && (
                 <button
@@ -265,6 +266,18 @@ export default function PreviewMyInfoTab({ onNotice }: Props) {
               <p className="text-xs text-gold-600 mt-2">사용 중 — 인증을 완료한 기기는 선택에 따라 최대 30일간 다시 묻지 않습니다.</p>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* 로그아웃 — 실제 화면처럼 내 정보 맨 아래 (미리보기는 미리보기 처음으로) */}
+      <div className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:p-6">
+        <div className="max-w-md">
+          <Link
+            href="/preview"
+            className="inline-block shrink-0 px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            로그아웃
+          </Link>
         </div>
       </div>
     </div>

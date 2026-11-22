@@ -243,7 +243,86 @@ function makeMonth(year: number, month: number, todayStr: string): Reservation[]
   return list;
 }
 
-/** 9~12월 목업 예약 전체 (오늘 = 2026-11-10 고정) */
+/**
+ * 네이버 예약 메일로 자동으로 들어온 예약 (확인 전) — 새 예약 1건 · 손님 취소 1건
+ * 실제처럼 이름은 가운데가 가려져 있고 전화번호가 없다. 위쪽 알림 종·목록의 빨간 점으로 보인다
+ */
+function makeNaverMocks(): Reservation[] {
+  const p1 = MOCK_PRODUCTS[0];
+  const p2 = MOCK_PRODUCTS[Math.min(3, MOCK_PRODUCTS.length - 1)];
+  const item = (p: MockProduct): ReservationItem => ({
+    type: p.product_type,
+    name: p.name,
+    price: p.price,
+    message_card: "없음",
+    message_card_content: null,
+    shopping_bag: "없음",
+    preservative: "없음",
+    memo: null,
+    product_id: null,
+  });
+  const base = {
+    quantity: 1,
+    paid: true,
+    purpose: "",
+    recipient_gender: "",
+    recipient_age: "",
+    relationship: "",
+    mood: "",
+    budget: "",
+    channel: "네이버",
+    delivery_type: "픽업",
+    delivery_fee: null,
+    admin_memo: null,
+    recipient_name: null,
+    recipient_phone: null,
+    address: null,
+    address_detail: null,
+    customer_profile_id: null,
+    reference_images: null,
+    order_path: "manual",
+    traffic_source: null,
+    payment_token: null,
+    payment_link_expires_at: null,
+    payment_id: null,
+    settlement_id: null,
+    naver_unchecked: true,
+  } as const;
+  return [
+    {
+      ...base,
+      id: "naver-1",
+      created_at: new Date(2026, 10, 10, 9, 12).toISOString(),
+      status: "준비중",
+      orderer_name: "이*연",
+      orderer_phone: "",
+      items: [item(p1)],
+      final_price: p1.price,
+      cancel_reason: null,
+      desired_date: "2026-11-12",
+      desired_time: "14:00",
+      requests: "네이버 결제: 네이버페이",
+      naver_booking_id: "1413000001",
+    },
+    {
+      ...base,
+      id: "naver-2",
+      created_at: new Date(2026, 10, 9, 18, 40).toISOString(),
+      status: "취소",
+      orderer_name: "박*준",
+      orderer_phone: "",
+      items: [item(p2)],
+      final_price: p2.price,
+      cancel_reason: "고객 취소 (네이버) · 일정이 바뀌었어요",
+      desired_date: "2026-11-13",
+      desired_time: "11:00",
+      requests: "네이버 결제: 신용카드",
+      naver_booking_id: "1412900002",
+    },
+  ] as Reservation[];
+}
+
+/** 9~12월 목업 예약 전체 (오늘 = 2026-11-10 고정) + 확인 전 네이버 예약 2건 */
 export function makeMockReservations(): Reservation[] {
-  return [9, 10, 11, 12].flatMap((m) => makeMonth(2026, m, PREVIEW_TODAY_STR));
+  return [...[9, 10, 11, 12].flatMap((m) => makeMonth(2026, m, PREVIEW_TODAY_STR)), ...makeNaverMocks()];
 }

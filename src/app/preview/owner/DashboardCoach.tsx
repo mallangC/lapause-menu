@@ -44,6 +44,12 @@ const STEPS: CoachStep[] = [
     body: "오늘 수령 예정인 예약을 시간순으로 보여줘요.\n아직 확인하지 않은 예약과 준비 중인 예약을\n예약 상태별로 구분해서 확인해요.",
   },
   {
+    selectors: ['[data-coach="naver-bell"]'],
+    pad: 4,
+    title: "네이버 예약 알림",
+    body: "네이버 예약 알림 메일을 연결하면\n네이버 예약과 취소가 예약 관리에 자동으로 추가돼요.\n확인하기 전까지 알림 숫자로 알려 드려요.",
+  },
+  {
     selectors: tab("reservations"),
     pad: 0,
     onEnter: () => revealTab("reservations"),

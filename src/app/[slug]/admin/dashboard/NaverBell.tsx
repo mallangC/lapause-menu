@@ -17,6 +17,7 @@ export default function NaverBell({
   unchecked,
   onCheck,
   onOpenReservation,
+  inbox = true,
 }: {
   companyId: string;
   settings: CompanySettings;
@@ -25,6 +26,8 @@ export default function NaverBell({
   onCheck: (id?: string) => void;
   /** 예약을 고르면 — 예약 관리로 넘어가 그 예약 상세를 연다 */
   onOpenReservation: (r: Reservation) => void;
+  /** 읽지 못한 메일 목록 (서버에서 불러온다) — 미리보기는 끈다 */
+  inbox?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
@@ -44,7 +47,7 @@ export default function NaverBell({
     // 창 오른쪽 끝은 종 오른쪽에 맞추되, 왼쪽이 화면 밖으로 나가면 안쪽으로 당긴다
     const right = Math.min(Math.max(16, vw - r.right), vw - 16 - width);
     const left = vw - right - width;
-    setPos({ top: r.bottom + 8, right, width, originX: r.left + r.width / 2 - left });
+    setPos({ top: r.bottom + 2, right, width, originX: r.left + r.width / 2 - left });
     setOpen(true);
   };
 
@@ -147,7 +150,7 @@ export default function NaverBell({
       )}
 
       {/* 처리하지 못한 네이버 메일 목록 — '보기'로 연다 (메일 수는 늘 불러와 종 숫자에 더한다) */}
-      {mounted &&
+      {mounted && inbox &&
         createPortal(
           <NaverMailPanel companyId={companyId} settings={settings} part="inbox" open={inboxOpen} onClose={() => setInboxOpen(false)} onCount={setInboxCount} />,
           document.body,
