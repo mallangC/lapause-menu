@@ -47,6 +47,15 @@ export default function PrivacyPage() {
               <li>판매 신청·정산: 사업자등록번호, 사업자등록증, 정산 계좌(은행·계좌번호·예금주), 통장사본, 통신판매업 신고번호</li>
               <li>서비스 이용 중 자동 생성: 로그인 2단계 인증 기기 정보, 서비스 이용 기록</li>
             </ul>
+            <p className="font-medium text-gray-800 pt-2">다. 네이버 예약 손님 (사장님이 네이버 예약 연동을 사용하는 경우)</p>
+            <p>사장님이 네이버 스마트플레이스의 이메일 알림을 매장 전용 주소로 받도록 설정하면, 네이버가 보내는 예약 알림 메일에서 아래 항목을 수집합니다.</p>
+            <ul className="list-disc list-inside space-y-1 text-gray-500 pl-2">
+              <li>예약자 이름 (네이버가 가운데를 가려 보낸 형태, 예: 홍*동)</li>
+              <li>네이버 예약번호, 이용 일시, 예약 상품·옵션, 결제 금액·결제 수단·결제 상태</li>
+              <li>요청사항, 취소 사유·환불 금액 (취소 메일인 경우)</li>
+              <li>자동으로 처리하지 못한 메일의 경우 메일 본문 원문</li>
+            </ul>
+            <p className="text-gray-400 text-xs">네이버 예약 알림 메일에는 손님 휴대폰 번호가 포함되지 않아 수집하지 않습니다. 사장님이 손님과 통화하는 등 직접 확인한 연락처를 예약에 입력하는 경우에만 저장됩니다.</p>
             <p className="text-gray-400 text-xs">카드번호 등 결제 상세 정보는 전자결제대행사(PG사)가 직접 처리하며 당사는 이를 수집·보관하지 않습니다. 구독 자동결제를 위해 PG사가 발급한 결제 키만 보관합니다.</p>
           </section>
 
@@ -69,6 +78,11 @@ export default function PrivacyPage() {
               <li>새 예약 접수 등 매장 운영 알림 (카카오 알림톡 또는 문자)</li>
               <li>약관·개인정보처리방침 변경, 서비스 장애 등 필수 공지</li>
             </ul>
+            <p className="font-medium text-gray-800 pt-2">다. 네이버 예약 손님</p>
+            <ul className="list-disc list-inside space-y-1 text-gray-500 pl-2">
+              <li>사장님의 예약 관리 화면에 네이버 예약을 등록하고, 손님이 취소한 예약을 취소로 반영</li>
+              <li>자동으로 처리하지 못한 예약 알림 메일을 사장님이 확인·처리할 수 있도록 보관</li>
+            </ul>
             <p className="text-gray-400 text-xs">위 안내는 서비스 이용에 필요한 정보이며, 광고성 정보는 별도 동의 없이 보내지 않습니다.</p>
           </section>
 
@@ -86,6 +100,7 @@ export default function PrivacyPage() {
               <li>소비자 불만 또는 분쟁처리에 관한 기록: 3년</li>
             </ul>
             <p className="text-gray-400 text-xs">그 외 관계 법령에 보존 의무가 없는 정보는 주문 완료 후 1년 이내 파기합니다.</p>
+            <p className="text-gray-400 text-xs">네이버 예약 알림 메일로 받은 예약 정보는 다른 예약과 같은 기간 보관하며, 자동으로 처리하지 못한 메일 원문은 사장님이 확인·처리하는 데 필요한 기간 동안 보관 후 파기합니다.</p>
             <p className="text-gray-400 text-xs">사장님(회원) 정보는 회원 탈퇴 시까지 보관하며, 탈퇴 후에는 관계 법령에 따라 보관해야 하는 정보를 제외하고 지체 없이 파기합니다.</p>
           </section>
 
@@ -115,6 +130,7 @@ export default function PrivacyPage() {
               <p><span className="font-medium text-gray-700">수탁업체:</span> Supabase Inc. · <span className="font-medium text-gray-700">위탁 업무:</span> 데이터베이스 저장 및 관리</p>
               <p><span className="font-medium text-gray-700">수탁업체:</span> 토스페이먼츠 · <span className="font-medium text-gray-700">위탁 업무:</span> 결제 처리 및 정산</p>
               <p><span className="font-medium text-gray-700">수탁업체:</span> 솔라피(누리고 주식회사) · <span className="font-medium text-gray-700">위탁 업무:</span> 카카오 알림톡·문자 메시지 발송</p>
+              <p><span className="font-medium text-gray-700">수탁업체:</span> Cloudflare, Inc. · <span className="font-medium text-gray-700">위탁 업무:</span> 서비스 운영(호스팅), 네이버 예약 알림 메일 수신·전달</p>
               <p><span className="font-medium text-gray-700">수탁업체:</span> Resend, Inc. · <span className="font-medium text-gray-700">위탁 업무:</span> 이메일 발송 (로그인 인증번호, 결제·환불 안내)</p>
               <p><span className="font-medium text-gray-700">수탁업체:</span> Google LLC (Gemini API) · <span className="font-medium text-gray-700">위탁 업무:</span> 사장님이 붙여넣은 주문 내용을 예약 항목으로 정리, 손님이 보낸 참고 사진의 꽃 볼륨 확인</p>
             </div>

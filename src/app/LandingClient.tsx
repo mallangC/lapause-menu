@@ -84,6 +84,7 @@ const capabilities = [
   { title: "전자 메뉴판", desc: "사진·가격을 한눈에 보여줘 상품 문의가 줄어요.", img: "/landing/cap-menu.webp", mobileImg: "/landing/cap-menu-m.webp" },
   { title: "링크결제", desc: "전화·DM 상담으로 정한 주문도 결제 링크 하나로 마무리해요.", img: "/landing/cap-paylink.webp", mobileImg: "/landing/cap-paylink-m.webp" },
   { title: "예약 관리", desc: "상담 내용이 담긴 예약을 월별로 한눈에 확인하세요.", img: "/landing/cap-reservation.webp", mobileImg: "/landing/cap-reservation-m.webp" },
+  { title: "네이버 예약 연동", desc: "네이버 예약도 예약 관리에 자동으로 추가돼요. 확인 전에는 알림으로 알려 드려요.", img: "/landing/cap-naver.webp", mobileImg: "/landing/cap-naver-m.webp" },
   { title: "카카오 알림", desc: "\"예약 됐나요?\" 문의 없이 확정·취소를 자동으로 알려요.", img: "/landing/cap-kakao.webp", mobileImg: "/landing/cap-kakao-m.webp" },
   { title: "매출 분석", desc: "어떤 상담에서 주문이 많이 나오는지 데이터로 확인하세요.", img: "/landing/cap-stats.webp", mobileImg: "/landing/cap-stats-m.webp" },
   { title: "쉬운 설정", desc: "가입하고 상품만 등록하면 바로 운영 시작. 별도 설치 없이도 누구나 쉽게.", img: "/landing/cap-setup.webp", mobileImg: "/landing/cap-setup-m.webp" },
@@ -101,6 +102,7 @@ const faqs = [
   { q: "앱을 설치해야 하나요?", a: "아니요. 가게 링크를 공유하면 고객은 앱 설치 없이 바로 메뉴를 볼 수 있습니다. 관리자도 웹 브라우저만 있으면 관리할 수 있습니다." },
   { q: "누구나 플로에이드에서 꽃을 판매할 수 있나요?", a: "사업자 등록이 되어 있는 사장님만 판매가 가능합니다. 맞춤 주문 기능을 통해 꽃을 판매하시려면 사업자 등록증과 통장 사본 등의 서류를 제출해 주셔야 합니다." },
   { q: "기존 SNS나 네이버 스마트스토어와 함께 쓸 수 있나요?", a: "네. 플로에이드는 기존 채널을 대체하는 게 아니라 보완하는 도구입니다. 링크만 공유하면 어디서든 연결됩니다." },
+  { q: "네이버 예약도 같이 관리할 수 있나요?", a: "네. 네이버 스마트플레이스의 이메일 알림을 매장 전용 주소로 연결하면, 네이버 예약이 확정되거나 손님이 취소할 때 예약 관리에 자동으로 반영됩니다. 확인하지 않은 네이버 예약은 관리자 화면 위쪽 알림으로 알려 드립니다. (Flo.Aide는 네이버(주)와 제휴 관계가 아니며, 네이버 스마트플레이스의 이메일 알림 기능을 이용합니다.)" },
   { q: "상품은 몇 개까지 등록할 수 있나요?", a: "상품은 최대 100개까지 등록 할 수 있습니다." },
   { q: "고객이 예약하면 제가 직접 확정해야 하나요, 아니면 자동으로 되나요?", a: "기본적으로 관리자가 직접 확정하는 방식입니다. 예약 요청이 들어오면 알림을 받고, 관리 페이지에서 판매 가능한 예약건인지 확인 후 확정 또는 취소 처리를 할 수 있습니다." },
   { q: "메뉴에 가격을 표시하지 않을 수 있나요?", a: "네. 상품을 추가할 때 가격을 입력하지 않으면 가격이 표시되지 않습니다." },
@@ -548,7 +550,7 @@ export default function Landing() {
                 상담에서 받은 내용이 그대로 예약에 남아요. 다시 물어볼 필요 없이 확정 버튼 하나면 손님 카카오톡으로 알림이 가요.
               </p>
               <ul className="space-y-2 md:space-y-3">
-                {["선물 정보·요청 사항까지 예약에 기록", "확정·취소 시 카카오 알림 자동 발송", "어떤 상담에서 주문이 나오는지 통계"].map((item) => (
+                {["선물 정보·요청 사항까지 예약에 기록", "확정·취소 시 카카오 알림 자동 발송", "네이버 예약도 자동으로 함께 정리", "어떤 상담에서 주문이 나오는지 통계"].map((item) => (
                   <li key={item} className="flex items-center gap-3 text-[13px] md:text-[14px]" style={{ color: "rgba(255,255,255,0.6)" }}>
                     <span className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] shrink-0 font-bold" style={{ background: "rgba(201,169,110,0.2)", color: "#c9a96e" }}>✓</span>
                     {item}
