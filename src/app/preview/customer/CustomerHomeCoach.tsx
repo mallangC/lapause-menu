@@ -21,11 +21,9 @@ const STEPS: CoachStep[] = [
     body: "상품을 등록할 때 넣은 꽃 색상·포장지·분위기로\n손님이 원하는 꽃만 골라볼 수 있어요.",
   },
   {
-    selectors: ['[data-coach="home-consult-circle"]', 'a[aria-label="맞춤 상담"]', 'header a[href$="consult=1"]'],
-    mobileRadius: 9999,
-    mobilePad: 0,
+    selectors: ['[data-coach="home-logo"]'],
     title: "맞춤 상담",
-    body: "메뉴판에 원하는 꽃이 없으면 이 버튼으로\n사장님께 맡기기·추천받기·사진 주문을 고를 수 있어요.\n대화로 예약·결제까지 받을 수 있어요.",
+    body: "메뉴판에 원하는 꽃이 없으면 로고를 눌러\n첫 화면 대화로 돌아가 사장님께 맡기기·추천받기·\n사진 주문을 고를 수 있어요. 대화로 예약·결제까지 받아요.",
   },
   {
     selectors: ['[data-coach="home-footer"]'],

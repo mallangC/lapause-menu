@@ -36,6 +36,10 @@ export default function StoreHeader({
     <span className="font-light tracking-widest text-gold-500 text-xl md:text-2xl">{companyName}</span>
   );
 
+  // 메뉴 서랍 — 항목 · 묶음 제목
+  const itemCls = "px-4 py-3.5 text-lg md:text-xl font-medium text-gray-800 hover:bg-gray-50 rounded-xl transition-colors";
+  const groupCls = "px-4 pt-3 pb-1 text-xs font-medium tracking-wide text-gray-400";
+
   const HamburgerIcon = () => (
     <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
@@ -106,47 +110,58 @@ export default function StoreHeader({
           </button>
         </div>
 
-        {/* 메뉴 항목 */}
+        {/* 메뉴 항목 — 묶음마다 작은 제목·구분선 (상품 종류 / 시즌 메뉴 / 바로 구매가 서로 다른 묶음인 게 보이게) */}
         <nav className="flex flex-col px-3 py-4 gap-1 overflow-y-auto">
           <Link
             href={`/${slug}/menu`}
-            className="px-4 py-3.5 text-lg md:text-xl font-medium text-gray-800 hover:bg-gray-50 rounded-xl transition-colors"
+            className={itemCls}
             onClick={() => setMenuOpen(false)}
           >
             전체 상품
           </Link>
-          {instantMenu && (
-            <Link
-              href={`/${slug}/menu?tab=instant`}
-              className="px-4 py-3.5 text-lg md:text-xl font-medium text-gray-800 hover:bg-gray-50 rounded-xl transition-colors"
-              onClick={() => setMenuOpen(false)}
-            >
-              {instantMenu}
-            </Link>
+          {productTypeList.length > 0 && (
+            <>
+              <p className={groupCls}>상품 종류</p>
+              {productTypeList.map((type) => (
+                <Link
+                  key={type}
+                  href={`/${slug}/menu?type=${encodeURIComponent(type)}`}
+                  className={itemCls}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  {type}
+                </Link>
+              ))}
+            </>
           )}
-          {productTypeList.map((type) => (
-            <Link
-              key={type}
-              href={`/${slug}/menu?type=${encodeURIComponent(type)}`}
-              className="px-4 py-3.5 text-lg md:text-xl font-medium text-gray-800 hover:bg-gray-50 rounded-xl transition-colors"
-              onClick={() => setMenuOpen(false)}
-            >
-              {type}
-            </Link>
-          ))}
           {seasonList.length > 0 && (
             <>
-              <div className="mx-2 my-2 border-t border-gray-100" />
+              <div className="mx-2 mt-3 border-t border-gray-100" />
+              <p className={groupCls}>시즌 메뉴</p>
               {seasonList.map((season) => (
                 <Link
                   key={season}
                   href={`/${slug}/menu?tab=season`}
-                  className="px-4 py-3.5 text-lg md:text-xl font-medium text-gray-800 hover:bg-gray-50 rounded-xl transition-colors"
+                  className={itemCls}
                   onClick={() => setMenuOpen(false)}
                 >
                   {season}
                 </Link>
               ))}
+            </>
+          )}
+          {/* 바로 구매 메뉴 — 이미 만들어 둔 꽃이라 맨 아래 따로 (상품 종류가 아니다) */}
+          {instantMenu && (
+            <>
+              <div className="mx-2 mt-3 border-t border-gray-100" />
+              <p className={groupCls}>바로 가져갈 수 있는 꽃</p>
+              <Link
+                href={`/${slug}/menu?tab=instant`}
+                className={itemCls}
+                onClick={() => setMenuOpen(false)}
+              >
+                {instantMenu}
+              </Link>
             </>
           )}
         </nav>

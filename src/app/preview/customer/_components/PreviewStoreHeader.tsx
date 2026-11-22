@@ -59,13 +59,14 @@ export default function PreviewStoreHeader({
         {/* 중앙 로고 */}
         <Link
           href={`/${slug}`}
+          data-coach="home-logo"
           className="absolute left-1/2 -translate-x-1/2"
           onClick={() => setMenuOpen(false)}
         >
           {logo}
         </Link>
 
-        {/* 오른쪽: 장바구니 + 맞춤 상담 (첫 화면 대화로, 인사 없이 주문 방식 질문부터) */}
+        {/* 오른쪽: 장바구니 (실제 메뉴판과 같게 — 상담은 로고를 눌러 첫 화면으로) */}
         <div className="flex items-center gap-2">
           {consultEnabled && (
             <Link href={`/${slug}/cart`} className="relative p-2 text-gray-600 hover:text-gray-900 transition-colors">
@@ -79,16 +80,7 @@ export default function PreviewStoreHeader({
               )}
             </Link>
           )}
-          {consultEnabled ? (
-            <Link
-              href={`/${slug}?consult=1`}
-              className="hidden md:inline-flex px-4 py-1.5 rounded-full bg-gold-500 text-white text-xs md:text-sm font-medium hover:bg-gold-600 transition-colors whitespace-nowrap"
-            >
-              맞춤 상담
-            </Link>
-          ) : (
-            <div className="w-2" />
-          )}
+          {!consultEnabled && <div className="w-2" />}
         </div>
       </div>
 
@@ -114,50 +106,30 @@ export default function PreviewStoreHeader({
           </button>
         </div>
 
-        {/* 메뉴 항목 */}
+        {/* 메뉴 항목 — 실제 메뉴판과 같게 묶음마다 작은 제목·구분선 */}
         <nav className="flex flex-col px-3 py-4 gap-1 overflow-y-auto">
-          <Link
-            href={`/${slug}/menu`}
-            className="px-4 py-3.5 text-lg md:text-xl font-medium text-gray-800 hover:bg-gray-50 rounded-xl transition-colors"
-            onClick={() => setMenuOpen(false)}
-          >
+          <Link href={`/${slug}/menu`} className="px-4 py-3.5 text-lg md:text-xl font-medium text-gray-800 hover:bg-gray-50 rounded-xl transition-colors" onClick={() => setMenuOpen(false)}>
             전체 상품
           </Link>
-          {productTypeList.map((type) => (
-            <Link
-              key={type}
-              href={`/${slug}/menu?type=${encodeURIComponent(type)}`}
-              className="px-4 py-3.5 text-lg md:text-xl font-medium text-gray-800 hover:bg-gray-50 rounded-xl transition-colors"
-              onClick={() => setMenuOpen(false)}
-            >
-              {type}
-            </Link>
-          ))}
-          {seasonList.length > 0 && (
+          {productTypeList.length > 0 && (
             <>
-              <div className="mx-2 my-2 border-t border-gray-100" />
-              {seasonList.map((season) => (
-                <Link
-                  key={season}
-                  href={`/${slug}/menu?tab=season`}
-                  className="px-4 py-3.5 text-lg md:text-xl font-medium text-gray-800 hover:bg-gray-50 rounded-xl transition-colors"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  {season}
+              <p className="px-4 pt-3 pb-1 text-xs font-medium tracking-wide text-gray-400">상품 종류</p>
+              {productTypeList.map((type) => (
+                <Link key={type} href={`/${slug}/menu?type=${encodeURIComponent(type)}`} className="px-4 py-3.5 text-lg md:text-xl font-medium text-gray-800 hover:bg-gray-50 rounded-xl transition-colors" onClick={() => setMenuOpen(false)}>
+                  {type}
                 </Link>
               ))}
             </>
           )}
-          {consultEnabled && (
+          {seasonList.length > 0 && (
             <>
-              <div className="mx-2 my-2 border-t border-gray-100" />
-              <Link
-                href={`/${slug}?consult=1`}
-                className="px-4 py-3.5 text-lg md:text-xl font-medium text-gold-500 hover:bg-gold-50 rounded-xl transition-colors"
-                onClick={() => setMenuOpen(false)}
-              >
-                맞춤 상담
-              </Link>
+              <div className="mx-2 mt-3 border-t border-gray-100" />
+              <p className="px-4 pt-3 pb-1 text-xs font-medium tracking-wide text-gray-400">시즌 메뉴</p>
+              {seasonList.map((season) => (
+                <Link key={season} href={`/${slug}/menu?tab=season`} className="px-4 py-3.5 text-lg md:text-xl font-medium text-gray-800 hover:bg-gray-50 rounded-xl transition-colors" onClick={() => setMenuOpen(false)}>
+                  {season}
+                </Link>
+              ))}
             </>
           )}
         </nav>
