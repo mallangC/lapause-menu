@@ -15,7 +15,7 @@ const PATHS = [
     href: "/preview/customer",
     tag: "Customer",
     title: "손님 화면",
-    desc: "링크 하나로 메뉴판을 보고\n맞춤 주문부터 결제까지",
+    desc: "링크 하나로 상담을 하고\n맞춤 주문부터 결제까지",
     points: ["전자 메뉴판", "맞춤 주문 추천", "장바구니 · 결제"],
     img: "/preview/cover-customer.webp",
     alt: "손님이 보는 메뉴판 화면",

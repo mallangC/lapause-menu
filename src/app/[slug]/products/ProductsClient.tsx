@@ -272,9 +272,6 @@ export default function ProductsClient({
               <>
                 <div className="pt-3.5 pb-2.5 px-4 md:px-2">
                   <p className="text-lg font-semibold text-gray-800">{instantMenu.name}</p>
-                  <p className="text-xs text-gray-500 mt-0.5 break-keep">
-                    {instantMenu.unattended ? "이미 만들어 둔 꽃이에요. 결제하고 바로 가져가실 수 있어요. 매장에 사람이 없는 시간에도 가져가실 수 있어요." : "이미 만들어 둔 꽃이에요. 결제하고 바로 가져가실 수 있어요."}
-                  </p>
                 </div>
                 <ProductGrid products={filteredProducts} consultEnabled={consultEnabled} slug={slug} />
               </>
