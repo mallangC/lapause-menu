@@ -5,7 +5,7 @@ import Image from "next/image";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, Legend } from "recharts";
 import SettlementsTab from "./SettlementsTab";
 import VerificationTab, { type Application } from "./VerificationTab";
-import OperatorBell, { type PendingApply } from "./OperatorBell";
+import OperatorBell, { type OpsAlert, type PendingApply } from "./OperatorBell";
 import MyInfoTab from "@/app/[slug]/admin/dashboard/MyInfoTab";
 import StoreManagementTab from "./StoreManagementTab";
 import BillingLogsTab, { BillingLog } from "./BillingLogsTab";
@@ -88,13 +88,29 @@ export default function OperatorDashboardClient({ companies, reservations, produ
   const [pendingApplies, setPendingApplies] = useState<PendingApply[]>([]);
   const applyPending = (apps: Application[]) =>
     setPendingApplies(apps.filter((a) => a.consult_apply_status === "pending").map((a) => ({ company_id: a.company_id, name: a.companies?.name ?? "" })));
+  // 오류 알림 — 서버에서 심각한 오류가 나면 쌓인다 (네이버 메일 자동 처리 실패 등). [확인]하면 빠진다
+  const [opsAlerts, setOpsAlerts] = useState<OpsAlert[]>([]);
   const loadPending = async () => {
     try {
-      const res = await fetch("/api/operator/consult-verify", { cache: "no-store" });
+      const [res, alertsRes] = await Promise.all([
+        fetch("/api/operator/consult-verify", { cache: "no-store" }),
+        fetch("/api/operator/alerts", { cache: "no-store" }),
+      ]);
       if (res.ok) applyPending((await res.json()) as Application[]);
+      if (alertsRes.ok) setOpsAlerts((await alertsRes.json()) as OpsAlert[]);
     } catch {
       /* 다음에 다시 */
     }
+  };
+  const resolveAlert = async (id?: string) => {
+    const prev = opsAlerts;
+    setOpsAlerts((list) => (id ? list.filter((a) => a.id !== id) : []));
+    const res = await fetch("/api/operator/alerts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(id ? { id } : {}),
+    }).catch(() => null);
+    if (!res?.ok) setOpsAlerts(prev);
   };
   useEffect(() => {
     loadPending();
@@ -293,11 +309,6 @@ export default function OperatorDashboardClient({ companies, reservations, produ
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companies, reservations, revenueReservations, cardReservations, products]);
 
-  const formatDate = (dateStr: string) => {
-    const d = new Date(dateStr);
-    return `${String(d.getFullYear()).slice(2)}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
-  };
-
   const formatMoney = (n: number) => {
     const man = n / 10000;
     return `${man % 1 === 0 ? man.toFixed(0) : man.toFixed(1)}만`;
@@ -322,7 +333,7 @@ export default function OperatorDashboardClient({ companies, reservations, produ
           </div>
           {/* 알림 · 내 정보 (로그아웃은 내 정보 안에) */}
           <div className="flex items-center gap-1.5">
-            <OperatorBell pending={pendingApplies} onOpen={() => setActiveTab("verification")} />
+            <OperatorBell pending={pendingApplies} onOpen={() => setActiveTab("verification")} alerts={opsAlerts} onResolve={resolveAlert} />
             <button
               type="button"
               onClick={() => setActiveTab("myinfo")}
@@ -375,8 +386,17 @@ export default function OperatorDashboardClient({ companies, reservations, produ
 
         {activeTab === "stores" && (
           <StoreManagementTab
-            stores={companies.map(c => ({
+            // 매장 관리 + 매장별 현황(숫자)을 한 표에서 — 현황 탭의 매장별 표는 여기로 옮겼다
+            stores={companyRows.map(c => ({
               id: c.id,
+              createdAt: c.created_at,
+              productCount: c.productCount,
+              reservationCount: c.reservationCount,
+              totalRevenue: c.totalRevenue,
+              thisMonthRevenue: c.thisMonthRevenue,
+              lastReservationAt: c.lastReservationAt,
+              consultEnabled: !!c.settings?.consult_enabled,
+              activity: (c.isAtRisk ? "atRisk" : c.isInactive ? "inactive" : c.isActive ? "active" : "dormant") as "atRisk" | "inactive" | "active" | "dormant",
               name: c.name,
               slug: c.slug,
               ownerName: c.ownerName,
@@ -613,77 +633,6 @@ export default function OperatorDashboardClient({ companies, reservations, produ
               <Bar dataKey="gmv" fill="#c9a96e" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
-        </div>
-
-        {/* 매장별 현황 */}
-        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100">
-            <h2 className="text-sm font-medium text-gray-900">매장별 현황</h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-100 text-xs text-gray-400">
-                  <th className="text-left px-6 py-3 font-medium whitespace-nowrap">매장명</th>
-                  <th className="text-left px-6 py-3 font-medium whitespace-nowrap">URL</th>
-                  <th className="text-left px-6 py-3 font-medium whitespace-nowrap">가입일</th>
-                  <th className="text-right px-6 py-3 font-medium whitespace-nowrap">상품 수</th>
-                  <th className="text-right px-6 py-3 font-medium whitespace-nowrap">총 예약</th>
-                  <th className="text-right px-6 py-3 font-medium whitespace-nowrap">누적 매출</th>
-                  <th className="text-right px-6 py-3 font-medium whitespace-nowrap">이번 달 매출</th>
-                  <th className="text-left px-6 py-3 font-medium whitespace-nowrap">플랜</th>
-                  <th className="text-left px-6 py-3 font-medium whitespace-nowrap">맞춤 주문</th>
-                  <th className="text-left px-6 py-3 font-medium whitespace-nowrap">마지막 예약</th>
-                  <th className="text-left px-6 py-3 font-medium whitespace-nowrap">상태</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {companyRows.map(c => (
-                  <tr key={c.id} className={`transition-colors ${c.isAtRisk ? "bg-red-50/40 hover:bg-red-50" : c.isInactive ? "bg-gray-50/60 hover:bg-gray-50" : "hover:bg-gray-50"}`}>
-                    <td className="px-6 py-3.5 font-medium text-gray-900 whitespace-nowrap">{c.name}</td>
-                    <td className="px-6 py-3.5 text-xs">
-                      <a href={`/${c.slug}`} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-600 hover:underline transition-colors">
-                        /{c.slug}
-                      </a>
-                    </td>
-                    <td className="px-6 py-3.5 text-gray-500">{formatDate(c.created_at)}</td>
-                    <td className="px-6 py-3.5 text-right text-gray-900 font-medium">{c.productCount}</td>
-                    <td className="px-6 py-3.5 text-right text-gray-900 font-medium">{c.reservationCount}</td>
-                    <td className="px-6 py-3.5 text-right text-gray-900 font-medium whitespace-nowrap">{c.totalRevenue > 0 ? `${formatMoney(c.totalRevenue)}원` : <span className="text-gray-300">—</span>}</td>
-                    <td className="px-6 py-3.5 text-right text-gray-700 whitespace-nowrap">{c.thisMonthRevenue > 0 ? `${formatMoney(c.thisMonthRevenue)}원` : <span className="text-gray-300">—</span>}</td>
-                    <td className="px-6 py-3.5">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${c.subscription?.plan === "annual" ? "bg-gold-100 text-gold-600" : c.subscription?.plan === "monthly" ? "bg-blue-50 text-blue-600" : c.subscription?.plan === "free" ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-400"}`}>
-                        {c.subscription?.plan === "annual" ? "연간" : c.subscription?.plan === "monthly" ? "월간" : c.subscription?.plan === "free" ? "Free" : "—"}
-                      </span>
-                    </td>
-                    <td className="px-6 py-3.5">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${c.settings?.consult_enabled ? "bg-blue-50 text-blue-600" : "bg-gray-100 text-gray-400"}`}>
-                        {c.settings?.consult_enabled ? "ON" : "OFF"}
-                      </span>
-                    </td>
-                    <td className="px-6 py-3.5 text-gray-500">
-                      {c.lastReservationAt ? formatDate(c.lastReservationAt) : <span className="text-gray-300">없음</span>}
-                    </td>
-                    <td className="px-6 py-3.5">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                        c.isAtRisk ? "bg-red-50 text-red-500" :
-                        c.isInactive ? "bg-gray-100 text-gray-400" :
-                        c.isActive ? "bg-green-50 text-green-700" :
-                        "bg-gray-100 text-gray-400"
-                      }`}>
-                        <span className="whitespace-nowrap">{c.isAtRisk ? "이탈위험" : c.isInactive ? "미활성" : c.isActive ? "활성" : "휴면"}</span>
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-                {companyRows.length === 0 && (
-                  <tr>
-                    <td colSpan={11} className="px-6 py-10 text-center text-gray-300 text-sm">가입된 매장이 없습니다.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
         </div>
 
         </>)}

@@ -261,7 +261,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "결제가 완료되지 않았습니다." }, { status: 400 });
       }
       if (tossData.totalAmount < minimum) {
-        await cancelTossPayment(process.env.TOSS_WIDGET_SECRET_KEY!, paymentKey, "결제 금액 부족");
+        await cancelTossPayment(process.env.TOSS_WIDGET_SECRET_KEY!, paymentKey, "결제 금액 부족", { db: adminClient, companyId, amount: tossData.totalAmount });
         return NextResponse.json({ error: "결제 금액이 주문 금액보다 작아 결제를 취소했습니다." }, { status: 400 });
       }
       paidAmount = tossData.totalAmount;
@@ -280,7 +280,7 @@ export async function POST(request: NextRequest) {
         console.error("[reservation] 참고 사진 업로드 실패:", upErr.message);
         // 사진이 핵심인 주문이라 사진 없이 받지 않는다 — 결제를 되돌린다
         if (paymentKey && !isDemoCompany) {
-          const cancelled = await cancelTossPayment(process.env.TOSS_WIDGET_SECRET_KEY!, paymentKey, "참고 사진 저장 실패");
+          const cancelled = await cancelTossPayment(process.env.TOSS_WIDGET_SECRET_KEY!, paymentKey, "참고 사진 저장 실패", { db: adminClient, companyId, amount: paidAmount });
           return NextResponse.json(
             { error: cancelled ? "사진 저장 중 오류가 발생해 결제를 취소했습니다. 다시 시도해주세요." : "사진 저장 중 오류가 발생했습니다. 결제 취소가 필요하니 매장에 문의해주세요." },
             { status: 500 }
@@ -389,7 +389,7 @@ export async function POST(request: NextRequest) {
         if (refPath) await adminClient.storage.from("reservation-images").remove([refPath]);
         // 결제는 됐는데 예약이 저장되지 않으면 결제를 되돌린다
         if (paymentKey && !isDemoCompany) {
-          const cancelled = await cancelTossPayment(process.env.TOSS_WIDGET_SECRET_KEY!, paymentKey, "예약 저장 실패");
+          const cancelled = await cancelTossPayment(process.env.TOSS_WIDGET_SECRET_KEY!, paymentKey, "예약 저장 실패", { db: adminClient, companyId, amount: paidAmount });
           return NextResponse.json(
             { error: cancelled ? "예약 저장 중 오류가 발생해 결제를 취소했습니다. 다시 시도해주세요." : "예약 저장 중 오류가 발생했습니다. 결제 취소가 필요하니 매장에 문의해주세요." },
             { status: 500 }

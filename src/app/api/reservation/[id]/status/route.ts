@@ -1,3 +1,5 @@
+import { reportOpsAlert } from "@/lib/opsAlert";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { productTypeSummary, sendReservationReceived, sendReservationCancelled } from "@/lib/solapi";
@@ -75,12 +77,14 @@ export async function PATCH(
   }
 
   // 취소 시 결제 방식에 따라 환불 처리
+  let refunded = false;
   if (status === "취소") {
     const { data: reservation } = await supabase
       .from("reservations")
-      .select("payment_id, paid, settlement_id")
+      .select("payment_id, paid, settlement_id, paid_amount, orderer_name")
       .eq("id", id)
       .single();
+    const who = `${reservation?.orderer_name ?? ""}${reservation?.paid_amount ? ` · ${reservation.paid_amount.toLocaleString()}원` : ""} · 예약 ${id}`;
 
     // 이미 정산(매장에 지급 완료)된 예약은 자동 환불하지 않는다 — 운영자가 직접 처리
     if (reservation?.payment_id && !reservation.settlement_id) {
@@ -89,6 +93,13 @@ export async function PATCH(
         const refundResult = await tossCancelPayment(reservation.payment_id, cancelReason ?? "관리자 취소");
         if (!refundResult.ok) {
           console.error("[status] 환불 실패:", refundResult.data);
+          // 사장님은 오류를 보지만 손님 환불이 안 된 채 남을 수 있다 — 운영자에게 알림
+          await reportOpsAlert(createAdminClient(), {
+            kind: "refund_failed",
+            companyId: resCheck.company_id,
+            title: "예약 취소 환불 실패 — 취소되지 않음",
+            detail: `${who} · ${(refundResult.data as { message?: string })?.message ?? "토스 환불 실패"}`,
+          });
           return NextResponse.json(
             { error: `환불 실패: ${(refundResult.data as { message?: string })?.message ?? JSON.stringify(refundResult.data)}` },
             { status: 500 }
@@ -96,13 +107,29 @@ export async function PATCH(
         }
       } catch (err) {
         console.error("[status] 환불 요청 오류:", err);
+        await reportOpsAlert(createAdminClient(), {
+          kind: "refund_failed",
+          companyId: resCheck.company_id,
+          title: "예약 취소 환불 요청 오류 — 취소되지 않음",
+          detail: `${who} · ${err instanceof Error ? err.message : "요청 오류"}`,
+        });
         return NextResponse.json(
           { error: "환불 요청 중 오류가 발생했습니다. 다시 시도해주세요." },
           { status: 500 }
         );
       }
     }
+    // 이미 정산(매장에 지급)된 카드 결제 예약 — 자동 환불하지 않으므로 운영자가 직접 환불·정산 조정
+    if (reservation?.payment_id && reservation.settlement_id) {
+      await reportOpsAlert(createAdminClient(), {
+        kind: "refund_manual_needed",
+        companyId: resCheck.company_id,
+        title: "정산된 예약 취소 — 직접 환불 필요",
+        detail: `${who} · 이미 매장에 정산된 카드 결제라 자동 환불하지 않았어요`,
+      });
+    }
     // payment_id 없는 경우(무통장 입금, 매장 결제, 직접 추가 등)나 이미 정산된 경우 → 환불 처리 없이 상태만 변경
+    refunded = !!(reservation?.payment_id && !reservation.settlement_id);
   }
 
   // 상태 업데이트
@@ -110,7 +137,18 @@ export async function PATCH(
   if (status === "취소" && cancelReason) update.cancel_reason = cancelReason;
 
   const { error } = await supabase.from("reservations").update(update).eq("id", id);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    // 환불은 됐는데 '취소' 저장 실패 — 예약이 살아 있어 정산에 잡힐 수 있다
+    if (refunded) {
+      await reportOpsAlert(createAdminClient(), {
+        kind: "cancel_after_refund_failed",
+        companyId: resCheck.company_id,
+        title: "환불됐지만 예약 취소 저장 실패 — 직접 취소 필요",
+        detail: `예약 ${id} · ${error.message}`,
+      });
+    }
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 
   if (status !== currentStatus) {
     await logReservationChange({

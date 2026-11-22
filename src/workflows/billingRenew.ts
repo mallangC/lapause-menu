@@ -2,6 +2,7 @@ import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from "cloud
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { menuCacheKey } from "../lib/menuCacheKey";
 import { isBillingCycle, nextCyclesRemaining, pickPromo, PROMO_CODE_COLUMNS, quoteCharge } from "../lib/billingPrice";
+import { reportOpsAlert } from "../lib/opsAlert";
 
 // 정기결제 자동 갱신 — 구독 1건당 Workflow 인스턴스 1개.
 // 각 step의 결과는 Cloudflare가 기억하므로, 중간에 실패해서 재실행돼도 이미 끝난 결제 step은 다시 실행되지 않는다.
@@ -103,6 +104,20 @@ async function downgrade(db: SupabaseClient, companyId: string, env: BillingEnv)
 
 /** cron에서 호출: 오늘 결제할 구독마다 Workflow 인스턴스를 만든다. 이미 만들어진 인스턴스(같은 키)는 건너뛴다. */
 export async function dispatchBillingRenewals(env: BillingEnv) {
+  try {
+    return await dispatchBillingRenewalsInner(env);
+  } catch (err) {
+    // 오늘 정기결제가 통째로 시작되지 않았다 — 운영자 알림
+    await reportOpsAlert(adminClient(env), {
+      kind: "billing_renew_failed",
+      title: "정기결제 갱신 시작 실패 — 오늘 결제가 실행되지 않음",
+      detail: err instanceof Error ? err.message : String(err),
+    });
+    throw err;
+  }
+}
+
+async function dispatchBillingRenewalsInner(env: BillingEnv) {
   const db = adminClient(env);
   const now = new Date();
   const subs = await must(
@@ -131,6 +146,21 @@ export async function dispatchBillingRenewals(env: BillingEnv) {
 
 export class BillingRenewWorkflow extends WorkflowEntrypoint<BillingEnv, BillingRenewParams> {
   async run(event: Readonly<WorkflowEvent<BillingRenewParams>>, step: WorkflowStep) {
+    try {
+      return await this.renew(event, step);
+    } catch (err) {
+      // 재시도를 다 써도 실패한 단계가 있다 (결제 후 기간 반영 실패 포함) — 운영자 알림
+      await reportOpsAlert(adminClient(this.env), {
+        kind: "billing_renew_failed",
+        companyId: event.payload.companyId,
+        title: "정기결제 갱신 중 오류 — 결제·기간 직접 확인 필요",
+        detail: `주문번호 ${event.payload.orderId} · ${err instanceof Error ? err.message : String(err)}`,
+      });
+      throw err;
+    }
+  }
+
+  private async renew(event: Readonly<WorkflowEvent<BillingRenewParams>>, step: WorkflowStep) {
     const { companyId, orderId } = event.payload;
     const env = this.env;
 

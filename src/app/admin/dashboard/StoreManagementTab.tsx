@@ -25,7 +25,32 @@ interface StoreRow {
   trialEndsAt: string | null;
   subscriptionPlan: string | null;
   promo: { code: string; summary: string; cyclesRemaining: number | null } | null;
+  // 매장별 현황 (예약·매출 숫자)
+  createdAt: string;
+  productCount: number;
+  reservationCount: number;
+  totalRevenue: number;
+  thisMonthRevenue: number;
+  lastReservationAt: string | null;
+  consultEnabled: boolean;
+  /** 활성(30일 안 예약) · 이탈위험(60일 넘게 예약 없음) · 미활성(예약 없음) · 휴면 */
+  activity: "active" | "atRisk" | "inactive" | "dormant";
 }
+
+const ACTIVITY: Record<StoreRow["activity"], { label: string; cls: string }> = {
+  active: { label: "활성", cls: "bg-green-50 text-green-700" },
+  atRisk: { label: "이탈위험", cls: "bg-red-50 text-red-500" },
+  inactive: { label: "미활성", cls: "bg-gray-100 text-gray-400" },
+  dormant: { label: "휴면", cls: "bg-gray-100 text-gray-400" },
+};
+const shortDate = (iso: string) => {
+  const d = new Date(iso);
+  return `${String(d.getFullYear()).slice(2)}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
+};
+const man = (n: number) => {
+  const v = n / 10000;
+  return `${v % 1 === 0 ? v.toFixed(0) : v.toFixed(1)}만원`;
+};
 
 interface Props {
   stores: StoreRow[];
@@ -406,8 +431,12 @@ export default function StoreManagementTab({ stores }: Props) {
             <thead>
               <tr className="border-b border-gray-100 text-xs text-gray-400">
                 <th className="text-center px-5 py-3 font-medium whitespace-nowrap">매장명</th>
-                <th className="text-center px-5 py-3 font-medium whitespace-nowrap">slug</th>
+                <th className="text-center px-5 py-3 font-medium whitespace-nowrap">slug · 가입일</th>
                 <th className="text-center px-5 py-3 font-medium whitespace-nowrap">담당자</th>
+                <th className="text-center px-5 py-3 font-medium whitespace-nowrap">예약 · 상품</th>
+                <th className="text-center px-5 py-3 font-medium whitespace-nowrap">매출 (누적 · 이번 달)</th>
+                <th className="text-center px-5 py-3 font-medium whitespace-nowrap">마지막 예약</th>
+                <th className="text-center px-5 py-3 font-medium whitespace-nowrap">맞춤 주문</th>
                 <th className="text-center px-5 py-3 font-medium whitespace-nowrap">플랜</th>
                 <th className="text-center px-5 py-3 font-medium whitespace-nowrap">결제일</th>
                 <th className="text-center px-5 py-3 font-medium whitespace-nowrap">만료일</th>
@@ -417,23 +446,43 @@ export default function StoreManagementTab({ stores }: Props) {
             <tbody className="divide-y divide-gray-50">
               {rows.map((store, i) =>
                 store ? (
-                  <tr key={store.id} className={`hover:bg-gray-50 transition-colors ${store.isSuspended ? "bg-orange-50/50" : ""}`}>
+                  <tr key={store.id} className={`hover:bg-gray-50 transition-colors ${store.isSuspended ? "bg-orange-50/50" : store.activity === "atRisk" ? "bg-red-50/40" : ""}`}>
                     <td className="px-5 py-3.5 text-center whitespace-nowrap">
                       <span className="font-medium text-gray-900">{store.name}</span>
                       {store.isSuspended && (
                         <span className="ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600">정지</span>
                       )}
+                      <div className="mt-1">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${ACTIVITY[store.activity].cls}`}>{ACTIVITY[store.activity].label}</span>
+                      </div>
                     </td>
-                    <td className="px-5 py-3.5 text-center text-xs">
+                    <td className="px-5 py-3.5 text-center text-xs whitespace-nowrap">
                       <a href={`/${store.slug}`} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-600 hover:underline">
                         /{store.slug}
                       </a>
+                      <div className="text-gray-400 mt-0.5">{shortDate(store.createdAt)} 가입</div>
                     </td>
                     <td className="px-5 py-3.5 text-center text-gray-500 whitespace-nowrap">
                       <div>{store.ownerName ?? <span className="text-gray-300">—</span>}</div>
                       {store.ownerPhone && (
                         <div className="text-xs text-gray-400 mt-0.5">{store.ownerPhone}</div>
                       )}
+                    </td>
+                    <td className="px-5 py-3.5 text-center whitespace-nowrap">
+                      <div className="text-gray-900 font-medium">예약 {store.reservationCount}</div>
+                      <div className="text-xs text-gray-400 mt-0.5">상품 {store.productCount}</div>
+                    </td>
+                    <td className="px-5 py-3.5 text-center whitespace-nowrap">
+                      <div className="text-gray-900 font-medium">{store.totalRevenue > 0 ? man(store.totalRevenue) : <span className="text-gray-300">—</span>}</div>
+                      <div className="text-xs text-gray-400 mt-0.5">이번 달 {store.thisMonthRevenue > 0 ? man(store.thisMonthRevenue) : "—"}</div>
+                    </td>
+                    <td className="px-5 py-3.5 text-center text-gray-500 whitespace-nowrap">
+                      {store.lastReservationAt ? shortDate(store.lastReservationAt) : <span className="text-gray-300">없음</span>}
+                    </td>
+                    <td className="px-5 py-3.5 text-center">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${store.consultEnabled ? "bg-blue-50 text-blue-600" : "bg-gray-100 text-gray-400"}`}>
+                        {store.consultEnabled ? "ON" : "OFF"}
+                      </span>
                     </td>
                     <td className="px-5 py-3.5 text-center">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -552,7 +601,7 @@ export default function StoreManagementTab({ stores }: Props) {
                   </tr>
                 ) : (
                   <tr key={`empty-${i}`} className="h-[52px]">
-                    <td colSpan={7} />
+                    <td colSpan={11} />
                   </tr>
                 )
               )}

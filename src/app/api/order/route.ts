@@ -200,7 +200,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "결제가 완료되지 않았습니다." }, { status: 400 });
       }
       if (tossData.totalAmount !== finalPrice) {
-        await cancelTossPayment(process.env.TOSS_WIDGET_SECRET_KEY!, paymentKey, "결제 금액 불일치");
+        await cancelTossPayment(process.env.TOSS_WIDGET_SECRET_KEY!, paymentKey, "결제 금액 불일치", { db: adminClient, companyId, amount: tossData.totalAmount });
         return NextResponse.json({ error: "결제 금액이 주문 금액과 달라 결제를 취소했습니다." }, { status: 400 });
       }
       paidAmount = tossData.totalAmount;
@@ -286,7 +286,7 @@ export async function POST(request: NextRequest) {
       console.error("[order] insert 실패:", insertError.message);
       // 결제는 됐는데 주문이 저장되지 않으면 결제를 되돌린다
       if (paymentKey && !isDemoCompany) {
-        const cancelled = await cancelTossPayment(process.env.TOSS_WIDGET_SECRET_KEY!, paymentKey, "주문 저장 실패");
+        const cancelled = await cancelTossPayment(process.env.TOSS_WIDGET_SECRET_KEY!, paymentKey, "주문 저장 실패", { db: adminClient, companyId, amount: paidAmount });
         return NextResponse.json(
           { error: cancelled ? "주문 저장 중 오류가 발생해 결제를 취소했습니다. 다시 시도해주세요." : "주문 저장 중 오류가 발생했습니다. 결제 취소가 필요하니 매장에 문의해주세요." },
           { status: 500 }

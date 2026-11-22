@@ -1,3 +1,4 @@
+import { reportOpsAlert } from "@/lib/opsAlert";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { purgeMenuCacheByCompanyId } from "@/lib/menuCache";
 import { nextCyclesRemaining, pickPromo, PROMO_CODE_COLUMNS, quoteCharge } from "@/lib/billingPrice";
@@ -204,7 +205,16 @@ export async function activateBillingKey(
       reason: quote.promoCodeId ? "재구독 즉시 결제 (할인 코드 적용)" : "재구독 즉시 결제",
     }),
   ]);
-  if (updateError) console.error("[billingActivate] plan_expires_at 갱신 실패:", updateError);
+  if (updateError) {
+    console.error("[billingActivate] plan_expires_at 갱신 실패:", updateError);
+    // 돈은 받았는데 이용 기간이 늘지 않았다 — 운영자가 기간을 직접 맞춰 줘야 한다
+    await reportOpsAlert(supabase, {
+      kind: "billing_extend_failed",
+      companyId,
+      title: "구독 결제됐지만 이용 기간 연장 실패 — 기간 직접 연장 필요",
+      detail: `${amount.toLocaleString()}원 · ${planLabel} · 결제키 ${paymentKey ?? "(할인 100%)"} · ${updateError.message}`,
+    });
+  }
   if (logError) console.error("[billingActivate] billing_logs 기록 실패(즉시결제 성공):", logError);
 
   // 구독 상태가 바뀌면 공개 메뉴판(영업 중/서비스 중지) 캐시도 비운다

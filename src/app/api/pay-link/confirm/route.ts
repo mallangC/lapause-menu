@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
       .select("id");
     if (claimError || !claimed?.length) {
       // 저장에 실패했거나 다른 결제가 먼저 끝났다 — 방금 승인한 결제는 되돌린다 (돈이 두 번 나가지 않게)
-      const cancelled = isDemoCompany ? true : await cancelTossPayment(process.env.TOSS_WIDGET_SECRET_KEY!, paymentKey, claimError ? "결제 저장 실패" : "중복 결제");
+      const cancelled = isDemoCompany ? true : await cancelTossPayment(process.env.TOSS_WIDGET_SECRET_KEY!, paymentKey, claimError ? "결제 링크 결제 저장 실패" : "결제 링크 중복 결제", { db: adminClient, companyId: reservation.company_id as string, amount: paidAmount });
       return NextResponse.json(
         {
           error: claimError

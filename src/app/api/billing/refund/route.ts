@@ -1,3 +1,4 @@
+import { reportOpsAlert } from "@/lib/opsAlert";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
@@ -160,6 +161,7 @@ export async function POST(req: NextRequest) {
             paymentId: paymentKey, success: false, reason,
             errorMessage: (cancelData as { message?: string }).message ?? "부분환불 실패",
           });
+          await reportOpsAlert(supabaseAdmin, { kind: "billing_refund_failed", companyId, title: "구독 부분환불 실패", detail: `${refundAmount.toLocaleString()}원 · ${(cancelData as { message?: string }).message ?? "토스 부분환불 실패"}` });
           return NextResponse.json(
             { error: `토스 부분환불 실패: ${(cancelData as { message?: string }).message ?? "알 수 없는 오류"}`, detail: cancelData },
             { status: 500 }
@@ -168,6 +170,7 @@ export async function POST(req: NextRequest) {
         refunded = true;
       } catch (err) {
         console.error("[billing/refund] 부분환불 요청 오류:", err);
+        await reportOpsAlert(supabaseAdmin, { kind: "billing_refund_failed", companyId, title: "구독 부분환불 요청 오류", detail: `${refundAmount.toLocaleString()}원 · ${err instanceof Error ? err.message : "요청 오류"}` });
         return NextResponse.json({ error: "환불 요청 중 오류가 발생했습니다." }, { status: 500 });
       }
     }
@@ -236,6 +239,7 @@ export async function POST(req: NextRequest) {
           paymentId: paymentKey, success: false, reason,
           errorMessage: (cancelData as { message?: string }).message ?? "환불 실패",
         });
+        await reportOpsAlert(supabaseAdmin, { kind: "billing_refund_failed", companyId, title: "구독 환불 실패", detail: `${(amount ?? 0).toLocaleString()}원 · ${(cancelData as { message?: string }).message ?? "토스 환불 실패"}` });
         return NextResponse.json(
           { error: `토스 환불 실패: ${(cancelData as { message?: string }).message ?? "알 수 없는 오류"}`, detail: cancelData },
           { status: 500 }
@@ -245,6 +249,7 @@ export async function POST(req: NextRequest) {
       refunded = true;
     } catch (err) {
       console.error("[billing/refund] 환불 요청 오류:", err);
+      await reportOpsAlert(supabaseAdmin, { kind: "billing_refund_failed", companyId, title: "구독 환불 요청 오류", detail: err instanceof Error ? err.message : "요청 오류" });
       return NextResponse.json({ error: "환불 요청 중 오류가 발생했습니다." }, { status: 500 });
     }
   }

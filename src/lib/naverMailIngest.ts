@@ -1,3 +1,4 @@
+import { reportOpsAlert } from "@/lib/opsAlert";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { logReservationChange } from "@/lib/reservationLog";
 import { parseNaverMail } from "@/lib/naverMail";
@@ -17,7 +18,16 @@ export async function processNaverMail(db: SupabaseClient<any, any, any>, compan
   const mail = parseNaverMail(text);
   const keep = async (reason: string): Promise<NaverMailResult> => {
     if (opts.inboxId) await db.from("naver_mail_inbox").update({ reason }).eq("id", opts.inboxId);
-    else await db.from("naver_mail_inbox").insert({ company_id: companyId, subject: opts.subject ?? null, body: text.slice(0, 20000), reason });
+    else {
+      await db.from("naver_mail_inbox").insert({ company_id: companyId, subject: opts.subject ?? null, body: text.slice(0, 20000), reason });
+      // 운영자에게 알림 — 메일 형식이 바뀌었을 수 있다 (사장님이 '다시 읽기'로 다시 시도한 건 이미 알린 메일이라 빼고)
+      await reportOpsAlert(db, {
+        kind: "naver_mail",
+        companyId,
+        title: "네이버 예약 메일 자동 처리 실패",
+        detail: `${reason}${opts.subject ? ` · 제목: ${opts.subject}` : ""}`,
+      });
+    }
     console.warn(`[naver-mail] ${companyId} 확인 필요: ${reason}`);
     return { ok: true, kept: reason };
   };

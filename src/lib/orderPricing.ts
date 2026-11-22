@@ -1,3 +1,4 @@
+import { reportOpsAlert } from "@/lib/opsAlert";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 // 손님 주문 금액 서버 검증 — 클라이언트가 보낸 가격을 믿지 않고 DB 상품가·매장 옵션가로 다시 계산한다.
@@ -102,8 +103,30 @@ export function consultMinimumTotal(
   return min;
 }
 
-/** 결제 승인 후 저장 실패 등으로 주문을 만들지 못했을 때 결제를 되돌린다 */
-export async function cancelTossPayment(secretKey: string, paymentKey: string, reason: string) {
+/**
+ * 결제 승인 후 저장 실패 등으로 주문을 만들지 못했을 때 결제를 되돌린다
+ * @param alert 넘기면 취소에 실패했을 때 운영자 알림을 남긴다 (손님 돈만 빠진 상태 — 직접 환불해야 한다)
+ */
+export async function cancelTossPayment(
+  secretKey: string,
+  paymentKey: string,
+  reason: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  alert?: { db: SupabaseClient<any, any, any>; companyId: string | null; amount?: number | null },
+) {
+  const ok = await cancelTossPaymentRaw(secretKey, paymentKey, reason);
+  if (!ok && alert) {
+    await reportOpsAlert(alert.db, {
+      kind: "payment_cancel_failed",
+      companyId: alert.companyId,
+      title: "결제 자동 취소 실패 — 직접 환불 필요",
+      detail: `사유: ${reason}${alert.amount ? ` · ${alert.amount.toLocaleString()}원` : ""} · 토스 결제키 ${paymentKey}`,
+    });
+  }
+  return ok;
+}
+
+async function cancelTossPaymentRaw(secretKey: string, paymentKey: string, reason: string) {
   try {
     const res = await fetch(`https://api.tosspayments.com/v1/payments/${encodeURIComponent(paymentKey)}/cancel`, {
       method: "POST",
