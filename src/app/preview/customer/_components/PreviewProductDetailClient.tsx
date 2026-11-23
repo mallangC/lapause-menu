@@ -100,8 +100,8 @@ export default function PreviewProductDetailClient({
       {/* 상품 상세 — 2단 레이아웃 */}
       <div className="flex flex-col md:flex-row">
 
-          {/* 왼쪽: 이미지 — PC에서는 오른쪽 정보(옵션 등)가 길어도 사진이 화면에 붙어 있다가, 오른쪽이 끝나면 함께 올라간다 */}
-          <div className="md:w-1/2 shrink-0 w-full md:sticky md:top-[81px] md:self-start">
+          {/* 왼쪽: 이미지 — PC에서는 오른쪽 정보가 길어도 화면에 붙어 있다가, 오른쪽이 끝나면 함께 올라간다 */}
+          <div data-detail-image className="md:w-1/2 shrink-0 w-full md:sticky md:top-[81px] md:self-start">
             <div className="relative aspect-square bg-beige-100 overflow-hidden">
               {product.image_url ? (
                 <ProductGallery images={[product.image_url, ...(product.extra_images ?? [])]} alt={product.name} />

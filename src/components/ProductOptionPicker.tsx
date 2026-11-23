@@ -13,6 +13,7 @@ export default function ProductOptionPicker({
   onChange,
   cardClassName = "bg-white rounded-2xl overflow-hidden",
   invalid = [],
+  overlay = false,
 }: {
   groups: ProductOptionGroup[];
   selected: string[];
@@ -21,14 +22,22 @@ export default function ProductOptionPicker({
   cardClassName?: string;
   /** 고르지 않은 필수 옵션 id — 빨갛게 표시하고 펼친다 */
   invalid?: string[];
+  /**
+   * 항목 목록을 아래로 띄워 연다 (다른 내용을 밀지 않고 위에 겹침 — 페이지 길이가 바뀌지 않는다)
+   * 상품 상세 PC는 왼쪽 사진이 고정돼 있어, 목록이 내용을 밀면 사진이 오르내린다. 바깥을 누르면 닫힌다
+   */
+  overlay?: boolean;
 }) {
   const [open, setOpen] = useState<string[]>([]);
   const invalidKey = invalid.join(",");
   useEffect(() => {
-    if (invalid.length) setOpen((prev) => [...new Set([...prev, ...invalid])]);
+    if (invalid.length) setOpen((prev) => (overlay ? [invalid[0]] : [...new Set([...prev, ...invalid])]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [invalidKey]);
-  const toggleOpen = (gid: string) => setOpen((prev) => (prev.includes(gid) ? prev.filter((x) => x !== gid) : [...prev, gid]));
+  // 띄워 여는 방식은 한 번에 하나만
+  const toggleOpen = (gid: string) => {
+    setOpen((prev) => (prev.includes(gid) ? prev.filter((x) => x !== gid) : overlay ? [gid] : [...prev, gid]));
+  };
 
   const pick = (g: ProductOptionGroup, cid: string) => {
     const others = selected.filter((id) => !g.choices.some((c) => c.id === id));
@@ -44,6 +53,8 @@ export default function ProductOptionPicker({
 
   return (
     <div className="space-y-2">
+      {/* 띄워 연 목록 바깥을 누르면 닫힘 */}
+      {overlay && open.length > 0 && <div className="fixed inset-0 z-20" onClick={() => setOpen([])} />}
       {groups.map((g) => {
         const isOpen = open.includes(g.id);
         const picked = g.choices.filter((c) => selected.includes(c.id));
@@ -52,7 +63,7 @@ export default function ProductOptionPicker({
           ? picked.map((c) => (c.price > 0 ? `${c.name} (+${c.price.toLocaleString()}원)` : c.name)).join(", ")
           : g.required ? "골라 주세요" : "선택 안 함";
         return (
-          <div key={g.id} className={`${cardClassName} ${bad ? "ring-1 ring-red-300" : ""}`}>
+          <div key={g.id} className={`${cardClassName} ${bad ? "ring-1 ring-red-300" : ""} ${overlay ? `relative ${isOpen ? "z-30" : ""}` : ""}`}>
             <button
               type="button"
               onClick={() => toggleOpen(g.id)}
@@ -71,7 +82,15 @@ export default function ProductOptionPicker({
               </svg>
             </button>
             {isOpen && (
-              <div className="border-t border-gray-100 divide-y divide-gray-100" role={g.multi ? "group" : "radiogroup"} aria-label={g.name}>
+              <div
+                className={
+                  overlay
+                    ? "absolute left-0 right-0 top-full mt-1.5 bg-white rounded-2xl border border-gray-100 shadow-xl max-h-80 overflow-y-auto divide-y divide-gray-100"
+                    : "border-t border-gray-100 divide-y divide-gray-100"
+                }
+                role={g.multi ? "group" : "radiogroup"}
+                aria-label={g.name}
+              >
                 {g.multi && <p className="px-4 pt-2.5 pb-1 text-xs text-gray-400">여러 개 고를 수 있어요</p>}
                 {g.choices.map((c) => {
                   const on = selected.includes(c.id);

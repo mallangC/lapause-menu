@@ -165,8 +165,8 @@ export default function ProductDetailClient({
       {/* 상품 상세 — 2단 레이아웃 */}
       <div className="flex flex-col md:flex-row">
 
-          {/* 왼쪽: 이미지 — PC에서는 오른쪽 정보(옵션 등)가 길어도 사진이 화면에 붙어 있다가, 오른쪽이 끝나면 함께 올라간다 */}
-          <div className="md:w-1/2 shrink-0 w-full md:sticky md:top-[81px] md:self-start">
+          {/* 왼쪽: 이미지 — PC에서는 오른쪽 정보가 길어도 화면에 붙어 있다가, 오른쪽이 끝나면 함께 올라간다 */}
+          <div data-detail-image className="md:w-1/2 shrink-0 w-full md:sticky md:top-[81px] md:self-start">
             <div className="relative aspect-square bg-beige-100 overflow-hidden">
               {product.image_url ? (
                 <ProductGallery images={[product.image_url, ...(product.extra_images ?? [])]} alt={product.name} />
@@ -256,8 +256,10 @@ export default function ProductDetailClient({
                     groups={optionGroups}
                     selected={selectedOptions}
                     onChange={(next) => { setSelectedOptions(next); setOptionInvalid((prev) => prev.filter((id) => missingRequired(optionGroups, next).some((g) => g.id === id))); }}
-                    cardClassName="bg-white rounded-2xl border border-gray-100 overflow-hidden"
+                    cardClassName="bg-white rounded-2xl border border-gray-100"
                     invalid={optionInvalid}
+                    // 목록은 다른 내용을 밀지 않고 위에 띄워 연다 — PC 왼쪽 고정 사진이 오르내리지 않게
+                    overlay
                   />
                   {optionInvalid.length > 0 && <p className="mt-1.5 text-xs text-red-500">필수 옵션을 골라 주세요.</p>}
                 </div>
