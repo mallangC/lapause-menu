@@ -197,6 +197,8 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
   // 바로 구매 메뉴 이름 (사장님이 메뉴 설정에서 바꿀 수 있다)
   const [instantName, setInstantName] = useState<string>(DEFAULT_INSTANT_MENU_NAME);
   const [customCategories, setCustomCategories] = useState<{ category_type: string; name: string }[]>([]);
+  // 메뉴 설정에서 지운 기본 유형·시즌 (지금 상품에 이미 붙어 있는 건 계속 보여 준다)
+  const [hiddenBuiltins, setHiddenBuiltins] = useState<{ types: string[]; seasons: string[] }>({ types: [], seasons: [] });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const nameFieldRef = useRef<HTMLDivElement>(null);
   const colorFieldRef = useRef<HTMLDivElement>(null);
@@ -211,22 +213,29 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
       .then(({ data }) => { if (data) setCustomCategories(data); });
     supabase
       .from("company_settings")
-      .select("instant_menu_name")
+      .select("instant_menu_name, hidden_product_types, hidden_seasons")
       .eq("company_id", companyId)
       .maybeSingle()
-      .then(({ data }) => setInstantName((data?.instant_menu_name as string | null)?.trim() || DEFAULT_INSTANT_MENU_NAME));
+      .then(({ data }) => {
+        setInstantName((data?.instant_menu_name as string | null)?.trim() || DEFAULT_INSTANT_MENU_NAME);
+        setHiddenBuiltins({
+          types: (data?.hidden_product_types as string[] | null) ?? [],
+          seasons: (data?.hidden_seasons as string[] | null) ?? [],
+        });
+      });
   }, [companyId]);
 
   // 사장님이 메뉴 설정에서 정한 순서대로
   const categoryOrder = useCategoryOrder(companyId);
-  const allProductTypes = sortByOrder([
-    ...PRODUCT_TYPES,
+  const allProductTypes = sortByOrder([...new Set([
+    // 메뉴 설정과 같게 — 지운 기본 유형은 빼고(이 상품에 붙은 건 남김), 이름이 겹치면 하나만
+    ...PRODUCT_TYPES.filter((t) => !hiddenBuiltins.types.includes(t) || initialData?.product_type === t),
     ...customCategories.filter((c) => c.category_type === "product_type").map((c) => c.name),
-  ], categoryOrder.productTypes);
-  const allSeasons = sortByOrder([
-    ...SEASONS,
+  ])], categoryOrder.productTypes);
+  const allSeasons = sortByOrder([...new Set([
+    ...SEASONS.filter((x) => !hiddenBuiltins.seasons.includes(x) || initialData?.seasons?.includes(x)),
     ...customCategories.filter((c) => c.category_type === "season").map((c) => c.name),
-  ], categoryOrder.seasons);
+  ])], categoryOrder.seasons);
 
   const toggleFlowerColor = (color: string) => {
     setData((prev) => ({

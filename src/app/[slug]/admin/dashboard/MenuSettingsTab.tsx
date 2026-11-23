@@ -31,7 +31,6 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
   const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
   const [newProductTypeName, setNewProductTypeName] = useState("");
   const [newSeasonName, setNewSeasonName] = useState("");
-  const [duplicateError, setDuplicateError] = useState<"product_type" | "season" | null>(null);
   const [showProductTypeForm, setShowProductTypeForm] = useState(false);
   const [showSeasonForm, setShowSeasonForm] = useState(false);
   // 삭제하려는 유형에 연결된 상품이 있을 때 띄우는 안내 (상품은 지우지 않는다)
@@ -127,16 +126,38 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
     onSave(hiddenProductTypes, next);
   };
 
+  /** 이름 확인 — 화면에 있는 목록만 보고 바로 판단 (서버 호출 없음). 같은 이름은 띄어쓰기만 달라도 중복 (예: '꽃 다발' = '꽃다발') */
+  const checkName = (type: "product_type" | "season", name: string) => {
+    const key = name.replace(/\s+/g, "");
+    const same = (a: string) => a.replace(/\s+/g, "") === key;
+    const builtins = type === "product_type" ? (PRODUCT_TYPES as readonly string[]) : (SEASONS as readonly string[]);
+    const hiddenBuiltins = type === "product_type" ? hiddenProductTypes : hiddenSeasons;
+    const builtinMatch = key ? builtins.find(same) : undefined;
+    const isDuplicate =
+      !!key &&
+      ((!!builtinMatch && !hiddenBuiltins.includes(builtinMatch)) ||
+        customCategories.some((c) => c.category_type === type && same(c.name)));
+    return { builtinMatch, isDuplicate };
+  };
+
   const addCategory = async (type: "product_type" | "season", name: string, resetFn: () => void) => {
     const trimmed = name.trim();
     if (!trimmed) return;
-    const builtins = type === "product_type" ? (PRODUCT_TYPES as readonly string[]) : (SEASONS as readonly string[]);
-    const hiddenBuiltins = type === "product_type" ? hiddenProductTypes : hiddenSeasons;
-    const isDuplicate =
-      (builtins.includes(trimmed) && !hiddenBuiltins.includes(trimmed)) ||
-      customCategories.some((c) => c.category_type === type && c.name === trimmed);
-    if (isDuplicate) { setDuplicateError(type); return; }
-    setDuplicateError(null);
+    const { builtinMatch, isDuplicate } = checkName(type, trimmed);
+    if (isDuplicate) return; // 입력하는 동안 이미 '중복된 이름'을 보여 주고 있다
+    // 지웠던 기본 항목과 같은 이름이면 — 새로 만들지 않고 기본 항목을 다시 보이게 (같은 이름이 둘로 갈라지면 숨김 목록과 겹쳐 손님 메뉴에서 상품이 빠진다)
+    if (builtinMatch) {
+      const order = type === "product_type" ? productTypeOrder : seasonOrder;
+      if (order.includes(builtinMatch)) await saveOrder(type, order.filter((n) => n !== builtinMatch));
+      if (type === "product_type") {
+        await toggleProductType(builtinMatch);
+        window.dispatchEvent(new Event(PRODUCT_TYPES_CHANGED));
+      } else {
+        await toggleSeason(builtinMatch);
+      }
+      resetFn();
+      return;
+    }
     const { data, error } = await supabase
       .from("company_categories")
       .insert({ company_id: companyId, category_type: type, name: trimmed, hidden: false })
@@ -223,6 +244,10 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
     seasonOrder,
   );
 
+  // 입력하는 동안 바로 확인
+  const productTypeDup = checkName("product_type", newProductTypeName).isDuplicate;
+  const seasonDup = checkName("season", newSeasonName).isDuplicate;
+
   return (
     <div className="space-y-4">
       <div>
@@ -243,19 +268,31 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
             >
               {showProductTypeForm ? (
                 <div className="space-y-1">
-                  <input
-                    autoFocus
-                    value={newProductTypeName}
-                    onChange={(e) => { setNewProductTypeName(e.target.value); if (duplicateError === "product_type") setDuplicateError(null); }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") { e.preventDefault(); addCategory("product_type", newProductTypeName, () => { setNewProductTypeName(""); setShowProductTypeForm(false); }); }
-                      if (e.key === "Escape") { setShowProductTypeForm(false); setNewProductTypeName(""); setDuplicateError(null); }
-                    }}
-                    onBlur={() => { if (!newProductTypeName.trim()) { setShowProductTypeForm(false); setDuplicateError(null); } }}
-                    placeholder="이름 입력 후 엔터"
-                    className={`w-full border rounded-lg px-2.5 py-2 text-sm placeholder-gray-300 focus:outline-none ${duplicateError === "product_type" ? "border-red-400 text-red-500" : "border-gold-400 text-gray-700 focus:border-gold-500"}`}
-                  />
-                  {duplicateError === "product_type" && <p className="text-xs text-red-500 leading-tight">중복된 이름</p>}
+                  <div className="flex gap-1">
+                    <input
+                      autoFocus
+                      value={newProductTypeName}
+                      onChange={(e) => { setNewProductTypeName(e.target.value); }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") { e.preventDefault(); addCategory("product_type", newProductTypeName, () => { setNewProductTypeName(""); setShowProductTypeForm(false); }); }
+                        if (e.key === "Escape") { setShowProductTypeForm(false); setNewProductTypeName(""); }
+                      }}
+                      onBlur={() => { if (!newProductTypeName.trim()) setShowProductTypeForm(false); }}
+                      placeholder="이름 입력"
+                      className={`flex-1 min-w-0 border rounded-lg px-2.5 py-2 text-sm placeholder-gray-300 focus:outline-none ${productTypeDup ? "border-red-400 text-red-500" : "border-gold-400 text-gray-700 focus:border-gold-500"}`}
+                    />
+                    <button
+                      type="button"
+                      // 입력칸 포커스를 잃지 않게 (비어 있으면 입력칸이 닫힌다)
+                      onMouseDown={(e) => e.preventDefault()}
+                      disabled={productTypeDup}
+                      onClick={() => addCategory("product_type", newProductTypeName, () => { setNewProductTypeName(""); setShowProductTypeForm(false); })}
+                      className="shrink-0 px-2.5 rounded-lg bg-gold-500 text-white text-xs font-medium whitespace-nowrap hover:bg-gold-600 disabled:opacity-40 disabled:hover:bg-gold-500 transition-colors"
+                    >
+                      추가
+                    </button>
+                  </div>
+                  {productTypeDup && <p className="text-xs text-red-500 leading-tight">중복된 이름</p>}
                 </div>
               ) : activeProductTypeCount < MAX_PRODUCT_TYPES ? (
                 <button
@@ -279,19 +316,31 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
             >
               {showSeasonForm ? (
                 <div className="space-y-1">
-                  <input
-                    autoFocus
-                    value={newSeasonName}
-                    onChange={(e) => { setNewSeasonName(e.target.value); if (duplicateError === "season") setDuplicateError(null); }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") { e.preventDefault(); addCategory("season", newSeasonName, () => { setNewSeasonName(""); setShowSeasonForm(false); }); }
-                      if (e.key === "Escape") { setShowSeasonForm(false); setNewSeasonName(""); setDuplicateError(null); }
-                    }}
-                    onBlur={() => { if (!newSeasonName.trim()) { setShowSeasonForm(false); setDuplicateError(null); } }}
-                    placeholder="이름 입력 후 엔터"
-                    className={`w-full border rounded-lg px-2.5 py-2 text-sm placeholder-gray-300 focus:outline-none ${duplicateError === "season" ? "border-red-400 text-red-500" : "border-gold-400 text-gray-700 focus:border-gold-500"}`}
-                  />
-                  {duplicateError === "season" && <p className="text-xs text-red-500 leading-tight">중복된 이름</p>}
+                  <div className="flex gap-1">
+                    <input
+                      autoFocus
+                      value={newSeasonName}
+                      onChange={(e) => { setNewSeasonName(e.target.value); }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") { e.preventDefault(); addCategory("season", newSeasonName, () => { setNewSeasonName(""); setShowSeasonForm(false); }); }
+                        if (e.key === "Escape") { setShowSeasonForm(false); setNewSeasonName(""); }
+                      }}
+                      onBlur={() => { if (!newSeasonName.trim()) setShowSeasonForm(false); }}
+                      placeholder="이름 입력"
+                      className={`flex-1 min-w-0 border rounded-lg px-2.5 py-2 text-sm placeholder-gray-300 focus:outline-none ${seasonDup ? "border-red-400 text-red-500" : "border-gold-400 text-gray-700 focus:border-gold-500"}`}
+                    />
+                    <button
+                      type="button"
+                      // 입력칸 포커스를 잃지 않게 (비어 있으면 입력칸이 닫힌다)
+                      onMouseDown={(e) => e.preventDefault()}
+                      disabled={seasonDup}
+                      onClick={() => addCategory("season", newSeasonName, () => { setNewSeasonName(""); setShowSeasonForm(false); })}
+                      className="shrink-0 px-2.5 rounded-lg bg-gold-500 text-white text-xs font-medium whitespace-nowrap hover:bg-gold-600 disabled:opacity-40 disabled:hover:bg-gold-500 transition-colors"
+                    >
+                      추가
+                    </button>
+                  </div>
+                  {seasonDup && <p className="text-xs text-red-500 leading-tight">중복된 이름</p>}
                 </div>
               ) : activeSeasonCount < MAX_SEASONS ? (
                 <button

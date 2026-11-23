@@ -44,7 +44,7 @@ export default function SortableChips({ items, onReorder, children }: { items: C
   };
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 items-start">
       {names.map((n) => {
         const item = byName.get(n);
         if (!item) return null;

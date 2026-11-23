@@ -180,14 +180,15 @@ export default function PreviewProductForm({ initialData, onSubmit, onCancel }: 
   const nameFieldRef = useRef<HTMLDivElement>(null);
   const colorFieldRef = useRef<HTMLDivElement>(null);
 
-  const allProductTypes = [
+  const allProductTypes = [...new Set([
+    // 지웠다가 같은 이름으로 다시 추가한 경우가 있어 이름이 겹치면 하나만
     ...PRODUCT_TYPES,
     ...customCategories.filter((c) => c.category_type === "product_type").map((c) => c.name),
-  ];
-  const allSeasons = [
+  ])];
+  const allSeasons = [...new Set([
     ...SEASONS,
     ...customCategories.filter((c) => c.category_type === "season").map((c) => c.name),
-  ];
+  ])];
 
   const toggleFlowerColor = (color: string) => {
     setData((prev) => ({
