@@ -139,6 +139,9 @@ export default function PreviewProductDetailClient({
                 <p className="text-2xl font-bold text-gray-900">
                   {product.price ? `${product.price.toLocaleString()}원` : "가격 문의"}
                 </p>
+                {product.description && (
+                  <p className="mt-4 text-sm text-gray-600 leading-relaxed whitespace-pre-line break-keep">{product.description}</p>
+                )}
               </div>
 
               {/* 상세 속성 */}

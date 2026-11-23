@@ -194,6 +194,9 @@ export default function ProductDetailClient({
                 <p>
                   <PriceTag price={product.price} original={product.original_price} size="lg" stack />
                 </p>
+                {product.description && (
+                  <p className="mt-4 text-sm text-gray-600 leading-relaxed whitespace-pre-line break-keep">{product.description}</p>
+                )}
               </div>
 
               {/* 상세 속성 */}
@@ -238,7 +241,7 @@ export default function ProductDetailClient({
             <div className="mt-6 md:mt-10 space-y-4">
               {/* 상품 옵션 */}
               {consultEnabled && optionGroups.length > 0 && (
-                <ProductOptionPicker groups={optionGroups} selected={selectedOptions} onChange={setSelectedOptions} />
+                <ProductOptionPicker groups={optionGroups} selected={selectedOptions} onChange={setSelectedOptions} cardClassName="bg-white rounded-2xl border border-gray-100 overflow-hidden" />
               )}
 
               {/* 수량 선택 */}

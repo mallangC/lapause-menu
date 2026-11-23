@@ -143,6 +143,7 @@ interface ProductFormProps {
 
 const DEFAULT_INPUT: ProductInput = {
   name: "",
+  description: "",
   price: 0,
   image_url: null,
   extra_images: [],
@@ -165,6 +166,7 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
     initialData
       ? {
           name: duplicate ? `${initialData.name} (복사)` : initialData.name,
+          description: initialData.description ?? "",
           // 폼의 '상품 가격'은 정가 — 할인 중이면 정가를, 아니면 가격을 보여준다 (저장할 때 할인가와 나눈다)
           price: isDiscounted(initialData.price, initialData.original_price) ? initialData.original_price : initialData.price,
           image_url: initialData.image_url,
@@ -342,6 +344,7 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
       // 할인 중이면 가격 = 할인가, 정가 = 적은 상품 가격 / 아니면 정가 없음
       await onSubmit({
         ...data,
+        description: data.description?.trim() || null,
         image_url: urls[0] ?? null,
         extra_images: urls.slice(1),
         options: normalizeOptions(options),
@@ -416,6 +419,18 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
                 }}
                 className={fieldErrors.includes("상품명") ? `${inputCls} border-red-400 focus:border-red-500` : inputCls}
               />
+            </div>
+            <div>
+              <label className={fieldLabelCls}>상품 설명 <span className="text-gray-400">(선택)</span></label>
+              <textarea
+                value={data.description ?? ""}
+                onChange={(e) => setData({ ...data, description: e.target.value.slice(0, 200) })}
+                rows={3}
+                maxLength={200}
+                placeholder="예) 계절 꽃으로 풍성하게 만든 꽃다발이에요. 생일·기념일 선물로 좋아요."
+                className={`${inputCls} resize-none`}
+              />
+              <p className="mt-0.5 text-right text-[11px] text-gray-400">{(data.description ?? "").length}/200</p>
             </div>
             <div>
               {/* 제목 줄 오른쪽 끝에 할인 스위치 */}

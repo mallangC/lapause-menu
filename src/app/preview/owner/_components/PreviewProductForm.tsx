@@ -138,6 +138,7 @@ interface ProductFormProps {
 
 const DEFAULT_INPUT: PreviewProductInput = {
   name: "",
+  description: "",
   price: 0,
   image_url: null,
   extra_images: [],
@@ -161,6 +162,7 @@ export default function PreviewProductForm({ initialData, onSubmit, onCancel, du
     initialData
       ? {
           name: duplicate ? `${initialData.name} (복사)` : initialData.name,
+          description: initialData.description ?? "",
           price: initialData.price,
           image_url: initialData.image_url,
           extra_images: initialData.extra_images ?? [],
@@ -251,7 +253,7 @@ export default function PreviewProductForm({ initialData, onSubmit, onCancel, du
     setFieldErrors([]);
     setLoading(true);
     try {
-      await onSubmit({ ...data, image_url: images[0]?.preview ?? null, extra_images: images.slice(1).map((i) => i.preview), options: normalizeOptions(options) });
+      await onSubmit({ ...data, description: data.description?.trim() || null, image_url: images[0]?.preview ?? null, extra_images: images.slice(1).map((i) => i.preview), options: normalizeOptions(options) });
     } finally {
       setLoading(false);
     }
@@ -311,6 +313,18 @@ export default function PreviewProductForm({ initialData, onSubmit, onCancel, du
                 }}
                 className={fieldErrors.includes("상품명") ? `${inputCls} border-red-400 focus:border-red-500` : inputCls}
               />
+            </div>
+            <div>
+              <label className={fieldLabelCls}>상품 설명 <span className="text-gray-400">(선택)</span></label>
+              <textarea
+                value={data.description ?? ""}
+                onChange={(e) => setData({ ...data, description: e.target.value.slice(0, 200) })}
+                rows={3}
+                maxLength={200}
+                placeholder="예) 계절 꽃으로 풍성하게 만든 꽃다발이에요. 생일·기념일 선물로 좋아요."
+                className={`${inputCls} resize-none`}
+              />
+              <p className="mt-0.5 text-right text-[11px] text-gray-400">{(data.description ?? "").length}/200</p>
             </div>
             <div>
               <label className={fieldLabelCls}>상품 가격</label>
