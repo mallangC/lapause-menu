@@ -634,7 +634,7 @@ export default function AddReservationModal({
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      // 바깥(딤) 을 눌러도 닫히지 않게 — 적던 내용이 날아가지 않도록 (예약 추가 창은 ✕·취소로만 닫는다)
     >
       <div className="bg-gray-100 rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         {/* 헤더 */}
