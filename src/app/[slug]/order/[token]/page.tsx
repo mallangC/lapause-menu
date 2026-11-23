@@ -229,7 +229,7 @@ export default async function OrderStatusPage({ params }: { params: Promise<{ sl
                   <div className="relative w-full aspect-[4/5] rounded-xl overflow-hidden bg-beige-100">
                     <StoreImage thumb src={p.image_url} alt={`완성 사진 ${i + 1}`} fill sizes="200px" className="object-cover" />
                   </div>
-                  <PhotoSaveButton url={p.image_url} name={`${companyName}_${i + 1}.webp`} />
+                  <PhotoSaveButton url={p.image_url} name={`${companyName}_${i + 1}.jpg`} />
                 </div>
               ))}
             </div>
