@@ -9,10 +9,11 @@ import {
   type ProductOptionGroup,
 } from "@/lib/productOptions";
 
-// 상품 옵션 만들기 — 묶음(이름·하나만/여러 개) 안에 항목(이름·추가 금액·기본 선택)
-// 예: [포장지 · 하나만] 기본 포장 0원(기본) / 고급 포장 +5,000원
+// 상품 옵션 만들기 — 옵션(이름·단일/복수 선택·선택/필수) 안에 항목(이름·추가 금액·품절)
+// 예: [포장지 · 단일 선택 · 필수] 기본 포장 0원 / 고급 포장 +5,000원
+// 기본 선택은 두지 않는다 — 손님이 직접 고른 것만 주문에 들어간다
 
-const emptyChoice = (): ProductOptionChoice => ({ id: newOptionId(), name: "", price: 0, default: false });
+const emptyChoice = (): ProductOptionChoice => ({ id: newOptionId(), name: "", price: 0 });
 
 export default function ProductOptionsEditor({
   groups,
@@ -31,21 +32,8 @@ export default function ProductOptionsEditor({
   const addGroup = () =>
     onChange([...groups, { id: newOptionId(), name: "", multi: false, required: false, choices: [emptyChoice(), emptyChoice()] }]);
 
-  // 기본 선택 — 다시 누르면 풀린다 (기본 없이 손님이 직접 고르게 해도 된다). 단일 선택은 기본이 하나만
-  const toggleDefault = (g: ProductOptionGroup, cid: string) => {
-    const on = !!g.choices.find((c) => c.id === cid)?.default;
-    if (g.multi) return setChoice(g.id, cid, { default: !on });
-    setGroup(g.id, { choices: g.choices.map((c) => ({ ...c, default: c.id === cid ? !on : false })) });
-  };
-
   const setMulti = (g: ProductOptionGroup, multi: boolean) => {
-    if (multi === g.multi) return;
-    // 단일 선택으로 바꾸면 기본 선택을 하나만 남긴다 (없으면 없는 채로)
-    if (!multi) {
-      const keep = g.choices.find((c) => c.default)?.id;
-      return setGroup(g.id, { multi, choices: g.choices.map((c) => ({ ...c, default: c.id === keep })) });
-    }
-    setGroup(g.id, { multi });
+    if (multi !== g.multi) setGroup(g.id, { multi });
   };
 
   return (
@@ -133,13 +121,13 @@ export default function ProductOptionsEditor({
                 </div>
                 <button
                   type="button"
-                  onClick={() => toggleDefault(g, c.id)}
-                  title="손님 화면에서 처음부터 골라져 있어요"
+                  onClick={() => setChoice(g.id, c.id, { soldOut: !c.soldOut })}
+                  title="품절이면 손님이 고를 수 없어요"
                   className={`shrink-0 h-[38px] px-2 rounded-lg border text-xs whitespace-nowrap transition-colors ${
-                    c.default ? "border-gold-500 bg-gold-500 text-white" : "border-gray-200 text-gray-400 hover:border-gray-300"
+                    c.soldOut ? "border-red-300 bg-red-50 text-red-500 font-medium" : "border-gray-200 text-gray-400 hover:border-gray-300"
                   }`}
                 >
-                  기본
+                  품절
                 </button>
                 <button
                   type="button"
@@ -157,7 +145,8 @@ export default function ProductOptionsEditor({
             <button
               type="button"
               onClick={() => setGroup(g.id, { choices: [...g.choices, emptyChoice()] })}
-              className="text-xs text-gold-600 font-medium hover:underline"
+              // 옵션 추가 버튼과 같은 모양 (작은 글자 링크는 누르기 어려워서)
+              className="w-full py-2 rounded-lg border border-dashed border-gray-300 text-sm text-gray-500 hover:border-gold-400 hover:text-gold-600 transition-colors"
             >
               + 항목 추가
             </button>
@@ -175,7 +164,7 @@ export default function ProductOptionsEditor({
         </button>
       )}
       <p className="text-xs text-gray-400 break-keep">
-        추가 금액은 0원도 돼요. &lsquo;기본&rsquo;은 손님 화면에서 처음부터 선택되어 있어요.<br />필수 옵션은 고르지 않으면 주문할 수 없어요.
+        추가 금액은 0원도 돼요. 필수 옵션은 고르지 않으면 주문할 수 없고, 품절 항목은 손님이 고를 수 없어요.
       </p>
     </div>
   );

@@ -4,7 +4,7 @@
 // · 묶음(group): 이름 + 하나만 고르기(multi=false) / 여러 개 고르기(multi=true)
 // · 항목(choice): 이름 + 추가 금액(0원 이상) + 기본 선택
 // · 필수 묶음은 꼭 골라야 주문할 수 있다 (단일 선택: 정확히 1개, 복수 선택: 1개 이상)
-// · 기본 선택은 없어도 된다 — 손님이 직접 고르게 (기본 선택이 있으면 처음부터 골라져 있다)
+// · 기본 선택은 없다 — 손님 화면은 늘 아무것도 안 고른 채로 시작해, 손님이 직접 고른 것만 주문에 들어간다
 // · 손님이 고른 것은 항목 id 목록으로 주고받는다
 
 export interface ProductOptionChoice {
@@ -12,8 +12,10 @@ export interface ProductOptionChoice {
   name: string;
   /** 추가 금액 (0원 이상, 원 단위) */
   price: number;
-  /** 처음부터 골라져 있음 */
+  /** (예전 값 — 지금은 쓰지 않는다. 기본 선택 없음) */
   default?: boolean;
+  /** 품절 — 손님 화면에 보이지만 고를 수 없다 */
+  soldOut?: boolean;
 }
 
 export interface ProductOptionGroup {
@@ -51,23 +53,19 @@ export function normalizeOptions(raw: unknown): ProductOptionGroup[] {
       const cid = typeof cc.id === "string" && cc.id ? cc.id.slice(0, 20) : "";
       const price = Number(cc.price);
       if (!cname || !cid || !Number.isInteger(price) || price < 0 || price > OPTION_PRICE_MAX) continue;
-      choices.push({ id: cid, name: cname, price, default: cc.default === true });
+      choices.push({ id: cid, name: cname, price, soldOut: cc.soldOut === true });
     }
     if (choices.length === 0) continue;
     const multi = gg.multi === true;
-    // 단일 선택은 기본 선택이 많아야 하나 (없어도 된다)
-    if (!multi) {
-      const first = choices.findIndex((c) => c.default);
-      choices.forEach((c, i) => (c.default = first >= 0 && i === first));
-    }
     groups.push({ id, name, multi, required: gg.required === true, choices });
   }
   return groups;
 }
 
-/** 처음 골라져 있는 항목 — 사장님이 '기본'으로 둔 것만 (없으면 아무것도 안 골라진 채) */
-export function defaultSelection(groups: ProductOptionGroup[]): string[] {
-  return groups.flatMap((g) => g.choices.filter((c) => c.default).map((c) => c.id));
+/** 처음 골라져 있는 항목 — 기본 선택이 없으므로 늘 비어 있다 (손님이 직접 고른다) */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function defaultSelection(_groups: ProductOptionGroup[]): string[] {
+  return [];
 }
 
 /** 아직 고르지 않은 필수 묶음 */
@@ -102,6 +100,7 @@ export function resolveOptions(groups: ProductOptionGroup[], selected: string[] 
   let price = 0;
   for (const g of groups) {
     const picked = g.choices.filter((c) => chosen.has(c.id));
+    if (picked.some((c) => c.soldOut)) return null; // 품절 항목은 주문할 수 없다
     if (!g.multi && picked.length > 1) return null;
     if (g.required && picked.length === 0) return null;
     if (picked.length === 0) continue;

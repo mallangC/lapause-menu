@@ -61,7 +61,7 @@ export default function ProductOptionPicker({
             >
               <span className="shrink-0 text-sm font-medium text-gray-700">
                 {g.name}
-                {g.required && <span className="ml-1 text-[11px] font-medium text-red-500">필수</span>}
+                {g.required && <span className="ml-0.5 text-red-500" aria-label="필수">*</span>}
               </span>
               <span className={`flex-1 min-w-0 text-right text-sm truncate ${picked.length ? "text-gold-600 font-medium" : bad ? "text-red-500" : "text-gray-400"}`}>
                 {summary}
@@ -81,12 +81,18 @@ export default function ProductOptionPicker({
                       type="button"
                       role={g.multi ? "checkbox" : "radio"}
                       aria-checked={on}
+                      aria-disabled={c.soldOut}
+                      disabled={c.soldOut}
                       onClick={() => pick(g, c.id)}
-                      className={`w-full flex items-center justify-between gap-3 px-4 py-3.5 text-left transition-colors ${on ? "bg-white" : "hover:bg-gray-50"}`}
+                      className={`w-full flex items-center justify-between gap-3 px-4 py-3.5 text-left transition-colors ${c.soldOut ? "bg-gray-100 cursor-not-allowed" : on ? "bg-white" : "hover:bg-gray-50"}`}
                     >
                       <div className="min-w-0">
-                        <span className={`text-sm break-keep ${on ? "text-gold-600 font-medium" : "text-gray-800"}`}>{c.name}</span>
-                        {c.price > 0 && <span className="ml-2 text-xs text-gold-500 whitespace-nowrap">+{c.price.toLocaleString()}원</span>}
+                        <span className={`text-sm break-keep ${c.soldOut ? "text-gray-300 line-through" : on ? "text-gold-600 font-medium" : "text-gray-800"}`}>{c.name}</span>
+                        {c.soldOut ? (
+                          <span className="ml-2 text-xs text-gray-400 whitespace-nowrap">품절</span>
+                        ) : (
+                          c.price > 0 && <span className="ml-2 text-xs text-gold-500 whitespace-nowrap">+{c.price.toLocaleString()}원</span>
+                        )}
                       </div>
                       <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${on ? "border-gold-500 bg-gold-500" : "border-gray-300"}`}>
                         {on && (
