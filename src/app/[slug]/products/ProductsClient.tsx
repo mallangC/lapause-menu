@@ -200,17 +200,18 @@ export default function ProductsClient({
             {openFilterDropdown !== null && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setOpenFilterDropdown(null)} />
-                <div className="absolute top-full right-0 mt-1 z-20 bg-white border border-gray-100 rounded-xl shadow-lg p-4 w-64">
+                <div className="absolute top-full right-0 mt-1 z-20 bg-white border border-gray-100 rounded-xl shadow-lg p-4 w-[340px] max-h-[calc(100dvh-10rem)] overflow-y-auto overscroll-contain">
+                  {/* 세로가 짧은 화면에서도 잘리지 않게 — 줄 수를 줄이고(색상 3열·포장지 한 줄·분위기 2열), 그래도 넘치면 창 안에서 스크롤 */}
                   {/* 색상 */}
                   <p className="text-xs font-semibold text-gold-500 mb-2">색상</p>
-                  <div className="grid grid-cols-2 gap-1 mb-4">
+                  <div className="grid grid-cols-3 gap-1 mb-4">
                     {FLOWER_COLORS.map((color) => {
                       const active = filter.flowerColors.includes(color);
                       return (
                         <button
                           key={color}
                           onClick={() => toggleFilter("flowerColors", color)}
-                          className={`flex items-center justify-center gap-2 px-2.5 py-1.5 rounded-lg text-sm border transition-colors ${
+                          className={`flex items-center justify-center gap-1.5 px-1.5 py-1.5 rounded-lg text-sm border transition-colors whitespace-nowrap ${
                             active ? "border-gold-500 bg-gold-500 text-white font-medium" : "border-gray-200 text-gray-600 hover:bg-gray-50"
                           }`}
                         >
@@ -222,7 +223,7 @@ export default function ProductsClient({
                   </div>
                   {/* 포장지 */}
                   <p className="text-xs font-semibold text-gold-500 mb-2">포장지</p>
-                  <div className="flex flex-col gap-1 mb-4">
+                  <div className="grid grid-cols-3 gap-1 mb-4">
                     {WRAPPING_COLORS.map((wc) => {
                       const active = filter.wrappingColors.includes(wc);
                       return (
@@ -240,7 +241,7 @@ export default function ProductsClient({
                   </div>
                   {/* 분위기 */}
                   <p className="text-xs font-semibold text-gold-500 mb-2">분위기</p>
-                  <div className="flex flex-col gap-1">
+                  <div className="grid grid-cols-2 gap-1">
                     {MOODS.map((mood) => {
                       const active = filter.moods.includes(mood);
                       return (
