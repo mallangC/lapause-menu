@@ -112,6 +112,8 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
   const [showForm, setShowForm] = useState(false);
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  // 복제 — 이 상품 내용을 채운 '새 상품 추가' 창 (저장해야 새 상품이 생긴다)
+  const [duplicatingProduct, setDuplicatingProduct] = useState<Product | null>(null);
   // 상품 관리 필터로 걸러진 개수 (필터가 없으면 null) — 제목 옆에 표시
   const [filteredCount, setFilteredCount] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -131,9 +133,9 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
   const supabase = createClient();
 
   useEffect(() => {
-    document.body.style.overflow = (showForm || !!editingProduct) ? "hidden" : "";
+    document.body.style.overflow = (showForm || !!editingProduct || !!duplicatingProduct) ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
-  }, [showForm, editingProduct]);
+  }, [showForm, editingProduct, duplicatingProduct]);
 
   // 예약 탭은 월 단위로 보므로 보고 있는 달(희망일 기준)의 예약만 가져온다.
   // 전체를 내려받으면 예약이 쌓일수록 느려지고, Supabase 1회 최대 1000행 제한에 걸려 잘린다.
@@ -271,6 +273,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
     notifyMenuChanged();
     setProducts((prev) => [...prev, newProduct as Product]);
     setShowForm(false);
+    setDuplicatingProduct(null);
   };
 
   const handleEdit = async (data: ProductInput) => {
@@ -399,7 +402,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
               className={`overflow-hidden transition-all duration-300 shrink-0 ${tab.statsOnly && !currentConsultEnabled ? "max-w-0 opacity-0 pointer-events-none" : "max-w-[120px] opacity-100"}`}
             >
               <button
-                onClick={() => { goTab(tab.key); setShowForm(false); setEditingProduct(null); setError(null); setShowSettingsDropdown(false); }}
+                onClick={() => { goTab(tab.key); setShowForm(false); setEditingProduct(null); setDuplicatingProduct(null); setError(null); setShowSettingsDropdown(false); }}
                 className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                   activeTab === tab.key ? "border-gold-500 text-gold-500" : "border-transparent text-gray-400 hover:text-gray-700"
                 }`}
@@ -427,7 +430,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
             {settingsTabs.map((tab) => (
               <button
                 key={tab.key}
-                onClick={() => { goTab(tab.key); setShowForm(false); setEditingProduct(null); setError(null); }}
+                onClick={() => { goTab(tab.key); setShowForm(false); setEditingProduct(null); setDuplicatingProduct(null); setError(null); }}
                 className={`px-4 py-2.5 text-xs font-medium transition-colors whitespace-nowrap border-b-2 ${
                   activeTab === tab.key ? "border-gold-500 text-gold-500" : "border-transparent text-gray-400 hover:text-gray-600"
                 }`}
@@ -464,7 +467,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
                 className={`overflow-hidden transition-all duration-300 ${tab.statsOnly && !currentConsultEnabled ? "max-h-0 opacity-0" : "max-h-12 opacity-100"}`}
               >
                 <button
-                  onClick={() => { goTab(tab.key); setShowForm(false); setEditingProduct(null); setError(null); }}
+                  onClick={() => { goTab(tab.key); setShowForm(false); setEditingProduct(null); setDuplicatingProduct(null); setError(null); }}
                   className={`w-full text-left px-4 py-2.5 rounded-lg text-sm transition-colors ${
                     activeTab === tab.key ? "bg-gold-500 text-white font-medium" : "text-gray-700 hover:bg-gray-100"
                   }`}
@@ -491,7 +494,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
                   {settingsTabs.map((tab) => (
                     <li key={tab.key}>
                       <button
-                        onClick={() => { goTab(tab.key); setShowForm(false); setEditingProduct(null); setError(null); }}
+                        onClick={() => { goTab(tab.key); setShowForm(false); setEditingProduct(null); setDuplicatingProduct(null); setError(null); }}
                         className={`w-full text-left px-4 py-2 rounded-lg text-sm transition-colors ${
                           activeTab === tab.key ? "bg-gold-500/10 text-gold-600 font-medium" : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
                         }`}
@@ -553,17 +556,17 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
         )}
 
         {/* 상품 추가/수정 모달 */}
-        {(showForm || editingProduct) && (
+        {(showForm || editingProduct || duplicatingProduct) && (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
             style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
-            onClick={(e) => { if (e.target === e.currentTarget) { setShowForm(false); setEditingProduct(null); } }}
+            onClick={(e) => { if (e.target === e.currentTarget) { setShowForm(false); setEditingProduct(null); setDuplicatingProduct(null); } }}
           >
             <div className="bg-gray-100 rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between px-5 pt-5 pb-4 bg-white">
-                <h3 className="font-medium text-gray-900">{editingProduct ? "상품 수정" : "새 상품 추가"}</h3>
+                <h3 className="font-medium text-gray-900">{editingProduct ? "상품 수정" : duplicatingProduct ? "상품 복사" : "새 상품 추가"}</h3>
                 <button
-                  onClick={() => { setShowForm(false); setEditingProduct(null); }}
+                  onClick={() => { setShowForm(false); setEditingProduct(null); setDuplicatingProduct(null); }}
                   className="text-gray-400 hover:text-gray-600 transition-colors text-xl leading-none"
                 >
                   ✕
@@ -571,6 +574,8 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
               </div>
               {editingProduct
                 ? <ProductForm initialData={editingProduct} onSubmit={handleEdit} onCancel={() => setEditingProduct(null)} companyId={companyId} />
+                : duplicatingProduct
+                ? <ProductForm key={duplicatingProduct.id} initialData={duplicatingProduct} duplicate onSubmit={handleAdd} onCancel={() => setDuplicatingProduct(null)} companyId={companyId} />
                 : <ProductForm onSubmit={handleAdd} onCancel={() => setShowForm(false)} companyId={companyId} />
               }
             </div>
@@ -645,6 +650,12 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
                   products={products}
                   onEdit={(product) => { setEditingProduct(product); setShowForm(false); }}
                   onDelete={handleDelete}
+                  onDuplicate={(product) => {
+                    if (products.length >= 500) return setShowLimitModal(true);
+                    setEditingProduct(null);
+                    setShowForm(false);
+                    setDuplicatingProduct(product);
+                  }}
                   onStatusChange={handleStatusChange}
                   companyId={companyId}
                   onFilteredCountChange={setFilteredCount}

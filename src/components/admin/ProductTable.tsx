@@ -1,6 +1,7 @@
 "use client";
 
 import { DEFAULT_INSTANT_MENU_NAME } from "@/lib/afterHours";
+import RowActionMenu from "@/components/admin/RowActionMenu";
 import PriceTag from "@/components/PriceTag";
 import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
@@ -16,6 +17,8 @@ interface ProductTableProps {
   products: Product[];
   onEdit: (product: Product) => void;
   onDelete: (id: string) => void;
+  /** 복제 — 같은 내용으로 새 상품 추가 창을 연다 */
+  onDuplicate?: (product: Product) => void;
   onStatusChange: (id: string, status: ProductStatus) => void;
   companyId: string;
   /** 필터를 걸었을 때 걸러진 개수 (필터가 없으면 null) — 제목 옆 개수 표시용 */
@@ -46,10 +49,12 @@ function StatusToggle({ status, onClick }: { status: ProductStatus; onClick: () 
   );
 }
 
-const ACTION_WIDTH = 120;
+const ACTION_WIDTH = 180;
 
-function SwipeableCard({ children, onEdit, onDelete, deleting }: { children: React.ReactNode; onEdit: () => void; onDelete: () => void; deleting?: boolean }) {
+function SwipeableCard({ children, onEdit, onDuplicate, onDelete, deleting }: { children: React.ReactNode; onEdit: () => void; onDuplicate?: () => void; onDelete: () => void; deleting?: boolean }) {
   const [offset, setOffset] = useState(0);
+  // 버튼 수만큼 (수정·복제·삭제 = 60px 씩)
+  const actionWidth = onDuplicate ? ACTION_WIDTH : (ACTION_WIDTH * 2) / 3;
   const startX = useRef(0);
   const startOffset = useRef(0);
   const liveOffset = useRef(0);
@@ -64,20 +69,20 @@ function SwipeableCard({ children, onEdit, onDelete, deleting }: { children: Rea
   const onTouchMove = (e: React.TouchEvent) => {
     if (!isDragging.current) return;
     const diff = e.touches[0].clientX - startX.current;
-    const next = Math.max(-ACTION_WIDTH, Math.min(0, startOffset.current + diff));
+    const next = Math.max(-actionWidth, Math.min(0, startOffset.current + diff));
     liveOffset.current = next;
     setOffset(next);
   };
 
   const onTouchEnd = () => {
     isDragging.current = false;
-    setOffset(liveOffset.current < -(ACTION_WIDTH / 2) ? -ACTION_WIDTH : 0);
+    setOffset(liveOffset.current < -(actionWidth / 2) ? -actionWidth : 0);
   };
 
   return (
     <div className="relative overflow-hidden">
       {/* 액션 버튼 — 오른쪽에 고정 */}
-      <div className="absolute right-0 top-0 bottom-0 flex" style={{ width: ACTION_WIDTH }}>
+      <div className="absolute right-0 top-0 bottom-0 flex" style={{ width: actionWidth }}>
         <button
           onClick={() => { setOffset(0); onEdit(); }}
           className="flex-1 flex items-center justify-center text-white bg-blue-500 active:bg-blue-600 transition-colors"
@@ -86,6 +91,17 @@ function SwipeableCard({ children, onEdit, onDelete, deleting }: { children: Rea
             <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487a2.1 2.1 0 1 1 2.97 2.97L8.5 18.81l-4 1 1-4 11.362-11.323z" />
           </svg>
         </button>
+        {onDuplicate && (
+          <button
+            onClick={() => { setOffset(0); onDuplicate(); }}
+            aria-label="복사"
+            className="flex-1 flex items-center justify-center text-white bg-gray-500 active:bg-gray-600 transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" />
+            </svg>
+          </button>
+        )}
         <button
           onClick={() => { setOffset(0); onDelete(); }}
           className="flex-1 flex items-center justify-center text-white bg-red-500 active:bg-red-600 transition-colors"
@@ -224,7 +240,7 @@ function FilterMenu({ title, sections }: { title: string; sections: FilterSectio
   );
 }
 
-export default function ProductTable({ products, onEdit, onDelete, onStatusChange, companyId, onFilteredCountChange, deletingId = null }: ProductTableProps) {
+export default function ProductTable({ products, onEdit, onDelete, onDuplicate, onStatusChange, companyId, onFilteredCountChange, deletingId = null }: ProductTableProps) {
   const [sortKey, setSortKey] = useState<"price_asc" | "price_desc" | "date_desc" | "date_asc">("date_desc");
   const [knownCustomTypes, setKnownCustomTypes] = useState<string[]>([]);
   // 매장 시즌 — 추가한 시즌 + 지우지 않은 기본 시즌
@@ -402,6 +418,7 @@ export default function ProductTable({ products, onEdit, onDelete, onStatusChang
                 <SwipeableCard
                   key={product.id}
                   onEdit={() => onEdit(product)}
+                  onDuplicate={onDuplicate ? () => onDuplicate(product) : undefined}
                   onDelete={() => onDelete(product.id)}
                   deleting={deletingId === product.id}
                 >
@@ -528,35 +545,16 @@ export default function ProductTable({ products, onEdit, onDelete, onStatusChang
                         />
                       </td>
                       <td className="py-3 px-2">
-                        {/* 수정·삭제 — 예약 상세와 같은 아이콘 버튼 */}
-                        <div className="flex gap-1.5 justify-center">
-                          <button
-                            type="button"
-                            onClick={() => onEdit(product)}
-                            aria-label="수정"
-                            title="수정"
-                            className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors"
-                          >
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487z" />
-                            </svg>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => onDelete(product.id)}
-                            disabled={!!deletingId}
-                            aria-label={deletingId === product.id ? "삭제하는 중" : "삭제"}
-                            title="삭제"
-                            className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 disabled:cursor-wait transition-colors"
-                          >
-                            {deletingId === product.id ? (
-                              <span className="w-4 h-4 rounded-full border-2 border-red-400 border-t-transparent animate-spin" />
-                            ) : (
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                            </svg>
-                            )}
-                          </button>
+                        {/* 수정·복제·삭제 — '⋯' 를 누르면 작은 메뉴로 */}
+                        <div className="flex justify-center">
+                          <RowActionMenu
+                            busy={deletingId === product.id}
+                            actions={[
+                              { label: "수정", onClick: () => onEdit(product) },
+                              ...(onDuplicate ? [{ label: "복사", onClick: () => onDuplicate(product) }] : []),
+                              { label: "삭제", danger: true, onClick: () => onDelete(product.id) },
+                            ]}
+                          />
                         </div>
                       </td>
                     </tr>

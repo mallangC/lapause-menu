@@ -135,6 +135,8 @@ interface ProductFormProps {
   onSubmit: (data: ProductInput) => Promise<void>;
   onCancel: () => void;
   companyId: string;
+  /** 복제 — initialData 를 채운 채로 '새 상품'으로 저장한다 (이름 뒤에 (복사)) */
+  duplicate?: boolean;
 }
 
 const DEFAULT_INPUT: ProductInput = {
@@ -155,11 +157,11 @@ const DEFAULT_INPUT: ProductInput = {
   preservative_unavailable: false,
 };
 
-export default function ProductForm({ initialData, onSubmit, onCancel, companyId }: ProductFormProps) {
+export default function ProductForm({ initialData, onSubmit, onCancel, companyId, duplicate = false }: ProductFormProps) {
   const [data, setData] = useState<ProductInput>(
     initialData
       ? {
-          name: initialData.name,
+          name: duplicate ? `${initialData.name} (복사)` : initialData.name,
           // 폼의 '상품 가격'은 정가 — 할인 중이면 정가를, 아니면 가격을 보여준다 (저장할 때 할인가와 나눈다)
           price: isDiscounted(initialData.price, initialData.original_price) ? initialData.original_price : initialData.price,
           image_url: initialData.image_url,
@@ -347,9 +349,12 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
         image_url: imageUrl,
         ...(discountOn ? { price: salePrice, original_price: data.price } : { original_price: null }),
       });
-      // 사진을 바꾸거나 지웠으면 예전 사진은 저장소에서 정리
-      const oldUrl = initialData?.image_url ?? null;
-      if (oldUrl && oldUrl !== imageUrl) removeStorageFiles(supabase, STORAGE_BUCKET, [oldUrl]);
+      // 사진을 바꾸거나 지웠으면 예전 사진은 저장소에서 정리 — 복제한 상품끼리 같은 사진을 같이 쓰므로, 다른 상품이 아직 쓰고 있으면 남긴다
+      const oldUrl = duplicate ? null : initialData?.image_url ?? null;
+      if (oldUrl && oldUrl !== imageUrl) {
+        const { data: stillUsed } = await supabase.from("products").select("id").eq("image_url", oldUrl).limit(1);
+        if (stillUsed && stillUsed.length === 0) removeStorageFiles(supabase, STORAGE_BUCKET, [oldUrl]);
+      }
     } finally {
       setLoading(false);
     }
@@ -791,7 +796,7 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
             disabled={loading || uploading}
             className="flex-1 py-2.5 rounded-xl bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
-            {loading ? "저장 중..." : initialData ? "수정 완료" : "상품 추가"}
+            {loading ? "저장 중..." : initialData && !duplicate ? "수정 완료" : "상품 추가"}
           </button>
         </div>
       </div>

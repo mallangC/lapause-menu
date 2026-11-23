@@ -16,19 +16,21 @@ interface Props {
 export default function PreviewProductsTab({ products, setProducts, onNotice }: Props) {
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [duplicatingProduct, setDuplicatingProduct] = useState<Product | null>(null);
   // 필터로 걸러진 개수 (필터가 없으면 null) — 제목 옆에 표시
   const [filteredCount, setFilteredCount] = useState<number | null>(null);
 
   useEffect(() => {
-    document.body.style.overflow = (showForm || !!editingProduct) ? "hidden" : "";
+    document.body.style.overflow = (showForm || !!editingProduct || !!duplicatingProduct) ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
-  }, [showForm, editingProduct]);
+  }, [showForm, editingProduct, duplicatingProduct]);
 
   // 코치마크가 상품 추가 창을 열고 닫는다 (detail: true / false)
   useEffect(() => {
     const onForm = (e: Event) => {
       const open = (e as CustomEvent<boolean>).detail;
       setEditingProduct(null);
+      setDuplicatingProduct(null);
       setShowForm(open);
     };
     window.addEventListener(PD_FORM_EVENT, onForm);
@@ -39,6 +41,7 @@ export default function PreviewProductsTab({ products, setProducts, onNotice }: 
     const added: Product = { ...data, id: `added-${Date.now()}`, company_id: "preview", created_at: new Date().toISOString() };
     setProducts((prev) => [...prev, added]);
     setShowForm(false);
+    setDuplicatingProduct(null);
     onNotice("상품이 목록에 추가됐어요.\n미리보기라 실제로 저장되지는 않아요.");
   };
 
@@ -60,17 +63,17 @@ export default function PreviewProductsTab({ products, setProducts, onNotice }: 
   return (
     <>
       {/* 상품 추가/수정 모달 */}
-      {(showForm || editingProduct) && (
+      {(showForm || editingProduct || duplicatingProduct) && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
-          onClick={(e) => { if (e.target === e.currentTarget) { setShowForm(false); setEditingProduct(null); } }}
+          onClick={(e) => { if (e.target === e.currentTarget) { setShowForm(false); setEditingProduct(null); setDuplicatingProduct(null); } }}
         >
           <div className="bg-gray-100 rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" data-coach="pd-form">
             <div className="flex items-center justify-between px-5 pt-5 pb-4 bg-white">
-              <h3 className="font-medium text-gray-900">{editingProduct ? "상품 수정" : "새 상품 추가"}</h3>
+              <h3 className="font-medium text-gray-900">{editingProduct ? "상품 수정" : duplicatingProduct ? "상품 복사" : "새 상품 추가"}</h3>
               <button
-                onClick={() => { setShowForm(false); setEditingProduct(null); }}
+                onClick={() => { setShowForm(false); setEditingProduct(null); setDuplicatingProduct(null); }}
                 className="text-gray-400 hover:text-gray-600 transition-colors text-xl leading-none"
               >
                 ✕
@@ -78,6 +81,8 @@ export default function PreviewProductsTab({ products, setProducts, onNotice }: 
             </div>
             {editingProduct
               ? <PreviewProductForm key={editingProduct.id} initialData={editingProduct} onSubmit={handleEdit} onCancel={() => setEditingProduct(null)} />
+              : duplicatingProduct
+              ? <PreviewProductForm key={`dup-${duplicatingProduct.id}`} initialData={duplicatingProduct} duplicate onSubmit={handleAdd} onCancel={() => setDuplicatingProduct(null)} />
               : <PreviewProductForm onSubmit={handleAdd} onCancel={() => setShowForm(false)} />
             }
           </div>
@@ -105,6 +110,7 @@ export default function PreviewProductsTab({ products, setProducts, onNotice }: 
             products={products}
             onEdit={(product) => { setEditingProduct(product); setShowForm(false); }}
             onDelete={handleDelete}
+            onDuplicate={(product) => { setEditingProduct(null); setShowForm(false); setDuplicatingProduct(product); }}
             onStatusChange={handleStatusChange}
             onFilteredCountChange={setFilteredCount}
           />

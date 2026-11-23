@@ -129,6 +129,8 @@ interface ProductFormProps {
   initialData?: Product;
   onSubmit: (data: ProductInput) => Promise<void>;
   onCancel: () => void;
+  /** 복제 — initialData 를 채운 채로 새 상품으로 */
+  duplicate?: boolean;
 }
 
 const DEFAULT_INPUT: PreviewProductInput = {
@@ -149,11 +151,11 @@ const DEFAULT_INPUT: PreviewProductInput = {
 };
 
 // 미리보기 상품 추가·수정 — 실제 ProductForm 복사본. 사진은 업로드 대신 화면에서만 보여주고, 저장은 화면 목록에만 반영된다
-export default function PreviewProductForm({ initialData, onSubmit, onCancel }: ProductFormProps) {
+export default function PreviewProductForm({ initialData, onSubmit, onCancel, duplicate = false }: ProductFormProps) {
   const [data, setData] = useState<PreviewProductInput>(
     initialData
       ? {
-          name: initialData.name,
+          name: duplicate ? `${initialData.name} (복사)` : initialData.name,
           price: initialData.price,
           image_url: initialData.image_url,
           product_type: initialData.product_type,
@@ -600,7 +602,7 @@ export default function PreviewProductForm({ initialData, onSubmit, onCancel }: 
             disabled={loading || uploading}
             className="flex-1 py-2.5 rounded-xl bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
-            {loading ? "저장 중..." : initialData ? "수정 완료" : "상품 추가"}
+            {loading ? "저장 중..." : initialData && !duplicate ? "수정 완료" : "상품 추가"}
           </button>
         </div>
       </div>
