@@ -1,6 +1,7 @@
 "use client";
 
 import PriceTag from "@/components/PriceTag";
+import { applyOptions } from "@/lib/productOptions";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -71,6 +72,8 @@ export interface RecProduct {
   bag_included?: boolean;
   message_card_unavailable?: boolean;
   preservative_unavailable?: boolean;
+  /** 상품 옵션 묶음 — 주문할 때 기본 선택 금액을 더한다 */
+  options?: unknown;
 }
 
 /** 대화 주문 종류 — 사장님 스타일 / 찾아본 사진 / 추천 */
@@ -770,7 +773,9 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
       };
       const product =
         picked
-          ? {
+          ? applyOptions({
+              // 상품 옵션은 기본 선택으로 (금액 포함)
+              options: picked.options,
               id: picked.id,
               name: picked.name,
               price: picked.price,
@@ -780,7 +785,7 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
               bag_included: picked.bag_included ?? false,
               message_card_unavailable: picked.message_card_unavailable ?? false,
               preservative_unavailable: picked.preservative_unavailable ?? false,
-            }
+            })
           : makeStyleProduct({ kind: flow === "photo" ? "photo" : "style", productType: a("type"), mood, budget: budgetN, refImage: flow === "photo" ? readPhotoOrder(slug) : null });
       setCheckoutRequests(picked ? "" : styleOrderRequests({ avoid: a("avoid"), similar: a("similar") }));
       // 접기 시작을 같은 순간에 — 한 박자라도 앞 대화가 먼저 빠지면 페이지가 짧아져 화면이 튄다

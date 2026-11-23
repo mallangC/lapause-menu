@@ -1,6 +1,7 @@
 "use client";
 
 import PriceTag from "@/components/PriceTag";
+import { applyOptions } from "@/lib/productOptions";
 import { useState, useMemo, useEffect } from "react";
 import StoreImage from "@/components/StoreImage";
 import Link from "next/link";
@@ -69,6 +70,8 @@ interface Props {
   /** 무통장 입금를 받을 수 있는지 (매장 계좌가 등록돼 있을 때) */
   transferAvailable?: boolean;
   initialQuantity?: number;
+  /** 상품 상세에서 고른 상품 옵션 항목 id (?options=) */
+  initialOptions?: string[] | null;
   initialPaymentId?: string | null;
 }
 
@@ -118,7 +121,7 @@ function scoreProducts(products: Product[], form: ConsultForm): Product[] {
   return recommendProducts(products, { productType: form.productType, mood: form.mood, budget });
 }
 
-export default function ConsultClient({ slug, companyName, logoImage = null, productTypeList = [], seasonList = [], notificationEmail, products, businessHours, closedDates, dateOverrides = {}, minLeadTimes = {}, consultNotice, storeAddress = null, deliveryEnabled = false, deliveryFees = {}, messageCardEnabled = false, messageCardPrice = 2000, shoppingBagEnabled = false, shoppingBagPrice = 2000, preservativeEnabled = false, preservativePrice = 500, isDemo = false, preselectedProduct = null, styleOrder = null, chatAnswers = null, todayColors = [], colorLeadDays = 0, colorPickEnabled = true, colorMinPrice = 0, afterHours = AFTER_HOURS_OFF, unattended = UNATTENDED_OFF, transferAvailable = false, initialQuantity = 1, initialPaymentId = null }: Props) {
+export default function ConsultClient({ slug, companyName, logoImage = null, productTypeList = [], seasonList = [], notificationEmail, products, businessHours, closedDates, dateOverrides = {}, minLeadTimes = {}, consultNotice, storeAddress = null, deliveryEnabled = false, deliveryFees = {}, messageCardEnabled = false, messageCardPrice = 2000, shoppingBagEnabled = false, shoppingBagPrice = 2000, preservativeEnabled = false, preservativePrice = 500, isDemo = false, preselectedProduct = null, styleOrder = null, chatAnswers = null, todayColors = [], colorLeadDays = 0, colorPickEnabled = true, colorMinPrice = 0, afterHours = AFTER_HOURS_OFF, unattended = UNATTENDED_OFF, transferAvailable = false, initialQuantity = 1, initialOptions = null, initialPaymentId = null }: Props) {
   // 첫 화면 대화에서 선물 정보·취향을 이미 받고 온 주문 (사장님 스타일·사진 주문·대화형 추천)
   const chat = styleOrder ?? chatAnswers;
   const fromChat = !!chat;
@@ -278,7 +281,8 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
             selectedProduct
               ? {
                   kind: "single",
-                  product: selectedProduct,
+                  // 상품 옵션 금액을 더한 값 — 상품 상세에서 고른 옵션, 추천으로 고른 상품은 기본 선택
+                  product: applyOptions(selectedProduct, preselectedProduct?.id === selectedProduct.id ? initialOptions : null),
                   quantity: initialQuantity,
                   taste: form,
                   // 상품 상세에서 바로 예약했으면 product_detail, 추천(대화형·단계형)에서 골랐으면 recommend

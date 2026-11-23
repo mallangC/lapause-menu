@@ -1,8 +1,11 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import Image from "next/image";
 import { Product, ProductInput } from "@/types";
+import { DEFAULT_INSTANT_MENU_NAME } from "@/lib/afterHours";
+import ProductOptionsEditor from "@/components/admin/ProductOptionsEditor";
+import { normalizeOptions, type ProductOptionGroup } from "@/lib/productOptions";
+import ProductImagesEditor, { imageItemFromUrl, type ProductImageItem } from "@/components/admin/ProductImagesEditor";
 
 type PreviewProductInput = ProductInput;
 import { PRODUCT_TYPES, FLOWER_COLORS, WRAPPING_COLORS, FLOWER_COLOR_MAP, SEASONS, MOODS } from "@/lib/constants";
@@ -137,10 +140,12 @@ const DEFAULT_INPUT: PreviewProductInput = {
   name: "",
   price: 0,
   image_url: null,
+  extra_images: [],
   product_type: "꽃다발",
   flower_colors: [],
   wrapping_color: "밝은 계열",
   seasons: [],
+  instant: false,
   mood: null,
   is_popular: false,
   is_recommended: false,
@@ -158,10 +163,12 @@ export default function PreviewProductForm({ initialData, onSubmit, onCancel, du
           name: duplicate ? `${initialData.name} (복사)` : initialData.name,
           price: initialData.price,
           image_url: initialData.image_url,
+          extra_images: initialData.extra_images ?? [],
           product_type: initialData.product_type,
           flower_colors: initialData.flower_colors,
           wrapping_color: initialData.wrapping_color,
           seasons: initialData.seasons,
+          instant: initialData.instant ?? false,
           mood: initialData.mood ?? null,
           is_popular: initialData.is_popular,
           is_recommended: initialData.is_recommended,
@@ -174,11 +181,16 @@ export default function PreviewProductForm({ initialData, onSubmit, onCancel, du
   );
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
+  // 상품 옵션 (실제와 같게 — 화면 안에서만)
+  const [options, setOptions] = useState<ProductOptionGroup[]>(() => normalizeOptions(initialData?.options));
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<string[]>([]);
   // 미리보기 — 매장이 직접 추가한 분류 없음 (기본 분류만)
   const customCategories: { category_type: string; name: string }[] = [];
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // 상품 사진 (최대 5장, 첫 번째가 대표) — 미리보기라 올리지 않고 화면에서만
+  const [images, setImages] = useState<ProductImageItem[]>(() =>
+    [initialData?.image_url, ...(initialData?.extra_images ?? [])].filter((u): u is string => !!u).map(imageItemFromUrl),
+  );
   const nameFieldRef = useRef<HTMLDivElement>(null);
   const colorFieldRef = useRef<HTMLDivElement>(null);
 
@@ -225,34 +237,6 @@ export default function PreviewProductForm({ initialData, onSubmit, onCancel, du
     });
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploadError(null);
-    setUploading(true);
-
-    let uploadTarget: Blob;
-    try {
-      uploadTarget = await compressImage(file);
-    } catch {
-      setUploadError("이미지 압축에 실패했습니다. 다른 파일을 선택해 주세요.");
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      return;
-    }
-
-    // 미리보기 — 업로드 없이 줄인 사진을 화면에서만 보여준다
-    const previewUrl = URL.createObjectURL(uploadTarget);
-    setData((prev) => ({ ...prev, image_url: previewUrl }));
-    setUploading(false);
-  };
-
-  const handleRemoveImage = () => {
-    setData((prev) => ({ ...prev, image_url: null }));
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const missing: string[] = [];
@@ -267,7 +251,7 @@ export default function PreviewProductForm({ initialData, onSubmit, onCancel, du
     setFieldErrors([]);
     setLoading(true);
     try {
-      await onSubmit(data);
+      await onSubmit({ ...data, image_url: images[0]?.preview ?? null, extra_images: images.slice(1).map((i) => i.preview), options: normalizeOptions(options) });
     } finally {
       setLoading(false);
     }
@@ -288,6 +272,32 @@ export default function PreviewProductForm({ initialData, onSubmit, onCancel, du
         </div>
         <div className="px-5 py-4 space-y-3">
           <div className="space-y-3">
+            {/* 판매 방식 — 주문 받고 만드는 상품 / 이미 만들어 둔 상품(현장 판매 메뉴). 시즌도 고르면 두 메뉴에 모두 나온다 */}
+            <div>
+              <label className={fieldLabelCls}>판매 방식</label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { v: false, label: "주문 제작" },
+                  { v: true, label: DEFAULT_INSTANT_MENU_NAME },
+                ].map((o) => (
+                  <button
+                    key={String(o.v)}
+                    type="button"
+                    onClick={() => setData({ ...data, instant: o.v })}
+                    className={`py-1.5 rounded-lg border text-sm font-medium transition-all truncate px-1 ${
+                      !!data.instant === o.v
+                        ? "border-gold-500 bg-gold-500 text-white"
+                        : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
+                    }`}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-1.5 text-xs text-gray-400 break-keep">
+                {data.instant ? "이미 만들어 둔 상품이에요. 제작시간 없이 바로 받을 수 있어요. 시즌을 고르면 시즌 메뉴에도 나와요." : "주문을 받고 만드는 상품이에요."}
+              </p>
+            </div>
             <div ref={nameFieldRef}>
               <label className={fieldErrors.includes("상품명") ? "block text-xs text-red-500 mb-1" : fieldLabelCls}>
                 상품명 <span className="text-red-500">*</span>
@@ -323,51 +333,9 @@ export default function PreviewProductForm({ initialData, onSubmit, onCancel, du
 
           {/* 이미지 업로드 */}
           <div>
-            <label className={fieldLabelCls}>이미지</label>
+            <label className={fieldLabelCls}>사진</label>
 
-            {data.image_url ? (
-              <div className="relative w-24 h-24">
-                <div className="w-24 h-24 rounded-xl overflow-hidden border border-gray-200">
-                  <Image
-                    src={data.image_url}
-                    alt="상품 이미지"
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={handleRemoveImage}
-                  className="absolute -top-2 -right-2 w-6 h-6 bg-gray-700 text-white rounded-full flex items-center justify-center text-xs shadow-md hover:bg-gray-900 transition-colors"
-                >
-                  ✕
-                </button>
-              </div>
-            ) : (
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className="w-24 h-24 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:border-gray-400 transition-colors text-gray-400 hover:text-gray-600"
-              >
-                {uploading ? (
-                  <span className="text-xs">업로드 중...</span>
-                ) : (
-                  <>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mb-0.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                    </svg>
-                    <span className="text-xs">추가</span>
-                  </>
-                )}
-              </div>
-            )}
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleFileChange}
-              className="hidden"
-            />
+            <ProductImagesEditor items={images} onChange={setImages} compress={(f) => compressImage(f)} disabled={loading || uploading} />
 
             {uploadError && (
               <p className="mt-1.5 text-xs text-red-500">{uploadError}</p>
@@ -452,6 +420,7 @@ export default function PreviewProductForm({ initialData, onSubmit, onCancel, du
             </div>
           </div>
 
+          {/* 시즌 */}
           <div>
             <label className={fieldLabelCls}>시즌</label>
             <div className="grid grid-cols-3 gap-2">
@@ -478,10 +447,20 @@ export default function PreviewProductForm({ initialData, onSubmit, onCancel, du
         </div>
       </div>
 
+      {/* 섹션: 상품 옵션 — 손님이 고르는 추가 선택 (금액은 0원 이상) */}
+      <div className="bg-white">
+        <div className={sectionHeaderCls}>
+          <p className={sectionLabelCls}>상품 옵션 (선택)</p>
+        </div>
+        <div className="px-5 py-4">
+          <ProductOptionsEditor groups={options} onChange={setOptions} inputCls={inputCls} />
+        </div>
+      </div>
+
       {/* 섹션: 뱃지 & 옵션 */}
       <div data-coach="pd-options" className="bg-white">
         <div className={sectionHeaderCls}>
-          <p className={sectionLabelCls}>뱃지 & 옵션</p>
+          <p className={sectionLabelCls}>뱃지 & 기타 설정</p>
         </div>
         <div className="px-5 py-4 space-y-4">
           {/* 뱃지 — 코치마크가 이 줄만 설명한다 */}

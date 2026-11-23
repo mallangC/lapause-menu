@@ -1,6 +1,7 @@
 "use client";
 
 import { discountAmount } from "@/lib/discount";
+import { cartLineKey } from "@/lib/productOptions";
 import PriceTag from "@/components/PriceTag";
 import { MESSAGE_CARD_PLACEHOLDER, MessageCardCount } from "@/components/order/MessageCardSuggest";
 import { MESSAGE_CARD_MAX } from "@/lib/constants";
@@ -89,21 +90,21 @@ export default function CartClient({
 
         <div className="space-y-3">
           {items.map((item) => {
-            const isExpanded = expandedCard === item.productId;
+            const isExpanded = expandedCard === cartLineKey(item);
             const itemTotal = item.price * item.quantity
               + (!item.bag_included ? shoppingBagPrice * (item.shoppingBagCount ?? 0) : 0)
               + preservativePrice * (item.preservativeCount ?? 0)
               + messageCardPrice * (item.messageCardCount ?? 0);
 
             return (
-              <div key={item.productId} className="bg-white rounded-2xl overflow-hidden">
+              <div key={cartLineKey(item)} className="bg-white rounded-2xl overflow-hidden">
                 {/* 상품 행 */}
                 <div className="flex items-center gap-3 px-4 py-4">
                   {/* 체크박스 */}
                   <input
                     type="checkbox"
                     checked={item.checked}
-                    onChange={(e) => updateItem(item.productId, { checked: e.target.checked })}
+                    onChange={(e) => updateItem(cartLineKey(item), { checked: e.target.checked })}
                     className="w-4 h-4 accent-gold-500 shrink-0"
                   />
 
@@ -118,6 +119,7 @@ export default function CartClient({
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-gray-400">{item.product_type}</p>
                     <p className="text-sm font-medium text-gray-900 leading-snug">{item.name}</p>
+                    {item.optionsLabel && <p className="text-xs text-gray-500 mt-0.5 break-keep">{item.optionsLabel}</p>}
                     {/* 할인 중이면 정가(취소선) · 할인율 · 할인가 (수량만큼) */}
                     <p className="mt-0.5">
                       <PriceTag price={itemTotal} original={item.original_price ? item.original_price * item.quantity : null} size="sm" />
@@ -126,7 +128,7 @@ export default function CartClient({
 
                   {/* 수량 + 삭제 */}
                   <div className="flex flex-col items-end gap-2 shrink-0">
-                    <button onClick={() => removeItem(item.productId)} className="text-gray-300 hover:text-gray-500 transition-colors">
+                    <button onClick={() => removeItem(cartLineKey(item))} className="text-gray-300 hover:text-gray-500 transition-colors">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                       </svg>
@@ -137,7 +139,7 @@ export default function CartClient({
                           if (item.quantity > 1) {
                             const newQty = item.quantity - 1;
                             const newCardCount = Math.min(item.messageCardCount ?? 0, newQty);
-                            updateItem(item.productId, {
+                            updateItem(cartLineKey(item), {
                               quantity: newQty,
                               shoppingBagCount: Math.min(item.shoppingBagCount ?? 0, newQty),
                               preservativeCount: Math.min(item.preservativeCount ?? 0, newQty),
@@ -145,7 +147,7 @@ export default function CartClient({
                               messageCardContents: (item.messageCardContents ?? []).slice(0, newCardCount),
                             });
                           } else {
-                            removeItem(item.productId);
+                            removeItem(cartLineKey(item));
                           }
                         }}
                         className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-gray-400 transition-colors"
@@ -154,7 +156,7 @@ export default function CartClient({
                       </button>
                       <span className="text-sm font-medium w-5 text-center">{item.quantity}</span>
                       <button
-                        onClick={() => updateItem(item.productId, { quantity: item.quantity + 1 })}
+                        onClick={() => updateItem(cartLineKey(item), { quantity: item.quantity + 1 })}
                         className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-gray-400 transition-colors"
                       >
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m-7-7h14" /></svg>
@@ -167,7 +169,7 @@ export default function CartClient({
                 {(shoppingBagEnabled || preservativeEnabled || messageCardEnabled || item.bag_included) && (
                   <>
                     <button
-                      onClick={() => setExpandedCard(isExpanded ? null : item.productId)}
+                      onClick={() => setExpandedCard(isExpanded ? null : cartLineKey(item))}
                       className="w-full flex items-center justify-between px-4 py-2.5 border-t border-gray-50 text-xs text-gray-400 hover:text-gray-600 transition-colors"
                     >
                       <span>옵션 추가</span>
@@ -189,7 +191,7 @@ export default function CartClient({
                             </div>
                             <div className="flex items-center gap-2">
                               <button
-                                onClick={() => updateItem(item.productId, { shoppingBagCount: Math.max(0, (item.shoppingBagCount ?? 0) - 1) })}
+                                onClick={() => updateItem(cartLineKey(item), { shoppingBagCount: Math.max(0, (item.shoppingBagCount ?? 0) - 1) })}
                                 className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-gray-400 transition-colors disabled:opacity-30"
                                 disabled={item.bag_included || (item.shoppingBagCount ?? 0) === 0}
                               >
@@ -197,7 +199,7 @@ export default function CartClient({
                               </button>
                               <span className="text-sm font-medium w-4 text-center">{item.shoppingBagCount ?? 0}</span>
                               <button
-                                onClick={() => updateItem(item.productId, { shoppingBagCount: Math.min(item.quantity, (item.shoppingBagCount ?? 0) + 1) })}
+                                onClick={() => updateItem(cartLineKey(item), { shoppingBagCount: Math.min(item.quantity, (item.shoppingBagCount ?? 0) + 1) })}
                                 className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-gray-400 transition-colors disabled:opacity-30"
                                 disabled={item.bag_included || (item.shoppingBagCount ?? 0) >= item.quantity}
                               >
@@ -221,7 +223,7 @@ export default function CartClient({
                             </div>
                             <div className="flex items-center gap-2">
                               <button
-                                onClick={() => updateItem(item.productId, { preservativeCount: Math.max(0, (item.preservativeCount ?? 0) - 1) })}
+                                onClick={() => updateItem(cartLineKey(item), { preservativeCount: Math.max(0, (item.preservativeCount ?? 0) - 1) })}
                                 className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-gray-400 transition-colors disabled:opacity-30"
                                 disabled={(item.preservativeCount ?? 0) === 0}
                               >
@@ -229,7 +231,7 @@ export default function CartClient({
                               </button>
                               <span className="text-sm font-medium w-4 text-center">{item.preservativeCount ?? 0}</span>
                               <button
-                                onClick={() => updateItem(item.productId, { preservativeCount: Math.min(item.quantity, (item.preservativeCount ?? 0) + 1) })}
+                                onClick={() => updateItem(cartLineKey(item), { preservativeCount: Math.min(item.quantity, (item.preservativeCount ?? 0) + 1) })}
                                 className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-gray-400 transition-colors disabled:opacity-30"
                                 disabled={(item.preservativeCount ?? 0) >= item.quantity}
                               >
@@ -256,7 +258,7 @@ export default function CartClient({
                                 <button
                                   onClick={() => {
                                     const next = Math.max(0, (item.messageCardCount ?? 0) - 1);
-                                    updateItem(item.productId, { messageCardCount: next, messageCardContents: (item.messageCardContents ?? []).slice(0, next) });
+                                    updateItem(cartLineKey(item), { messageCardCount: next, messageCardContents: (item.messageCardContents ?? []).slice(0, next) });
                                   }}
                                   className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-gray-400 transition-colors disabled:opacity-30"
                                   disabled={(item.messageCardCount ?? 0) === 0}
@@ -269,7 +271,7 @@ export default function CartClient({
                                     const next = Math.min(item.quantity, (item.messageCardCount ?? 0) + 1);
                                     const contents = [...(item.messageCardContents ?? [])];
                                     if (contents.length < next) contents.push("");
-                                    updateItem(item.productId, { messageCardCount: next, messageCardContents: contents });
+                                    updateItem(cartLineKey(item), { messageCardCount: next, messageCardContents: contents });
                                   }}
                                   className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-gray-400 transition-colors disabled:opacity-30"
                                   disabled={(item.messageCardCount ?? 0) >= item.quantity}
@@ -291,7 +293,7 @@ export default function CartClient({
                                       onChange={(e) => {
                                         const next = Array.from({ length: item.messageCardCount ?? 0 }, (_, i) => (item.messageCardContents ?? [])[i] ?? "");
                                         next[idx] = e.target.value.slice(0, MESSAGE_CARD_MAX);
-                                        updateItem(item.productId, { messageCardContents: next });
+                                        updateItem(cartLineKey(item), { messageCardContents: next });
                                       }}
                                       placeholder={MESSAGE_CARD_PLACEHOLDER}
                                       rows={2}

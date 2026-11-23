@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import ProductGallery from "@/components/ProductGallery";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Product } from "@/types";
@@ -103,7 +104,7 @@ export default function PreviewProductDetailClient({
           <div className="md:w-1/2 shrink-0 w-full">
             <div className="relative aspect-square bg-beige-100 overflow-hidden">
               {product.image_url ? (
-                <Image src={product.image_url} alt={product.name} fill className="object-cover" priority />
+                <ProductGallery images={[product.image_url, ...(product.extra_images ?? [])]} alt={product.name} />
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center text-beige-300">
                   <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -1,6 +1,7 @@
 "use client";
 
 import PriceTag from "@/components/PriceTag";
+import { cartLineKey } from "@/lib/productOptions";
 import StoreImage from "@/components/StoreImage";
 import Link from "next/link";
 import TossPaymentWidget from "@/components/TossPaymentWidget";
@@ -89,15 +90,17 @@ export default function OrderCheckout(props: OrderCheckoutProps) {
               <div className="min-w-0 space-y-1">
                 <p className="text-sm text-gray-400">{o.product.product_type}</p>
                 <p className="text-base font-semibold text-gray-900">{o.product.name}</p>
+                {o.product.optionsLabel && <p className="text-xs text-gray-500 break-keep">{o.product.optionsLabel}</p>}
                 <p><PriceTag price={o.product.price} original={o.product.original_price} size="md" /></p>
               </div>
             </div>
           ) : (
             o.items.map((item) => (
-              <div key={item.productId} className="flex items-center gap-3 px-4 py-3 border-t border-gray-50 first:border-t-0">
+              <div key={cartLineKey(item)} className="flex items-center gap-3 px-4 py-3 border-t border-gray-50 first:border-t-0">
                 {item.image_url && <StoreImage thumb src={item.image_url} alt={item.name} width={48} height={48} className="w-12 h-12 rounded-lg object-cover shrink-0" />}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900">{item.name}</p>
+                  {item.optionsLabel && <p className="text-xs text-gray-500 mt-0.5 break-keep">{item.optionsLabel}</p>}
                   <p className="text-xs text-gray-400 mt-0.5">
                     {item.quantity}개
                     {item.bag_included ? " · 쇼핑백 포함 제품" : (item.shoppingBagCount ?? 0) > 0 ? ` · 쇼핑백 ${item.shoppingBagCount}개` : ""}
@@ -230,6 +233,7 @@ export default function OrderCheckout(props: OrderCheckoutProps) {
                 <div className="min-w-0 flex-1 space-y-0.5">
                   <p className="text-xs text-gray-400">{product.product_type}</p>
                   <p className="text-sm font-medium text-gray-900 leading-snug">{product.name}</p>
+                  {product.optionsLabel && <p className="text-xs text-gray-500 mt-0.5 break-keep">{product.optionsLabel}</p>}
                   <p className="pt-1"><PriceTag price={product.price} original={product.original_price} size="sm" /></p>
                 </div>
               </div>
@@ -238,11 +242,12 @@ export default function OrderCheckout(props: OrderCheckoutProps) {
             <div className="bg-white px-4 py-4 space-y-3">
               <h3 className="text-sm font-medium text-gray-700 pb-3 border-b border-gray-100">주문 상품 ({checkedItems.length})</h3>
               {checkedItems.map((item) => (
-                <div key={item.productId} className="flex items-center gap-3">
+                <div key={cartLineKey(item)} className="flex items-center gap-3">
                   {item.image_url && <StoreImage thumb src={item.image_url} alt={item.name} width={52} height={52} className="w-13 h-13 rounded-xl object-cover shrink-0" />}
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-gray-400">{item.product_type}</p>
                     <p className="text-sm font-medium text-gray-900 leading-snug">{item.name}</p>
+                    {item.optionsLabel && <p className="text-xs text-gray-500 mt-0.5 break-keep">{item.optionsLabel}</p>}
                     <p className="text-xs text-gray-400 mt-0.5">
                       {item.quantity}개
                       {item.bag_included ? " · 쇼핑백 포함 제품" : (item.shoppingBagCount ?? 0) > 0 && shoppingBagEnabled ? ` · 쇼핑백 ${item.shoppingBagCount}개` : ""}

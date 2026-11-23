@@ -1,4 +1,5 @@
 import { reportOpsAlert } from "@/lib/opsAlert";
+import { normalizeOptions, resolveOptions } from "@/lib/productOptions";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 // 손님 주문 금액 서버 검증 — 클라이언트가 보낸 가격을 믿지 않고 DB 상품가·매장 옵션가로 다시 계산한다.
@@ -45,13 +46,15 @@ export interface DbProduct {
   preservative_unavailable: boolean | null;
   /** 바로 구매 메뉴 상품 (무인 픽업 판단) */
   instant?: boolean | null;
+  /** 상품 옵션 묶음 (원본 그대로 — normalizeOptions 로 읽는다) */
+  options?: unknown;
 }
 
 /** 이 매장의 상품만 가져온다 (다른 매장 상품 id로 바꿔치기 방지) */
 export async function loadCompanyProducts(db: SupabaseClient, companyId: string, ids: string[]) {
   const { data } = await db
     .from("products")
-    .select("id, price, name, product_type, bag_included, message_card_unavailable, preservative_unavailable, instant")
+    .select("id, price, name, product_type, bag_included, message_card_unavailable, preservative_unavailable, instant, options")
     .eq("company_id", companyId)
     .in("id", ids);
   return new Map((data as DbProduct[] | null ?? []).map((p) => [p.id, p]));
@@ -71,6 +74,14 @@ export interface CartLine {
   shoppingBagCount: number;
   preservativeCount: number;
   messageCardCount: number;
+  /** 고른 상품 옵션 항목 id (없으면 기본 선택) */
+  options?: string[] | null;
+}
+
+/** 상품 1개 값 = 상품가 + 고른 옵션 금액. 옵션이 잘못됐으면 null */
+export function productUnitPrice(p: DbProduct, selected: string[] | null | undefined) {
+  const resolved = resolveOptions(normalizeOptions(p.options), selected);
+  return resolved ? { unit: p.price + resolved.price, options: resolved } : null;
 }
 
 /** 장바구니 상품 금액 합계 (배송비 제외). 상품을 찾을 수 없거나 수량이 잘못되면 null */
@@ -82,7 +93,9 @@ export function cartItemsTotal(lines: CartLine[], products: Map<string, DbProduc
     // 사장님이 메시지카드 추가 불가로 둔 상품에 카드가 붙어 오면 잘못된 주문으로 본다
     if (p.message_card_unavailable && count(line.messageCardCount) > 0) return null;
     if (p.preservative_unavailable && count(line.preservativeCount) > 0) return null;
-    total += p.price * line.quantity;
+    const unit = productUnitPrice(p, line.options);
+    if (!unit) return null; // 없는 옵션·하나만 고르는 묶음에서 0개/2개 이상
+    total += unit.unit * line.quantity;
     if (!p.bag_included) total += prices.shoppingBag * count(line.shoppingBagCount);
     total += prices.preservative * count(line.preservativeCount);
     total += prices.messageCard * count(line.messageCardCount);

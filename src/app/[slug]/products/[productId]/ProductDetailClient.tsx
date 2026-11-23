@@ -1,6 +1,9 @@
 "use client";
 
 import PriceTag from "@/components/PriceTag";
+import ProductOptionPicker from "@/components/ProductOptionPicker";
+import { applyOptions, defaultSelection, normalizeOptions } from "@/lib/productOptions";
+import ProductGallery from "@/components/ProductGallery";
 import { useEffect, useState } from "react";
 import StoreImage from "@/components/StoreImage";
 import Image from "next/image";
@@ -75,19 +78,28 @@ export default function ProductDetailClient({
   }, [product.id]);
   const [added, setAdded] = useState(false);
   const { addItem } = useCart(slug);
+  // 상품 옵션 — 고른 항목 (처음엔 사장님이 정한 기본 선택), 금액은 상품 값에 더한다
+  const optionGroups = normalizeOptions(product.options);
+  const [selectedOptions, setSelectedOptions] = useState<string[]>(() => defaultSelection(optionGroups));
+  const optioned = applyOptions(product, selectedOptions);
+  /** 장바구니·바로 예약에 넣는 상품 (옵션 금액 포함) */
+  const cartProduct = () => ({
+    productId: product.id,
+    name: product.name,
+    price: optioned.price ?? 0,
+    original_price: optioned.original_price ?? null,
+    image_url: product.image_url ?? null,
+    product_type: product.product_type,
+    bag_included: product.bag_included ?? false,
+    message_card_unavailable: product.message_card_unavailable ?? false,
+    preservative_unavailable: product.preservative_unavailable ?? false,
+    options: optioned.productOptions,
+    optionsLabel: optioned.optionsLabel,
+  });
+  const consultHref = `/${slug}/consult?productId=${product.id}&quantity=${quantity}${optionGroups.length ? `&options=${optioned.productOptions.join(",")}` : ""}`;
 
   const handleAddToCart = () => {
-    addItem({
-      productId: product.id,
-      name: product.name,
-      price: product.price ?? 0,
-      original_price: product.original_price ?? null,
-      image_url: product.image_url ?? null,
-      product_type: product.product_type,
-      bag_included: product.bag_included ?? false,
-      message_card_unavailable: product.message_card_unavailable ?? false,
-      preservative_unavailable: product.preservative_unavailable ?? false,
-    }, quantity);
+    addItem(cartProduct(), quantity);
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
   };
@@ -147,7 +159,7 @@ export default function ProductDetailClient({
           <div className="md:w-1/2 shrink-0 w-full">
             <div className="relative aspect-square bg-beige-100 overflow-hidden">
               {product.image_url ? (
-                <Image src={product.image_url} alt={product.name} fill className="object-cover" priority />
+                <ProductGallery images={[product.image_url, ...(product.extra_images ?? [])]} alt={product.name} />
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center text-beige-300">
                   <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -224,6 +236,11 @@ export default function ProductDetailClient({
 
             {/* 수량 + 버튼 */}
             <div className="mt-6 md:mt-10 space-y-4">
+              {/* 상품 옵션 */}
+              {consultEnabled && optionGroups.length > 0 && (
+                <ProductOptionPicker groups={optionGroups} selected={selectedOptions} onChange={setSelectedOptions} />
+              )}
+
               {/* 수량 선택 */}
               {consultEnabled && (
               <div className="flex items-center gap-4">
@@ -249,7 +266,7 @@ export default function ProductDetailClient({
                 </div>
                 {product.price && (
                   <span className="ml-auto text-base font-bold text-gray-900">
-                    {(product.price * quantity).toLocaleString()}원
+                    {(optioned.price * quantity).toLocaleString()}원
                   </span>
                 )}
               </div>
@@ -273,7 +290,7 @@ export default function ProductDetailClient({
                   <button
                     onClick={() => {
                       // 안내를 읽는 동안 다음 화면을 미리 받아 둬서 확인을 누르면 바로 넘어가게 한다
-                      router.prefetch(quantity >= 2 ? `/${slug}/cart?direct=1` : `/${slug}/consult?productId=${product.id}&quantity=${quantity}`);
+                      router.prefetch(quantity >= 2 ? `/${slug}/cart?direct=1` : consultHref);
                       setNoticeOpen(true);
                     }}
                     className="flex-1 py-4 rounded-2xl bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors"
@@ -405,20 +422,10 @@ export default function ProductDetailClient({
             // 1개는 기존처럼 맞춤주문 화면에서 예약, 2개 이상은 장바구니 주문 로직(상품별 수량·옵션)을 쓰는 바로 예약 화면으로
             // — 바로 예약은 장바구니와 다른 저장소를 써서 담아둔 장바구니에는 영향이 없다
             if (quantity >= 2) {
-              startDirectOrder(slug, {
-                productId: product.id,
-                name: product.name,
-                price: product.price ?? 0,
-                original_price: product.original_price ?? null,
-                image_url: product.image_url ?? null,
-                product_type: product.product_type,
-                bag_included: product.bag_included ?? false,
-                message_card_unavailable: product.message_card_unavailable ?? false,
-                preservative_unavailable: product.preservative_unavailable ?? false,
-              }, quantity);
+              startDirectOrder(slug, cartProduct(), quantity);
               router.push(`/${slug}/cart?direct=1`);
             } else {
-              router.push(`/${slug}/consult?productId=${product.id}&quantity=${quantity}`);
+              router.push(consultHref);
             }
           }}
           onClose={() => setNoticeOpen(false)}

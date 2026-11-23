@@ -443,6 +443,8 @@ export function useOrderCheckout(props: OrderCheckoutProps) {
             image_url: isVirtualProductId(o.product.id) ? null : o.product.image_url,
             bag_included: o.product.bag_included ?? false,
           },
+          // 고른 상품 옵션 — 서버가 상품 옵션으로 금액을 다시 계산한다 (없으면 기본 선택)
+          productOptions: o.product.productOptions ?? null,
           orderer,
           delivery,
           finalPrice: d.finalPrice,

@@ -5,7 +5,7 @@ import { MESSAGE_CARD_MAX } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendReservationConfirmedOwner } from "@/lib/solapi";
-import { cancelTossPayment, consultMinimumTotal, isPastPickup, loadCompanyProducts, loadOptionPrices } from "@/lib/orderPricing";
+import { cancelTossPayment, consultMinimumTotal, isPastPickup, loadCompanyProducts, loadOptionPrices, productUnitPrice } from "@/lib/orderPricing";
 import { normalizeTrafficSource } from "@/lib/trafficSource";
 import { PHOTO_PRODUCT_ID, REF_DATA_PATTERN, isValidStyleBudget, isVirtualProductId, styleProductName } from "@/lib/styleOrder";
 import type { DbProduct } from "@/lib/orderPricing";
@@ -53,6 +53,8 @@ interface ReservationBody {
     image_url: string;
     bag_included?: boolean;
   };
+  /** 상품 상세에서 고른 상품 옵션 항목 id (없으면 기본 선택) */
+  productOptions?: string[] | null;
   orderer: {
     name: string;
     phone: string;
@@ -189,6 +191,16 @@ export async function POST(request: NextRequest) {
     }
     if (!dbProduct) {
       return NextResponse.json({ error: "상품 정보를 찾을 수 없습니다." }, { status: 400 });
+    }
+    // 상품 옵션 — 고른 옵션 금액을 상품 값에 더한다 (아래 최소 금액 확인·저장 모두 이 값으로)
+    let productOptionsLabel: string | null = null;
+    if (!isStyleOrder) {
+      const unit = productUnitPrice(dbProduct, body.productOptions);
+      if (!unit) {
+        return NextResponse.json({ error: "상품 옵션이 바뀌었어요. 상품을 다시 골라 주세요." }, { status: 400 });
+      }
+      dbProduct = { ...dbProduct, price: unit.unit };
+      productOptionsLabel = unit.options.label || null;
     }
     const unattendedPickup = body.form?.deliveryType !== "배송" && isUnattendedPickup(
       dbProduct.instant === true,
@@ -336,6 +348,7 @@ export async function POST(request: NextRequest) {
           type: dbProduct.product_type,
           name: dbProduct.name,
           price: dbProduct.price,
+          product_options: productOptionsLabel,
           // 사장님 스타일 주문은 실제 상품이 없다
           product_id: isStyleOrder ? null : dbProduct.id,
           message_card: form.messageCard,

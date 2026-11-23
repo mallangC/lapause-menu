@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Product } from "@/types";
 import { FLOWER_COLOR_MAP, BADGE_COLORS } from "@/lib/constants";
 import { useCart } from "@/hooks/useCart";
+import { applyOptions, cartLineKey } from "@/lib/productOptions";
 
 interface ProductCardProps {
   product: Product;
@@ -21,13 +22,18 @@ export default function ProductCard({ product, consultEnabled, slug }: ProductCa
   const handleToggleCart = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (inCart) {
-      removeItem(product.id);
+      // 옵션이 달라 여러 줄이면 이 상품 줄을 모두 뺀다
+      items.filter((i) => i.productId === product.id).forEach((i) => removeItem(cartLineKey(i)));
     } else {
+      // 상품 옵션은 기본 선택으로 담는다 (바꾸려면 상품 상세에서)
+      const optioned = applyOptions(product);
       addItem({
         productId: product.id,
         name: product.name,
-        price: product.price,
-        original_price: product.original_price ?? null,
+        price: optioned.price,
+        original_price: optioned.original_price ?? null,
+        options: optioned.productOptions,
+        optionsLabel: optioned.optionsLabel,
         image_url: product.image_url,
         product_type: product.product_type,
         bag_included: product.bag_included,

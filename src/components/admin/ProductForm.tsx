@@ -2,7 +2,6 @@
 
 import { DEFAULT_INSTANT_MENU_NAME } from "@/lib/afterHours";
 import { useState, useRef, useEffect } from "react";
-import Image from "next/image";
 import { Product, ProductInput } from "@/types";
 import { resizeToWebp, THUMB_MAX_PX, thumbPath } from "@/lib/imageThumb";
 import { removeStorageFiles } from "@/lib/storageCleanup";
@@ -11,6 +10,9 @@ import { sortByOrder } from "@/lib/productTypes";
 import { useCategoryOrder } from "@/hooks/useCategoryOrder";
 import { createClient } from "@/lib/supabase/client";
 import { discountRate, isDiscounted, priceFromRate } from "@/lib/discount";
+import ProductOptionsEditor from "@/components/admin/ProductOptionsEditor";
+import { normalizeOptions, type ProductOptionGroup } from "@/lib/productOptions";
+import ProductImagesEditor, { imageItemFromUrl, type ProductImageItem } from "@/components/admin/ProductImagesEditor";
 
 function SelectDropdown({ value, options, onChange, placeholder }: {
   value: string;
@@ -143,6 +145,7 @@ const DEFAULT_INPUT: ProductInput = {
   name: "",
   price: 0,
   image_url: null,
+  extra_images: [],
   product_type: "꽃다발",
   flower_colors: [],
   wrapping_color: "밝은 계열",
@@ -165,6 +168,7 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
           // 폼의 '상품 가격'은 정가 — 할인 중이면 정가를, 아니면 가격을 보여준다 (저장할 때 할인가와 나눈다)
           price: isDiscounted(initialData.price, initialData.original_price) ? initialData.original_price : initialData.price,
           image_url: initialData.image_url,
+          extra_images: initialData.extra_images ?? [],
           product_type: initialData.product_type,
           flower_colors: initialData.flower_colors,
           wrapping_color: initialData.wrapping_color,
@@ -181,10 +185,14 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
       : DEFAULT_INPUT
   );
   const [uploading, setUploading] = useState(false);
-  // 고른 사진은 저장을 누를 때까지 브라우저에만 둔다 (저장 안 하고 닫으면 저장소에 아무것도 남지 않게)
-  const [pendingImage, setPendingImage] = useState<Blob | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  // 상품 사진 (최대 5장, 첫 번째가 대표) — 새로 고른 사진은 저장을 누를 때까지 브라우저에만 둔다 (저장 안 하고 닫으면 저장소에 아무것도 남지 않게)
+  const [images, setImages] = useState<ProductImageItem[]>(() =>
+    [initialData?.image_url, ...(initialData?.extra_images ?? [])].filter((u): u is string => !!u).map(imageItemFromUrl),
+  );
   const [loading, setLoading] = useState(false);
+  // 상품 옵션 (예: 포장지 기본/고급, 꽃 추가)
+  const [options, setOptions] = useState<ProductOptionGroup[]>(() => normalizeOptions(initialData?.options));
+  const optionsRef = useRef<HTMLDivElement>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<string[]>([]);
   // 할인 — 할인율(%)과 할인가(원) 중 하나를 적으면 다른 하나를 채운다 (할인가는 100원 단위)
@@ -201,7 +209,6 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
   const [customCategories, setCustomCategories] = useState<{ category_type: string; name: string }[]>([]);
   // 메뉴 설정에서 지운 기본 유형·시즌 (지금 상품에 이미 붙어 있는 건 계속 보여 준다)
   const [hiddenBuiltins, setHiddenBuiltins] = useState<{ types: string[]; seasons: string[] }>({ types: [], seasons: [] });
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const nameFieldRef = useRef<HTMLDivElement>(null);
   const colorFieldRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
@@ -272,54 +279,36 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
     });
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploadError(null);
-    let blob: Blob;
+  /** 저장할 때 새로 고른 사진을 올리고, 순서대로 사진 주소 목록을 돌려준다 (실패하면 false) */
+  const uploadImages = async (): Promise<string[] | false> => {
+    const urls: string[] = [];
+    const fresh = images.filter((i) => i.blob);
+    if (fresh.length) setUploading(true);
     try {
-      blob = await compressImage(file);
-    } catch {
-      setUploadError("이미지 압축에 실패했습니다. 다른 파일을 선택해 주세요.");
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      return;
-    }
-    // 아직 올리지 않고 미리보기만 — 저장할 때 올린다
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setPendingImage(blob);
-    setPreviewUrl(URL.createObjectURL(blob));
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };
-
-  const handleRemoveImage = () => {
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setPendingImage(null);
-    setPreviewUrl(null);
-    setData((prev) => ({ ...prev, image_url: null }));
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };
-
-  /** 저장할 때 고른 사진을 올리고 주소를 돌려준다 (고른 사진이 없으면 지금 주소 그대로) */
-  const uploadPendingImage = async (): Promise<string | null | false> => {
-    if (!pendingImage) return data.image_url;
-    setUploading(true);
-    const path = `${Date.now()}.webp`;
-    const { error } = await supabase.storage.from(STORAGE_BUCKET).upload(path, pendingImage, { upsert: false, contentType: "image/webp" });
-    if (error) {
+      for (const [n, it] of images.entries()) {
+        if (!it.blob) {
+          if (it.url) urls.push(it.url);
+          continue;
+        }
+        const path = `${Date.now()}_${n}.webp`;
+        const { error } = await supabase.storage.from(STORAGE_BUCKET).upload(path, it.blob, { upsert: false, contentType: "image/webp" });
+        if (error) {
+          setUploadError("업로드 실패: " + error.message);
+          return false;
+        }
+        // 목록·카드용 작은 사진도 함께 (실패해도 화면은 원본으로 보여줘서 저장은 계속)
+        try {
+          const thumb = await resizeToWebp(it.blob, THUMB_MAX_PX);
+          await supabase.storage.from(STORAGE_BUCKET).upload(thumbPath(path)!, thumb, { upsert: true, contentType: "image/webp" });
+        } catch {
+          /* 썸네일 실패는 무시 */
+        }
+        urls.push(supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path).data.publicUrl);
+      }
+      return urls;
+    } finally {
       setUploading(false);
-      setUploadError("업로드 실패: " + error.message);
-      return false;
     }
-    // 목록·카드용 작은 사진도 함께 (실패해도 화면은 원본으로 보여줘서 저장은 계속)
-    try {
-      const thumb = await resizeToWebp(pendingImage, THUMB_MAX_PX);
-      await supabase.storage.from(STORAGE_BUCKET).upload(thumbPath(path)!, thumb, { upsert: true, contentType: "image/webp" });
-    } catch {
-      /* 썸네일 실패는 무시 */
-    }
-    setUploading(false);
-    return supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path).data.publicUrl;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -333,6 +322,12 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
       firstRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
+    // 옵션 — 이름이 빈 묶음·항목이 있으면 저장하지 않고 알린다
+    if (options.some((g) => !g.name.trim() || g.choices.some((c) => !c.name.trim()))) {
+      setFieldErrors(["옵션"]);
+      optionsRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
     setFieldErrors([]);
     // 할인가는 가격보다 낮아야 한다 (같거나 높으면 저장하지 않고 알린다)
     if (discountEnabled && salePrice > 0 && salePrice >= data.price) {
@@ -341,18 +336,25 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
     }
     setLoading(true);
     try {
-      const imageUrl = await uploadPendingImage();
-      if (imageUrl === false) return;
+      setUploadError(null);
+      const urls = await uploadImages();
+      if (urls === false) return;
       // 할인 중이면 가격 = 할인가, 정가 = 적은 상품 가격 / 아니면 정가 없음
       await onSubmit({
         ...data,
-        image_url: imageUrl,
+        image_url: urls[0] ?? null,
+        extra_images: urls.slice(1),
+        options: normalizeOptions(options),
         ...(discountOn ? { price: salePrice, original_price: data.price } : { original_price: null }),
       });
-      // 사진을 바꾸거나 지웠으면 예전 사진은 저장소에서 정리 — 복제한 상품끼리 같은 사진을 같이 쓰므로, 다른 상품이 아직 쓰고 있으면 남긴다
-      const oldUrl = duplicate ? null : initialData?.image_url ?? null;
-      if (oldUrl && oldUrl !== imageUrl) {
-        const { data: stillUsed } = await supabase.from("products").select("id").eq("image_url", oldUrl).limit(1);
+      // 빼거나 바꾼 예전 사진은 저장소에서 정리 — 복사한 상품끼리 같은 사진을 같이 쓰므로, 다른 상품이 아직 쓰고 있으면 남긴다
+      const oldUrls = duplicate ? [] : [initialData?.image_url, ...(initialData?.extra_images ?? [])].filter((u): u is string => !!u);
+      for (const oldUrl of oldUrls.filter((u) => !urls.includes(u))) {
+        const { data: stillUsed } = await supabase
+          .from("products")
+          .select("id")
+          .or(`image_url.eq."${oldUrl}",extra_images.cs.{"${oldUrl}"}`)
+          .limit(1);
         if (stillUsed && stillUsed.length === 0) removeStorageFiles(supabase, STORAGE_BUCKET, [oldUrl]);
       }
     } finally {
@@ -375,6 +377,32 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
         </div>
         <div className="px-5 py-4 space-y-3">
           <div className="space-y-3">
+            {/* 판매 방식 — 주문 받고 만드는 상품 / 이미 만들어 둔 상품(현장 판매 메뉴). 시즌도 고르면 두 메뉴에 모두 나온다 */}
+            <div>
+              <label className={fieldLabelCls}>판매 방식</label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { v: false, label: "주문 제작" },
+                  { v: true, label: instantName },
+                ].map((o) => (
+                  <button
+                    key={String(o.v)}
+                    type="button"
+                    onClick={() => setData({ ...data, instant: o.v })}
+                    className={`py-1.5 rounded-lg border text-sm font-medium transition-all truncate px-1 ${
+                      !!data.instant === o.v
+                        ? "border-gold-500 bg-gold-500 text-white"
+                        : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
+                    }`}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-1.5 text-xs text-gray-400 break-keep">
+                {data.instant ? "이미 만들어 둔 상품이에요. 제작시간 없이 바로 받을 수 있어요. 시즌을 고르면 시즌 메뉴에도 나와요." : "주문을 받고 만드는 상품이에요."}
+              </p>
+            </div>
             <div ref={nameFieldRef}>
               <label className={fieldErrors.includes("상품명") ? "block text-xs text-red-500 mb-1" : fieldLabelCls}>
                 상품명 <span className="text-red-500">*</span>
@@ -498,53 +526,10 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
 
           {/* 이미지 업로드 */}
           <div>
-            <label className={fieldLabelCls}>이미지</label>
+            <label className={fieldLabelCls}>사진</label>
 
-            {previewUrl || data.image_url ? (
-              <div className="relative w-24 h-24">
-                <div className="w-24 h-24 rounded-xl overflow-hidden border border-gray-200">
-                  <Image
-                    src={(previewUrl ?? data.image_url)!}
-                    alt="상품 이미지"
-                    fill
-                    // 방금 고른 사진(아직 저장 전)은 브라우저 주소라 최적화 없이
-                    unoptimized={!!previewUrl}
-                    className="object-cover"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={handleRemoveImage}
-                  className="absolute -top-2 -right-2 w-6 h-6 bg-gray-700 text-white rounded-full flex items-center justify-center text-xs shadow-md hover:bg-gray-900 transition-colors"
-                >
-                  ✕
-                </button>
-              </div>
-            ) : (
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className="w-24 h-24 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:border-gray-400 transition-colors text-gray-400 hover:text-gray-600"
-              >
-                {uploading ? (
-                  <span className="text-xs">업로드 중...</span>
-                ) : (
-                  <>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mb-0.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                    </svg>
-                    <span className="text-xs">추가</span>
-                  </>
-                )}
-              </div>
-            )}
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleFileChange}
-              className="hidden"
-            />
+            <ProductImagesEditor items={images} onChange={setImages} compress={(f) => compressImage(f)} disabled={loading || uploading} />
+            {uploading && <p className="mt-1 text-xs text-gray-400">사진 올리는 중...</p>}
 
             {uploadError && (
               <p className="mt-1.5 text-xs text-red-500">{uploadError}</p>
@@ -628,24 +613,7 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
             </div>
           </div>
 
-          {/* 바로 구매 메뉴 — 이미 만들어 둔 상품 (제작시간 없이 바로 · 무인 픽업). 시즌과 함께 쓰지 않는다 */}
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-sm text-gray-700">{instantName} 메뉴에 넣기</p>
-              <p className="text-xs text-gray-400 mt-0.5 break-keep">이미 만들어 둔 상품이에요. 제작시간 없이 바로 받을 수 있어요.</p>
-            </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={!!data.instant}
-              onClick={() => setData({ ...data, instant: !data.instant, seasons: !data.instant ? [] : data.seasons })}
-              className={`shrink-0 w-12 h-6 rounded-full transition-colors relative ${data.instant ? "bg-gold-500" : "bg-gray-200"}`}
-            >
-              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${data.instant ? "left-6" : "left-0.5"}`} />
-            </button>
-          </div>
-
-          {!data.instant && (
+          {/* 시즌 */}
           <div>
             <label className={fieldLabelCls}>시즌</label>
             <div className="grid grid-cols-3 gap-2">
@@ -669,14 +637,24 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
               })}
             </div>
           </div>
-          )}
+        </div>
+      </div>
+
+      {/* 섹션: 상품 옵션 — 손님이 고르는 추가 선택 (금액은 0원 이상) */}
+      <div className="bg-white">
+        <div className={sectionHeaderCls}>
+          <p className={sectionLabelCls}>상품 옵션 (선택)</p>
+        </div>
+        <div ref={optionsRef} className="px-5 py-4">
+          <ProductOptionsEditor groups={options} onChange={(next) => { setOptions(next); if (fieldErrors.includes("옵션")) setFieldErrors((prev) => prev.filter((f) => f !== "옵션")); }} inputCls={inputCls} />
+          {fieldErrors.includes("옵션") && <p className="mt-2 text-xs text-red-500">비어 있는 옵션 이름을 적어 주세요.</p>}
         </div>
       </div>
 
       {/* 섹션: 뱃지 & 옵션 */}
       <div className="bg-white">
         <div className={sectionHeaderCls}>
-          <p className={sectionLabelCls}>뱃지 & 옵션</p>
+          <p className={sectionLabelCls}>뱃지 & 기타 설정</p>
         </div>
         <div className="px-5 py-4 space-y-4">
           <div>

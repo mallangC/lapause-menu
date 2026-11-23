@@ -37,7 +37,7 @@ const maskPhone = (p: string | null) => {
   return parts.length === 3 ? `${parts[0]}-****-${parts[2]}` : f;
 };
 
-type Item = { type?: string; name?: string; price?: number; quantity?: number; product_id?: string | null };
+type Item = { type?: string; name?: string; price?: number; quantity?: number; product_id?: string | null; product_options?: string | null };
 
 export default async function OrderStatusPage({ params }: { params: Promise<{ slug: string; token: string }> }) {
   const { slug, token } = await params;
@@ -252,6 +252,7 @@ export default async function OrderStatusPage({ params }: { params: Promise<{ sl
                   <div className="min-w-0">
                     <p className="text-xs text-gray-400">{it.type}</p>
                     <p className="text-sm font-medium text-gray-900 break-keep">{it.name}{(it.quantity ?? 1) > 1 ? ` × ${it.quantity}` : ""}</p>
+                    {it.product_options && <p className="text-xs text-gray-500 mt-0.5 break-keep">{it.product_options}</p>}
                   </div>
                 </div>
               );

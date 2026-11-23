@@ -7,6 +7,8 @@ export interface ReservationItem {
   shopping_bag: string;
   preservative?: string;
   memo: string | null;
+  /** 손님이 고른 상품 옵션 (예: "포장지: 고급 포장(+5,000원) / 추가: 꽃 추가(+10,000원)") — price 에 이미 더해져 있다 */
+  product_options?: string | null;
   status?: string;
   product_id?: string | null;
   /** 같은 상품을 여러 개 주문했을 때 개수 (장바구니·수량 2개 이상 바로 예약) — 없으면 1 */

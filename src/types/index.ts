@@ -23,6 +23,10 @@ export interface Product {
   /** 할인 전 정가 — 있으면 할인 중 (price보다 크다), 없으면 할인 없음 */
   original_price?: number | null;
   image_url: string | null;
+  /** 손님이 고르는 상품 옵션 묶음 (예: 포장지 기본/고급, 꽃 추가) — lib/productOptions */
+  options?: import("@/lib/productOptions").ProductOptionGroup[];
+  /** 대표 사진(image_url) 다음 사진들 — 순서대로 최대 4장 (상품 사진은 모두 5장까지) */
+  extra_images?: string[];
   product_type: string;
   flower_colors: string[];
   wrapping_color: "밝은 계열" | "어두운 계열" | "기타" | null;

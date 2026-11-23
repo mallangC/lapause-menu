@@ -81,6 +81,7 @@ export default async function ConsultPage({ params, searchParams }: Props) {
       // 무통장 입금 — 매장 계좌(은행·계좌번호·예금주)가 모두 등록돼 있어야 받는다
       transferAvailable={!!(s.bank_name && s.bank_account && s.bank_holder)}
       initialQuantity={quantity ? Math.max(1, parseInt(quantity)) : 1}
+      initialOptions={sp.options ? sp.options.split(",").filter(Boolean).slice(0, 60) : null}
       initialPaymentId={paymentKey ?? orderId ?? null}
     />
   );

@@ -68,6 +68,7 @@ export default async function StoreWelcomePage({ params, searchParams }: Props) 
     bag_included: p.bag_included ?? false,
     message_card_unavailable: p.message_card_unavailable ?? false,
     preservative_unavailable: p.preservative_unavailable ?? false,
+    options: p.options ?? [],
   });
   const photoPoolProducts = menu.products.filter((p) => p.image_url && (p.is_popular || p.is_recommended)).map(toIntro);
   const photoProducts = menu.products
@@ -107,6 +108,7 @@ export default async function StoreWelcomePage({ params, searchParams }: Props) 
               bag_included: p.bag_included ?? false,
               message_card_unavailable: p.message_card_unavailable ?? false,
               preservative_unavailable: p.preservative_unavailable ?? false,
+              options: p.options ?? [],
             }))
           : []
       }

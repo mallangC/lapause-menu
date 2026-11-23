@@ -5,7 +5,7 @@ import { MESSAGE_CARD_MAX } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { productTypeSummary, sendReservationConfirmedOwner } from "@/lib/solapi";
-import { cancelTossPayment, cartItemsTotal, isPastPickup, isValidDeliveryPart, loadCompanyProducts, loadOptionPrices } from "@/lib/orderPricing";
+import { cancelTossPayment, cartItemsTotal, isPastPickup, isValidDeliveryPart, loadCompanyProducts, loadOptionPrices, productUnitPrice } from "@/lib/orderPricing";
 import { isValidPreparedColor, preparedColorToSave } from "@/lib/todayColors";
 import { parsePaymentChoice } from "@/lib/payment";
 import { isAfterHoursPickup, isUnattendedPickup, readUnattended, UNATTENDED_OFF, type Unattended } from "@/lib/afterHours";
@@ -24,6 +24,8 @@ interface CartItemPayload {
   preservativeCount: number;
   messageCardCount: number;
   messageCardContents: string[];
+  /** 고른 상품 옵션 항목 id */
+  options?: string[] | null;
 }
 
 interface OrderBody {
@@ -221,7 +223,9 @@ export async function POST(request: NextRequest) {
     const dbItems = items.map((item) => ({
       type: dbProducts.get(item.productId)!.product_type,
       name: dbProducts.get(item.productId)!.name,
-      price: dbProducts.get(item.productId)!.price,
+      // 상품 1개 값 (고른 상품 옵션 금액 포함) — 위 금액 확인을 통과했으니 늘 있다
+      price: productUnitPrice(dbProducts.get(item.productId)!, item.options)!.unit,
+      product_options: productUnitPrice(dbProducts.get(item.productId)!, item.options)!.options.label || null,
       quantity: item.quantity,
       product_id: item.productId,
       shopping_bag: item.bag_included ? "서비스" : (item.shoppingBagCount > 0 ? `${item.shoppingBagCount}개` : "미포함"),
@@ -266,7 +270,7 @@ export async function POST(request: NextRequest) {
       // 오늘 있는 색으로 준비하는 주문 — 손님이 고른 색 (정해진 값만, 고른 주문에만 넣는다)
       // 최소 금액보다 작은 주문이면 '사장님께 맡길게요'로 (상품 금액 기준 — 추가 옵션·배송비 제외)
       ...(isValidPreparedColor(preparedColor)
-        ? { prepared_color: preparedColorToSave(preparedColor, colorMinPrice, items.reduce((s, i) => s + dbProducts.get(i.productId)!.price * i.quantity, 0)) }
+        ? { prepared_color: preparedColorToSave(preparedColor, colorMinPrice, items.reduce((s, i) => s + productUnitPrice(dbProducts.get(i.productId)!, i.options)!.unit * i.quantity, 0)) }
         : {}),
       // 무통장 입금 주문만 결제 방법·현금영수증을 남긴다 (비어 있으면 카드 결제)
       ...(isTransfer ? { payment_method: "transfer", cash_receipt_type: payment.receiptType, cash_receipt_number: payment.receiptNumber } : {}),

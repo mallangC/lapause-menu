@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { cartLineKey } from "@/lib/productOptions";
 
 export interface CartItem {
   productId: string;
@@ -15,6 +16,10 @@ export interface CartItem {
   message_card_unavailable?: boolean;
   /** 사장님이 '생화 수명연장제 추가 불가'로 둔 상품 */
   preservative_unavailable?: boolean;
+  /** 고른 상품 옵션 항목 id — price(·original_price)에 옵션 금액이 이미 더해져 있다 */
+  options?: string[];
+  /** 고른 상품 옵션 글 (장바구니·주문서에 보여 준다) */
+  optionsLabel?: string | null;
   quantity: number;
   shoppingBagCount: number;
   preservativeCount: number;
@@ -80,24 +85,27 @@ export function useCart(slug: string, store: CartStore = "cart") {
 
   const addItem = useCallback((product: CartProduct, quantity = 1) => {
     const current = load(slug, store);
-    const existing = current.find((i) => i.productId === product.productId);
+    // 같은 상품이라도 옵션이 다르면 다른 줄 (줄 구분: cartLineKey)
+    const key = cartLineKey(product);
+    const existing = current.find((i) => cartLineKey(i) === key);
     const next = existing
-      ? current.map((i) => i.productId === product.productId ? { ...i, quantity: i.quantity + quantity } : i)
+      ? current.map((i) => cartLineKey(i) === key ? { ...i, quantity: i.quantity + quantity } : i)
       : [...current, newItem(product, quantity)];
     save(slug, store, next);
     setItems(next);
   }, [slug, store]);
 
-  const removeItem = useCallback((productId: string) => {
+  /** key — cartLineKey(줄) (옵션 없는 상품은 상품 id 와 같다) */
+  const removeItem = useCallback((key: string) => {
     const current = load(slug, store);
-    const next = current.filter((i) => i.productId !== productId);
+    const next = current.filter((i) => cartLineKey(i) !== key);
     save(slug, store, next);
     setItems(next);
   }, [slug, store]);
 
-  const updateItem = useCallback((productId: string, patch: Partial<CartItem>) => {
+  const updateItem = useCallback((key: string, patch: Partial<CartItem>) => {
     const current = load(slug, store);
-    const next = current.map((i) => i.productId === productId ? { ...i, ...patch } : i);
+    const next = current.map((i) => cartLineKey(i) === key ? { ...i, ...patch } : i);
     save(slug, store, next);
     setItems(next);
   }, [slug, store]);

@@ -510,6 +510,7 @@ export default function PreviewReservationDetail({
                               <span className="text-gray-400 ml-1">({item.type})</span>
                             )}
                           </span>
+                          {item.product_options && <p className="text-xs text-gray-500 mt-0.5 break-keep">{item.product_options}</p>}
                           {item.memo && <p className="text-xs text-gray-400 mt-0.5">{item.memo}</p>}
                           {(item.shopping_bag && item.shopping_bag !== "없음" && item.shopping_bag !== "미포함") && (
                             <p className="text-xs text-gray-400 mt-0.5">쇼핑백 {item.shopping_bag}</p>

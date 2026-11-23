@@ -59,6 +59,10 @@ export interface OrderProduct {
   bag_included?: boolean;
   message_card_unavailable?: boolean;
   preservative_unavailable?: boolean;
+  /** 고른 상품 옵션 항목 id — price 에 이미 더해져 있다 (applyOptions) */
+  productOptions?: string[];
+  /** 고른 상품 옵션 글 (주문서에 보여 준다) */
+  optionsLabel?: string | null;
 }
 
 /** 'YYYY-MM-DD' (내 컴퓨터 날짜 기준) */
