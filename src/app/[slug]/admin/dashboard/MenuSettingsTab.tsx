@@ -28,6 +28,10 @@ const MAX_SEASONS = 5;
 export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, initialHiddenSeasons, onSave, onSettingsSaved }: Props) {
   const [hiddenProductTypes, setHiddenProductTypes] = useState<string[]>(initialHiddenProductTypes);
   const [hiddenSeasons, setHiddenSeasons] = useState<string[]>(initialHiddenSeasons);
+  // 기본 항목 중 '삭제'한 것 — 목록에서 빠진다 (숨김 목록에도 함께 들어 있어 손님 메뉴에서도 빠진다)
+  // 숨김만 한 것은 칩이 '(숨김)'으로 남는다
+  const [removedProductTypes, setRemovedProductTypes] = useState<string[]>([]);
+  const [removedSeasons, setRemovedSeasons] = useState<string[]>([]);
   const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
   const [newProductTypeName, setNewProductTypeName] = useState("");
   const [newSeasonName, setNewSeasonName] = useState("");
@@ -45,9 +49,11 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
     supabase.from("company_categories").select("*").eq("company_id", companyId).then(({ data }) => {
       if (data) setCustomCategories(data as CustomCategory[]);
     });
-    supabase.from("company_settings").select("product_type_order, season_order").eq("company_id", companyId).maybeSingle().then(({ data }) => {
+    supabase.from("company_settings").select("product_type_order, season_order, removed_product_types, removed_seasons").eq("company_id", companyId).maybeSingle().then(({ data }) => {
       setProductTypeOrder((data?.product_type_order as string[] | null) ?? []);
       setSeasonOrder((data?.season_order as string[] | null) ?? []);
+      setRemovedProductTypes((data?.removed_product_types as string[] | null) ?? []);
+      setRemovedSeasons((data?.removed_seasons as string[] | null) ?? []);
     });
   }, [companyId]);
 
@@ -106,36 +112,45 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
     }
   };
 
-  const toggleProductType = async (type: string) => {
-    const next = hiddenProductTypes.includes(type)
-      ? hiddenProductTypes.filter((t) => t !== type)
-      : [...hiddenProductTypes, type];
-    setHiddenProductTypes(next);
-    await supabase.from("company_settings").update({ hidden_product_types: next }).eq("company_id", companyId);
+  /**
+   * 기본 항목 상태 바꾸기 — hidden: 손님 메뉴·상품 추가에서 빠짐 / removed: 메뉴 설정 목록에서도 빠짐(삭제)
+   * 삭제한 항목은 늘 숨김 목록에도 들어 있다 (손님 화면은 숨김 목록만 본다)
+   */
+  const setBuiltin = async (type: "product_type" | "season", name: string, next: { hidden: boolean; removed: boolean }) => {
+    const isType = type === "product_type";
+    const hiddenList = isType ? hiddenProductTypes : hiddenSeasons;
+    const removedList = isType ? removedProductTypes : removedSeasons;
+    const hidden = next.hidden || next.removed ? [...new Set([...hiddenList, name])] : hiddenList.filter((n) => n !== name);
+    const removed = next.removed ? [...new Set([...removedList, name])] : removedList.filter((n) => n !== name);
+    if (isType) {
+      setHiddenProductTypes(hidden);
+      setRemovedProductTypes(removed);
+      await supabase.from("company_settings").update({ hidden_product_types: hidden, removed_product_types: removed }).eq("company_id", companyId);
+      onSave(hidden, hiddenSeasons);
+      window.dispatchEvent(new Event(PRODUCT_TYPES_CHANGED));
+    } else {
+      setHiddenSeasons(hidden);
+      setRemovedSeasons(removed);
+      await supabase.from("company_settings").update({ hidden_seasons: hidden, removed_seasons: removed }).eq("company_id", companyId);
+      onSave(hiddenProductTypes, hidden);
+    }
     notifyMenuChanged();
-    onSave(next, hiddenSeasons);
   };
-
-  const toggleSeason = async (season: string) => {
-    const next = hiddenSeasons.includes(season)
-      ? hiddenSeasons.filter((s) => s !== season)
-      : [...hiddenSeasons, season];
-    setHiddenSeasons(next);
-    await supabase.from("company_settings").update({ hidden_seasons: next }).eq("company_id", companyId);
-    notifyMenuChanged();
-    onSave(hiddenProductTypes, next);
-  };
+  /** 칩을 눌러 숨김/보이기 */
+  const toggleBuiltinHidden = (type: "product_type" | "season", name: string) =>
+    setBuiltin(type, name, { hidden: !(type === "product_type" ? hiddenProductTypes : hiddenSeasons).includes(name), removed: false });
 
   /** 이름 확인 — 화면에 있는 목록만 보고 바로 판단 (서버 호출 없음). 같은 이름은 띄어쓰기만 달라도 중복 (예: '꽃 다발' = '꽃다발') */
   const checkName = (type: "product_type" | "season", name: string) => {
     const key = name.replace(/\s+/g, "");
     const same = (a: string) => a.replace(/\s+/g, "") === key;
     const builtins = type === "product_type" ? (PRODUCT_TYPES as readonly string[]) : (SEASONS as readonly string[]);
-    const hiddenBuiltins = type === "product_type" ? hiddenProductTypes : hiddenSeasons;
+    const removedBuiltins = type === "product_type" ? removedProductTypes : removedSeasons;
     const builtinMatch = key ? builtins.find(same) : undefined;
+    // 숨김만 한 기본 항목은 목록에 남아 있으니 중복, 삭제한 기본 항목은 다시 추가 가능
     const isDuplicate =
       !!key &&
-      ((!!builtinMatch && !hiddenBuiltins.includes(builtinMatch)) ||
+      ((!!builtinMatch && !removedBuiltins.includes(builtinMatch)) ||
         customCategories.some((c) => c.category_type === type && same(c.name)));
     return { builtinMatch, isDuplicate };
   };
@@ -149,12 +164,7 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
     if (builtinMatch) {
       const order = type === "product_type" ? productTypeOrder : seasonOrder;
       if (order.includes(builtinMatch)) await saveOrder(type, order.filter((n) => n !== builtinMatch));
-      if (type === "product_type") {
-        await toggleProductType(builtinMatch);
-        window.dispatchEvent(new Event(PRODUCT_TYPES_CHANGED));
-      } else {
-        await toggleSeason(builtinMatch);
-      }
+      await setBuiltin(type, builtinMatch, { hidden: false, removed: false });
       resetFn();
       return;
     }
@@ -198,29 +208,25 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
     SEASONS.filter((season) => !hiddenSeasons.includes(season)).length +
     customCategories.filter((c) => c.category_type === "season" && !c.hidden).length;
 
-  const customChip = (cat: CustomCategory, onDelete: () => void): ChipItem => ({
-    name: cat.name,
-    label: (
-      <button
-        onClick={() => toggleCustomHidden(cat.id)}
-        className={`w-full py-2 pl-7 pr-7 rounded-lg border text-sm text-center truncate transition-colors ${
-          cat.hidden ? "border-red-300 bg-red-50 text-red-500 font-medium" : "border-gray-200 text-gray-700 hover:border-gray-300"
-        }`}
-      >
-        {cat.hidden ? `${cat.name} (숨김)` : cat.name}
-      </button>
-    ),
-    onDelete,
-    deleting: deleting === cat.name,
-  });
-  const builtinChip = (name: string, onDelete: () => void): ChipItem => ({
+  /** 칩 — 누르면 숨김/보이기 (기본 항목·직접 추가한 항목 모두 같게) */
+  const chip = (name: string, hidden: boolean, onToggle: () => void, onDelete: () => void): ChipItem => ({
     name,
     label: (
-      <div className="w-full py-2 pl-7 pr-7 rounded-lg border border-gray-200 text-sm text-gray-700 text-center truncate">{name}</div>
+      <button
+        type="button"
+        onClick={onToggle}
+        title={hidden ? "누르면 메뉴판에 다시 보여요" : "누르면 메뉴판에서 숨겨요"}
+        className={`w-full py-2 pl-7 pr-7 rounded-lg border text-sm text-center truncate transition-colors ${
+          hidden ? "border-red-300 bg-red-50 text-red-500 font-medium" : "border-gray-200 text-gray-700 hover:border-gray-300"
+        }`}
+      >
+        {hidden ? `${name} (숨김)` : name}
+      </button>
     ),
     onDelete,
     deleting: deleting === name,
   });
+  const customChip = (cat: CustomCategory, onDelete: () => void) => chip(cat.name, cat.hidden, () => toggleCustomHidden(cat.id), onDelete);
 
   /** 사장님이 정한 순서대로 칩 정렬 (순서에 없는 새 항목은 뒤에) */
   const sortChips = (items: ChipItem[], order: string[]) => {
@@ -229,7 +235,9 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
   };
   const productTypeItems = sortChips(
     [
-      ...PRODUCT_TYPES.filter((t) => !hiddenProductTypes.includes(t)).map((t) => builtinChip(t, () => deleteProductType(t, () => toggleProductType(t)))),
+      ...PRODUCT_TYPES.filter((t) => !removedProductTypes.includes(t)).map((t) =>
+        chip(t, hiddenProductTypes.includes(t), () => toggleBuiltinHidden("product_type", t), () => deleteProductType(t, () => setBuiltin("product_type", t, { hidden: true, removed: true }))),
+      ),
       ...customCategories
         .filter((c) => c.category_type === "product_type")
         .map((c) => customChip(c, () => deleteProductType(c.name, () => deleteCategory(c.id)))),
@@ -238,7 +246,9 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
   );
   const seasonItems = sortChips(
     [
-      ...SEASONS.filter((x) => !hiddenSeasons.includes(x)).map((x) => builtinChip(x, () => toggleSeason(x))),
+      ...SEASONS.filter((x) => !removedSeasons.includes(x)).map((x) =>
+        chip(x, hiddenSeasons.includes(x), () => toggleBuiltinHidden("season", x), () => setBuiltin("season", x, { hidden: true, removed: true })),
+      ),
       ...customCategories.filter((c) => c.category_type === "season").map((c) => customChip(c, () => deleteCategory(c.id))),
     ],
     seasonOrder,
@@ -253,6 +263,7 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
       <div>
         <h2 className="text-xl font-medium text-gray-900 mb-1">메뉴 설정</h2>
         <p className="text-xs text-gray-400">직접 추가, 삭제가 가능합니다. 기본 제공 항목도 삭제할 수 있습니다.</p>
+        <p className="text-xs text-gray-400">유형·시즌을 누르면 메뉴판에서 숨길 수 있어요. 다시 누르면 다시 보여요.</p>
         <p className="text-xs text-gray-400">왼쪽 ⠿ 를 끌어 순서를 바꾸면 손님 메뉴판에도 그 순서로 보여요.</p>
       </div>
       <div className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:p-6">

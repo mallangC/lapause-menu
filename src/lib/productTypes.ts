@@ -1,7 +1,7 @@
 import { PRODUCT_TYPES } from "@/lib/constants";
 
 // 매장 상품 유형 목록 — 기본 제공 유형(삭제한 것 제외) + 사장님이 추가한 유형
-// · 기본 제공 유형을 '삭제'하면 company_settings.hidden_product_types 에 들어간다 (목록에서 빠짐)
+// · 기본 제공 유형을 숨기거나 삭제하면 company_settings.hidden_product_types 에 들어간다 (손님 메뉴에서 빠짐). 삭제한 것은 removed_product_types 에도 들어가 메뉴 설정 목록에서도 빠진다
 // · 추가한 유형은 company_categories(category_type='product_type'), hidden=true 면 손님에게만 숨김
 // 유형별 설정(당일 준비 시간·볼륨감 참고 이미지)은 '기본' + 유형별(선택)로 저장하고, 유형을 삭제하면 그 유형 설정도 지운다.
 
