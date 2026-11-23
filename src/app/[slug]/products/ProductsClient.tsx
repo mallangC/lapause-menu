@@ -97,7 +97,8 @@ export default function ProductsClient({
   const filteredProducts = applyFilter(products, filter)
     .filter((p) => {
       if (!filter.isSeason && !filter.isInstant && hiddenProductTypes.includes(p.product_type)) return false;
-      if (p.seasons.length > 0 && p.seasons.every((s) => hiddenSeasons.includes(s))) return false;
+      // 숨긴 시즌만 붙은 상품은 뺀다 (바로 구매 메뉴에서는 시즌과 관계없이 보인다)
+      if (!filter.isInstant && p.seasons.length > 0 && p.seasons.every((s) => hiddenSeasons.includes(s))) return false;
       return true;
     })
     .sort((a, b) => {
