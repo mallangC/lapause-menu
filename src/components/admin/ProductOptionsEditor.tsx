@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   newOptionId,
   OPTION_CHOICE_MAX,
@@ -28,6 +29,38 @@ export default function ProductOptionsEditor({
     onChange(groups.map((g) => (g.id === gid ? { ...g, ...patch } : g)));
   const setChoice = (gid: string, cid: string, patch: Partial<ProductOptionChoice>) =>
     onChange(groups.map((g) => (g.id === gid ? { ...g, choices: g.choices.map((c) => (c.id === cid ? { ...c, ...patch } : c)) } : g)));
+
+  // 항목 순서 바꾸기 — 왼쪽 ⠿ 를 누른 채 움직이면 손가락·마우스 아래 항목 자리로 옮긴다 (메뉴 설정 칩과 같은 방식)
+  const [dragging, setDragging] = useState<string | null>(null);
+  const onHandleDown = (e: React.PointerEvent<HTMLButtonElement>, g: ProductOptionGroup, cid: string) => {
+    if (e.button !== 0 || g.choices.length < 2) return;
+    e.preventDefault();
+    let current = g.choices;
+    setDragging(cid);
+    const move = (ev: PointerEvent) => {
+      const row = (document.elementFromPoint(ev.clientX, ev.clientY) as HTMLElement | null)?.closest<HTMLElement>(`[data-choice-of="${g.id}"]`);
+      const over = row?.dataset.choice;
+      if (!over || over === cid) return;
+      const from = current.findIndex((c) => c.id === cid);
+      const to = current.findIndex((c) => c.id === over);
+      if (from < 0 || to < 0) return;
+      const next = [...current];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      current = next;
+      onChange(groupsRef.map((x) => (x.id === g.id ? { ...x, choices: next } : x)));
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      setDragging(null);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+  };
+  const groupsRef = groups;
 
   const addGroup = () =>
     onChange([...groups, { id: newOptionId(), name: "", multi: false, required: false, choices: [emptyChoice(), emptyChoice()] }]);
@@ -97,7 +130,21 @@ export default function ProductOptionsEditor({
 
           <ul className="space-y-1.5">
             {g.choices.map((c) => (
-              <li key={c.id} className="flex items-center gap-1.5">
+              <li
+                key={c.id}
+                data-choice={c.id}
+                data-choice-of={g.id}
+                className={`flex items-center gap-1.5 rounded-lg transition-shadow ${dragging === c.id ? "relative z-10 bg-white shadow-lg ring-2 ring-gold-400" : ""}`}
+              >
+                <button
+                  type="button"
+                  aria-label="끌어서 순서 바꾸기"
+                  title="끌어서 순서 바꾸기"
+                  onPointerDown={(e) => onHandleDown(e, g, c.id)}
+                  className="shrink-0 w-5 h-[38px] flex items-center justify-center text-gray-500 hover:text-gray-800 cursor-grab active:cursor-grabbing touch-none select-none text-sm leading-none"
+                >
+                  ⠿
+                </button>
                 <input
                   value={c.name}
                   onChange={(e) => setChoice(g.id, c.id, { name: e.target.value })}
