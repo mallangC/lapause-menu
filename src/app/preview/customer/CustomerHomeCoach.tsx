@@ -18,7 +18,7 @@ const STEPS: CoachStep[] = [
     mobileRadius: 9999,
     mobilePad: 0,
     title: "필터",
-    body: "상품을 등록할 때 넣은 꽃 색상·포장지·분위기로\n손님이 원하는 꽃만 골라볼 수 있어요.",
+    body: "상품을 등록할 때 넣은 색상·포장지·분위기로\n손님이 원하는 꽃만 골라볼 수 있어요.",
   },
   {
     selectors: ['[data-coach="home-logo"]'],

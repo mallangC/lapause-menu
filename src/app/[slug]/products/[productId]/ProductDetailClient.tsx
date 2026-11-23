@@ -214,7 +214,7 @@ export default function ProductDetailClient({
                 <div className="space-y-4 pt-8 border-t border-gray-100">
                   {product.flower_colors.length > 0 && (
                     <div className="flex items-center gap-4">
-                      <span className="text-sm text-gray-400 w-16 shrink-0">꽃 색상</span>
+                      <span className="text-sm text-gray-400 w-16 shrink-0">색상</span>
                       <div className="flex gap-2 flex-wrap">
                         {product.flower_colors.map((color) => (
                           <span

@@ -64,7 +64,7 @@ export default function IntroProductViewer({
   const rows: [string, string][] = [
     ["형태", p.product_type],
     // 꽃 색상은 컬러칩으로 (아래에서 따로 그린다)
-    ["꽃 색상", colors.length ? "칩" : ""],
+    ["색상", colors.length ? "칩" : ""],
     ["포장지", p.wrapping_color ?? ""],
     ["분위기", p.mood ?? ""],
     ["시즌", (p.seasons ?? []).join(", ")],
@@ -140,7 +140,7 @@ export default function IntroProductViewer({
               {rows.map(([k, v]) => (
                 <div key={k} className="contents">
                   <dt className="text-gray-400">{k}</dt>
-                  {k === "꽃 색상" ? (
+                  {k === "색상" ? (
                     // 컬러칩 — 색 동그라미 + 이름 (흰색은 테두리로 보이게)
                     <dd className="flex flex-wrap gap-1.5">
                       {colors.map((c) => (
