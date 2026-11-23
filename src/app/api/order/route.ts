@@ -6,7 +6,7 @@ import { MESSAGE_CARD_MAX } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { productTypeSummary, sendReservationConfirmedOwner } from "@/lib/solapi";
-import { cancelTossPayment, cartItemsTotal, isPastPickup, isValidDeliveryPart, loadCompanyProducts, loadOptionPrices, productUnitPrice } from "@/lib/orderPricing";
+import { cancelTossPayment, cartItemsTotal, isPastPickup, isValidDeliveryPart, loadCompanyProducts, loadOptionPrices, productUnitPrice, stockProblem, takeStock } from "@/lib/orderPricing";
 import { isValidPreparedColor, preparedColorToSave } from "@/lib/todayColors";
 import { parsePaymentChoice } from "@/lib/payment";
 import { isAfterHoursPickup, isUnattendedPickup, readUnattended, UNATTENDED_OFF, type Unattended } from "@/lib/afterHours";
@@ -144,6 +144,9 @@ export async function POST(request: NextRequest) {
       loadOptionPrices(adminClient, companyId),
       loadCompanyProducts(adminClient, companyId, items.map((i) => i.productId)),
     ]);
+    // 품절·재고 부족 — 결제 승인 전에 막는다
+    const stockError = stockProblem(items, dbProducts);
+    if (stockError) return NextResponse.json({ error: stockError }, { status: 409 });
     const itemsTotal = cartItemsTotal(items, dbProducts, optionPrices);
     const unattendedPickup = body.deliveryType !== "배송" && isUnattendedPickup(
       items.length > 0 && items.every((i) => dbProducts.get(i.productId)?.instant === true),
@@ -300,6 +303,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "주문 저장 중 오류가 발생했습니다." }, { status: 500 });
     }
     savedReservationId = insertData?.[0]?.id ?? null;
+    // 재고 줄이기 (재고 관리 상품만 — 0개가 되면 품절)
+    await takeStock(adminClient, items, dbProducts);
     // 손님 주문 확인 페이지 코드 (/{매장}/order/{코드})
     const savedOrderToken = (insertData?.[0] as { order_token?: string } | undefined)?.order_token ?? null;
 

@@ -86,8 +86,15 @@ export default function ProductCard({ product, consultEnabled, slug }: ProductCa
           )}
         </div>
 
+        {/* 품절 — 사진을 흐리게 덮고 가운데 '품절' (담기 버튼 없음) */}
+        {product.status === "soldout" && (
+          <div className="absolute inset-0 bg-white/55 flex items-center justify-center">
+            <span className="px-3 py-1 rounded-full bg-gray-900/80 text-white text-xs font-medium">품절</span>
+          </div>
+        )}
+
         {/* 담기 버튼 */}
-        {consultEnabled && product.price > 0 && (
+        {consultEnabled && product.price > 0 && product.status !== "soldout" && (
           <button
             onClick={handleToggleCart}
             className={`absolute bottom-2 right-2 w-8 h-8 rounded-full flex items-center justify-center shadow-md transition-colors ${

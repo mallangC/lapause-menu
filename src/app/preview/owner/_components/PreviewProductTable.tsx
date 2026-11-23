@@ -17,25 +17,38 @@ interface ProductTableProps {
   onFilteredCountChange?: (count: number | null) => void;
 }
 
-const STATUS_CYCLE: ProductStatus[] = ["active", "inactive"];
-const STATUS_LABELS: Record<ProductStatus, string> = { active: "노출", inactive: "숨김", soldout: "품절" };
+const STATUS_CYCLE: ProductStatus[] = ["active", "inactive", "soldout"];
+const STATUS_LABELS: Record<ProductStatus, string> = { active: "활성화", inactive: "비활성화", soldout: "품절" };
+// 누를 때마다 활성화 → 비활성화 → 품절 — 예전 켜기/끄기 스위치 모양에 칸을 하나 더 (비활성화 왼쪽·회색 / 품절 가운데·노랑 / 활성화 오른쪽·초록)
+const STATUS_TRACK: Record<ProductStatus, string> = { active: "bg-emerald-500", inactive: "bg-gray-300", soldout: "bg-amber-400" };
+const STATUS_THUMB: Record<ProductStatus, string> = { inactive: "translate-x-0.5", soldout: "translate-x-[14px]", active: "translate-x-[26px]" };
+const STATUS_TEXT: Record<ProductStatus, string> = { active: "text-emerald-600", inactive: "text-gray-400", soldout: "text-amber-600" };
+
+/** 다음 상태 — 재고 관리 중인데 재고가 0개면 활성화를 건너뛴다 (재고를 채워야 팔 수 있다) */
+function nextStatus(p: { status?: ProductStatus | null; stock_enabled?: boolean; stock?: number | null }): ProductStatus {
+  const cur = p.status ?? "active";
+  let next = STATUS_CYCLE[(STATUS_CYCLE.indexOf(cur) + 1) % STATUS_CYCLE.length];
+  if (next === "active" && p.stock_enabled && (p.stock ?? 0) <= 0) {
+    alert("재고가 0개라 활성화할 수 없어요. 상품 수정에서 재고를 채워 주세요.");
+    next = cur === "inactive" ? "soldout" : "inactive";
+  }
+  return next;
+}
 
 function StatusToggle({ status, onClick, coach }: { status: ProductStatus; onClick: () => void; coach?: string }) {
-  const isActive = status === "active";
-
-  const trackColor = isActive ? "bg-emerald-500" : "bg-gray-300";
-  const thumbX = isActive ? "translate-x-[18px]" : "translate-x-0.5";
-
   return (
     <button
-      onClick={onClick}
-      className="flex flex-col items-center gap-0.5 group mx-auto"
+      type="button"
       data-coach={coach}
-      title={STATUS_LABELS[status]}
+      onClick={onClick}
+      aria-label={`상태: ${STATUS_LABELS[status]} (누르면 바뀜)`}
+      title="누르면 활성화 → 비활성화 → 품절 순서로 바뀌어요"
+      className="flex flex-col items-center gap-0.5 group mx-auto"
     >
-      <div className={`relative w-9 h-5 rounded-full transition-colors duration-200 ${trackColor} group-hover:opacity-80`}>
-        <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200 ${thumbX}`} />
+      <div className={`relative w-11 h-5 rounded-full transition-colors duration-200 ${STATUS_TRACK[status]} group-hover:opacity-80`}>
+        <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200 ${STATUS_THUMB[status]}`} />
       </div>
+      <span className={`text-[10px] leading-none ${STATUS_TEXT[status]}`}>{STATUS_LABELS[status]}</span>
     </button>
   );
 }
@@ -313,6 +326,7 @@ export default function PreviewProductTable({ products, onEdit, onDelete, onDupl
                         )}
                       </div>
                       <p className="text-sm font-medium text-gray-900 truncate">{product.name}</p>
+                      {product.stock_enabled && <p className={`text-xs ${(product.stock ?? 0) > 0 ? "text-gray-400" : "text-amber-600"}`}>재고 {product.stock ?? 0}개</p>}
                       <p className="text-xs text-gray-400 mt-0.5">
                         {typeDeleted
                           ? <span className="text-red-400">{product.product_type} (삭제됨)</span>
@@ -322,13 +336,13 @@ export default function PreviewProductTable({ products, onEdit, onDelete, onDupl
                       </p>
                     </div>
 
-                    {/* 노출 토글 */}
+                    {/* 상태 — 누를 때마다 활성화 → 비활성화 → 품절 */}
                     <div className="shrink-0 pr-1">
                       <StatusToggle
                         coach={idx === 0 ? "pd-toggle" : undefined}
                         status={status}
                         onClick={() => {
-                          const next = STATUS_CYCLE[(STATUS_CYCLE.indexOf(status) + 1) % STATUS_CYCLE.length];
+                          const next = nextStatus(product);
                           onStatusChange(product.id, next);
                         }}
                       />
@@ -358,7 +372,7 @@ export default function PreviewProductTable({ products, onEdit, onDelete, onDupl
                   <th className="pb-2 font-medium text-gray-400">뱃지</th>
                   <th className="pb-2 font-medium text-gray-400">유형</th>
                   <th className="pb-2 font-medium text-gray-400">가격</th>
-                  <th className="pb-2 font-medium text-gray-400 text-center">노출</th>
+                  <th className="pb-2 font-medium text-gray-400 text-center">상태</th>
                   <th className="pb-2 font-medium text-gray-400">관리</th>
                 </tr>
               </thead>
@@ -379,7 +393,11 @@ export default function PreviewProductTable({ products, onEdit, onDelete, onDupl
                           )}
                         </div>
                       </td>
-                      <td className="py-3 px-2 font-medium break-keep">{product.name}</td>
+                      <td className="py-3 px-2 font-medium break-keep">
+                        {product.name}
+                        {/* 재고 관리 중이면 남은 개수 */}
+                        {product.stock_enabled && <span className={`block text-xs font-normal ${(product.stock ?? 0) > 0 ? "text-gray-400" : "text-amber-600"}`}>재고 {product.stock ?? 0}개</span>}
+                      </td>
                       <td className="py-3 px-2">
                         <div className="flex gap-1 flex-wrap justify-center">
                           {product.is_popular && (
@@ -406,8 +424,7 @@ export default function PreviewProductTable({ products, onEdit, onDelete, onDupl
                           coach={idx === 0 ? "pd-toggle" : undefined}
                           status={product.status ?? "active"}
                           onClick={() => {
-                            const cur = product.status ?? "active";
-                            const next = STATUS_CYCLE[(STATUS_CYCLE.indexOf(cur) + 1) % STATUS_CYCLE.length];
+                            const next = nextStatus(product);
                             onStatusChange(product.id, next);
                           }}
                         />

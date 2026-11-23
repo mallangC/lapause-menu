@@ -85,7 +85,8 @@ async function loadMenuData(slug: string): Promise<MenuData | null> {
     db.from("products")
       .select("*")
       .eq("company_id", raw.id)
-      .eq("status", "active")
+      // 품절 상품도 메뉴에는 '품절'로 보여 준다 (주문은 막힌다). 비활성화 상품만 뺀다
+      .in("status", ["active", "soldout"])
       .order("product_type", { ascending: true })
       .order("price", { ascending: true }),
     db.from("company_categories").select("category_type, name, hidden").eq("company_id", raw.id),

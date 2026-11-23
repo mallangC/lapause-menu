@@ -6,7 +6,7 @@ import { MESSAGE_CARD_MAX } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendReservationConfirmedOwner } from "@/lib/solapi";
-import { cancelTossPayment, consultMinimumTotal, isPastPickup, loadCompanyProducts, loadOptionPrices, productUnitPrice } from "@/lib/orderPricing";
+import { cancelTossPayment, consultMinimumTotal, isPastPickup, loadCompanyProducts, loadOptionPrices, productUnitPrice, stockProblem, takeStock } from "@/lib/orderPricing";
 import { normalizeTrafficSource } from "@/lib/trafficSource";
 import { PHOTO_PRODUCT_ID, REF_DATA_PATTERN, isValidStyleBudget, isVirtualProductId, styleProductName } from "@/lib/styleOrder";
 import type { DbProduct } from "@/lib/orderPricing";
@@ -196,6 +196,9 @@ export async function POST(request: NextRequest) {
     // 상품 옵션 — 고른 옵션 금액을 상품 값에 더한다 (아래 최소 금액 확인·저장 모두 이 값으로)
     let productOptionsLabel: string | null = null;
     if (!isStyleOrder) {
+      // 품절·재고 부족 — 결제 승인 전에 막는다
+      const stockError = stockProblem([{ productId: dbProduct.id, quantity: 1 }], new Map([[dbProduct.id, dbProduct]]));
+      if (stockError) return NextResponse.json({ error: stockError }, { status: 409 });
       const unit = productUnitPrice(dbProduct, body.productOptions);
       if (!unit) {
         return NextResponse.json({ error: "상품 옵션이 바뀌었어요. 상품을 다시 골라 주세요." }, { status: 400 });
@@ -412,6 +415,8 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "예약 저장 중 오류가 발생했습니다." }, { status: 500 });
       }
       savedReservationId = insertData?.[0]?.id ?? null;
+      // 재고 줄이기 (재고 관리 상품만 — 0개가 되면 품절)
+      if (!isStyleOrder && savedReservationId) await takeStock(adminClient, [{ productId: dbProduct.id, quantity: 1 }], new Map([[dbProduct.id, dbProduct]]));
       savedOrderToken = (insertData?.[0] as { order_token?: string } | undefined)?.order_token ?? null;
     }
 

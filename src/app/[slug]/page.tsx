@@ -70,8 +70,10 @@ export default async function StoreWelcomePage({ params, searchParams }: Props) 
     preservative_unavailable: p.preservative_unavailable ?? false,
     options: p.options ?? [],
   });
-  const photoPoolProducts = menu.products.filter((p) => p.image_url && (p.is_popular || p.is_recommended)).map(toIntro);
-  const photoProducts = menu.products
+  // 대화 주문(추천·첫 인사 사진)에는 품절 상품을 내지 않는다
+  const orderable = menu.products.filter((p) => p.status !== "soldout");
+  const photoPoolProducts = orderable.filter((p) => p.image_url && (p.is_popular || p.is_recommended)).map(toIntro);
+  const photoProducts = orderable
     .filter((p) => p.image_url)
     .sort((a, b) => Number(b.is_popular || b.is_recommended) - Number(a.is_popular || a.is_recommended))
     .slice(0, 3)
@@ -95,7 +97,7 @@ export default async function StoreWelcomePage({ params, searchParams }: Props) 
       // 대화형 추천에 쓸 상품 — 맞춤주문을 켠 매장만 (카드에 필요한 것만 넘긴다)
       products={
         s.consult_enabled
-          ? menu.products.map((p) => ({
+          ? orderable.map((p) => ({
               id: p.id,
               name: p.name,
               price: p.price,

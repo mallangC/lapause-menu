@@ -21,7 +21,7 @@ export default async function ProductDetailPage({ params }: Props) {
   const product = menu.products.find((p) => p.id === productId);
   if (!product) notFound();
 
-  const allProducts = menu.products.filter((p) => p.id !== productId);
+  const allProducts = menu.products.filter((p) => p.id !== productId && p.status !== "soldout"); // 추천 상품에는 품절 빼고
   const customCats = menu.categories;
 
   const customProductTypes = (customCats ?? [])
