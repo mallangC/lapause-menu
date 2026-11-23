@@ -487,7 +487,8 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
                 onClick={() => onNavigate("reservations", statusKey)}
                 className="bg-gray-50 rounded-xl py-3 hover:bg-gray-100 transition-colors cursor-pointer"
               >
-                <p className="text-lg font-semibold text-gray-900">{value}</p>
+                {/* 미확인이 있으면 숫자만 빨간색 (확인할 게 있다는 신호 — 알림 종과 같은 빨강) */}
+                <p className={`text-lg font-semibold ${statusKey === "미확인" && value > 0 ? "text-red-500" : "text-gray-900"}`}>{value}</p>
                 <p className="text-xs text-gray-400 mt-0.5">{label}</p>
               </button>
             ))}
