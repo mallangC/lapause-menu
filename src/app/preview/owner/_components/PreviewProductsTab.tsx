@@ -70,7 +70,7 @@ export default function PreviewProductsTab({ products, setProducts, onNotice }: 
           // 바깥(딤) 을 눌러도 닫히지 않게 — 적던 내용이 날아가지 않도록 (상품 추가·수정·복사 창은 ✕·취소로만 닫는다)
         >
           <div className="bg-gray-100 rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" data-coach="pd-form">
-            <div className="flex items-center justify-between px-5 pt-5 pb-4 bg-white">
+            <div className="sticky top-0 z-10 flex items-center justify-between px-5 pt-5 pb-4 bg-white border-b border-gray-100">
               <h3 className="font-medium text-gray-900">{editingProduct ? "상품 수정" : duplicatingProduct ? "상품 복사" : "새 상품 추가"}</h3>
               <button
                 onClick={() => { setShowForm(false); setEditingProduct(null); setDuplicatingProduct(null); }}

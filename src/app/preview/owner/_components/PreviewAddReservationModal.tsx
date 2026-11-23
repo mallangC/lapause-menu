@@ -448,9 +448,9 @@ export default function PreviewAddReservationModal({
       // 바깥(딤) 을 눌러도 닫히지 않게 — 적던 내용이 날아가지 않도록 (예약 추가 창은 ✕·취소로만 닫는다)
     >
       <div className="bg-gray-100 rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        {/* 헤더 */}
-        <div className="flex items-center justify-between px-5 pt-5 pb-4 bg-white">
-          <h3 className="font-medium text-gray-900">{reservationId ? "예약 수정" : "예약 직접 추가"}</h3>
+        {/* 헤더 — 스크롤해도 위에 붙어 있게 (창 제목과 ✕ 가 늘 보인다) */}
+        <div className="sticky top-0 z-10 flex items-center justify-between px-5 pt-5 pb-4 bg-white border-b border-gray-100">
+          <h3 className="font-medium text-gray-900">{reservationId ? "예약 수정" : "예약 추가"}</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
         </div>
 
