@@ -154,14 +154,9 @@ export default function PreviewMyInfoTab({ onNotice }: Props) {
             </div>
           </div>
 
-        </div>
-      </div>
-
-      {/* 비밀번호 변경 — OAuth 로그인은 카드째 숨김 */}
-      {!isOAuth && (
-      <div className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:p-6">
-        <div className="max-w-md">
-          <div data-coach="mi-password">
+          {/* 비밀번호 변경 — 소셜 연결·2단계 인증과 한 카드 (실제와 같게) */}
+          {!isOAuth && (
+          <div data-coach="mi-password" className="pt-4 mt-4 border-t border-gray-100">
             <div className={`flex items-center justify-between ${showPwForm ? "mb-4" : ""}`}>
               <h3 className="text-sm font-medium text-gray-900">비밀번호 변경</h3>
               {!showPwForm && (
@@ -234,14 +229,10 @@ export default function PreviewMyInfoTab({ onNotice }: Props) {
               </form>
             )}
           </div>
-        </div>
-      </div>
-      )}
+          )}
 
-      <div className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:p-6">
-        <div className="max-w-md">
           {/* 로그인 2단계 인증 */}
-          <div data-coach="mi-2fa">
+          <div data-coach="mi-2fa" className="pt-4 mt-4 border-t border-gray-100">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-medium text-gray-900">로그인 2단계 인증</h3>
