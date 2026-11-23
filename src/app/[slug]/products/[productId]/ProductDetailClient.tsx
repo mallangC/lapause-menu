@@ -77,6 +77,8 @@ export default function ProductDetailClient({
       .catch(() => {});
   }, [product.id]);
   const [added, setAdded] = useState(false);
+  // 품절 — 메뉴에는 보이지만 담기·예약은 막는다 (재고가 0개가 되면 자동으로 품절)
+  const soldOut = product.status === "soldout";
   const { addItem } = useCart(slug);
   // 상품 옵션 — 고른 항목 (처음엔 사장님이 정한 기본 선택), 금액은 상품 값에 더한다
   const optionGroups = normalizeOptions(product.options);
@@ -296,7 +298,10 @@ export default function ProductDetailClient({
               </div>
               )}
 
-              {/* 버튼 */}
+              {/* 버튼 — 품절이면 담기·예약 대신 '품절' */}
+              {soldOut ? (
+                <div className="py-4 rounded-2xl bg-gray-100 text-center text-sm font-medium text-gray-500">품절된 상품이에요</div>
+              ) : (
               <div className="flex gap-3">
                 {consultEnabled && (
                   <button
@@ -324,6 +329,7 @@ export default function ProductDetailClient({
                   </button>
                 )}
               </div>
+              )}
             </div>
           </div>
       </div>

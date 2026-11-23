@@ -151,6 +151,8 @@ const DEFAULT_INPUT: PreviewProductInput = {
   is_popular: false,
   is_recommended: false,
   status: "active",
+  stock_enabled: false,
+  stock: null,
   bag_included: false,
   message_card_unavailable: false,
   preservative_unavailable: false,
@@ -175,6 +177,8 @@ export default function PreviewProductForm({ initialData, onSubmit, onCancel, du
           is_popular: initialData.is_popular,
           is_recommended: initialData.is_recommended,
           status: initialData.status ?? "active",
+          stock_enabled: initialData.stock_enabled ?? false,
+          stock: initialData.stock ?? null,
           bag_included: initialData.bag_included ?? false,
           message_card_unavailable: initialData.message_card_unavailable ?? false,
           preservative_unavailable: initialData.preservative_unavailable ?? false,
@@ -273,6 +277,53 @@ export default function PreviewProductForm({ initialData, onSubmit, onCancel, du
           <p className={sectionLabelCls}>기본 정보</p>
         </div>
         <div className="px-5 py-4 space-y-3">
+          {/* 이미지 업로드 */}
+          <div>
+            <label className={fieldLabelCls}>사진</label>
+
+            <ProductImagesEditor items={images} onChange={setImages} compress={(f) => compressImage(f)} disabled={loading || uploading} />
+
+            {uploadError && (
+              <p className="mt-1.5 text-xs text-red-500">{uploadError}</p>
+            )}
+          </div>
+          <div className="space-y-3">
+            <div ref={nameFieldRef}>
+              <label className={fieldErrors.includes("상품명") ? "block text-xs text-red-500 mb-1" : fieldLabelCls}>
+                상품명 <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={data.name}
+                onChange={(e) => {
+                  setData({ ...data, name: e.target.value });
+                  if (fieldErrors.includes("상품명")) setFieldErrors((prev) => prev.filter((f) => f !== "상품명"));
+                }}
+                className={fieldErrors.includes("상품명") ? `${inputCls} border-red-400 focus:border-red-500` : inputCls}
+              />
+            </div>
+            <div>
+              <label className={fieldLabelCls}>상품 설명</label>
+              <textarea
+                value={data.description ?? ""}
+                onChange={(e) => setData({ ...data, description: e.target.value.slice(0, 300) })}
+                rows={3}
+                maxLength={300}
+                placeholder="예) 계절 꽃으로 풍성하게 만든 꽃다발이에요. 생일·기념일 선물로 좋아요."
+                className={`${inputCls} resize-none`}
+              />
+              <p className="mt-0.5 text-right text-[11px] text-gray-400">{(data.description ?? "").length}/300</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 섹션: 판매 — 판매 방식·가격·재고·상태를 한곳에 (실제와 같게) */}
+      <div className="bg-white">
+        <div className={sectionHeaderCls}>
+          <p className={sectionLabelCls}>판매</p>
+        </div>
+        <div className="px-5 py-4 space-y-4">
           <div className="space-y-3">
             {/* 판매 방식 — 주문 받고 만드는 상품 / 이미 만들어 둔 상품(현장 판매 메뉴). 시즌도 고르면 두 메뉴에 모두 나온다 */}
             <div>
@@ -296,35 +347,6 @@ export default function PreviewProductForm({ initialData, onSubmit, onCancel, du
                   </button>
                 ))}
               </div>
-              <p className="mt-1.5 text-xs text-gray-400 break-keep">
-                {data.instant ? "이미 만들어 둔 상품이에요. 제작시간 없이 바로 받을 수 있어요. 시즌을 고르면 시즌 메뉴에도 나와요." : "주문을 받고 만드는 상품이에요."}
-              </p>
-            </div>
-            <div ref={nameFieldRef}>
-              <label className={fieldErrors.includes("상품명") ? "block text-xs text-red-500 mb-1" : fieldLabelCls}>
-                상품명 <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={data.name}
-                onChange={(e) => {
-                  setData({ ...data, name: e.target.value });
-                  if (fieldErrors.includes("상품명")) setFieldErrors((prev) => prev.filter((f) => f !== "상품명"));
-                }}
-                className={fieldErrors.includes("상품명") ? `${inputCls} border-red-400 focus:border-red-500` : inputCls}
-              />
-            </div>
-            <div>
-              <label className={fieldLabelCls}>상품 설명 <span className="text-gray-400">(선택)</span></label>
-              <textarea
-                value={data.description ?? ""}
-                onChange={(e) => setData({ ...data, description: e.target.value.slice(0, 200) })}
-                rows={3}
-                maxLength={200}
-                placeholder="예) 계절 꽃으로 풍성하게 만든 꽃다발이에요. 생일·기념일 선물로 좋아요."
-                className={`${inputCls} resize-none`}
-              />
-              <p className="mt-0.5 text-right text-[11px] text-gray-400">{(data.description ?? "").length}/200</p>
             </div>
             <div>
               <label className={fieldLabelCls}>상품 가격</label>
@@ -338,22 +360,50 @@ export default function PreviewProductForm({ initialData, onSubmit, onCancel, du
                     if (/^\d*$/.test(raw)) setData({ ...data, price: Number(raw) || 0 });
                   }}
                   placeholder="0"
-                  className={inputCls}
+                  className={`${inputCls} text-right`}
                 />
                 <span className="text-sm text-gray-500 shrink-0">원</span>
               </div>
             </div>
           </div>
-
-          {/* 이미지 업로드 */}
+          {/* 재고 — 수량을 적으면 재고 관리(판매될 때마다 1개씩 줄고 0개면 품절), 비우면 제한 없음 */}
           <div>
-            <label className={fieldLabelCls}>사진</label>
-
-            <ProductImagesEditor items={images} onChange={setImages} compress={(f) => compressImage(f)} disabled={loading || uploading} />
-
-            {uploadError && (
-              <p className="mt-1.5 text-xs text-red-500">{uploadError}</p>
-            )}
+            <label className={fieldLabelCls}>재고</label>
+            <div className="flex items-center gap-2">
+              <input
+                inputMode="numeric"
+                value={data.stock_enabled ? String(data.stock ?? 0) : ""}
+                onChange={(e) => {
+                  const raw = e.target.value.replace(/[^0-9]/g, "");
+                  setData(raw === "" ? { ...data, stock_enabled: false, stock: null } : { ...data, stock_enabled: true, stock: Math.min(99999, Number(raw)) });
+                }}
+                placeholder="제한 없음"
+                aria-label="재고 수량"
+                className={`${inputCls} text-right`}
+              />
+              <span className="text-sm text-gray-500 shrink-0">개</span>
+            </div>
+          </div>
+          <div>
+            <label className={fieldLabelCls}>상태</label>
+            <div className="flex p-1 bg-gray-100 rounded-xl">
+              {[
+                { key: "active", label: "활성화" },
+                { key: "inactive", label: "비활성화" },
+                { key: "soldout", label: "품절" },
+              ].map(({ key, label }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setData({ ...data, status: key as PreviewProductInput["status"] })}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
+                    data.status === key ? "bg-gold-500 text-white shadow-sm" : "text-gray-400 hover:text-gray-500"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -464,7 +514,7 @@ export default function PreviewProductForm({ initialData, onSubmit, onCancel, du
       {/* 섹션: 상품 옵션 — 손님이 고르는 추가 선택 (금액은 0원 이상) */}
       <div className="bg-white">
         <div className={sectionHeaderCls}>
-          <p className={sectionLabelCls}>상품 옵션 (선택)</p>
+          <p className={sectionLabelCls}>상품 옵션</p>
         </div>
         <div className="px-5 py-4">
           <ProductOptionsEditor groups={options} onChange={setOptions} inputCls={inputCls} />
@@ -474,7 +524,7 @@ export default function PreviewProductForm({ initialData, onSubmit, onCancel, du
       {/* 섹션: 뱃지 & 옵션 */}
       <div data-coach="pd-options" className="bg-white">
         <div className={sectionHeaderCls}>
-          <p className={sectionLabelCls}>뱃지 & 기타 설정</p>
+          <p className={sectionLabelCls}>기타 설정 (뱃지 · 추가 옵션)</p>
         </div>
         <div className="px-5 py-4 space-y-4">
           {/* 뱃지 — 코치마크가 이 줄만 설명한다 */}
@@ -557,26 +607,6 @@ export default function PreviewProductForm({ initialData, onSubmit, onCancel, du
             </div>
           </div>
 
-          <div>
-            <label className={fieldLabelCls}>상태</label>
-            <div className="flex p-1 bg-gray-100 rounded-xl">
-              {[
-                { key: "active", label: "활성" },
-                { key: "inactive", label: "비활성" },
-              ].map(({ key, label }) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setData({ ...data, status: key as PreviewProductInput["status"] })}
-                  className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
-                    data.status === key ? "bg-gold-500 text-white shadow-sm" : "text-gray-400 hover:text-gray-500"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
 

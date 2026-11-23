@@ -23,7 +23,7 @@ export interface Product {
   /** 할인 전 정가 — 있으면 할인 중 (price보다 크다), 없으면 할인 없음 */
   original_price?: number | null;
   image_url: string | null;
-  /** 상품 설명 — 사장님이 적는 짧은 글 (손님 상품 상세에 보인다, 200자까지) */
+  /** 상품 설명 — 사장님이 적는 짧은 글 (손님 상품 상세에 보인다, 300자까지) */
   description?: string | null;
   /** 손님이 고르는 상품 옵션 묶음 (예: 포장지 기본/고급, 꽃 추가) — lib/productOptions */
   options?: import("@/lib/productOptions").ProductOptionGroup[];
@@ -40,6 +40,10 @@ export interface Product {
   is_popular: boolean;
   is_recommended: boolean;
   status: ProductStatus;
+  /** 재고 관리 사용 — 판매될 때마다 stock 이 줄고 0이 되면 품절(soldout)로 바뀐다 */
+  stock_enabled?: boolean;
+  /** 남은 재고 (재고 관리를 쓸 때만) */
+  stock?: number | null;
   created_at: string;
   bag_included: boolean;
   message_card_unavailable: boolean;

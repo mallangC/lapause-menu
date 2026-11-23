@@ -156,6 +156,8 @@ const DEFAULT_INPUT: ProductInput = {
   is_popular: false,
   is_recommended: false,
   status: "active",
+  stock_enabled: false,
+  stock: null,
   bag_included: false,
   message_card_unavailable: false,
   preservative_unavailable: false,
@@ -180,6 +182,8 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
           is_popular: initialData.is_popular,
           is_recommended: initialData.is_recommended,
           status: initialData.status ?? "active",
+          stock_enabled: initialData.stock_enabled ?? false,
+          stock: initialData.stock ?? null,
           bag_included: initialData.bag_included ?? false,
           message_card_unavailable: initialData.message_card_unavailable ?? false,
           preservative_unavailable: initialData.preservative_unavailable ?? false,
@@ -192,6 +196,8 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
     [initialData?.image_url, ...(initialData?.extra_images ?? [])].filter((u): u is string => !!u).map(imageItemFromUrl),
   );
   const [loading, setLoading] = useState(false);
+  // 기타 설정(뱃지·추가 옵션 불가) — 바꿔 둔 값이 있으면 펼친 채로
+  const [etcOpen, setEtcOpen] = useState(() => !!(initialData && (initialData.is_popular || initialData.is_recommended || initialData.bag_included || initialData.message_card_unavailable || initialData.preservative_unavailable)));
   // 상품 옵션 (예: 포장지 기본/고급, 꽃 추가)
   const [options, setOptions] = useState<ProductOptionGroup[]>(() => normalizeOptions(initialData?.options));
   const optionsRef = useRef<HTMLDivElement>(null);
@@ -200,11 +206,11 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
   // 할인 — 할인율(%)과 할인가(원) 중 하나를 적으면 다른 하나를 채운다 (할인가는 100원 단위)
   const initDiscounted = !!initialData && isDiscounted(initialData.price, initialData.original_price);
   const [salePrice, setSalePrice] = useState<number>(initDiscounted ? initialData!.price : 0);
-  const [rateText, setRateText] = useState<string>(initDiscounted ? String(discountRate(initialData!.price, initialData!.original_price)) : "");
   const [discountError, setDiscountError] = useState<string | null>(null);
   // 할인 스위치 — 켜야 할인 칸이 열린다 (끄면 정가로 판매, 적어 둔 값은 다시 켤 때를 위해 남겨 둔다)
-  const [discountEnabled, setDiscountEnabled] = useState(initDiscounted);
-  const rateInputRef = useRef<HTMLInputElement>(null);
+  // 할인율(%)을 적으면 할인가를, 할인가를 적으면 할인율을 채운다 (할인가는 100원 단위). 비우면 할인 없음
+  const [rateText, setRateText] = useState<string>(initDiscounted ? String(discountRate(initialData!.price, initialData!.original_price)) : "");
+  const discountEnabled = salePrice > 0;
   const discountOn = discountEnabled && salePrice > 0 && salePrice < data.price;
   // 바로 구매 메뉴 이름 (사장님이 메뉴 설정에서 바꿀 수 있다)
   const [instantName, setInstantName] = useState<string>(DEFAULT_INSTANT_MENU_NAME);
@@ -345,8 +351,15 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
       const urls = await uploadImages();
       if (urls === false) return;
       // 할인 중이면 가격 = 할인가, 정가 = 적은 상품 가격 / 아니면 정가 없음
+      // 재고 — 0개면 품절, 품절이었는데 재고를 채웠으면 다시 활성화
+      const stockOn = !!data.stock_enabled;
+      const stock = stockOn ? Math.max(0, Math.floor(data.stock ?? 0)) : data.stock ?? null;
+      const status = stockOn && stock === 0 ? "soldout" : stockOn && data.status === "soldout" && (stock ?? 0) > 0 ? "active" : data.status;
       await onSubmit({
         ...data,
+        stock_enabled: stockOn,
+        stock,
+        status,
         description: data.description?.trim() || null,
         image_url: urls[0] ?? null,
         extra_images: urls.slice(1),
@@ -382,6 +395,54 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
           <p className={sectionLabelCls}>기본 정보</p>
         </div>
         <div className="px-5 py-4 space-y-3">
+          {/* 이미지 업로드 */}
+          <div>
+            <label className={fieldLabelCls}>사진</label>
+
+            <ProductImagesEditor items={images} onChange={setImages} compress={(f) => compressImage(f)} disabled={loading || uploading} />
+            {uploading && <p className="mt-1 text-xs text-gray-400">사진 올리는 중...</p>}
+
+            {uploadError && (
+              <p className="mt-1.5 text-xs text-red-500">{uploadError}</p>
+            )}
+          </div>
+          <div className="space-y-3">
+            <div ref={nameFieldRef}>
+              <label className={fieldErrors.includes("상품명") ? "block text-xs text-red-500 mb-1" : fieldLabelCls}>
+                상품명 <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={data.name}
+                onChange={(e) => {
+                  setData({ ...data, name: e.target.value });
+                  if (fieldErrors.includes("상품명")) setFieldErrors((prev) => prev.filter((f) => f !== "상품명"));
+                }}
+                className={fieldErrors.includes("상품명") ? `${inputCls} border-red-400 focus:border-red-500` : inputCls}
+              />
+            </div>
+            <div>
+              <label className={fieldLabelCls}>상품 설명</label>
+              <textarea
+                value={data.description ?? ""}
+                onChange={(e) => setData({ ...data, description: e.target.value.slice(0, 300) })}
+                rows={3}
+                maxLength={300}
+                placeholder="예) 계절 꽃으로 풍성하게 만든 꽃다발이에요. 생일·기념일 선물로 좋아요."
+                className={`${inputCls} resize-none`}
+              />
+              <p className="mt-0.5 text-right text-[11px] text-gray-400">{(data.description ?? "").length}/300</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 섹션: 판매 — 판매 방식·가격·할인·재고·상태를 한곳에 */}
+      <div className="bg-white">
+        <div className={sectionHeaderCls}>
+          <p className={sectionLabelCls}>판매</p>
+        </div>
+        <div className="px-5 py-4 space-y-4">
           <div className="space-y-3">
             {/* 판매 방식 — 주문 받고 만드는 상품 / 이미 만들어 둔 상품(현장 판매 메뉴). 시즌도 고르면 두 메뉴에 모두 나온다 */}
             {(!instantMenuHidden || data.instant) && (
@@ -406,60 +467,12 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
                   </button>
                 ))}
               </div>
-              <p className="mt-1.5 text-xs text-gray-400 break-keep">
-                {data.instant ? "이미 만들어 둔 상품이에요. 제작시간 없이 바로 받을 수 있어요. 시즌을 고르면 시즌 메뉴에도 나와요." : "주문을 받고 만드는 상품이에요."}
-              </p>
             </div>
             )}
-            <div ref={nameFieldRef}>
-              <label className={fieldErrors.includes("상품명") ? "block text-xs text-red-500 mb-1" : fieldLabelCls}>
-                상품명 <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={data.name}
-                onChange={(e) => {
-                  setData({ ...data, name: e.target.value });
-                  if (fieldErrors.includes("상품명")) setFieldErrors((prev) => prev.filter((f) => f !== "상품명"));
-                }}
-                className={fieldErrors.includes("상품명") ? `${inputCls} border-red-400 focus:border-red-500` : inputCls}
-              />
-            </div>
             <div>
-              <label className={fieldLabelCls}>상품 설명 <span className="text-gray-400">(선택)</span></label>
-              <textarea
-                value={data.description ?? ""}
-                onChange={(e) => setData({ ...data, description: e.target.value.slice(0, 200) })}
-                rows={3}
-                maxLength={200}
-                placeholder="예) 계절 꽃으로 풍성하게 만든 꽃다발이에요. 생일·기념일 선물로 좋아요."
-                className={`${inputCls} resize-none`}
-              />
-              <p className="mt-0.5 text-right text-[11px] text-gray-400">{(data.description ?? "").length}/200</p>
-            </div>
-            <div>
-              {/* 제목 줄 오른쪽 끝에 할인 스위치 */}
-              <div className="flex items-center justify-between mb-1">
+              {/* 가격 */}
+              <div className="mb-1">
                 <label className={fieldLabelCls.replace("mb-1", "mb-0")}>상품 가격</label>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={discountEnabled}
-                  disabled={data.price <= 0}
-                  onClick={() => {
-                    const next = !discountEnabled;
-                    setDiscountEnabled(next);
-                    setDiscountError(null);
-                    // 켜면 할인율 칸에 바로 쓰게
-                    if (next) setTimeout(() => rateInputRef.current?.focus(), 0);
-                  }}
-                  className="flex items-center gap-1.5 text-xs text-gray-500 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  할인
-                  <span className={`relative w-9 h-5 rounded-full transition-colors ${discountEnabled ? "bg-gold-500" : "bg-gray-200"}`}>
-                    <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${discountEnabled ? "left-[18px]" : "left-0.5"}`} />
-                  </span>
-                </button>
               </div>
               <div className="flex items-center gap-2">
                 <input
@@ -478,16 +491,16 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
                     else if (salePrice > 0 && list > 0) setRateText(salePrice < list ? String(discountRate(salePrice, list)) : "");
                   }}
                   placeholder="0"
-                  className={inputCls}
+                  className={`${inputCls} text-right`}
                 />
                 <span className="text-sm text-gray-500 shrink-0">원</span>
               </div>
             </div>
-            {/* 할인 — 스위치를 켰을 때만. 할인율이나 할인가 중 하나만 적으면 다른 하나가 채워진다 */}
-            {discountEnabled && (
+            {/* 할인 — 할인율(%) 또는 할인가(원) 중 하나만 적으면 나머지가 채워진다. 비우면 할인 없음 */}
             <div>
+              <label className={fieldLabelCls}>할인</label>
               <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5 w-28 shrink-0">
+                <div className="flex items-center gap-1.5 w-24 shrink-0">
                   <input
                     type="text"
                     inputMode="numeric"
@@ -500,14 +513,12 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
                       const rate = Number(raw);
                       setSalePrice(rate > 0 && data.price > 0 ? priceFromRate(data.price, rate) : 0);
                     }}
-                    ref={rateInputRef}
                     placeholder="0"
                     aria-label="할인율"
                     className={`${inputCls} text-right disabled:bg-gray-50`}
                   />
                   <span className="text-sm text-gray-500 shrink-0">%</span>
                 </div>
-                <span className="text-xs text-gray-300 shrink-0">또는</span>
                 <div className="flex items-center gap-1.5 flex-1 min-w-0">
                   <input
                     type="text"
@@ -522,7 +533,7 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
                       setDiscountError(null);
                       setRateText(sale > 0 && sale < data.price ? String(discountRate(sale, data.price)) : "");
                     }}
-                    placeholder="할인가"
+                    placeholder="할인 없음"
                     aria-label="할인가"
                     className={`${inputCls} text-right disabled:bg-gray-50`}
                   />
@@ -531,29 +542,49 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
               </div>
               {discountError ? (
                 <p className="mt-1 text-xs text-red-500">{discountError}</p>
-              ) : discountOn ? (
-                <p className="mt-1 text-xs text-gold-600">
-                  {salePrice.toLocaleString()}원에 팔아요 ({(data.price - salePrice).toLocaleString()}원 할인)
-                </p>
-              ) : salePrice > 0 ? (
+              ) : salePrice > 0 && !discountOn ? (
                 <p className="mt-1 text-xs text-red-500">할인가는 상품 가격보다 낮아야 해요.</p>
-              ) : (
-                <p className="mt-1 text-xs text-gray-400">할인율이나 할인가 중 하나만 적으면 나머지가 채워져요. (100원 단위)</p>
-              )}
+              ) : null}
             </div>
-            )}
           </div>
-
-          {/* 이미지 업로드 */}
+          {/* 재고 — 수량을 적으면 재고 관리(판매될 때마다 1개씩 줄고 0개면 품절), 비우면 제한 없음 */}
           <div>
-            <label className={fieldLabelCls}>사진</label>
-
-            <ProductImagesEditor items={images} onChange={setImages} compress={(f) => compressImage(f)} disabled={loading || uploading} />
-            {uploading && <p className="mt-1 text-xs text-gray-400">사진 올리는 중...</p>}
-
-            {uploadError && (
-              <p className="mt-1.5 text-xs text-red-500">{uploadError}</p>
-            )}
+            <label className={fieldLabelCls}>재고</label>
+            <div className="flex items-center gap-2">
+              <input
+                inputMode="numeric"
+                value={data.stock_enabled ? String(data.stock ?? 0) : ""}
+                onChange={(e) => {
+                  const raw = e.target.value.replace(/[^0-9]/g, "");
+                  setData(raw === "" ? { ...data, stock_enabled: false, stock: null } : { ...data, stock_enabled: true, stock: Math.min(99999, Number(raw)) });
+                }}
+                placeholder="제한 없음"
+                aria-label="재고 수량"
+                className={`${inputCls} text-right`}
+              />
+              <span className="text-sm text-gray-500 shrink-0">개</span>
+            </div>
+          </div>
+          <div>
+            <label className={fieldLabelCls}>상태</label>
+            <div className="flex p-1 bg-gray-100 rounded-xl">
+              {[
+                { key: "active", label: "활성화" },
+                { key: "inactive", label: "비활성화" },
+                { key: "soldout", label: "품절" },
+              ].map(({ key, label }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setData({ ...data, status: key as ProductInput["status"] })}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
+                    data.status === key ? "bg-gold-500 text-white shadow-sm" : "text-gray-400 hover:text-gray-500"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -663,7 +694,7 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
       {/* 섹션: 상품 옵션 — 손님이 고르는 추가 선택 (금액은 0원 이상) */}
       <div className="bg-white">
         <div className={sectionHeaderCls}>
-          <p className={sectionLabelCls}>상품 옵션 (선택)</p>
+          <p className={sectionLabelCls}>상품 옵션</p>
         </div>
         <div ref={optionsRef} className="px-5 py-4">
           <ProductOptionsEditor groups={options} onChange={(next) => { setOptions(next); if (fieldErrors.includes("옵션")) setFieldErrors((prev) => prev.filter((f) => f !== "옵션")); }} inputCls={inputCls} />
@@ -671,11 +702,13 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
         </div>
       </div>
 
-      {/* 섹션: 뱃지 & 옵션 */}
+      {/* 섹션: 기타 설정 — 자주 안 바꾸는 것이라 접어 둔다 (바꿔 둔 값이 있으면 펼친 채로) */}
       <div className="bg-white">
-        <div className={sectionHeaderCls}>
-          <p className={sectionLabelCls}>뱃지 & 기타 설정</p>
-        </div>
+        <button type="button" onClick={() => setEtcOpen((v) => !v)} aria-expanded={etcOpen} className={`${sectionHeaderCls} w-full flex items-center justify-between text-left`}>
+          <p className={sectionLabelCls}>기타 설정 (뱃지 · 추가 옵션)</p>
+          <svg className={`w-4 h-4 text-gray-400 transition-transform ${etcOpen ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
+        </button>
+        {etcOpen && (
         <div className="px-5 py-4 space-y-4">
           <div>
             <label className={fieldLabelCls}>뱃지</label>
@@ -756,27 +789,9 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
             </div>
           </div>
 
-          <div>
-            <label className={fieldLabelCls}>상태</label>
-            <div className="flex p-1 bg-gray-100 rounded-xl">
-              {[
-                { key: "active", label: "활성" },
-                { key: "inactive", label: "비활성" },
-              ].map(({ key, label }) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setData({ ...data, status: key as ProductInput["status"] })}
-                  className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
-                    data.status === key ? "bg-gold-500 text-white shadow-sm" : "text-gray-400 hover:text-gray-500"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
+
         </div>
+        )}
       </div>
 
       {/* 하단 버튼 */}
