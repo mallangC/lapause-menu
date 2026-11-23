@@ -1,3 +1,4 @@
+import { hasEverSubscribed, isActivePlan } from "@/lib/subscriptionAccess";
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
@@ -93,13 +94,14 @@ export async function GET(request: NextRequest) {
 
         const { data: company } = await supabase
           .from("companies")
-          .select("slug, subscription:company_subscriptions(plan)")
+          .select("slug, subscription:company_subscriptions(plan, trial_ends_at)")
           .eq("owner_id", user.id)
           .maybeSingle();
 
-        const plan = (company?.subscription as { plan?: string } | null)?.plan ?? "none";
+        const sub = company?.subscription as { plan?: string; trial_ends_at?: string | null } | null;
         if (company?.slug) {
-          if (!plan || plan === "none") {
+          // 구독 중이거나 구독한 적 있으면 대시보드 (구독이 끝났으면 보기 전용), 한 번도 구독 안 했으면 구독 페이지
+          if (!isActivePlan(sub?.plan) && !hasEverSubscribed(company.slug, sub?.trial_ends_at)) {
             return NextResponse.redirect(`${origin}/plan`);
           }
           return NextResponse.redirect(`${origin}/${company.slug}/admin/dashboard`);

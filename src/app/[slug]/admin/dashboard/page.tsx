@@ -1,3 +1,4 @@
+import { hasEverSubscribed, isActivePlan } from "@/lib/subscriptionAccess";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
@@ -78,8 +79,9 @@ export default async function DashboardPage({ params }: Props) {
 
   const plan = (company.plan ?? "none") as "monthly" | "annual" | "none" | "free";
 
-  // 플랜 미설정이면 플랜 선택 페이지로 (free는 허용)
-  if (!plan || plan === "none") redirect("/plan");
+  // 구독이 없으면 — 구독한 적 있는 매장은 '보기 전용'으로 들어오고, 한 번도 구독하지 않았으면 구독 페이지로 (free는 구독 중)
+  const readOnly = !isActivePlan(plan);
+  if (readOnly && !hasEverSubscribed(slug, company.trial_ends_at as string | null)) redirect("/plan");
 
   const [{ data: products }, appliedPromo] = await Promise.all([
     supabase
@@ -123,6 +125,7 @@ export default async function DashboardPage({ params }: Props) {
       planExpiresAt={(company.plan_expires_at as string | null) ?? null}
       hasBillingKey={!!(company.billing_key as string | null)}
       appliedPromo={appliedPromo}
+      readOnly={readOnly}
       initialSettings={{ ...toClientSettings(raw.settings as unknown as Record<string, unknown> | null), company_phone: raw.phone ?? null }}
     />
   );

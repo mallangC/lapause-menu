@@ -28,7 +28,8 @@ export default async function OnboardingPage({ params, searchParams }: Props) {
 
   const sub = raw.subscription as unknown as { plan?: string } | null;
   const plan = sub?.plan ?? "none";
-  if (!plan || plan === "none") redirect("/plan");
+  // 구독이 없으면 시작 설정은 쓸 수 없다 — 대시보드가 보기 전용/구독 페이지를 정한다
+  if (!plan || plan === "none") redirect(`/${slug}/admin/dashboard`);
 
   const s = (raw.settings ?? {}) as unknown as Record<string, unknown>;
   const startAt = start && ONBOARDING_QUESTIONS.some((q) => q.id === start) ? start : null;

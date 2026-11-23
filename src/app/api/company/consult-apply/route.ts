@@ -1,3 +1,4 @@
+import { blockIfInactive } from "@/lib/requireActiveCompany";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { sendSalesApplyOperator } from "@/lib/solapi";
@@ -18,6 +19,8 @@ export async function POST(request: NextRequest) {
     .eq("owner_id", user.id)
     .single();
   if (!company) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  { const blocked = await blockIfInactive(company_id); if (blocked) return blocked; } // 구독이 끝난 매장은 보기만
 
   // 필수 조건 확인
   const { data: settings } = await supabase

@@ -1,5 +1,6 @@
 "use client";
 
+import { hasEverSubscribed, isActivePlan } from "@/lib/subscriptionAccess";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -89,7 +90,7 @@ export default function RootLoginForm() {
     // 로그인한 사용자의 회사 slug 조회
     const { data: company } = await supabase
       .from("companies")
-      .select("slug, subscription:company_subscriptions(plan)")
+      .select("slug, subscription:company_subscriptions(plan, trial_ends_at)")
       .eq("owner_id", authData.user.id)
       .single();
 
@@ -99,8 +100,9 @@ export default function RootLoginForm() {
       return;
     }
 
-    const plan = (Array.isArray(company.subscription) ? company.subscription[0]?.plan : (company.subscription as { plan?: string } | null)?.plan) ?? "none";
-    if (!plan || plan === "none") {
+    const sub = (Array.isArray(company.subscription) ? company.subscription[0] : company.subscription) as { plan?: string; trial_ends_at?: string | null } | null;
+    // 구독 중이거나 구독한 적 있으면 대시보드 (구독이 끝났으면 거기서 보기 전용), 한 번도 구독 안 했으면 구독 페이지
+    if (!isActivePlan(sub?.plan) && !hasEverSubscribed(company.slug, sub?.trial_ends_at)) {
       router.push("/plan");
       return;
     }

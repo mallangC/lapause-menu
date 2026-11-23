@@ -1,3 +1,4 @@
+import { blockIfInactive } from "@/lib/requireActiveCompany";
 import { reportOpsAlert } from "@/lib/opsAlert";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
@@ -62,6 +63,7 @@ export async function PATCH(
     const { data: company } = await supabase
       .from("companies").select("id").eq("id", resCheck.company_id).eq("owner_id", user.id).single();
     if (!company) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const blocked = await blockIfInactive(resCheck.company_id); if (blocked) return blocked; // 구독이 끝난 매장은 보기만
   }
 
   // 상태 전이 유효성 검증 (클라이언트가 보낸 previousStatus가 아니라 DB의 실제 현재 상태 기준)

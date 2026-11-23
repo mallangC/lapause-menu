@@ -1,3 +1,4 @@
+import { blockIfInactive } from "@/lib/requireActiveCompany";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -33,6 +34,7 @@ export async function POST(request: NextRequest) {
 
   // 본인 매장인지
   const { data: company } = await supabase.from("companies").select("id").eq("id", companyId).eq("owner_id", user.id).single();
+  if (company) { const blocked = await blockIfInactive(companyId); if (blocked) return blocked; } // 구독이 끝난 매장은 보기만
   if (!company) return NextResponse.json({ error: "권한이 없어요." }, { status: 403 });
 
   // 매장 상품 유형 — 폼에서 보낸 목록 (짧은 글자만, 최대 30개)

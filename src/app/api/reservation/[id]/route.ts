@@ -1,3 +1,4 @@
+import { blockIfInactive } from "@/lib/requireActiveCompany";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { logReservationChange } from "@/lib/reservationLog";
@@ -17,7 +18,9 @@ async function verifyOwnership(
   if (profile?.role === "operator") return true;
   const { data: company } = await supabase
     .from("companies").select("id").eq("id", companyId).eq("owner_id", userId).single();
-  return !!company;
+  if (!company) return false;
+  // 구독이 끝난 매장(보기 전용)은 사장님이 고칠 수 없다
+  return (await blockIfInactive(companyId)) ? "inactive" : true;
 }
 
 export async function PATCH(
@@ -35,7 +38,9 @@ export async function PATCH(
     .from("reservations").select("company_id, paid, final_price").eq("id", id).single();
   if (!reservation) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  if (!(await verifyOwnership(supabase, user.id, reservation.company_id))) {
+  const owned = await verifyOwnership(supabase, user.id, reservation.company_id);
+  if (owned === "inactive") return (await blockIfInactive(reservation.company_id))!;
+  if (!owned) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -102,6 +107,7 @@ export async function DELETE(
     const { data: company } = await supabase
       .from("companies").select("id").eq("id", reservation.company_id).eq("owner_id", user.id).single();
     if (!company) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const blocked = await blockIfInactive(reservation.company_id); if (blocked) return blocked; // 구독이 끝난 매장은 보기만
   }
 
   // 카드 결제된 예약은 삭제로 끝내지 않는다 — 먼저 '취소'로 바꾸면 상태 변경 API가 토스 환불까지 처리한다.

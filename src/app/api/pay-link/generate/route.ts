@@ -1,3 +1,4 @@
+import { blockIfInactive } from "@/lib/requireActiveCompany";
 import { NextRequest, NextResponse } from "next/server";
 import { PAY_LINK_BLOCKED_MESSAGE, payLinkAllowed } from "@/lib/payLinkAllowed";
 import { createClient } from "@/lib/supabase/server";
@@ -21,6 +22,7 @@ export async function POST(request: NextRequest) {
     // 판매 신청이 승인된 매장만 (사장님 본인 예약인지는 RLS가 확인 — 못 읽으면 없는 예약)
     const { data: rv } = await supabase.from("reservations").select("company_id").eq("id", reservationId).maybeSingle();
     if (!rv) return NextResponse.json({ error: "예약을 찾지 못했습니다." }, { status: 404 });
+    const blocked = await blockIfInactive(rv.company_id as string); if (blocked) return blocked; // 구독이 끝난 매장은 보기만
     if (!(await payLinkAllowed(supabase, rv.company_id as string))) {
       return NextResponse.json({ error: PAY_LINK_BLOCKED_MESSAGE }, { status: 403 });
     }

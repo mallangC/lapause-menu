@@ -1,5 +1,6 @@
 "use client";
 
+import { SUBSCRIPTION_INACTIVE_MESSAGE } from "@/lib/subscriptionAccess";
 import NaverMailPanel from "./NaverMailPanel";
 import NaverBell from "./NaverBell";
 import { hasUnsaved } from "@/components/admin/useDirty";
@@ -66,10 +67,12 @@ interface Props {
   hasBillingKey: boolean;
   appliedPromo: AppliedPromo;
   initialSettings: CompanySettings;
+  /** 구독이 끝난 매장 — 보기만 (내 정보·요금제만 쓸 수 있고 나머지는 막으로 덮는다) */
+  readOnly?: boolean;
 }
 
 
-export default function DashboardClient({ slug, userId, userEmail, isOAuth, profileName, profilePhone, twoFactorEnabled, companyId, companyName, logoImage, themeBg, themeAccent, initialProducts, locationUrl, kakaoChannelUrl, instagramUrl, youtubeUrl, companyPhone, hiddenProductTypes, hiddenSeasons, consultEnabled, plan, subscriptionPlan, cancelAtPeriodEnd, trialEndsAt, planExpiresAt, hasBillingKey, appliedPromo, initialSettings }: Props) {
+export default function DashboardClient({ slug, userId, userEmail, isOAuth, profileName, profilePhone, twoFactorEnabled, companyId, companyName, logoImage, themeBg, themeAccent, initialProducts, locationUrl, kakaoChannelUrl, instagramUrl, youtubeUrl, companyPhone, hiddenProductTypes, hiddenSeasons, consultEnabled, plan, subscriptionPlan, cancelAtPeriodEnd, trialEndsAt, planExpiresAt, hasBillingKey, appliedPromo, initialSettings, readOnly = false }: Props) {
   const searchParams = useSearchParams();
   const initialTab = toTab(searchParams.get("tab"));
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
@@ -313,6 +316,9 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
     if (!enabled && (activeTab === "stats" || activeTab === "settlement")) goTab("reservations", true);
   };
 
+  // 보기 전용일 때 막으로 덮는 화면 — 내 정보·요금제(다시 구독)만 쓸 수 있다
+  const locked = readOnly && activeTab !== "myinfo" && activeTab !== "plan";
+
   const mainTabs: { key: Tab; label: string; statsOnly?: boolean }[] = [
     { key: "dashboard", label: "대시보드" },
     { key: "reservations", label: "예약 관리" },
@@ -353,21 +359,35 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
             {companyName} — 관리자
           </Link>
           {/* 알림 — 어느 탭에서든 (확인하지 않은 네이버 예약 · 읽지 못한 네이버 메일). 로그아웃은 내 정보 탭에 */}
-          <NaverBell
-            companyId={companyId}
-            settings={companySettings}
-            unchecked={naverUnchecked}
-            onCheck={checkNaver}
-            onOpenReservation={(r) => {
-              goTab("reservations");
-              setNaverOpenRequest({ reservation: r, nonce: Date.now() });
-            }}
-          />
+          {!readOnly && (
+            <NaverBell
+              companyId={companyId}
+              settings={companySettings}
+              unchecked={naverUnchecked}
+              onCheck={checkNaver}
+              onOpenReservation={(r) => {
+                goTab("reservations");
+                setNaverOpenRequest({ reservation: r, nonce: Date.now() });
+              }}
+            />
+          )}
         </div>
       </header>
 
       {/* 오늘 꽃 색상을 아직 안 정했으면 그날 첫 접속 때 묻는다 (접속마다 한 번, 어느 탭에서든) */}
-      <TodayColorsPrompt companyId={companyId} settings={companySettings} onSaved={handleSettingsSaved} />
+      {!readOnly && <TodayColorsPrompt companyId={companyId} settings={companySettings} onSaved={handleSettingsSaved} />}
+
+      {/* 구독이 끝난 매장 — 보기만 할 수 있다는 띠 */}
+      {readOnly && (
+        <div className="bg-gray-900 text-white">
+          <div className="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
+            <p className="text-sm break-keep">구독이 끝나 지금은 보기만 할 수 있어요.</p>
+            <button type="button" onClick={() => goTab("plan")} className="shrink-0 px-3 py-1.5 rounded-lg bg-gold-500 text-white text-xs font-medium hover:bg-gold-600">
+              다시 구독하기
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 모바일 탭 내비게이션 */}
       <div className="md:hidden bg-white border-b border-gray-100 sticky top-[61px] z-30">
@@ -557,7 +577,9 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
           </div>
         )}
 
-        <main className="flex-1 min-w-0">
+        {/* 보기 전용 — 내 정보·요금제 말고는 내용 위를 막으로 덮고(inert: 누르기·키보드 이동 모두 막힘) 안내를 띄운다 */}
+        <div className="flex-1 min-w-0 relative">
+        <main className="min-w-0" inert={locked}>
           {visitedTabs.has("dashboard") && (
             <div className={activeTab === "dashboard" ? "" : "hidden"}>
               <DashboardOverviewTab
@@ -754,6 +776,18 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
             </div>
           )}
         </main>
+        {locked && (
+          <div className="absolute inset-0 z-20 bg-white/50 backdrop-grayscale-[0.4] -mx-4 md:mx-0 md:rounded-2xl">
+            <div className="sticky top-28 mx-auto mt-10 w-[calc(100%-2rem)] max-w-sm bg-white rounded-2xl shadow-xl border border-gray-100 p-5 text-center space-y-3">
+              <p className="text-sm font-semibold text-gray-900">{SUBSCRIPTION_INACTIVE_MESSAGE}</p>
+              <p className="text-xs text-gray-500 break-keep">지금은 보기만 할 수 있어요. 다시 구독하면 모든 기능을 쓸 수 있어요. 비밀번호·로그아웃은 내 정보에서 할 수 있어요.</p>
+              <button type="button" onClick={() => goTab("plan")} className="w-full py-2.5 rounded-xl bg-gold-500 text-white text-sm font-medium hover:bg-gold-600">
+                다시 구독하기
+              </button>
+            </div>
+          </div>
+        )}
+        </div>
       </div>
     </div>
   );

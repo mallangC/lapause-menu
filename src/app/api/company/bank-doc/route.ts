@@ -1,3 +1,4 @@
+import { blockIfInactive } from "@/lib/requireActiveCompany";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
@@ -36,6 +37,7 @@ export async function POST(request: NextRequest) {
   if (!(await verifyCompanyOwner(companyId))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  { const blocked = await blockIfInactive(companyId); if (blocked) return blocked; } // 구독이 끝난 매장은 보기만 (서류 올리기 막음)
 
   const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
   const MAX_SIZE = 10 * 1024 * 1024; // 10MB
