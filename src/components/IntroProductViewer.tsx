@@ -25,6 +25,8 @@ export interface IntroProduct {
   bag_included?: boolean;
   message_card_unavailable?: boolean;
   preservative_unavailable?: boolean;
+  /** 상품 옵션 묶음 — 이 사진으로 주문하면 채팅에서 옵션을 고른다 */
+  options?: unknown;
 }
 
 export default function IntroProductViewer({

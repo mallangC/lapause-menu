@@ -12,6 +12,8 @@ import { useOrderCheckout, type Done, type OrderCheckoutProps, type SingleOrder 
 import { ymd } from "@/components/order/orderTypes";
 import { formatPhone, parsePhone } from "@/lib/format";
 import { PHOTO_PRODUCT_ID } from "@/lib/styleOrder";
+import ProductOptionPicker from "@/components/ProductOptionPicker";
+import { applyOptions, defaultSelection, normalizeOptions, resolveOptions } from "@/lib/productOptions";
 
 // 첫 화면 대화 주문 — 결제 화면(OrderCheckout)의 칸을 잘라 대화로 묻고, 결제·완료까지 대화 안에서 끝낸다.
 // 입력값·금액·결제·결제 복귀는 결제 화면과 같은 useOrderCheckout을 쓴다.
@@ -25,7 +27,7 @@ const dateLabel = (d: string) => {
   return `${dt.getMonth() + 1}월 ${dt.getDate()}일 (${WEEKDAYS[dt.getDay()]})`;
 };
 
-type StepId = "orderer" | "delivery" | "date" | "time" | "options" | "requests" | "pay";
+type StepId = "orderer" | "delivery" | "date" | "time" | "productOptions" | "options" | "requests" | "pay";
 
 export type CheckoutSettings = Omit<
   OrderCheckoutProps,
@@ -87,11 +89,44 @@ function Collapse({ closing, children }: { closing: boolean; children: React.Rea
 
 export default function ChatCheckout(props: Props) {
   const { slug, companyName, order, settings, returning, resumeAtPay = false, restoredDone = null, initialRequests, onBeforePay, onDone, onRestart, kakaoChannelUrl, storePhone, avatar, avatarGap, bubbleText, replyBtn, mobileBottomGap = 24 } = props;
+  // 상품 옵션 — '추가 옵션' 단계에서 고르면 상품 값이 바뀐다
+  // (들어온 주문은 기본 선택 금액이 더해져 있으니, 그만큼 빼서 상품가를 구한 뒤 고른 옵션으로 다시 더한다)
+  const optionGroups = order ? normalizeOptions((order.product as { options?: unknown }).options) : [];
+  // 결제창에 다녀오면 고른 옵션을 되살린다 (이 탭에만 보관)
+  const optionsKey = `chat_options_${slug}`;
+  const [pickedOptions, setPickedOptionsState] = useState<string[]>(() => {
+    if (resumeAtPay || returning) {
+      try {
+        const saved = JSON.parse(sessionStorage.getItem(optionsKey) ?? "null");
+        if (Array.isArray(saved) && resolveOptions(optionGroups, saved)) return saved as string[];
+      } catch { /* 저장소를 못 쓰면 기본 선택 */ }
+    }
+    return order?.product.productOptions ?? defaultSelection(optionGroups);
+  });
+  const setPickedOptions = (next: string[]) => {
+    setPickedOptionsState(next);
+    try { sessionStorage.setItem(optionsKey, JSON.stringify(next)); } catch { /* 무시 */ }
+  };
+  const includedOptionPrice = order && optionGroups.length ? resolveOptions(optionGroups, order.product.productOptions)?.price ?? 0 : 0;
+  const pricedOrder: SingleOrder | null =
+    order && optionGroups.length
+      ? {
+          ...order,
+          product: applyOptions(
+            {
+              ...order.product,
+              price: order.product.price - includedOptionPrice,
+              original_price: order.product.original_price != null ? order.product.original_price - includedOptionPrice : order.product.original_price,
+            },
+            pickedOptions,
+          ),
+        }
+      : order;
   const c = useOrderCheckout({
     ...settings,
     slug,
     companyName,
-    order,
+    order: pricedOrder,
     returning,
     draftKey: `chat_checkout_${slug}`,
     header: null,
@@ -104,7 +139,13 @@ export default function ChatCheckout(props: Props) {
   const { messageCardEnabled, messageCardPrice, shoppingBagEnabled, shoppingBagPrice, preservativeEnabled, preservativePrice, deliveryEnabled, storeAddress, todayColors, colorMinPrice, afterHours, consultNotice, transferAvailable, isDemo } = settings;
 
   const hasOptions = messageCardEnabled || shoppingBagEnabled || preservativeEnabled;
-  const steps: StepId[] = ["orderer", "delivery", "date", "time", ...(hasOptions ? (["options"] as StepId[]) : []), "requests", "pay"];
+  // 상품 옵션(사장님이 상품에 만든 것)은 '추가 옵션' 앞에 따로 묻는다 — 옵션이 있는 상품만
+  const steps: StepId[] = [
+    "orderer", "delivery", "date", "time",
+    ...(optionGroups.length > 0 ? (["productOptions"] as StepId[]) : []),
+    ...(hasOptions ? (["options"] as StepId[]) : []),
+    "requests", "pay",
+  ];
   const [at, setAt] = useState(resumeAtPay || returning ? steps.length - 1 : 0);
   const [editing, setEditing] = useState<StepId | null>(null);
   const [stepError, setStepError] = useState<string | null>(null);
@@ -267,13 +308,23 @@ export default function ChatCheckout(props: Props) {
           : "매장에서 픽업할게요";
       case "date": return `${dateLabel(desiredDate)}${form.preparedColor ? ` · 꽃 색 ${form.preparedColor}` : ""}`;
       case "time": return form.desiredTime;
+      case "productOptions": {
+        // 고른 항목 이름 (0원 기본 항목도 고른 것이니 함께)
+        const names = optionGroups.flatMap((g) => g.choices.filter((ch) => pickedOptions.includes(ch.id)).map((ch) => ch.name));
+        if (!names.length) return "옵션 없이 할게요";
+        const text = names.join(" · ");
+        // 받침 있으면 '으로' (ㄹ 받침은 '로')
+        const code = text.charCodeAt(text.length - 1) - 0xac00;
+        const jong = code >= 0 && code < 11172 ? code % 28 : 0;
+        return `${text}${jong && jong !== 8 ? "으로" : "로"} 할게요`;
+      }
       case "options": {
         const picked = [
           form.messageCard === "추가" || c.messageCardCount > 0 ? "메시지 카드" : "",
           form.shoppingBag === "추가" || c.shoppingBagCount > 0 ? "쇼핑백" : "",
           form.preservative === "추가" || c.preservativeCount > 0 ? "생화 수명연장제" : "",
         ].filter(Boolean);
-        return picked.length ? `${picked.join(" · ")} 추가할게요` : "추가 없이 할게요";
+        return picked.length ? `${picked.join(" · ")} 추가할게요` : "없습니다";
       }
       case "requests": return form.requests.trim() ? form.requests.trim() : "따로 없어요";
       default: return "";
@@ -284,6 +335,7 @@ export default function ChatCheckout(props: Props) {
     delivery: "어떻게 받으시겠어요?",
     date: "언제 받으시겠어요?",
     time: "몇 시에 받으시겠어요?",
+    productOptions: "옵션을 골라 주세요.",
     options: "추가로 필요한 게 있으세요?",
     requests: "다른 요청사항이 있으실까요?",
     pay: "주문 내용을 확인하고 결제해 주세요.",
@@ -455,6 +507,14 @@ export default function ChatCheckout(props: Props) {
             )}
           </>
         );
+      case "productOptions":
+        return (
+          <>
+            {/* 상품 옵션 — 추가 옵션과 같은 모양의 카드, 묶음마다 한 장씩 */}
+            <ProductOptionPicker groups={optionGroups} selected={pickedOptions} onChange={setPickedOptions} cardClassName={card} />
+            {nextBtn(id)}
+          </>
+        );
       case "options":
         return (
           <>
@@ -512,6 +572,7 @@ export default function ChatCheckout(props: Props) {
     ...(form.deliveryType === "배송" ? [{ label: "받는 분", value: `${recipientName} · ${recipientPhone}` }, { label: "배송지", value: `${address}${addressDetail ? ` ${addressDetail}` : ""}` }] : []),
     { label: "받는 날", value: `${dateLabel(desiredDate)} ${form.desiredTime}`.trim() },
     ...(form.preparedColor ? [{ label: "꽃 색", value: form.preparedColor }] : []),
+    ...(product?.optionsLabel ? [{ label: "상품 옵션", value: product.optionsLabel }] : []),
     ...(form.requests.trim() ? [{ label: "요청 사항", value: form.requests.trim() }] : []),
   ];
 

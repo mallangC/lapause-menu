@@ -708,6 +708,8 @@ export default function StoreWelcomeClient({ slug, companyName, logoImage, theme
       bag_included: p.bag_included,
       message_card_unavailable: p.message_card_unavailable,
       preservative_unavailable: p.preservative_unavailable,
+      // 상품 옵션 — 채팅 주문에서 '옵션을 골라 주세요' 단계로 고른다
+      options: p.options,
     });
     pick(introOption(p.name));
   };
