@@ -67,6 +67,8 @@ export default function ProductsClient({
   const searchParams = useSearchParams();
   const tab = searchParams.get("tab") as "featured" | "season" | "instant" | null;
   const typeParam = searchParams.get("type");
+  // 메뉴 서랍에서 고른 시즌 (?tab=season&season=크리스마스) — 없으면 시즌 상품 전체
+  const seasonParam = searchParams.get("season");
   const activeTab = tab === "featured" ? "featured" : tab === "season" ? "season" : tab === "instant" && instantMenu ? "instant" : "all";
 
   const [filter, setFilter] = useState<FilterState>({
@@ -75,6 +77,7 @@ export default function ProductsClient({
     isSeason: activeTab === "season",
     isInstant: activeTab === "instant",
     productTypes: typeParam ? [typeParam] : [],
+    seasons: activeTab === "season" && seasonParam ? [seasonParam] : [],
   });
 
   useEffect(() => {
@@ -84,8 +87,9 @@ export default function ProductsClient({
       isSeason: activeTab === "season",
       isInstant: activeTab === "instant",
       productTypes: typeParam ? [typeParam] : [],
+      seasons: activeTab === "season" && seasonParam ? [seasonParam] : [],
     });
-  }, [activeTab, typeParam]);
+  }, [activeTab, typeParam, seasonParam]);
 
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [openFilterDropdown, setOpenFilterDropdown] = useState<FilterKey | null>(null);
@@ -101,12 +105,15 @@ export default function ProductsClient({
       if (!filter.isInstant && p.seasons.length > 0 && p.seasons.every((s) => hiddenSeasons.includes(s))) return false;
       return true;
     })
+    // 전체 상품: 상품 유형 순서(메뉴 설정)대로 묶고 그 안에서 금액 낮은 순
+    // 시즌·인기·바로 구매 등 다른 탭: 금액 낮은 순 (같은 금액이면 이름순)
     .sort((a, b) => {
-      if (activeTab !== "all") return 0;
+      const byPrice = (a.price ?? 0) - (b.price ?? 0) || a.name.localeCompare(b.name, "ko");
+      if (activeTab !== "all") return byPrice;
       const order = sortByOrder([...PRODUCT_TYPES, ...customProductTypes], productTypeOrder);
       const ai = order.indexOf(a.product_type);
       const bi = order.indexOf(b.product_type);
-      return (ai === -1 ? order.length : ai) - (bi === -1 ? order.length : bi);
+      return (ai === -1 ? order.length : ai) - (bi === -1 ? order.length : bi) || byPrice;
     });
 
   const hasFilter = filter.flowerColors.length > 0 || filter.wrappingColors.length > 0 || filter.moods.length > 0;

@@ -141,7 +141,7 @@ export default function StoreHeader({
               {seasonList.map((season) => (
                 <Link
                   key={season}
-                  href={`/${slug}/menu?tab=season`}
+                  href={`/${slug}/menu?tab=season&season=${encodeURIComponent(season)}`}
                   className={itemCls}
                   onClick={() => setMenuOpen(false)}
                 >

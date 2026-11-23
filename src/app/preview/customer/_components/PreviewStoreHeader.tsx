@@ -126,7 +126,7 @@ export default function PreviewStoreHeader({
               <div className="mx-2 mt-3 border-t border-gray-100" />
               <p className="px-4 pt-3 pb-1 text-xs font-medium tracking-wide text-gray-400">시즌 메뉴</p>
               {seasonList.map((season) => (
-                <Link key={season} href={`/${slug}/menu?tab=season`} className="px-4 py-3.5 text-lg md:text-xl font-medium text-gray-800 hover:bg-gray-50 rounded-xl transition-colors" onClick={() => setMenuOpen(false)}>
+                <Link key={season} href={`/${slug}/menu?tab=season&season=${encodeURIComponent(season)}`} className="px-4 py-3.5 text-lg md:text-xl font-medium text-gray-800 hover:bg-gray-50 rounded-xl transition-colors" onClick={() => setMenuOpen(false)}>
                   {season}
                 </Link>
               ))}
