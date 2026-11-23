@@ -1,6 +1,9 @@
 "use client";
 
 import PriceTag from "@/components/PriceTag";
+import { useRef, useState } from "react";
+import ProductOptionPicker from "@/components/ProductOptionPicker";
+import { applyOptions, defaultSelection, missingRequired, normalizeOptions, resolveOptions } from "@/lib/productOptions";
 import { cartLineKey } from "@/lib/productOptions";
 import StoreImage from "@/components/StoreImage";
 import Link from "next/link";
@@ -31,7 +34,29 @@ export default function OrderCheckout(props: OrderCheckoutProps) {
     messageCardEnabled, messageCardPrice, shoppingBagEnabled, shoppingBagPrice, preservativeEnabled, preservativePrice,
     todayColors, colorLeadDays, colorPickEnabled, colorMinPrice, afterHours, transferAvailable, isDemo,
   } = props;
-  const c = useOrderCheckout(props);
+  // 상품 옵션 (상품 1개 주문) — 여기서도 고르고 바꿀 수 있다. 들어온 주문은 고른(또는 기본) 옵션 금액이 더해져 있어
+  // 그만큼 빼서 상품가를 구한 뒤 지금 고른 옵션으로 다시 더한다 (첫 화면 대화 주문과 같은 계산)
+  const singleIn = orderProp?.kind === "single" ? orderProp : null;
+  const optionGroups = singleIn ? normalizeOptions((singleIn.product as { options?: unknown }).options) : [];
+  const [pickedOptions, setPickedOptions] = useState<string[]>(() => singleIn?.product.productOptions ?? defaultSelection(optionGroups));
+  const [optionInvalid, setOptionInvalid] = useState<string[]>([]);
+  const optionsRef = useRef<HTMLDivElement>(null);
+  const includedOptionPrice = singleIn && optionGroups.length ? resolveOptions(optionGroups, singleIn.product.productOptions)?.price ?? 0 : 0;
+  const pricedOrder =
+    singleIn && optionGroups.length
+      ? {
+          ...singleIn,
+          product: applyOptions(
+            {
+              ...singleIn.product,
+              price: singleIn.product.price - includedOptionPrice,
+              original_price: singleIn.product.original_price != null ? singleIn.product.original_price - includedOptionPrice : singleIn.product.original_price,
+            },
+            pickedOptions,
+          ),
+        }
+      : orderProp;
+  const c = useOrderCheckout({ ...props, order: pricedOrder });
   const {
     restoredOrder, setRestoredOrder, order, single, cart, product, quantity, isPhotoOrder, isStyleOrder, form, setForm, set, selectedDate, setSelectedDate, desiredDate, name, setName, phone, setPhone, recipientName, setRecipientName, recipientPhone, setRecipientPhone, address, setAddress, addressDetail, setAddressDetail, deliveryFee, setDeliveryFee, deliveryDistance, setDeliveryDistance, distanceLoading, setDistanceLoading, messageCardCount, setMessageCardCount, shoppingBagCount, setShoppingBagCount, preservativeCount, setPreservativeCount, messageCardContents, setMessageCardContents, privacyAgreed, setPrivacyAgreed, cancellationAgreed, setCancellationAgreed, noticeAgreed, setNoticeAgreed, paymentMethod, setPaymentMethod, cashReceipt, setCashReceipt, fe, setFe, clearFe, submitting, setSubmitting, error, setError, processing, setProcessing, done, setDone, widgetReady, setWidgetReady, widgetRef, paymentOrderId, photoData, setPhotoData, refNotice, refName, refPhone, refDeliveryType, refDeliveryInfo, refDate, refTime, refPayment, refAgreement, effMsg, effBag, effPreservative, optionPrices, checkedItems, msgCardAmt, bagAmt, preservativeAmt, goodsAmt, deliveryAmt, finalPrice, lines, hasSeasonal, colorMode, needsColor, photoNoColorNotice, colorAmount, pickAddress, dateAllowed, now, day, isToday, itemTypes, leadHours, minTimeDate, leadOverflow, leadStart, slots, extraSlots, restore, readDraft, send, finish, makeDraft, submit, confirm,
   } = c;
@@ -195,7 +220,14 @@ export default function OrderCheckout(props: OrderCheckoutProps) {
     receiptError: fe.receipt,
     transferAvailable,
   };
-  const payBox = { lines, total: finalPrice, payment, agreements, error, onConfirm: confirm, submitting, cardNotReady: !widgetReady };
+  // 필수 옵션을 고르지 않았으면 결제로 넘어가지 않고 옵션 칸을 보여 준다
+  const confirmWithOptions = () => {
+    const missing = missingRequired(optionGroups, pickedOptions).map((g) => g.id);
+    setOptionInvalid(missing);
+    if (missing.length) { optionsRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+    confirm();
+  };
+  const payBox = { lines, total: finalPrice, payment, agreements, error, onConfirm: confirmWithOptions, submitting, cardNotReady: !widgetReady };
   const productImage = isPhotoOrder ? photoData : product?.image_url ?? null;
 
   return page(
@@ -237,6 +269,19 @@ export default function OrderCheckout(props: OrderCheckoutProps) {
                   <p className="pt-1"><PriceTag price={product.price} original={product.original_price} size="sm" /></p>
                 </div>
               </div>
+              {/* 상품 옵션 — 고르면 금액이 바로 바뀐다 */}
+              {optionGroups.length > 0 && (
+                <div ref={optionsRef} className="pt-1">
+                  <ProductOptionPicker
+                    groups={optionGroups}
+                    selected={pickedOptions}
+                    onChange={(next) => { setPickedOptions(next); setOptionInvalid((prev) => prev.filter((id) => missingRequired(optionGroups, next).some((g) => g.id === id))); }}
+                    cardClassName="bg-white rounded-2xl border border-gray-100 overflow-hidden"
+                    invalid={optionInvalid}
+                  />
+                  {optionInvalid.length > 0 && <p className="mt-1.5 text-xs text-red-500">필수 옵션을 골라 주세요.</p>}
+                </div>
+              )}
             </div>
           ) : (
             <div className="bg-white px-4 py-4 space-y-3">

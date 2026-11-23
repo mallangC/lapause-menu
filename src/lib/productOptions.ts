@@ -3,7 +3,8 @@
 //
 // · 묶음(group): 이름 + 하나만 고르기(multi=false) / 여러 개 고르기(multi=true)
 // · 항목(choice): 이름 + 추가 금액(0원 이상) + 기본 선택
-// · 하나만 고르는 묶음은 늘 하나가 골라져 있다 (기본 선택이 없으면 첫 항목)
+// · 필수 묶음은 꼭 골라야 주문할 수 있다 (단일 선택: 정확히 1개, 복수 선택: 1개 이상)
+// · 기본 선택은 없어도 된다 — 손님이 직접 고르게 (기본 선택이 있으면 처음부터 골라져 있다)
 // · 손님이 고른 것은 항목 id 목록으로 주고받는다
 
 export interface ProductOptionChoice {
@@ -18,8 +19,10 @@ export interface ProductOptionChoice {
 export interface ProductOptionGroup {
   id: string;
   name: string;
-  /** true: 여러 개 고르기 / false: 하나만 고르기 */
+  /** true: 복수 선택 / false: 단일 선택 */
   multi: boolean;
+  /** 필수 — 고르지 않으면 주문할 수 없다 */
+  required: boolean;
   choices: ProductOptionChoice[];
 }
 
@@ -52,24 +55,25 @@ export function normalizeOptions(raw: unknown): ProductOptionGroup[] {
     }
     if (choices.length === 0) continue;
     const multi = gg.multi === true;
-    // 하나만 고르는 묶음은 기본 선택을 하나로
+    // 단일 선택은 기본 선택이 많아야 하나 (없어도 된다)
     if (!multi) {
       const first = choices.findIndex((c) => c.default);
-      choices.forEach((c, i) => (c.default = i === (first >= 0 ? first : -1)));
+      choices.forEach((c, i) => (c.default = first >= 0 && i === first));
     }
-    groups.push({ id, name, multi, choices });
+    groups.push({ id, name, multi, required: gg.required === true, choices });
   }
   return groups;
 }
 
-/** 처음 골라져 있는 항목 — 하나만 고르는 묶음은 기본 선택(없으면 첫 항목), 여러 개는 기본 선택들 */
+/** 처음 골라져 있는 항목 — 사장님이 '기본'으로 둔 것만 (없으면 아무것도 안 골라진 채) */
 export function defaultSelection(groups: ProductOptionGroup[]): string[] {
-  const ids: string[] = [];
-  for (const g of groups) {
-    if (g.multi) ids.push(...g.choices.filter((c) => c.default).map((c) => c.id));
-    else ids.push((g.choices.find((c) => c.default) ?? g.choices[0]).id);
-  }
-  return ids;
+  return groups.flatMap((g) => g.choices.filter((c) => c.default).map((c) => c.id));
+}
+
+/** 아직 고르지 않은 필수 묶음 */
+export function missingRequired(groups: ProductOptionGroup[], selected: string[]): ProductOptionGroup[] {
+  const chosen = new Set(selected);
+  return groups.filter((g) => g.required && !g.choices.some((c) => chosen.has(c.id)));
 }
 
 export interface ResolvedOptions {
@@ -84,7 +88,7 @@ export interface ResolvedOptions {
 const won = (n: number) => n.toLocaleString("ko-KR");
 
 /**
- * 고른 항목 확인 — 없는 항목이 있거나, 하나만 고르는 묶음에서 0개·2개 이상이면 null
+ * 고른 항목 확인 — 없는 항목, 단일 선택에서 2개 이상, 필수 묶음에서 0개면 null
  * selected 가 없으면(undefined) 기본 선택으로 본다 (옵션 화면이 없는 주문 경로)
  */
 export function resolveOptions(groups: ProductOptionGroup[], selected: string[] | undefined | null): ResolvedOptions | null {
@@ -98,7 +102,8 @@ export function resolveOptions(groups: ProductOptionGroup[], selected: string[] 
   let price = 0;
   for (const g of groups) {
     const picked = g.choices.filter((c) => chosen.has(c.id));
-    if (!g.multi && picked.length !== 1) return null;
+    if (!g.multi && picked.length > 1) return null;
+    if (g.required && picked.length === 0) return null;
     if (picked.length === 0) continue;
     ids.push(...picked.map((c) => c.id));
     price += picked.reduce((s, c) => s + c.price, 0);

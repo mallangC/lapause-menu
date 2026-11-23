@@ -208,6 +208,8 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
   const discountOn = discountEnabled && salePrice > 0 && salePrice < data.price;
   // 바로 구매 메뉴 이름 (사장님이 메뉴 설정에서 바꿀 수 있다)
   const [instantName, setInstantName] = useState<string>(DEFAULT_INSTANT_MENU_NAME);
+  // 메뉴 설정에서 바로 구매(현장 판매) 메뉴를 숨겼으면 판매 방식을 묻지 않는다 (이미 그 메뉴 상품이면 뺄 수 있게 보여 준다)
+  const [instantMenuHidden, setInstantMenuHidden] = useState(false);
   const [customCategories, setCustomCategories] = useState<{ category_type: string; name: string }[]>([]);
   // 메뉴 설정에서 지운 기본 유형·시즌 (지금 상품에 이미 붙어 있는 건 계속 보여 준다)
   const [hiddenBuiltins, setHiddenBuiltins] = useState<{ types: string[]; seasons: string[] }>({ types: [], seasons: [] });
@@ -224,11 +226,12 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
       .then(({ data }) => { if (data) setCustomCategories(data); });
     supabase
       .from("company_settings")
-      .select("instant_menu_name, hidden_product_types, hidden_seasons")
+      .select("instant_menu_name, instant_menu_hidden, hidden_product_types, hidden_seasons")
       .eq("company_id", companyId)
       .maybeSingle()
       .then(({ data }) => {
         setInstantName((data?.instant_menu_name as string | null)?.trim() || DEFAULT_INSTANT_MENU_NAME);
+        setInstantMenuHidden(data?.instant_menu_hidden === true);
         setHiddenBuiltins({
           types: (data?.hidden_product_types as string[] | null) ?? [],
           seasons: (data?.hidden_seasons as string[] | null) ?? [],
@@ -381,6 +384,7 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
         <div className="px-5 py-4 space-y-3">
           <div className="space-y-3">
             {/* 판매 방식 — 주문 받고 만드는 상품 / 이미 만들어 둔 상품(현장 판매 메뉴). 시즌도 고르면 두 메뉴에 모두 나온다 */}
+            {(!instantMenuHidden || data.instant) && (
             <div>
               <label className={fieldLabelCls}>판매 방식</label>
               <div className="grid grid-cols-2 gap-2">
@@ -406,6 +410,7 @@ export default function ProductForm({ initialData, onSubmit, onCancel, companyId
                 {data.instant ? "이미 만들어 둔 상품이에요. 제작시간 없이 바로 받을 수 있어요. 시즌을 고르면 시즌 메뉴에도 나와요." : "주문을 받고 만드는 상품이에요."}
               </p>
             </div>
+            )}
             <div ref={nameFieldRef}>
               <label className={fieldErrors.includes("상품명") ? "block text-xs text-red-500 mb-1" : fieldLabelCls}>
                 상품명 <span className="text-red-500">*</span>

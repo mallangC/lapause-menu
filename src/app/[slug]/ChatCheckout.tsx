@@ -13,7 +13,7 @@ import { ymd } from "@/components/order/orderTypes";
 import { formatPhone, parsePhone } from "@/lib/format";
 import { PHOTO_PRODUCT_ID } from "@/lib/styleOrder";
 import ProductOptionPicker from "@/components/ProductOptionPicker";
-import { applyOptions, defaultSelection, normalizeOptions, resolveOptions } from "@/lib/productOptions";
+import { applyOptions, defaultSelection, missingRequired, normalizeOptions, resolveOptions } from "@/lib/productOptions";
 
 // 첫 화면 대화 주문 — 결제 화면(OrderCheckout)의 칸을 잘라 대화로 묻고, 결제·완료까지 대화 안에서 끝낸다.
 // 입력값·금액·결제·결제 복귀는 결제 화면과 같은 useOrderCheckout을 쓴다.
@@ -276,6 +276,7 @@ export default function ChatCheckout(props: Props) {
       if (needsColor && !form.preparedColor) return "꽃 색을 골라주세요.";
     }
     if (id === "time" && !form.desiredTime) return "받으실 시간을 골라주세요.";
+    if (id === "productOptions" && missingRequired(optionGroups, pickedOptions).length) return "필수 옵션을 골라 주세요.";
     return null;
   };
   const next = (id: StepId) => {
@@ -511,7 +512,13 @@ export default function ChatCheckout(props: Props) {
         return (
           <>
             {/* 상품 옵션 — 추가 옵션과 같은 모양의 카드, 묶음마다 한 장씩 */}
-            <ProductOptionPicker groups={optionGroups} selected={pickedOptions} onChange={setPickedOptions} cardClassName={card} />
+            <ProductOptionPicker
+              groups={optionGroups}
+              selected={pickedOptions}
+              onChange={(next) => { setPickedOptions(next); setStepError(null); }}
+              cardClassName={card}
+              invalid={stepError ? missingRequired(optionGroups, pickedOptions).map((g) => g.id) : []}
+            />
             {nextBtn(id)}
           </>
         );

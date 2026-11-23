@@ -2,9 +2,9 @@
 
 import PriceTag from "@/components/PriceTag";
 import ProductOptionPicker from "@/components/ProductOptionPicker";
-import { applyOptions, defaultSelection, normalizeOptions } from "@/lib/productOptions";
+import { applyOptions, defaultSelection, missingRequired, normalizeOptions } from "@/lib/productOptions";
 import ProductGallery from "@/components/ProductGallery";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import StoreImage from "@/components/StoreImage";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -82,6 +82,15 @@ export default function ProductDetailClient({
   const optionGroups = normalizeOptions(product.options);
   const [selectedOptions, setSelectedOptions] = useState<string[]>(() => defaultSelection(optionGroups));
   const optioned = applyOptions(product, selectedOptions);
+  // 고르지 않은 필수 옵션 — 담기·예약을 누르면 빨갛게 펼쳐 보여 준다
+  const [optionInvalid, setOptionInvalid] = useState<string[]>([]);
+  const optionsRef = useRef<HTMLDivElement>(null);
+  const checkOptions = () => {
+    const missing = missingRequired(optionGroups, selectedOptions).map((g) => g.id);
+    setOptionInvalid(missing);
+    if (missing.length) optionsRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    return missing.length === 0;
+  };
   /** 장바구니·바로 예약에 넣는 상품 (옵션 금액 포함) */
   const cartProduct = () => ({
     productId: product.id,
@@ -99,6 +108,7 @@ export default function ProductDetailClient({
   const consultHref = `/${slug}/consult?productId=${product.id}&quantity=${quantity}${optionGroups.length ? `&options=${optioned.productOptions.join(",")}` : ""}`;
 
   const handleAddToCart = () => {
+    if (!checkOptions()) return;
     addItem(cartProduct(), quantity);
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
@@ -155,8 +165,8 @@ export default function ProductDetailClient({
       {/* 상품 상세 — 2단 레이아웃 */}
       <div className="flex flex-col md:flex-row">
 
-          {/* 왼쪽: 이미지 */}
-          <div className="md:w-1/2 shrink-0 w-full">
+          {/* 왼쪽: 이미지 — PC에서는 오른쪽 정보(옵션 등)가 길어도 사진이 화면에 붙어 있다가, 오른쪽이 끝나면 함께 올라간다 */}
+          <div className="md:w-1/2 shrink-0 w-full md:sticky md:top-[81px] md:self-start">
             <div className="relative aspect-square bg-beige-100 overflow-hidden">
               {product.image_url ? (
                 <ProductGallery images={[product.image_url, ...(product.extra_images ?? [])]} alt={product.name} />
@@ -241,7 +251,16 @@ export default function ProductDetailClient({
             <div className="mt-6 md:mt-10 space-y-4">
               {/* 상품 옵션 */}
               {consultEnabled && optionGroups.length > 0 && (
-                <ProductOptionPicker groups={optionGroups} selected={selectedOptions} onChange={setSelectedOptions} cardClassName="bg-white rounded-2xl border border-gray-100 overflow-hidden" />
+                <div ref={optionsRef}>
+                  <ProductOptionPicker
+                    groups={optionGroups}
+                    selected={selectedOptions}
+                    onChange={(next) => { setSelectedOptions(next); setOptionInvalid((prev) => prev.filter((id) => missingRequired(optionGroups, next).some((g) => g.id === id))); }}
+                    cardClassName="bg-white rounded-2xl border border-gray-100 overflow-hidden"
+                    invalid={optionInvalid}
+                  />
+                  {optionInvalid.length > 0 && <p className="mt-1.5 text-xs text-red-500">필수 옵션을 골라 주세요.</p>}
+                </div>
               )}
 
               {/* 수량 선택 */}
@@ -292,6 +311,7 @@ export default function ProductDetailClient({
                 {consultEnabled && (
                   <button
                     onClick={() => {
+                      if (!checkOptions()) return;
                       // 안내를 읽는 동안 다음 화면을 미리 받아 둬서 확인을 누르면 바로 넘어가게 한다
                       router.prefetch(quantity >= 2 ? `/${slug}/cart?direct=1` : consultHref);
                       setNoticeOpen(true);

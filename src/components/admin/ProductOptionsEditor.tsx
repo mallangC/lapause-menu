@@ -29,19 +29,20 @@ export default function ProductOptionsEditor({
     onChange(groups.map((g) => (g.id === gid ? { ...g, choices: g.choices.map((c) => (c.id === cid ? { ...c, ...patch } : c)) } : g)));
 
   const addGroup = () =>
-    onChange([...groups, { id: newOptionId(), name: "", multi: false, choices: [{ ...emptyChoice(), default: true }, emptyChoice()] }]);
+    onChange([...groups, { id: newOptionId(), name: "", multi: false, required: false, choices: [emptyChoice(), emptyChoice()] }]);
 
-  // 하나만 고르는 묶음은 기본 선택이 하나 — 다른 항목을 기본으로 하면 앞의 기본은 풀린다
+  // 기본 선택 — 다시 누르면 풀린다 (기본 없이 손님이 직접 고르게 해도 된다). 단일 선택은 기본이 하나만
   const toggleDefault = (g: ProductOptionGroup, cid: string) => {
-    if (g.multi) return setChoice(g.id, cid, { default: !g.choices.find((c) => c.id === cid)?.default });
-    setGroup(g.id, { choices: g.choices.map((c) => ({ ...c, default: c.id === cid })) });
+    const on = !!g.choices.find((c) => c.id === cid)?.default;
+    if (g.multi) return setChoice(g.id, cid, { default: !on });
+    setGroup(g.id, { choices: g.choices.map((c) => ({ ...c, default: c.id === cid ? !on : false })) });
   };
 
   const setMulti = (g: ProductOptionGroup, multi: boolean) => {
     if (multi === g.multi) return;
-    // 하나만으로 바꾸면 기본 선택을 하나만 남긴다 (없으면 첫 항목)
+    // 단일 선택으로 바꾸면 기본 선택을 하나만 남긴다 (없으면 없는 채로)
     if (!multi) {
-      const keep = g.choices.find((c) => c.default)?.id ?? g.choices[0]?.id;
+      const keep = g.choices.find((c) => c.default)?.id;
       return setGroup(g.id, { multi, choices: g.choices.map((c) => ({ ...c, default: c.id === keep })) });
     }
     setGroup(g.id, { multi });
@@ -55,14 +56,14 @@ export default function ProductOptionsEditor({
             <input
               value={g.name}
               onChange={(e) => setGroup(g.id, { name: e.target.value })}
-              placeholder="묶음 이름 (예: 포장지)"
+              placeholder="옵션 이름 (예: 포장지)"
               maxLength={30}
               className={`${inputCls} flex-1 min-w-0`}
             />
             <button
               type="button"
               onClick={() => onChange(groups.filter((x) => x.id !== g.id))}
-              aria-label="옵션 묶음 지우기"
+              aria-label="옵션 지우기"
               className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -71,21 +72,39 @@ export default function ProductOptionsEditor({
             </button>
           </div>
 
-          {/* 하나만 / 여러 개 */}
-          <div className="flex rounded-lg bg-gray-100 p-0.5 text-xs w-fit">
-            {[
-              { v: false, label: "하나만 고르기" },
-              { v: true, label: "여러 개 고르기" },
-            ].map((o) => (
-              <button
-                key={String(o.v)}
-                type="button"
-                onClick={() => setMulti(g, o.v)}
-                className={`px-3 py-1.5 rounded-md whitespace-nowrap transition-colors ${g.multi === o.v ? "bg-white text-gray-900 font-medium shadow-sm" : "text-gray-500"}`}
-              >
-                {o.label}
-              </button>
-            ))}
+          {/* 단일 / 복수 · 필수 / 선택 */}
+          {/* 두 칸을 반씩 — 포장지 색상 선택과 같은 모양 (회색 바탕 안에서 반반, 고른 쪽은 색 없이 흰색으로 띄움) */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="flex p-1 bg-gray-100 rounded-xl">
+              {[
+                { v: false, label: "단일 선택" },
+                { v: true, label: "복수 선택" },
+              ].map((o) => (
+                <button
+                  key={String(o.v)}
+                  type="button"
+                  onClick={() => setMulti(g, o.v)}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${g.multi === o.v ? "bg-white text-gray-900 shadow-sm" : "text-gray-400 hover:text-gray-500"}`}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex p-1 bg-gray-100 rounded-xl">
+              {[
+                { v: false, label: "선택" },
+                { v: true, label: "필수" },
+              ].map((o) => (
+                <button
+                  key={String(o.v)}
+                  type="button"
+                  onClick={() => setGroup(g.id, { required: o.v })}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${g.required === o.v ? "bg-white text-gray-900 shadow-sm" : "text-gray-400 hover:text-gray-500"}`}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <ul className="space-y-1.5">
@@ -152,11 +171,11 @@ export default function ProductOptionsEditor({
           onClick={addGroup}
           className="w-full py-2.5 rounded-xl border border-dashed border-gray-300 text-sm text-gray-500 hover:border-gold-400 hover:text-gold-600 transition-colors"
         >
-          + 옵션 묶음 추가
+          + 옵션 추가
         </button>
       )}
       <p className="text-xs text-gray-400 break-keep">
-        추가 금액은 0원도 돼요. &lsquo;기본&rsquo;으로 둔 항목은 손님 화면에서 처음부터 골라져 있어요.
+        추가 금액은 0원도 돼요. &lsquo;기본&rsquo;은 손님 화면에서 처음부터 선택되어 있어요.<br />필수 옵션은 고르지 않으면 주문할 수 없어요.
       </p>
     </div>
   );

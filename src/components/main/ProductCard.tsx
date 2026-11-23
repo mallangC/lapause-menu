@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Product } from "@/types";
 import { FLOWER_COLOR_MAP, BADGE_COLORS } from "@/lib/constants";
 import { useCart } from "@/hooks/useCart";
-import { applyOptions, cartLineKey } from "@/lib/productOptions";
+import { applyOptions, cartLineKey, defaultSelection, missingRequired, normalizeOptions } from "@/lib/productOptions";
 
 interface ProductCardProps {
   product: Product;
@@ -25,6 +25,12 @@ export default function ProductCard({ product, consultEnabled, slug }: ProductCa
       // 옵션이 달라 여러 줄이면 이 상품 줄을 모두 뺀다
       items.filter((i) => i.productId === product.id).forEach((i) => removeItem(cartLineKey(i)));
     } else {
+      // 꼭 골라야 하는 옵션이 있으면 바로 담지 않고 상품 상세에서 고르게 한다
+      const groups = normalizeOptions(product.options);
+      if (missingRequired(groups, defaultSelection(groups)).length) {
+        router.push(`/${slug}/products/${product.id}`);
+        return;
+      }
       // 상품 옵션은 기본 선택으로 담는다 (바꾸려면 상품 상세에서)
       const optioned = applyOptions(product);
       addItem({
