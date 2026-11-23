@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, Dispatch, SetStateAction } from "react";
+import { canDeleteReservation, DELETE_BLOCKED_MESSAGE } from "@/app/[slug]/admin/dashboard/reservations/types";
 import type { Reservation, SortKey } from "@/app/[slug]/admin/dashboard/reservations/types";
 import { STATUS_ROW_BG, STATUS_LEGEND, PAGE_SIZE } from "@/app/[slug]/admin/dashboard/reservations/constants";
 import { formatDateHeader, formatTimeOnly } from "@/app/[slug]/admin/dashboard/reservations/utils";
@@ -208,6 +209,9 @@ export default function PreviewReservationsTab({ allReservations, setAllReservat
   };
 
   const handleDeleteReservation = (id: string) => {
+    // 실제와 같게 — 손님이 주문한 미확인 예약은 삭제 못 함
+    const target = allReservations.find((r) => r.id === id);
+    if (target && !canDeleteReservation(target)) { alert(DELETE_BLOCKED_MESSAGE); return; }
     if (!confirm("정말 삭제하시겠습니까?")) return;
     setAllReservations((prev) => prev.filter((r) => r.id !== id));
     setExpandedId(null);

@@ -95,7 +95,7 @@ export async function DELETE(
   // payment_id + company_id 조회
   const { data: reservation } = await supabase
     .from("reservations")
-    .select("payment_id, final_price, status, company_id")
+    .select("payment_id, final_price, status, company_id, channel")
     .eq("id", id)
     .single();
 
@@ -108,6 +108,11 @@ export async function DELETE(
       .from("companies").select("id").eq("id", reservation.company_id).eq("owner_id", user.id).single();
     if (!company) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const blocked = await blockIfInactive(reservation.company_id); if (blocked) return blocked; // 구독이 끝난 매장은 보기만
+  }
+
+  // 손님이 Flo.Aide 로 주문한 예약은 미확인 상태로 지우지 못한다 — 확정하거나 취소(카드는 환불)로 정리 (손님 주문이 말없이 사라지지 않게)
+  if (profile?.role !== "operator" && reservation.channel === "Flo.Aide" && reservation.status === "미확인") {
+    return NextResponse.json({ error: "손님이 주문한 예약은 미확인 상태에서 삭제할 수 없어요. 먼저 확정하거나 취소해 주세요." }, { status: 400 });
   }
 
   // 카드 결제된 예약은 삭제로 끝내지 않는다 — 먼저 '취소'로 바꾸면 상태 변경 API가 토스 환불까지 처리한다.

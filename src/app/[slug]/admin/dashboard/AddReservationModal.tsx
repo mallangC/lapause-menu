@@ -80,6 +80,10 @@ interface ItemForm {
   preservative: string;
   memo: string;
   product_id: string | null;
+  /** 손님이 고른 상품 옵션 글 — 수정 화면에서는 바꾸지 않고 그대로 둔다 (가격에 이미 들어 있다) */
+  product_options: string | null;
+  /** 같은 상품 개수 (장바구니 주문) — 수정해도 그대로 둔다 */
+  quantity: number | null;
 }
 
 const emptyItem = (): ItemForm => ({
@@ -92,6 +96,8 @@ const emptyItem = (): ItemForm => ({
   preservative: "없음",
   memo: "",
   product_id: null,
+  product_options: null,
+  quantity: null,
 });
 
 interface DayHours { closed: boolean; open: string; close: string; }
@@ -259,6 +265,8 @@ export default function AddReservationModal({
         preservative: item.preservative ?? "없음",
         memo: item.memo ?? "",
         product_id: item.product_id ?? null,
+        product_options: item.product_options ?? null,
+        quantity: item.quantity ?? null,
       }));
     }
     if (reservationId) return [emptyItem()];
@@ -497,6 +505,9 @@ export default function AddReservationModal({
       shopping_bag: item.shopping_bag,
       preservative: item.preservative,
       memo: item.memo || null,
+      // 손님 주문에서 온 값은 수정해도 지우지 않는다
+      ...(item.product_options ? { product_options: item.product_options } : {}),
+      ...(item.quantity && item.quantity > 1 ? { quantity: item.quantity } : {}),
     }));
 
   const handleSubmit = async () => {
@@ -844,6 +855,10 @@ export default function AddReservationModal({
                   <label className={fieldLabelCls}>상품명</label>
                   <input className={inputCls} value={item.name}
                     onChange={(e) => updateItem(idx, "name", e.target.value)} placeholder="예) 핑크 꽃다발" />
+                  {/* 손님이 고른 상품 옵션 — 금액에 이미 들어 있고, 수정해도 그대로 남는다 */}
+                  {item.product_options && (
+                    <p className="mt-1 text-xs text-gray-500 break-keep">옵션: {item.product_options}</p>
+                  )}
                 </div>
                 <div>
                   <label className={fieldLabelCls}>금액</label>

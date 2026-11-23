@@ -72,3 +72,7 @@ export interface Reservation {
 }
 
 export type SortKey = "desired_date";
+
+/** 손님이 Flo.Aide 로 주문한 예약이 아직 미확인이면 삭제하지 못한다 — 확정하거나 취소(환불)로 정리해야 한다 */
+export const canDeleteReservation = (r: { channel: string | null; status: string }) => !(r.channel === "Flo.Aide" && r.status === "미확인");
+export const DELETE_BLOCKED_MESSAGE = "손님이 주문한 예약은 미확인 상태에서 삭제할 수 없어요. 먼저 확정하거나 취소해 주세요.";

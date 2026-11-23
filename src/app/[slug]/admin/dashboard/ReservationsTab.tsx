@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, Dispatch, SetStateAction } from "react";
 import { createClient } from "@/lib/supabase/client";
 import AddReservationModal from "./AddReservationModal";
-import { Reservation, SortKey } from "./reservations/types";
+import { Reservation, SortKey, canDeleteReservation, DELETE_BLOCKED_MESSAGE } from "./reservations/types";
 import type { CompanySettings } from "./companySettings";
 import { STATUS_ROW_BG, STATUS_LEGEND, PAGE_SIZE } from "./reservations/constants";
 import ReservationDetail from "./reservations/ReservationDetail";
@@ -352,7 +352,10 @@ export default function ReservationsTab({ companyId, allReservations, setAllRese
   // 지금 삭제 중인 예약 — 그 카드·상세의 삭제 버튼에 로딩
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const handleDeleteReservation = async (id: string) => {
-    if (deletingId || !confirm("정말 삭제하시겠습니까?")) return;
+    if (deletingId) return;
+    const target = allReservations.find((r) => r.id === id);
+    if (target && !canDeleteReservation(target)) { alert(DELETE_BLOCKED_MESSAGE); return; }
+    if (!confirm("정말 삭제하시겠습니까?")) return;
     setDeletingId(id);
     try {
       const res = await fetch(`/api/reservation/${id}`, { method: "DELETE" });
