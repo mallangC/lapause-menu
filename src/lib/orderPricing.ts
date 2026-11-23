@@ -202,3 +202,23 @@ export async function takeStock(db: SupabaseClient, lines: { productId: string; 
     }
   }
 }
+
+/**
+ * 예약을 취소하면 재고 되돌리기 — 손님 주문(Flo.Aide)으로 재고가 줄었던 상품만 (재고 관리 상품, 개수만큼)
+ * 품절이었으면 다시 활성화된다 (DB 함수가 한 번에 처리). 실패해도 취소는 그대로
+ */
+export async function restoreStock(db: SupabaseClient, items: { product_id?: string | null; quantity?: number | null }[] | null) {
+  const want = new Map<string, number>();
+  for (const it of items ?? []) {
+    if (!it?.product_id) continue;
+    want.set(it.product_id, (want.get(it.product_id) ?? 0) + (Number.isInteger(it.quantity) && (it.quantity as number) > 0 ? (it.quantity as number) : 1));
+  }
+  for (const [id, qty] of want) {
+    try {
+      const { error } = await db.rpc("restore_product_stock", { p_product_id: id, p_qty: qty });
+      if (error) console.error("[stock] 재고 되돌리기 실패:", id, error.message);
+    } catch (e) {
+      console.error("[stock] 재고 되돌리기 오류:", id, e);
+    }
+  }
+}

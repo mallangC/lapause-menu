@@ -1,4 +1,5 @@
 import { blockIfInactive } from "@/lib/requireActiveCompany";
+import { restoreStock } from "@/lib/orderPricing";
 import { reportOpsAlert } from "@/lib/opsAlert";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
@@ -163,6 +164,15 @@ export async function PATCH(
       newValue: status,
       reason: status === "취소" ? (cancelReason ?? null) : null,
     });
+  }
+
+  // 취소 — 손님 주문(장바구니·바로 예약·대화 주문)으로 줄었던 재고를 되돌린다 (처음 취소할 때 한 번만)
+  if (status === "취소" && currentStatus !== "취소") {
+    const admin = createAdminClient();
+    const { data: row } = await admin.from("reservations").select("items, order_type").eq("id", id).single();
+    if (row && ["product", "consult"].includes((row as { order_type?: string | null }).order_type ?? "")) {
+      await restoreStock(admin, row.items as { product_id?: string | null; quantity?: number | null }[] | null);
+    }
   }
 
   // 준비중 알림은 미확인에서 변경 시에만, 취소 알림은 어떤 상태에서든 발송
