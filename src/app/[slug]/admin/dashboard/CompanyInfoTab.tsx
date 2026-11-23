@@ -225,7 +225,7 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
                   </svg>
                 </button>
               </div>
-              <p className="text-xs text-gray-400 mt-0.5">URL을 입력한 항목만 메뉴판 홈 아래에 버튼으로 보여요.</p>
+              <p className="text-xs text-gray-400 mt-0.5">URL을 입력한 항목만 메뉴판 홈에 버튼으로 보여요.</p>
             </div>
             <div className="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
             {/* 매장 위치 */}
@@ -303,7 +303,6 @@ export default function CompanyInfoTab({ companyId, initialName, initialLogo, sl
           <div className="space-y-3">
             <div>
               <h3 className="text-sm font-medium text-gray-700">주차 가능 여부</h3>
-              <p className="text-xs text-gray-400 mt-0.5">손님이 매장에 찾아올 때 자주 묻는 정보예요.</p>
             </div>
             <div className="flex flex-wrap gap-2">
               {PARKING_PRESETS.map((opt) => (

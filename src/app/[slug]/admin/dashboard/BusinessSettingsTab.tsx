@@ -264,7 +264,7 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
           <div className="space-y-3">
             <div>
               <h3 className="text-sm font-medium text-gray-700">당일 예약 시간 설정</h3>
-              <p className="text-xs text-gray-400 mt-0.5 break-keep">제작에 최소 몇 시간이 필요한지 입력하세요. 유형을 비워 두면 기본 시간을 따라요.</p>
+              <p className="text-xs text-gray-400 mt-0.5 break-keep">상품 유형별 최소 제작 시간이에요. 비워 두면 기본 시간을 따라요.</p>
             </div>
             {/* 모바일: 박스 없이 맨 위·줄 사이 모두 옅은 선, 줄 왼쪽 끝을 제목에 맞춤 / PC: 박스
                 맨 위 '기본'은 따로 정하지 않은 유형이 따라가는 값, 그 아래는 매장 유형 (비워 두면 기본) */}
@@ -347,7 +347,7 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
           <div className="pt-3">
             <h3 className="text-sm font-medium text-gray-700">색 맞춤 가능 일수</h3>
             <p className="text-xs text-gray-400 mt-0.5 break-keep">
-              원하는 색 꽃을 따로 들여오려면 며칠이 필요한지 입력하세요. 이보다 가까운 날짜의 주문은 대시보드에서 고른 &lsquo;당일 주문 가능 꽃 색상&rsquo; 중에서, 그 이후 날짜의 주문은 모든 색 중에서 손님이 골라요.
+              원하는 색 꽃을 들여오는 데 필요한 날짜예요. 이보다 가까운 날의 주문은 오늘 있는 꽃 색상 중에서 골라요.
             </p>
           </div>
           <div className="flex items-center justify-between border-t border-gray-100 md:border md:border-gray-200 md:rounded-xl px-0 md:px-4 py-3">
@@ -501,7 +501,7 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
               {/* 손님에게 전할 안내 — 영업시간 외 시간을 고르면 주문 화면에 보인다 */}
               <div className="pt-3 border-t border-gray-100">
                 <p className="text-sm text-gray-700">영업시간 외 픽업 안내</p>
-                <p className="text-xs text-gray-400 mt-0.5 mb-2 break-keep">주문 제작 상품을 영업시간 밖에 받아 가는 손님에게 픽업 방법을 알림톡으로 전달해요.</p>
+                <p className="text-xs text-gray-400 mt-0.5 mb-2 break-keep">영업시간 밖에 받아 가는 손님에게 알림톡으로 보내요.</p>
                 <textarea
                   value={afterHoursNote}
                   onChange={(e) => setAfterHoursNote(e.target.value.slice(0, AFTER_HOURS_NOTE_MAX))}
@@ -516,7 +516,7 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
               <div className="pt-3 border-t border-gray-100">
                 <p className="text-sm text-gray-700">무인 픽업 안내</p>
                 <p className="text-xs text-gray-400 mt-0.5 mb-2 break-keep">
-                  {(settings.instant_menu_name as string | null)?.trim() || DEFAULT_INSTANT_MENU_NAME} 메뉴 상품만 영업시간 밖에 가져가는 손님에게 알림톡으로 전달해요.<br />비워 두면 위 영업시간 외 픽업 안내를 보내요.
+                  {(settings.instant_menu_name as string | null)?.trim() || DEFAULT_INSTANT_MENU_NAME} 메뉴 상품을 영업시간 밖에 가져가는 손님에게 보내요. 비워 두면 위 안내를 보내요.
                 </p>
                 <textarea
                   value={unattendedNote}
@@ -538,7 +538,6 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
           {/* 특정 휴무일 */}
           <div className="space-y-3">
             <h3 className="text-sm font-medium text-gray-700">휴무일 설정</h3>
-            <p className="text-xs text-gray-400">공휴일, 임시 휴무일 등을 직접 지정합니다.</p>
             <div className="flex gap-2">
               <div className="flex-1">
                 <DateField value={newDate} onChange={setNewDate} />
@@ -580,7 +579,7 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
           {/* 특정 날짜 영업시간 변경 */}
           <div className="space-y-3">
             <h3 className="text-sm font-medium text-gray-700">영업시간 변경</h3>
-            <p className="text-xs text-gray-400">특정 날짜만 영업시간을 다르게 적용합니다. 기본 요일별 영업시간은 그대로 유지됩니다.</p>
+            <p className="text-xs text-gray-400">이 날짜만 다르게 적용되고, 요일별 영업시간은 그대로예요.</p>
             <div className="flex flex-col gap-2">
               <DateField value={overrideDate} onChange={handleOverrideDateChange} />
               <div className="flex items-center gap-2">

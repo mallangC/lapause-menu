@@ -308,7 +308,7 @@ export default function OrderSettingsTab({ companyId, plan: _plan, settings, onS
                   <span className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">맞춤 주문 활성화 중 — 수정 불가</span>
                 )}
               </div>
-              <p className="text-xs text-gray-400 mb-3">맞춤 주문 기능 활성화 및 카카오 알림톡 발송에 사용됩니다.</p>
+              <p className="text-xs text-gray-400 mb-3">맞춤 주문을 활성화하려면 필요하고, 손님 알림톡에 매장 연락처로 들어가요.</p>
 
               <div className={`space-y-3 ${disabledByConsult ? "opacity-50 pointer-events-none select-none" : ""}`}>
                 {/* 전화번호 */}
@@ -321,7 +321,7 @@ export default function OrderSettingsTab({ companyId, plan: _plan, settings, onS
                     placeholder="010-1234-5678"
                     className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
                   />
-                  <p className="text-xs text-gray-400 mt-1.5">따로 매장 전화번호가 없다면 핸드폰번호를 다시 입력해주세요.</p>
+                  <p className="text-xs text-gray-400 mt-1.5">매장 전화번호가 따로 없으면 휴대폰 번호를 적어 주세요.</p>
                 </div>
 
                 {/* 주소 */}
@@ -408,13 +408,13 @@ export default function OrderSettingsTab({ companyId, plan: _plan, settings, onS
                     placeholder="예: 홍길동"
                     className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
                   />
-                  <p className="text-xs text-gray-400 mt-1.5">계좌번호를 잘못 적어서 생기는 불이익은 책임지지 않습니다.</p>
+                  <p className="text-xs text-gray-400 mt-1.5">계좌번호를 잘못 적어 생기는 불이익은 책임지지 않아요.</p>
                 </div>
 
                 {/* 통장사본 — 계좌 정보 바로 아래 (같은 카드) */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">통장사본</label>
-                  <p className="text-xs text-gray-400 mb-2">정산 처리를 위해 계좌 확인용으로 사용됩니다.</p>
+                  <p className="text-xs text-gray-400 mb-2">정산 계좌 확인에 써요.</p>
                   {bankAccountImageUrl ? (
                     <div className="flex items-center gap-3">
                       <button type="button" onClick={handleViewBankDoc} className="text-xs text-blue-500 hover:underline">통장사본 확인</button>
@@ -484,7 +484,7 @@ export default function OrderSettingsTab({ companyId, plan: _plan, settings, onS
                 {/* 사업자등록증 */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">사업자등록증</label>
-                  <p className="text-xs text-gray-400 mb-2">본인 명의 사업자 확인용으로 사용됩니다. 사진 또는 PDF로 업로드하세요.</p>
+                  <p className="text-xs text-gray-400 mb-2">본인 명의 사업자 확인에 써요. 사진이나 PDF로 올려 주세요.</p>
                   {businessRegImageUrl ? (
                     <div className="flex items-center gap-3">
                       <button type="button" onClick={handleViewBusinessReg} className="text-xs text-blue-500 hover:underline">사업자등록증 확인</button>
@@ -507,8 +507,8 @@ export default function OrderSettingsTab({ companyId, plan: _plan, settings, onS
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">통신판매업 신고번호</label>
                   <p className="text-xs text-gray-400 mb-2">
-                    상품을 50개 판매하기 전 통신판매업 신고를 해주세요.<br />
-                    통신판매업 미신고 상태로 50개 판매 시 판매가 정지됩니다.
+                    상품을 50개 판매하기 전에 통신판매업 신고를 해 주세요.<br />
+                    신고하지 않고 50개를 판매하면 판매가 정지돼요.
                   </p>
                   <input
                     type="text"
@@ -530,7 +530,7 @@ export default function OrderSettingsTab({ companyId, plan: _plan, settings, onS
         <div className="max-w-md">
             <div>
               <h3 className="text-sm font-semibold text-gray-800 mb-1">판매 신청</h3>
-              <p className="text-xs text-gray-400 mb-3">통신판매업 신고번호를 제외한 모든 항목을 입력·업로드해야 신청할 수 있습니다.</p>
+              <p className="text-xs text-gray-400 mb-3">통신판매업 신고번호 말고는 모두 입력·업로드해야 신청할 수 있어요.</p>
               {consultApplyStatus === "pending" && (
                 <div className="rounded-lg bg-yellow-50 border border-yellow-100 px-4 py-3 text-sm text-yellow-700">
                   검토 중입니다. 운영자 확인 후 안내드리겠습니다.

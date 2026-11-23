@@ -125,7 +125,7 @@ export default function InstantMenuSettings({
         )}
       </div>
       <p className="text-xs text-gray-400 mt-2 break-keep">
-        이미 만들어 둔 상품을 모아 두는 메뉴예요. 누르면 손님 메뉴판에서 숨기거나 보이고, ✎로 이름을 바꿔요.<br />상품은 상품 등록에서 &lsquo;{shownName} 메뉴에 넣기&rsquo;를 활성화하면 추가되고, 영업시간 밖에도 팔려면 영업 설정에서 &lsquo;영업시간 외 수령 및 판매&rsquo;를 활성화해 주세요.
+        이미 만들어 둔 상품을 모아 두는 메뉴예요. 누르면 숨김 · ✎로 이름 변경<br />상품 추가에서 판매 방식을 &lsquo;{shownName}&rsquo;(으)로 고르면 이 메뉴에 들어가요.
       </p>
     </div>
   );

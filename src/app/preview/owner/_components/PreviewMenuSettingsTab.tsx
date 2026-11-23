@@ -139,9 +139,7 @@ export default function PreviewMenuSettingsTab() {
     <div className="space-y-4">
       <div>
         <h2 className="text-xl font-medium text-gray-900 mb-1">메뉴 설정</h2>
-        <p className="text-xs text-gray-400">직접 추가, 삭제가 가능합니다. 기본 제공 항목도 삭제할 수 있습니다.</p>
-        <p className="text-xs text-gray-400">유형·시즌을 누르면 메뉴판에서 숨길 수 있어요. 다시 누르면 다시 보여요.</p>
-        <p className="text-xs text-gray-400">왼쪽 ⠿ 를 끌어 순서를 바꾸면 손님 메뉴판에도 그 순서로 보여요.</p>
+        <p className="text-xs text-gray-400 break-keep">누르면 메뉴판에서 숨김 · 왼쪽 ⠿를 끌어서 순서 변경</p>
       </div>
       <div data-coach="mn-all" className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:p-6">
         <div className="space-y-8">

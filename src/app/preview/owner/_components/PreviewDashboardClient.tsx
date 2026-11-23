@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { generateThemeVars, DEFAULT_THEME_BG, DEFAULT_THEME_ACCENT } from "@/lib/theme";
 import PreviewDashboardOverview from "./PreviewDashboardOverview";
 import { MOCK_COMPANY_NAME, MOCK_SETTINGS } from "../_mock";
-import { makeMockProductList, makeMockReservations } from "../_mockReservations";
+import { makeMockProductList, makeMockReservations, PREVIEW_TODAY, PREVIEW_TODAY_STR } from "../_mockReservations";
 import NaverBell from "@/app/[slug]/admin/dashboard/NaverBell";
 import PreviewProductsTab from "./PreviewProductsTab";
 import PreviewStatsTab from "./PreviewStatsTab";
@@ -90,6 +90,14 @@ export default function PreviewDashboardClient() {
 
   // 목업 예약 (9~12월, 오늘 = 2026-11-10 고정) — 대시보드 요약과 예약 관리가 같은 데이터를 쓴다
   const [reservations, setReservations] = useState(() => makeMockReservations());
+  // 확인하지 않은 손님 주문 (목업 예약, 미리보기 기준 날짜 — 상태를 바꾸면 바로 반영)
+  const previewUnconfirmed = (() => {
+    const tomorrow = new Date(PREVIEW_TODAY.getTime() + 86_400_000);
+    const tStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, "0")}-${String(tomorrow.getDate()).padStart(2, "0")}`;
+    const rows = reservations.filter((r) => r.status === "미확인" && r.channel === "Flo.Aide" && (r.desired_date ?? "") >= PREVIEW_TODAY_STR);
+    return { total: rows.length, soon: rows.filter((r) => (r.desired_date ?? "") <= tStr).length };
+  })();
+
   // 확인 전 네이버 예약 (알림 종) — 목업 예약 중 naver_unchecked 인 것. 확인하면 화면 안에서만 지운다
   const naverUnchecked = reservations.filter((r) => r.naver_unchecked);
   const checkNaver = (id?: string) =>
@@ -152,6 +160,26 @@ export default function PreviewDashboardClient() {
           </div>
         </div>
       </header>
+
+      {/* 확인하지 않은 손님 주문 — 무료 알림 띠 (실제와 같게, 목업 예약 기준) */}
+      {previewUnconfirmed.total > 0 && (
+        <div className={previewUnconfirmed.soon > 0 ? "bg-red-50 border-b border-red-100" : "bg-amber-50 border-b border-amber-100"}>
+          <div className="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
+            <p className={`text-sm break-keep ${previewUnconfirmed.soon > 0 ? "text-red-700" : "text-amber-800"}`}>
+              {previewUnconfirmed.soon > 0
+                ? `내일까지 받는 예약 ${previewUnconfirmed.soon}건을 아직 확인하지 않았어요.`
+                : `확인하지 않은 예약이 ${previewUnconfirmed.total}건 있어요.`}
+            </p>
+            <button
+              type="button"
+              onClick={() => goTab("reservations")}
+              className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium text-white ${previewUnconfirmed.soon > 0 ? "bg-red-500 hover:bg-red-600" : "bg-gold-500 hover:bg-gold-600"}`}
+            >
+              확인하기
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 모바일 탭 내비게이션 */}
       <div className="md:hidden bg-white border-b border-gray-100 sticky top-[61px] z-30">

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ownerWantsAlimtalk } from "@/lib/ownerAlimtalk";
 import { PAY_LINK_BLOCKED_MESSAGE, payLinkAllowed } from "@/lib/payLinkAllowed";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { cancelTossPayment } from "@/lib/orderPricing";
@@ -121,7 +122,8 @@ export async function POST(request: NextRequest) {
         .eq("id", reservation.company_id)
         .single();
 
-      const ownerPhone = company?.slug && !isDemoCompany
+      // 사장님이 '예약 접수 알림톡 받기'를 해제했으면 링크결제 완료 알림도 보내지 않는다
+      const ownerPhone = company?.slug && !isDemoCompany && (await ownerWantsAlimtalk(adminClient, reservation.company_id, "new_order"))
         ? (await adminClient.rpc("get_owner_phone_by_slug", { p_slug: company.slug })).data
         : null;
 

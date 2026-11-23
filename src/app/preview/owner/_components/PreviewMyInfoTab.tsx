@@ -29,6 +29,9 @@ export default function PreviewMyInfoTab({ onNotice }: Props) {
   const pwSuccess = false;
   const [pwError, setPwError] = useState<string | null>(null);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(true);
+  // 알림톡 받기 (실제와 같게 — 화면 안에서만)
+  const [notify, setNotify] = useState({ newOrder: true, unconfirmed: true });
+  const [notifyInfoOpen, setNotifyInfoOpen] = useState(false);
   const twoFactorLoading = false;
   const twoFactorError: string | null = null;
   // 미리보기 — Google은 연결된 상태
@@ -115,7 +118,7 @@ export default function PreviewMyInfoTab({ onNotice }: Props) {
           {/* 소셜 계정 연결 */}
           <div data-coach="mi-social">
             <h3 className="text-sm font-medium text-gray-900 mb-1">소셜 계정 연결</h3>
-            <p className="text-xs text-gray-400 mb-4">연결하면 해당 계정으로도 로그인할 수 있습니다.</p>
+            <div className="mb-3" />
             {linkError && (
               <p className="text-xs text-red-500 mb-3">{linkError}</p>
             )}
@@ -243,7 +246,7 @@ export default function PreviewMyInfoTab({ onNotice }: Props) {
               <div>
                 <h3 className="text-sm font-medium text-gray-900">로그인 2단계 인증</h3>
                 <p className="text-xs text-gray-400 mt-0.5">
-                  활성화하면 새 기기에서 로그인할 때마다 {email}로 받은 인증번호를 추가로 입력해야 합니다.
+                  새 기기에서 로그인할 때 {email}로 받은 인증번호를 한 번 더 입력해요.
                 </p>
               </div>
               <button
@@ -265,6 +268,50 @@ export default function PreviewMyInfoTab({ onNotice }: Props) {
             {twoFactorEnabled && (
               <p className="text-xs text-gold-600 mt-2">사용 중 — 인증을 완료한 기기는 선택에 따라 최대 30일간 다시 묻지 않습니다.</p>
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* 알림톡 받기 — 실제 내 정보와 같게 (미리보기라 저장은 안 됨) */}
+      <div className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:p-6">
+        <div className="max-w-md">
+          <h3 className="text-sm font-medium text-gray-900 flex items-center gap-1.5">
+            알림 받기
+            <button
+                type="button"
+                onClick={() => setNotifyInfoOpen((v) => !v)}
+                aria-expanded={notifyInfoOpen}
+                aria-label="알림 받기 설명"
+                className={`w-4 h-4 rounded-full border text-[10px] font-semibold leading-none flex items-center justify-center transition-colors ${notifyInfoOpen ? "border-gold-500 bg-gold-500 text-white" : "border-gray-300 text-gray-400 hover:border-gray-400 hover:text-gray-600"}`}
+              >
+                i
+              </button>
+          </h3>
+          {notifyInfoOpen && (
+            <p className="mt-1.5 text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2 break-keep">가입할 때 적은 내 휴대폰 번호로 카카오 알림톡을 보내요. 손님 알림톡은 설정과 관계없이 발송돼요.</p>
+          )}
+          <div className="mt-3 divide-y divide-gray-100">
+            {([
+              { key: "newOrder", title: "예약 접수 알림", desc: "" },
+              { key: "unconfirmed", title: "놓친 미확인 예약 알림", desc: "수령 전날 밤 10시까지 확정하지 않은 예약이 있으면 보내요." },
+            ] as const).map((o) => (
+              <div key={o.key} className="flex items-center justify-between gap-3 py-3">
+                <div className="min-w-0">
+                  <p className="text-sm text-gray-800">{o.title}</p>
+                  {o.desc && <p className="text-xs text-gray-400 mt-0.5 break-keep">{o.desc}</p>}
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={notify[o.key]}
+                  aria-label={o.title}
+                  onClick={() => setNotify((p) => ({ ...p, [o.key]: !p[o.key] }))}
+                  className={`shrink-0 w-12 h-6 rounded-full transition-colors relative ${notify[o.key] ? "bg-gold-500" : "bg-gray-200"}`}
+                >
+                  <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${notify[o.key] ? "left-6" : "left-0.5"}`} />
+                </button>
+              </div>
+            ))}
           </div>
         </div>
       </div>

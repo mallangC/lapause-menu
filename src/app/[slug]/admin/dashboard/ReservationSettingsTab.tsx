@@ -234,7 +234,6 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
                 <div className="flex items-center justify-between opacity-50">
                   <div>
                     <p className="text-sm font-medium text-gray-800">판매 기능</p>
-                    <p className="text-xs text-gray-400 mt-0.5">판매 기능을 활성화하고 맞춤 주문하기 버튼을 표시합니다.</p>
                   </div>
                   <button type="button" disabled aria-disabled aria-label="판매 기능 (승인 후 켤 수 있어요)" className="shrink-0 w-12 h-6 rounded-full relative bg-gray-200 cursor-not-allowed">
                     <span className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow" />
@@ -259,7 +258,6 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-800">판매 기능</p>
-                    <p className="text-xs text-gray-400 mt-0.5">판매 기능을 활성화하고 맞춤 주문하기 버튼을 표시합니다.</p>
                   </div>
                   <button
                     type="button"
@@ -299,7 +297,6 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
             <div className="flex items-center justify-between gap-3 px-0 md:px-4 py-3.5 bg-white">
               <div>
                 <p className="text-sm font-medium text-gray-800">배송 기능</p>
-                <p className="text-xs text-gray-400 mt-0.5">활성화 시 맞춤 주문에서 배송 선택이 추가됩니다.</p>
               </div>
               <button
                 type="button"
@@ -329,7 +326,7 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-gray-900">통신판매업 신고가 필요합니다</p>
-                    <p className="text-xs text-gray-400 mt-0.5">신고번호 미등록 상태로 50개를 판매해 판매 기능이 정지되었습니다.</p>
+                    <p className="text-xs text-gray-400 mt-0.5">신고번호 없이 50개를 판매해 판매 기능이 정지됐어요.</p>
                   </div>
                 </div>
                 <p className="text-xs text-gray-500 leading-relaxed">
@@ -358,7 +355,7 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-gray-900">계좌 정보를 먼저 입력해주세요</p>
-                    <p className="text-xs text-gray-400 mt-0.5">맞춤 주문 기능을 활성화하려면 계좌 정보가 필요합니다.</p>
+                    <p className="text-xs text-gray-400 mt-0.5">맞춤 주문을 활성화하려면 계좌 정보가 필요해요.</p>
                   </div>
                 </div>
                 <div className="space-y-2 text-xs text-gray-500 leading-relaxed">
@@ -387,13 +384,15 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
         <div className="max-w-lg space-y-4">
           {/* 추가 옵션 설정 (메시지 카드 · 쇼핑백 · 생화 수명연장제) — 배송비 설정처럼 제목 아래 한 카드에 줄로 나눠 묶는다 */}
           <div className="space-y-3">
-            <h3 className="text-sm font-medium text-gray-700">추가 옵션 설정</h3>
+            <div>
+              <h3 className="text-sm font-medium text-gray-700">추가 옵션 설정</h3>
+              <p className="text-xs text-gray-400 mt-0.5 break-keep">손님 주문과 예약 추가에 옵션으로 보여요.</p>
+            </div>
             <div className="border-t border-gray-100 md:border md:border-gray-200 md:rounded-xl overflow-hidden divide-y divide-gray-100">
               {/* 메시지 카드 */}
               <div className="flex items-center justify-between gap-3 px-0 md:px-4 py-3.5 bg-white">
                 <div>
                   <p className="text-sm font-medium text-gray-800">메시지 카드</p>
-                  <p className="text-xs text-gray-400 mt-0.5">예약 추가 시 메시지 카드 옵션을 표시합니다.</p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {messageCardEnabled && (
@@ -423,7 +422,6 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
               <div className="flex items-center justify-between gap-3 px-0 md:px-4 py-3.5 bg-white">
                 <div>
                   <p className="text-sm font-medium text-gray-800">쇼핑백</p>
-                  <p className="text-xs text-gray-400 mt-0.5">예약 추가 시 쇼핑백 옵션을 표시합니다.</p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {shoppingBagEnabled && (
@@ -453,7 +451,6 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
               <div className="flex items-center justify-between gap-3 px-0 md:px-4 py-3.5 bg-white">
                 <div>
                   <p className="text-sm font-medium text-gray-800">생화 수명연장제</p>
-                  <p className="text-xs text-gray-400 mt-0.5">예약 추가 시 생화 수명연장제 옵션을 표시합니다.</p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {preservativeEnabled && (
@@ -497,7 +494,7 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
                 </svg>
               </button>
             </div>
-            <p className="text-xs text-gray-400 -mt-1">고객이 예약을 완료하기 직전 확인 화면 상단에 표시됩니다.</p>
+            <p className="text-xs text-gray-400 -mt-1">손님이 결제하기 직전 화면 맨 위에 보여요.</p>
             <textarea
               value={consultNotice}
               onChange={(e) => setConsultNotice(e.target.value.slice(0, 500))}
@@ -548,7 +545,7 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-gray-900">1km 이내 배송비를 먼저 설정해주세요</p>
-                    <p className="text-xs text-gray-400 mt-0.5">배송 기능을 활성화하려면 1km 이내 배송비가 필수입니다. 나머지 구간은 선택 사항입니다.</p>
+                    <p className="text-xs text-gray-400 mt-0.5">배송을 활성화하려면 1km 이내 배송비가 꼭 필요해요. 나머지 구간은 선택이에요.</p>
                   </div>
                 </div>
                 <p className="text-xs text-gray-500 leading-relaxed">
@@ -576,7 +573,7 @@ export default function ReservationSettingsTab({ companyId, settings, onSettings
                   </svg>
                 </button>
               </div>
-              <p className="text-xs text-gray-400 mt-0.5">거리별 배송비를 설정합니다. 비워두면 해당 구간은 표시되지 않습니다.</p>
+              <p className="text-xs text-gray-400 mt-0.5">비워 둔 구간은 손님에게 보이지 않아요.</p>
             </div>
             <div className="border-t border-gray-100 md:border md:border-gray-200 md:rounded-xl overflow-hidden divide-y divide-gray-100">
               {[

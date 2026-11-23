@@ -145,6 +145,28 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
   });
   const reservationRequestId = useRef(0);
 
+  // 확인하지 않은 손님 주문 (무료 알림 띠) — 오늘 이후 받는 Flo.Aide 주문 중 미확인
+  const [unconfirmed, setUnconfirmed] = useState<{ total: number; soon: number }>({ total: 0, soon: 0 });
+  useEffect(() => {
+    if (readOnly) return;
+    const kst = (d: Date) => new Date(d.getTime() + 9 * 3600_000).toISOString().slice(0, 10);
+    const today = kst(new Date());
+    const tomorrow = kst(new Date(Date.now() + 86_400_000));
+    supabase
+      .from("reservations")
+      .select("desired_date")
+      .eq("company_id", companyId)
+      .eq("status", "미확인")
+      .eq("channel", "Flo.Aide")
+      .is("deleted_at", null)
+      .gte("desired_date", today)
+      .then(({ data }) => {
+        const rows = (data ?? []) as { desired_date: string | null }[];
+        setUnconfirmed({ total: rows.length, soon: rows.filter((r) => r.desired_date && r.desired_date <= tomorrow).length });
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companyId, reservationsVersion, readOnly]);
+
   const fetchReservations = async (target = reservationMonth) => {
     const requestId = ++reservationRequestId.current;
     setReservationsLoading(true);
@@ -387,6 +409,26 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
             <p className="text-sm break-keep">구독이 끝나 지금은 보기만 할 수 있어요.</p>
             <button type="button" onClick={() => goTab("plan")} className="shrink-0 px-3 py-1.5 rounded-lg bg-gold-500 text-white text-xs font-medium hover:bg-gold-600">
               다시 구독하기
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 확인하지 않은 손님 주문 — 무료 알림 (내일까지 받는 주문이 있으면 더 눈에 띄게) */}
+      {!readOnly && unconfirmed.total > 0 && (
+        <div className={unconfirmed.soon > 0 ? "bg-red-50 border-b border-red-100" : "bg-amber-50 border-b border-amber-100"}>
+          <div className="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
+            <p className={`text-sm break-keep ${unconfirmed.soon > 0 ? "text-red-700" : "text-amber-800"}`}>
+              {unconfirmed.soon > 0
+                ? `내일까지 받는 예약 ${unconfirmed.soon}건을 아직 확인하지 않았어요.`
+                : `확인하지 않은 예약이 ${unconfirmed.total}건 있어요.`}
+            </p>
+            <button
+              type="button"
+              onClick={() => goTab("reservations")}
+              className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium text-white ${unconfirmed.soon > 0 ? "bg-red-500 hover:bg-red-600" : "bg-gold-500 hover:bg-gold-600"}`}
+            >
+              확인하기
             </button>
           </div>
         </div>
@@ -783,6 +825,12 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
                 profileName={profileName}
                 profilePhone={profilePhone}
                 initialTwoFactorEnabled={twoFactorEnabled}
+                alimtalk={{
+                  companyId,
+                  newOrder: companySettings.owner_alimtalk_new_order !== false,
+                  unconfirmed: companySettings.owner_alimtalk_unconfirmed !== false,
+                  onSaved: handleSettingsSaved,
+                }}
               />
             </div>
           )}

@@ -178,7 +178,7 @@ export default function PreviewBusinessSettingsTab({ onNotice }: Props) {
           <div className="space-y-3">
             <div>
               <h3 className="text-sm font-medium text-gray-700">당일 예약 시간 설정</h3>
-              <p className="text-xs text-gray-400 mt-0.5">유형별로 제작에 최소 몇 시간이 필요한지 입력하세요. (기본값: 2시간)</p>
+              <p className="text-xs text-gray-400 mt-0.5">상품 유형별 최소 제작 시간이에요. 비워 두면 기본 시간을 따라요.</p>
             </div>
             {/* 코치마크는 제목·안내 글을 빼고 유형별 시간 목록만 감싼다
                 모바일: 박스 없이 맨 위·줄 사이 모두 옅은 선, 줄 왼쪽 끝을 제목에 맞춤 / PC: 지금처럼 박스 */}
@@ -273,7 +273,6 @@ export default function PreviewBusinessSettingsTab({ onNotice }: Props) {
           {/* 특정 휴무일 */}
           <div className="space-y-3" data-coach="bz-closed">
             <h3 className="text-sm font-medium text-gray-700">휴무일 설정</h3>
-            <p className="text-xs text-gray-400">공휴일, 임시 휴무일 등을 직접 지정합니다.</p>
             <div className="flex gap-2">
               <div className="flex-1">
                 <DateField value={newDate} onChange={setNewDate} />
@@ -315,7 +314,7 @@ export default function PreviewBusinessSettingsTab({ onNotice }: Props) {
           {/* 특정 날짜 영업시간 변경 */}
           <div className="space-y-3" data-coach="bz-override">
             <h3 className="text-sm font-medium text-gray-700">영업시간 변경</h3>
-            <p className="text-xs text-gray-400">특정 날짜만 영업시간을 다르게 적용합니다. 기본 요일별 영업시간은 그대로 유지됩니다.</p>
+            <p className="text-xs text-gray-400">이 날짜만 다르게 적용되고, 요일별 영업시간은 그대로예요.</p>
             <div className="flex flex-col gap-2">
               <DateField value={overrideDate} onChange={handleOverrideDateChange} />
               <div className="flex items-center gap-2">

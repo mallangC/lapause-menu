@@ -19,9 +19,33 @@ interface Props {
   profileName: string;
   profilePhone: string;
   initialTwoFactorEnabled: boolean;
+  /** 사장님 알림톡 받기 (매장 설정에 저장) — 사장님 화면에서만 */
+  alimtalk?: {
+    companyId: string;
+    newOrder: boolean;
+    unconfirmed: boolean;
+    onSaved?: (patch: Record<string, unknown>) => void;
+  };
 }
 
-export default function MyInfoTab({ loginPath, email, isOAuth, profileName, profilePhone, initialTwoFactorEnabled }: Props) {
+export default function MyInfoTab({ loginPath, email, isOAuth, profileName, profilePhone, initialTwoFactorEnabled, alimtalk }: Props) {
+  // 사장님 알림톡 받기 — 누르면 바로 저장
+  const [notify, setNotify] = useState({ newOrder: alimtalk?.newOrder ?? true, unconfirmed: alimtalk?.unconfirmed ?? true });
+  const [notifySaving, setNotifySaving] = useState<string | null>(null);
+  const [notifyError, setNotifyError] = useState<string | null>(null);
+  const [notifyInfoOpen, setNotifyInfoOpen] = useState(false);
+  const toggleNotify = async (key: "newOrder" | "unconfirmed") => {
+    if (!alimtalk || notifySaving) return;
+    const next = !notify[key];
+    const column = key === "newOrder" ? "owner_alimtalk_new_order" : "owner_alimtalk_unconfirmed";
+    setNotifySaving(key);
+    setNotifyError(null);
+    const { error } = await createClient().from("company_settings").update({ [column]: next }).eq("company_id", alimtalk.companyId);
+    setNotifySaving(null);
+    if (error) { setNotifyError("저장하지 못했어요. 다시 시도해 주세요."); return; }
+    setNotify((p) => ({ ...p, [key]: next }));
+    alimtalk.onSaved?.({ [column]: next });
+  };
   const [showPwForm, setShowPwForm] = useState(false);
   const [pwNew, setPwNew] = useState("");
   const [pwConfirm, setPwConfirm] = useState("");
@@ -164,7 +188,7 @@ export default function MyInfoTab({ loginPath, email, isOAuth, profileName, prof
           {/* 소셜 계정 연결 */}
           <div>
             <h3 className="text-sm font-medium text-gray-900 mb-1">소셜 계정 연결</h3>
-            <p className="text-xs text-gray-400 mb-4">연결하면 해당 계정으로도 로그인할 수 있습니다.</p>
+            <div className="mb-3" />
             {linkError && (
               <p className="text-xs text-red-500 mb-3">{linkError}</p>
             )}
@@ -292,7 +316,7 @@ export default function MyInfoTab({ loginPath, email, isOAuth, profileName, prof
               <div>
                 <h3 className="text-sm font-medium text-gray-900">로그인 2단계 인증</h3>
                 <p className="text-xs text-gray-400 mt-0.5">
-                  활성화하면 새 기기에서 로그인할 때마다 {email}로 받은 인증번호를 추가로 입력해야 합니다.
+                  새 기기에서 로그인할 때 {email}로 받은 인증번호를 한 번 더 입력해요.
                 </p>
               </div>
               <button
@@ -317,6 +341,54 @@ export default function MyInfoTab({ loginPath, email, isOAuth, profileName, prof
           </div>
         </div>
       </div>
+
+      {/* 사장님 알림톡 — 받을 알림 고르기 */}
+      {alimtalk && (
+        <div className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:p-6">
+          <div className="max-w-md">
+            <h3 className="text-sm font-medium text-gray-900 flex items-center gap-1.5">
+              알림 받기
+              <button
+                type="button"
+                onClick={() => setNotifyInfoOpen((v) => !v)}
+                aria-expanded={notifyInfoOpen}
+                aria-label="알림 받기 설명"
+                className={`w-4 h-4 rounded-full border text-[10px] font-semibold leading-none flex items-center justify-center transition-colors ${notifyInfoOpen ? "border-gold-500 bg-gold-500 text-white" : "border-gray-300 text-gray-400 hover:border-gray-400 hover:text-gray-600"}`}
+              >
+                i
+              </button>
+            </h3>
+            {notifyInfoOpen && (
+              <p className="mt-1.5 text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2 break-keep">가입할 때 적은 내 휴대폰 번호로 카카오 알림톡을 보내요. 손님 알림톡은 설정과 관계없이 발송돼요.</p>
+            )}
+            <div className="mt-3 divide-y divide-gray-100">
+              {([
+                { key: "newOrder", title: "예약 접수 알림", desc: "" },
+                { key: "unconfirmed", title: "놓친 미확인 예약 알림", desc: "수령 전날 밤 10시까지 확정하지 않은 예약이 있으면 보내요." },
+              ] as const).map((o) => (
+                <div key={o.key} className="flex items-center justify-between gap-3 py-3">
+                  <div className="min-w-0">
+                    <p className="text-sm text-gray-800">{o.title}</p>
+                    {o.desc && <p className="text-xs text-gray-400 mt-0.5 break-keep">{o.desc}</p>}
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={notify[o.key]}
+                    aria-label={o.title}
+                    onClick={() => toggleNotify(o.key)}
+                    disabled={!!notifySaving}
+                    className={`shrink-0 w-12 h-6 rounded-full transition-colors relative disabled:opacity-50 ${notify[o.key] ? "bg-gold-500" : "bg-gray-200"}`}
+                  >
+                    <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${notify[o.key] ? "left-6" : "left-0.5"}`} />
+                  </button>
+                </div>
+              ))}
+            </div>
+            {notifyError && <p className="text-xs text-red-500 mt-1">{notifyError}</p>}
+          </div>
+        </div>
+      )}
 
       {/* 로그아웃 — 위쪽 알림 종 옆에 있으면 잘못 누르기 쉬워 여기로 */}
       <div className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:p-6">

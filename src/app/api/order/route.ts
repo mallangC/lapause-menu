@@ -1,4 +1,5 @@
 import { findOrderByPayment, findRecentTransferOrder, TOSS_ALREADY_PROCESSED } from "@/lib/orderIdempotency";
+import { ownerWantsAlimtalk } from "@/lib/ownerAlimtalk";
 import { transferOrderAllowed } from "@/lib/transferRateLimit";
 import { NextRequest, NextResponse } from "next/server";
 import { MESSAGE_CARD_MAX } from "@/lib/constants";
@@ -304,7 +305,8 @@ export async function POST(request: NextRequest) {
 
     // 사장님 알림톡 (데모 매장은 발송하지 않음)
     try {
-      const { data: ownerPhone } = isDemoCompany ? { data: null } : await adminClient.rpc("get_owner_phone_by_slug", { p_slug: slug });
+      // 사장님이 매장 설정에서 '예약 접수 알림톡 받기'를 해제했으면 보내지 않는다
+      const { data: ownerPhone } = isDemoCompany || !(await ownerWantsAlimtalk(adminClient, companyId, "new_order")) ? { data: null } : await adminClient.rpc("get_owner_phone_by_slug", { p_slug: slug });
       if (ownerPhone) {
         const desiredDateTime = `${desiredDate}${desiredTime ? ` ${desiredTime}` : ""}`;
         await sendReservationConfirmedOwner({
