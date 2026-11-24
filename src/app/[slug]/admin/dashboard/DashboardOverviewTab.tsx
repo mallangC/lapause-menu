@@ -412,7 +412,7 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
               {(() => {
                 const row = (key: string, label: string, url: string | null, extra?: React.ReactNode) => (
                   <div key={key} className="flex items-center gap-2">
-                    <span className="w-20 shrink-0 text-sm text-gray-700">{label}</span>
+                    <span className="w-[104px] shrink-0 text-sm text-gray-700 whitespace-nowrap">{label}</span>
                     <div className="flex-1 min-w-0">{extra}</div>
                     <button
                       type="button"
@@ -440,8 +440,8 @@ export default function DashboardOverviewTab({ companyId, slug, plan, onNavigate
                 };
                 return (
                   <>
-                    {row("home", "첫 화면", menuUrl)}
-                    {row("menu", "메뉴판", `${menuUrl}/menu`)}
+                    {row("home", "첫 상담 화면", menuUrl)}
+                    {row("menu", "메뉴 소개 화면", `${menuUrl}/menu`)}
                     {typeOptions.length > 0 && row("type", "상품 종류", pickType ? `${menuUrl}/menu?type=${encodeURIComponent(pickType)}` : null, select(pickType, setPickType, typeOptions.map((t) => ({ value: t, label: t })), "고르기", "상품 종류 고르기"))}
                     {seasonOptions.length > 0 && row("season", "시즌 메뉴", pickSeason ? `${menuUrl}/menu?tab=season&season=${encodeURIComponent(pickSeason)}` : null, select(pickSeason, setPickSeason, seasonOptions.map((t) => ({ value: t, label: t })), "고르기", "시즌 고르기"))}
                     {hasInstant && row("instant", instantLabel, `${menuUrl}/menu?tab=instant`)}
