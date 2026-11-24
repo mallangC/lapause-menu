@@ -76,7 +76,23 @@ export default {
       }
     }
 
-    // 매일 16:00 UTC(KST 01:00) — 예약일이 지났는데 미확정 상태인 예약 자동 완료 처리
+    // 매일 13:00 UTC(KST 22:00) — 내일 받을 손님 주문 중 아직 미확인인 예약이 있는 매장에 사장님 재확인 알림톡
+    if (event.cron === "0 13 * * *") {
+      try {
+        const res = await fetch("https://www.flo-aide.com/api/cron/unconfirmed-reminder", {
+          method: "POST",
+          headers: { "x-internal-secret": env.INTERNAL_API_SECRET },
+        });
+        const body = await res.text();
+        console.log(`[scheduled] unconfirmed-reminder ${res.status}:`, body);
+        if (!res.ok) throw new Error(`unconfirmed-reminder 실패 (${res.status})`);
+      } catch (err) {
+        console.error("[scheduled] unconfirmed-reminder 호출 실패:", err);
+        throw err;
+      }
+    }
+
+    // 매일 16:00 UTC(KST 01:00) — 수령일이 지난 미확인 손님 주문 자동 취소·환불 + 예약일이 지난 준비중·제작완료 예약 자동 완료 처리
     if (event.cron === "0 16 * * *") {
       try {
         const res = await fetch("https://www.flo-aide.com/api/cron/auto-complete-reservations", {

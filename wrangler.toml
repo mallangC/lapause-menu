@@ -14,7 +14,7 @@ persist = true
 enabled = false
 
 [triggers]
-crons = ["0 18 * * *", "0 16 * * *"]
+crons = ["0 18 * * *", "0 16 * * *", "0 13 * * *"]
 
 # 정기결제 자동 갱신 — 구독 1건당 인스턴스 1개 (src/workflows/billingRenew.ts)
 [[workflows]]

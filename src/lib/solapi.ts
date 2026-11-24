@@ -17,6 +17,8 @@ const TEMPLATES = {
   SALES_APPLY_OPERATOR: "KA01TP261119083541146Cb4eZJLJMir",
   /** 사장님 → 판매 신청 결과(승인·반려) 안내 (#{매장명} #{결과} #{안내내용} #{LINK} · 버튼: 대시보드 보기) */
   SALES_APPLY_RESULT: "KA01TP261115063704558CL1eqMa9TUi",
+  /** 사장님 → 놓친 미확인 예약 재확인 (수령 전날 밤 10시, 매장마다 1통) (#{매장명} #{건수} #{LINK} · 버튼: flo-aide.com/#{LINK}/admin) */
+  UNCONFIRMED_REMINDER_OWNER: "KA01TP261123105452217Tg0QrngNq3s",
 };
 
 type AlimtalkButton = {
@@ -306,6 +308,19 @@ export async function sendSalesApplyResult({
       "#{매장명}": companyName,
       "#{결과}": approved ? "승인" : "반려",
       "#{안내내용}": guide,
+      "#{LINK}": slug,
+    },
+  });
+}
+
+/** 사장님에게 놓친 미확인 예약 재확인 알림 — 내일 받을 예약 중 아직 확정하지 않은 건수 */
+export async function sendUnconfirmedReminderOwner({ to, companyName, count, slug }: { to: string; companyName: string; count: number; slug: string }) {
+  return sendAlimtalk({
+    to,
+    templateId: TEMPLATES.UNCONFIRMED_REMINDER_OWNER,
+    variables: {
+      "#{매장명}": companyName,
+      "#{건수}": String(count),
       "#{LINK}": slug,
     },
   });
