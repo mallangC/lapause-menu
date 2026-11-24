@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import PickListModal, { type PickItem } from "@/components/admin/PickListModal";
+import { makeMockProductList } from "../_mockReservations";
 import QRCode from "qrcode";
 import type { Reservation } from "@/app/[slug]/admin/dashboard/reservations/types";
 import { MOCK_SETTINGS } from "../_mock";
@@ -111,6 +113,13 @@ export default function PreviewDashboardOverview({ reservations, onNavigate }: P
   const [showCustomInput, setShowCustomInput] = useState(false);
   // 창 안에서 방금 복사한 항목 — 창을 닫지 않고 그 버튼에 '복사됨 ✓'를 보여준다 (다른 채널 링크도 이어서 복사할 수 있게)
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  // 링크 만들기 2단계 — 실제와 같게 (올릴 곳 → 공유할 페이지)
+  const [linkSource, setLinkSource] = useState<string | null>(null);
+  const [pickType, setPickType] = useState("");
+  const [pickSeason, setPickSeason] = useState("");
+  const [pickProduct, setPickProduct] = useState("");
+  // 목록 창 (상품 종류·시즌·상품 고르기)
+  const [picker, setPicker] = useState<{ title: string; items: PickItem[]; selected: string; onPick: (v: string) => void } | null>(null);
   const [showQrModal, setShowQrModal] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   // 미리보기는 매장 링크 대신 Flo.Aide 미리보기 주소로 고정한다 (복사·QR로 바로 열어볼 수 있게)
@@ -120,6 +129,7 @@ export default function PreviewDashboardOverview({ reservations, onNavigate }: P
   const channelUrl = (source: string) => `${menuUrl}?utm_source=${source}`;
 
   const openCopyModal = () => {
+    setLinkSource(null);
     setCustomChannel("");
     setShowCustomInput(false);
     setCopiedKey(null);
@@ -133,6 +143,14 @@ export default function PreviewDashboardOverview({ reservations, onNavigate }: P
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  const withSource = (url: string) => (linkSource ? `${url}${url.includes("?") ? "&" : "?"}utm_source=${linkSource}` : url);
+  const orderable = makeMockProductList().filter((p) => p.status !== "inactive");
+  const typeOptions = [...new Set(orderable.map((p) => p.product_type).filter(Boolean))];
+  const seasonOptions = [...new Set(orderable.flatMap((p) => p.seasons ?? []))];
+  const hasInstant = orderable.some((p) => p.instant);
+  const instantLabel = "바로 구매";
+  const pickSource = (source: string) => { setLinkSource(source); setCopiedKey(null); };
 
   // 채널 버튼 모양 — 방금 복사한 버튼은 초록 테두리
   const channelBtnCls = (key: string) =>
@@ -218,7 +236,7 @@ export default function PreviewDashboardOverview({ reservations, onNavigate }: P
       {/* URL 복사 — 링크를 올릴 곳을 고르면 출처(?utm_source=)가 붙은 주소를 복사 */}
       {showCopyModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setShowCopyModal(false)}>
-          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-xs p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
             {/* 닫기 — 복사해도 창이 닫히지 않아 직접 닫는다 (바깥을 눌러도 닫힘) */}
             <button
               type="button"
@@ -230,6 +248,8 @@ export default function PreviewDashboardOverview({ reservations, onNavigate }: P
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
               </svg>
             </button>
+            {linkSource === null ? (
+            <>
             <div className="pr-6">
               <h3 className="text-sm font-semibold text-gray-900">링크를 올릴 곳을 선택해주세요</h3>
               <p className="text-xs text-gray-600 mt-1 leading-relaxed">
@@ -247,18 +267,18 @@ export default function PreviewDashboardOverview({ reservations, onNavigate }: P
                 <button
                   key={source}
                   type="button"
-                  onClick={() => copyLink(channelUrl(source), source)}
+                  onClick={() => pickSource(source)}
                   className={channelBtnCls(source)}
                 >
-                  {copiedKey === source ? "복사됨 ✓" : label}
+                  {label}
                 </button>
               ))}
               <button
                 type="button"
-                onClick={() => copyLink(menuUrl, "base")}
+                onClick={() => pickSource("")}
                 className={channelBtnCls("base")}
               >
-                {copiedKey === "base" ? "복사됨 ✓" : "기본 주소"}
+                기본 주소
               </button>
               <button
                 type="button"
@@ -276,7 +296,7 @@ export default function PreviewDashboardOverview({ reservations, onNavigate }: P
                     type="text"
                     value={customChannel}
                     onChange={(e) => setCustomChannel(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
-                    onKeyDown={(e) => { if (e.key === "Enter" && customValid) copyLink(channelUrl(customChannel), `custom:${customChannel}`); }}
+                    onKeyDown={(e) => { if (e.key === "Enter" && customValid) pickSource(customChannel); }}
                     placeholder="예) youtube, band"
                     maxLength={30}
                     autoFocus
@@ -284,22 +304,74 @@ export default function PreviewDashboardOverview({ reservations, onNavigate }: P
                   />
                   <button
                     type="button"
-                    onClick={() => copyLink(channelUrl(customChannel), `custom:${customChannel}`)}
+                    onClick={() => pickSource(customChannel)}
                     disabled={!customValid}
-                    className={`px-3 py-2 rounded-lg text-white text-sm font-medium transition-colors disabled:opacity-40 whitespace-nowrap ${
-                      copiedKey === `custom:${customChannel}` ? "bg-green-500" : "bg-gold-500 hover:bg-gold-600"
-                    }`}
+                    className="px-3 py-2 rounded-lg text-white text-sm font-medium transition-colors disabled:opacity-40 whitespace-nowrap bg-gold-500 hover:bg-gold-600"
                   >
-                    {copiedKey === `custom:${customChannel}` ? "복사됨 ✓" : "복사"}
+                    다음
                   </button>
                 </div>
                 <p className="text-[11px] text-gray-400">영어 소문자·숫자로 입력해주세요. (한글·띄어쓰기는 입력되지 않아요)</p>
               </div>
             )}
+            </>
+            ) : (
+            <>
+            {/* 2단계 — 어떤 페이지 링크를 공유할지 */}
+            <div className="pr-6">
+              <button type="button" onClick={() => setLinkSource(null)} className="text-xs text-gray-400 hover:text-gray-600 mb-1">← 올릴 곳 다시 고르기</button>
+              <h3 className="text-sm font-semibold text-gray-900">어떤 링크를 공유할까요?</h3>
+            </div>
+            <div className="space-y-2">
+              {(() => {
+                const row = (key: string, label: string, url: string | null, extra?: React.ReactNode) => (
+                  <div key={key} className="flex items-center gap-2">
+                    <span className="w-20 shrink-0 text-sm text-gray-700">{label}</span>
+                    <div className="flex-1 min-w-0">{extra}</div>
+                    <button
+                      type="button"
+                      disabled={!url}
+                      onClick={() => url && copyLink(withSource(url), key)}
+                      className={`shrink-0 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${!url ? "bg-gray-100 text-gray-300 cursor-not-allowed" : copiedKey === key ? "bg-green-500 text-white" : "bg-gold-500 text-white hover:bg-gold-600"}`}
+                    >
+                      {copiedKey === key ? "복사됨 ✓" : "복사"}
+                    </button>
+                  </div>
+                );
+                // 고르기 — 기본 선택 상자 대신 누르면 목록 창 (상품은 사진·이름·가격)
+                const select = (value: string, onChange: (v: string) => void, options: PickItem[], placeholder: string, title: string) => {
+                  const cur = options.find((o) => o.value === value);
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => setPicker({ title, items: options, selected: value, onPick: (v) => { onChange(v); setCopiedKey(null); setPicker(null); } })}
+                      className="w-full min-w-0 flex items-center justify-between gap-1 border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm bg-white hover:border-gold-400 text-left"
+                    >
+                      <span className={`truncate ${cur ? "text-gray-800" : "text-gray-500"}`}>{cur ? cur.label : placeholder}</span>
+                      <svg className="w-3.5 h-3.5 shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
+                    </button>
+                  );
+                };
+                return (
+                  <>
+                    {row("home", "첫 화면", menuUrl)}
+                    {row("menu", "메뉴판", `${menuUrl}/menu`)}
+                    {typeOptions.length > 0 && row("type", "상품 종류", pickType ? `${menuUrl}/menu?type=${encodeURIComponent(pickType)}` : null, select(pickType, setPickType, typeOptions.map((t) => ({ value: t, label: t })), "고르기", "상품 종류 고르기"))}
+                    {seasonOptions.length > 0 && row("season", "시즌 메뉴", pickSeason ? `${menuUrl}/menu?tab=season&season=${encodeURIComponent(pickSeason)}` : null, select(pickSeason, setPickSeason, seasonOptions.map((t) => ({ value: t, label: t })), "고르기", "시즌 고르기"))}
+                    {hasInstant && row("instant", instantLabel, `${menuUrl}/menu?tab=instant`)}
+                    {orderable.length > 0 && row("product", "상품", pickProduct ? `${menuUrl}/products/${pickProduct}` : null, select(pickProduct, setPickProduct, orderable.map((p) => ({ value: p.id, label: p.name, image: p.image_url ?? null, sub: `${(p.price ?? 0).toLocaleString()}원` })), "상품 고르기", "상품 고르기"))}
+                  </>
+                );
+              })()}
+            </div>
+            </>
+            )}
 
           </div>
         </div>
       )}
+
+      {picker && <PickListModal title={picker.title} items={picker.items} selected={picker.selected} onPick={picker.onPick} onClose={() => setPicker(null)} />}
 
       {showQrModal && qrDataUrl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setShowQrModal(false)}>

@@ -594,6 +594,7 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
                 refreshKey={reservationsVersion}
                 slug={slug}
                 plan={plan}
+                products={products}
                 onNavigate={(tab, statusFilter) => {
                   setReservationStatusFilter(statusFilter);
                   goTab(toTab(tab));
