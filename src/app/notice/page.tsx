@@ -617,14 +617,14 @@ export default function NoticePage() {
                     {
                       title: "구매자 결제",
                       color: "bg-gold-500",
-                      detail: "구매자가 링크에 접속해 결제를 진행합니다.",
-                      note: "매장에 새 예약 알림톡 발송",
+                      detail: "구매자가 링크에 접속해 결제를 진행합니다. 사장님이 상담 후 직접 추가한 예약이라 따로 확정할 필요 없이 바로 확정됩니다.",
+                      note: "매장에 결제 완료 알림톡 + 구매자에게 예약 확정 알림톡 발송",
                     },
                   ]}
                 />
               </div>
               <p className="text-xs text-gray-400 mt-3">
-                이후는 위의 <button onClick={() => handleNavClick("admin-payment-flow")} className="text-gold-600 underline hover:text-gold-700">일반 결제 흐름</button>과 동일하게 '미확인' 상태에서부터 진행됩니다.
+                이후는 위의 <button onClick={() => handleNavClick("admin-payment-flow")} className="text-gold-600 underline hover:text-gold-700">일반 결제 흐름</button>과 동일하게 '준비중' 상태에서부터 진행됩니다.
               </p>
             </div>
           </section>
