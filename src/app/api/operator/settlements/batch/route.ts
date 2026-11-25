@@ -49,7 +49,11 @@ export async function POST(request: NextRequest) {
   const year_month = period_start.slice(0, 7);
 
   // 토스 정산(영업일 기준 4일) 전에 선지급되지 않도록, 확정 처리 시점에도 다시 검증
-  const cutoff = subtractBusinessDays(new Date(), 4).getTime();
+  // 정산 대상 조회(pending)와 같은 기준으로 — 권장 종료일(영업일 4일 전)과 고른 종료일 중 이른 날의 '그날 끝'까지
+  // (예전에는 '지금 시각의 4영업일 전'으로 시각까지 비교해, 조회 때는 잡힌 그날 오후 결제가 확정 때 막혔다)
+  const recommendedEnd = subtractBusinessDays(new Date(), 4).toISOString().slice(0, 10);
+  const effectiveEnd = period_end < recommendedEnd ? period_end.slice(0, 10) : recommendedEnd;
+  const cutoff = new Date(`${effectiveEnd}T23:59:59`).getTime();
 
   // 데모 매장은 정산 대상이 될 수 없음 (방어적 재검증 — pending 조회 단계에서 이미 제외되지만 여기서도 한 번 더 막는다)
   // 루프 돌기 전에 한 번만 조회해서 N+1 방지
