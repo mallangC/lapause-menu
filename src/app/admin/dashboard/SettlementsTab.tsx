@@ -140,9 +140,10 @@ export default function SettlementsTab({ companies }: Props) {
       입금계좌: item.bank_account ?? "",
       고객관리성명: item.bank_holder ?? "",
       이체금액: item.net_amount,
-      출금통장표시내용: "Flo.Aide",
-      // 매장 통장에 찍히는 글자 — 매장 이름(띄어쓰기 없이, 길면 앞 6자) + '정산'
-      입금통장표시내용: `${(item.company_name ?? "").replace(/\s+/g, "").slice(0, 6)}정산`,
+      // 운영자(보내는) 통장에 찍히는 글자 — 어느 매장에 보냈는지 알 수 있게 한글 매장 이름만 (띄어쓰기 없이, 길면 앞 7자)
+      출금통장표시내용: (item.company_name ?? "").replace(/\s+/g, "").slice(0, 7),
+      // 매장(받는) 통장에 찍히는 글자 — 누가 보낸 돈인지 알 수 있게
+      입금통장표시내용: "Flo.Aide정산",
       입금인코드: "",
       비고: `${shortDate(periodStart)}~${shortDate(periodEnd)} 정산`,
       업체사용key: item.company_id,
