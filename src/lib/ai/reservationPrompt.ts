@@ -79,6 +79,25 @@ ${dateGuide(now)}
   · 손님이 쓴 원문(예: "어머니 생신", "여자친구 생일선물")은 requests에 "선물 용도: 어머니 생신"처럼 남겨.
 - 위 칸에 들어가지 않는 정보(희망 색감·스타일 원문, 무인 픽업 요청, 향·알레르기, 포장 요청 등)는 requests에 한 줄씩 짧게 모아.
 
+[여러 개 주문 — items]
+- 손님이 상품을 2개 이상 주문하면(예: "총 2개", "1) …  2) …", "하나는 남자친구, 하나는 개업 선물") items 배열에 상품마다 한 칸씩 넣어.
+  · 상품이 1개뿐이어도 items에 한 칸을 넣어.
+- 글 전체의 맥락을 읽고 각 상품에 맞는 정보끼리 묶어:
+  · 리본·포장 색, 받는 사람, 용도처럼 상품을 구분하는 단서가 같은 것끼리 같은 칸이야.
+    예) "3. 희망 색감: 레드 리본, 화이트 리본, 총 2개" 와 "7. 메시지카드: 1) 레드리본, 남자친구 선물 … 2) 화이트 리본, 개업 선물 …" 이 있으면
+        → 칸 1: 레드 리본 · 남자친구 선물 · 1)의 카드 문구 / 칸 2: 화이트 리본 · 개업 선물 · 2)의 카드 문구
+  · messageCardContent에는 그 상품의 카드에 적을 문구만 그대로 (줄바꿈·영어·이모지 그대로). 리본 색·용도 같은 설명 줄은 넣지 마.
+  · memo에는 그 상품만의 요청을 짧게 (예: "레드 리본 · 남자친구 선물", "화이트 리본 · 개업 선물").
+  · 카드 문구가 있으면 그 상품의 messageCard는 true.
+  · 가격이 상품마다 따로 적혀 있으면 그 칸의 price에, 하나만 적혀 있으면 첫 칸에 넣고 나머지는 null.
+  · productType·productName은 상품마다.
+  · 똑같은 상품을 여러 개(예: "같은 걸로 3개", "꽃다발 2개") 주문하고 카드 문구·요청이 모두 같으면 칸 하나에 quantity로 개수를 적어.
+    카드 문구나 리본·받는 사람이 서로 다르면 같은 상품이라도 칸을 나눠 (각 칸 quantity 1).
+  · quantity는 1 이상 정수. 개수 말이 없으면 1.
+- 글 전체에 해당하는 것(주문자·날짜·시간·수령 방법·받는 분 정보)은 지금처럼 바깥 칸에 넣어.
+  상품마다 용도가 다르면 purpose는 첫 상품 기준으로 고르고, 각 상품의 용도는 그 칸의 memo에 적어.
+- 바깥의 productType·productName·price·messageCard·messageCardContent·shoppingBag·preservative는 첫 상품과 같은 값으로 채워.
+
 [매장 주문서 양식]
 - 손님은 매장이 보낸 주문서 양식(예: "1. 주문자 성함/연락처: …")에 답을 채워 보내는 경우가 많아.
 - 항목 이름과 그 옆 괄호 안의 안내(가격 "(2천원)", 가능 여부 "(영업시간 외 무인픽업 가능)", 글자 수 "(30자 내외)" 등)는 매장이 미리 써 둔 양식 문구야. 손님 답이 아니니 어떤 칸에도 넣지 마.
@@ -114,6 +133,25 @@ export function reservationResponseSchema({ productTypes, moods }: Pick<Reservat
       messageCardContent: str,
       preservative: bool,
       requests: str,
+      // 상품마다 한 칸 — 여러 개 주문이면 칸이 여러 개
+      items: {
+        type: "ARRAY",
+        nullable: true,
+        items: {
+          type: "OBJECT",
+          properties: {
+            productType: { type: "STRING", nullable: true, enum: productTypes },
+            productName: str,
+            price: { type: "INTEGER", nullable: true },
+            quantity: { type: "INTEGER", nullable: true },
+            messageCard: bool,
+            messageCardContent: str,
+            shoppingBag: bool,
+            preservative: bool,
+            memo: str,
+          },
+        },
+      },
     },
     required: ["ordererName", "ordererPhone", "productType", "price", "pickupDate", "pickupTime", "requests"],
   };
@@ -144,4 +182,20 @@ export interface ParsedReservation {
   messageCardContent: string | null;
   preservative: boolean | null;
   requests: string | null;
+  /** 상품마다 한 칸 (여러 개 주문) — 카드 문구·메모가 상품별로 묶여 있다 */
+  items?: ParsedReservationItem[] | null;
+}
+
+export interface ParsedReservationItem {
+  productType: string | null;
+  productName: string | null;
+  price: number | null;
+  /** 같은 상품 개수 (없으면 1) */
+  quantity?: number | null;
+  messageCard: boolean | null;
+  messageCardContent: string | null;
+  shoppingBag: boolean | null;
+  preservative: boolean | null;
+  /** 이 상품만의 요청 (리본 색·받는 사람·용도 등) */
+  memo: string | null;
 }

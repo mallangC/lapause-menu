@@ -75,6 +75,8 @@ interface ItemForm {
   preservative: string;
   memo: string;
   product_id: string | null;
+  /** 같은 상품 개수 */
+  quantity: number | null;
 }
 
 const emptyItem = (): ItemForm => ({
@@ -87,6 +89,7 @@ const emptyItem = (): ItemForm => ({
   preservative: "없음",
   memo: "",
   product_id: null,
+  quantity: null,
 });
 
 interface DayHours { closed: boolean; open: string; close: string; }
@@ -246,6 +249,7 @@ export default function PreviewAddReservationModal({
         preservative: item.preservative ?? "없음",
         memo: item.memo ?? "",
         product_id: item.product_id ?? null,
+        quantity: item.quantity ?? null,
       }));
     }
     if (reservationId) return [emptyItem()];
@@ -254,6 +258,9 @@ export default function PreviewAddReservationModal({
 
   const updateItem = (index: number, field: keyof ItemForm, value: string) => {
     setItems((prev) => prev.map((item, i) => i === index ? { ...item, [field]: value } : item));
+  };
+  const setItemQuantity = (index: number, q: number) => {
+    setItems((prev) => prev.map((item, i) => (i === index ? { ...item, quantity: Math.min(99, Math.max(1, q)) } : item)));
   };
 
   const addItem = () => setItems((prev) => [...prev, emptyItem()]);
@@ -601,18 +608,18 @@ export default function PreviewAddReservationModal({
           <div className={sectionHeaderCls}>
             <p className={sectionLabelCls}>상품</p>
           </div>
-          <div className="px-5 py-4 space-y-4">
+          <div className="px-5 py-4 space-y-3">
             {items.map((item, idx) => (
-              <div key={idx} className={`space-y-3 ${idx > 0 ? "pt-4 border-t border-gray-100" : ""}`}>
-                <div className="flex items-center justify-between">
-                  {items.length > 1 && <p className="text-xs text-gray-400">상품 {idx + 1}</p>}
-                  {items.length > 1 && (
-                    <button type="button" onClick={() => removeItem(idx)}
-                      className="text-xs text-red-400 hover:text-red-600 transition-colors">
-                      삭제
-                    </button>
-                  )}
+              // 상품 하나 = 박스 하나 (상품 유형부터 상품 메모까지) — 상품 추가의 옵션 박스와 같은 모양
+              <div key={idx} className="rounded-xl border border-gray-200 p-3 space-y-3">
+                {items.length > 1 && (
+                <div className="flex justify-end">
+                  <button type="button" onClick={() => removeItem(idx)}
+                    className="text-xs text-red-400 hover:text-red-600 transition-colors">
+                    삭제
+                  </button>
                 </div>
+                )}
                 <div ref={(el) => { itemTypeFieldRefs.current[idx] = el; }}>
                   <label className={fieldErrors.includes("상품 유형") && !item.type ? "block text-xs text-red-500 mb-1" : fieldLabelCls}>상품 유형 <span className="text-red-500">*</span></label>
                   <CustomSelect
@@ -628,17 +635,32 @@ export default function PreviewAddReservationModal({
                   <input className={inputCls} value={item.name}
                     onChange={(e) => updateItem(idx, "name", e.target.value)} placeholder="예) 핑크 꽃다발" />
                 </div>
-                <div>
-                  <label className={fieldLabelCls}>금액</label>
-                  <div className="flex items-center gap-2">
-                    <input className={inputCls} type="text" inputMode="numeric"
-                      value={item.price === "" ? "" : formatMoney(item.price)}
-                      onChange={(e) => {
-                        const raw = parseMoney(e.target.value);
-                        updateItem(idx, "price", raw === 0 && e.target.value !== "0" ? "" : String(raw));
-                      }}
-                      placeholder="0" />
-                    <span className="text-sm text-gray-500 shrink-0">원</span>
+                {/* 금액(1개 값) · 수량 — 같은 상품 여러 개면 수량으로 */}
+                <div className="flex items-end gap-3">
+                  <div className="flex-1 min-w-0">
+                    <label className={fieldLabelCls}>금액 <span className="text-gray-400 font-normal">(1개)</span></label>
+                    <div className="flex items-center gap-2">
+                      <input className={`${inputCls} text-right`} type="text" inputMode="numeric"
+                        value={item.price === "" ? "" : formatMoney(item.price)}
+                        onChange={(e) => {
+                          const raw = parseMoney(e.target.value);
+                          updateItem(idx, "price", raw === 0 && e.target.value !== "0" ? "" : String(raw));
+                        }}
+                        placeholder="0" />
+                      <span className="text-sm text-gray-500 shrink-0">원</span>
+                    </div>
+                  </div>
+                  <div className="shrink-0">
+                    <label className={fieldLabelCls}>수량</label>
+                    <div className="flex items-center gap-1.5 h-[38px]">
+                      <button type="button" aria-label="수량 줄이기" disabled={(item.quantity ?? 1) <= 1}
+                        onClick={() => setItemQuantity(idx, (item.quantity ?? 1) - 1)}
+                        className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-gray-400 disabled:opacity-30">−</button>
+                      <span className="w-6 text-center text-sm font-medium">{item.quantity ?? 1}</span>
+                      <button type="button" aria-label="수량 늘리기" disabled={(item.quantity ?? 1) >= 99}
+                        onClick={() => setItemQuantity(idx, (item.quantity ?? 1) + 1)}
+                        className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-gray-400 disabled:opacity-30">+</button>
+                    </div>
                   </div>
                 </div>
                 {(messageCardEnabled || shoppingBagEnabled || preservativeEnabled) && (
