@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { getMenuData } from "@/lib/menuCache";
 import ProductsClient from "../products/ProductsClient";
@@ -6,10 +6,12 @@ import ServiceSuspended from "@/components/main/ServiceSuspended";
 import { generateThemeVars, DEFAULT_THEME_BG, DEFAULT_THEME_ACCENT } from "@/lib/theme";
 import { formatPhone } from "@/lib/format";
 import { instantMenuName, readUnattended } from "@/lib/afterHours";
+import { SEASONS, PRODUCT_TYPES } from "@/lib/constants";
 import type { Metadata } from "next";
 
 interface Props {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -22,8 +24,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 // 매장 메뉴판 — 원래 /[slug]에 있던 화면. /[slug]는 상담형 첫 화면(주문 방식 고르기)이 됐다
-export default async function CompanyMenuPage({ params }: Props) {
+export default async function CompanyMenuPage({ params, searchParams }: Props) {
   const { slug } = await params;
+  const query = await searchParams;
 
   // 매장·구독·대표자·상품·카테고리를 KV 캐시에서 우선 조회 (없으면 DB 조회 후 캐시)
   const menu = await getMenuData(slug);
@@ -51,6 +54,20 @@ export default async function CompanyMenuPage({ params }: Props) {
   const hiddenCustomSeasons = (customCats ?? [])
     .filter((c) => c.category_type === "season" && c.hidden)
     .map((c) => c.name as string);
+
+  // 공유된 시즌·상품 종류 링크(?season=, ?type=)가 숨겨졌거나 삭제됐으면 메뉴판 첫 화면으로
+  const hiddenSeasonSet = new Set([...((s.hidden_seasons as string[]) ?? []), ...hiddenCustomSeasons]);
+  const hiddenTypeSet = new Set([...((s.hidden_product_types as string[]) ?? []), ...hiddenCustomProductTypes]);
+  const visibleSeasons = [...SEASONS.filter((v) => !hiddenSeasonSet.has(v)), ...customSeasons];
+  const visibleTypes = [...PRODUCT_TYPES.filter((v) => !hiddenTypeSet.has(v)), ...customProductTypes];
+  const seasonParam = typeof query.season === "string" ? query.season : null;
+  const typeParam = typeof query.type === "string" ? query.type : null;
+  if (
+    (query.tab === "season" && seasonParam && !visibleSeasons.includes(seasonParam)) ||
+    (typeParam && !visibleTypes.includes(typeParam))
+  ) {
+    redirect(`/${slug}/menu`);
+  }
 
   const themeVars = generateThemeVars(
     (s.theme_bg as string | null) ?? DEFAULT_THEME_BG,
