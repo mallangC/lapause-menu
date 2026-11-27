@@ -6,7 +6,7 @@ import { MESSAGE_CARD_MAX } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { productTypeSummary, sendReservationConfirmedOwner } from "@/lib/solapi";
-import { cancelTossPayment, cartItemsTotal, isPastPickup, isValidDeliveryPart, loadCompanyProducts, loadOptionPrices, productUnitPrice, stockProblem, takeStock } from "@/lib/orderPricing";
+import { cancelTossPayment, cartItemsTotal, isPastPickup, isValidDeliveryPart, loadClosedSeasons, loadCompanyProducts, loadOptionPrices, productUnitPrice, stockProblem, takeStock } from "@/lib/orderPricing";
 import { isValidPreparedColor, preparedColorToSave } from "@/lib/todayColors";
 import { parsePaymentChoice } from "@/lib/payment";
 import { isAfterHoursPickup, isUnattendedPickup, readUnattended, UNATTENDED_OFF, type Unattended } from "@/lib/afterHours";
@@ -140,12 +140,13 @@ export async function POST(request: NextRequest) {
     }
 
     // 금액 검증 — 클라이언트가 보낸 가격 대신 DB 상품가·매장 옵션가로 다시 계산 (결제 승인 전에)
-    const [optionPrices, dbProducts] = await Promise.all([
+    const [optionPrices, dbProducts, closedSeasons] = await Promise.all([
       loadOptionPrices(adminClient, companyId),
       loadCompanyProducts(adminClient, companyId, items.map((i) => i.productId)),
+      loadClosedSeasons(adminClient, companyId),
     ]);
-    // 품절·재고 부족 — 결제 승인 전에 막는다
-    const stockError = stockProblem(items, dbProducts);
+    // 품절·재고 부족·시즌 예약 마감 — 결제 승인 전에 막는다
+    const stockError = stockProblem(items, dbProducts, closedSeasons);
     if (stockError) return NextResponse.json({ error: stockError }, { status: 409 });
     const itemsTotal = cartItemsTotal(items, dbProducts, optionPrices);
     const unattendedPickup = body.deliveryType !== "배송" && isUnattendedPickup(

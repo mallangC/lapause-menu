@@ -217,7 +217,7 @@ export default function PreviewBusinessSettingsTab({ onNotice }: Props) {
         <div className="max-w-lg space-y-6">
           {/* 요일별 영업 시간 */}
           <div className="space-y-3">
-            <h3 className="text-sm font-medium text-gray-700">요일별 영업 시간</h3>
+            <h3 className="text-sm font-medium text-gray-700">요일별 예약 가능 시간</h3>
             {/* 코치마크는 제목을 빼고 요일 목록만 감싼다
                 모바일: 박스 없이 옅은 선으로만 나누고 왼쪽 끝을 제목에 맞춘다. 한 줄 = 요일(휴무면 '휴무') … 시간 · 스위치(오른쪽 끝)
                 PC: 지금처럼 박스 안 한 줄 (요일 · 스위치 · 영업/휴무 · 시간) — 순서는 order로 바꾼다 */}
@@ -313,8 +313,8 @@ export default function PreviewBusinessSettingsTab({ onNotice }: Props) {
         <div className="max-w-lg space-y-6">
           {/* 특정 날짜 영업시간 변경 */}
           <div className="space-y-3" data-coach="bz-override">
-            <h3 className="text-sm font-medium text-gray-700">영업시간 변경</h3>
-            <p className="text-xs text-gray-400">이 날짜만 다르게 적용되고, 요일별 영업시간은 그대로예요.</p>
+            <h3 className="text-sm font-medium text-gray-700">예약 가능 시간 변경</h3>
+            <p className="text-xs text-gray-400">이 날짜만 다르게 적용되고, 요일별 예약 가능 시간은 그대로예요.</p>
             <div className="flex flex-col gap-2">
               <DateField value={overrideDate} onChange={handleOverrideDateChange} />
               <div className="flex items-center gap-2">

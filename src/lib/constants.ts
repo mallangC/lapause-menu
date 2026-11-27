@@ -31,6 +31,8 @@ export const FLOWER_COLOR_MAP: Record<string, string> = {
 export const BADGE_COLORS = {
   popular: { bg: "#F08080", label: "인기" },
   recommended: { bg: "#9CAF88", label: "추천" },
+  // 시즌 예약 마감 임박 ("마감 D-2" / "오늘 마감" — 글은 lib/seasonDeadline)
+  deadline: { bg: "#4A4038", label: "마감 임박" },
 } as const;
 
 // 상품 분위기 — 상품 등록·필터·대화형 추천·사장님 스타일이 모두 이 목록을 쓴다

@@ -147,7 +147,7 @@ const STEP4: CoachStep[] = [
     radius: 0,
     pad: 0,
     title: "수령 희망 시간",
-    body: "사장님이 정한 영업시간 안에서만\n손님이 수령 시간을 고를 수 있어요.\n날짜별로 시간을 다르게 정할 수도 있어요.",
+    body: "사장님이 정한 예약 가능 시간 안에서만\n손님이 수령 시간을 고를 수 있어요.\n날짜별로 시간을 다르게 정할 수도 있어요.",
   },
   {
     selectors: ['[data-coach="consult4-options"]'],

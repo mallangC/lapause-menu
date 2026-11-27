@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getMenuData } from "@/lib/menuCache";
+import { readSeasonDeadlines, unavailableLabel } from "@/lib/seasonDeadline";
 import { PRODUCT_TYPES, SEASONS } from "@/lib/constants";
 import { sortByOrder } from "@/lib/productTypes";
 import ConsultClient from "./ConsultClient";
@@ -41,7 +42,7 @@ export default async function ConsultPage({ params, searchParams }: Props) {
   const seasonList = sortByOrder([...SEASONS.filter((s2) => !hiddenSeasons.includes(s2)), ...customSeasons], s.season_order as string[] | null);
 
   // 추천·선택 목록은 예전처럼 가격 오름차순 (캐시는 상품 유형 → 가격 순)
-  const allProducts = menu.products.filter((p) => p.status !== "soldout").sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
+  const allProducts = menu.products.filter((p) => !unavailableLabel(p)).sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
   const preselectedProduct = productId ? allProducts.find((p) => p.id === productId) ?? null : null;
 
   return (
@@ -52,6 +53,7 @@ export default async function ConsultPage({ params, searchParams }: Props) {
       logoImage={(s.logo_image as string | null) ?? null}
       productTypeList={productTypeList}
       seasonList={seasonList}
+      seasonDeadlines={readSeasonDeadlines(s.season_deadlines)}
       notificationEmail={(s.notification_email as string | null) ?? null}
       products={allProducts}
       businessHours={(s.business_hours as Record<string, { closed: boolean; open: string; close: string }>) ?? {}}

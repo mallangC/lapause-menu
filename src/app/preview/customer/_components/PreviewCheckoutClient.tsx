@@ -526,7 +526,7 @@ export default function PreviewCheckoutClient({
             <div ref={refTime} data-coach="checkout-time" className="bg-white px-4 py-4 space-y-3">
               <h3 className={`text-sm font-medium flex items-center gap-2 pb-3 border-b ${fieldErrors.time ? "text-red-500 border-red-200" : "text-gray-700 border-gray-100"}`}>
                 수령 시간 <span className="text-red-400">*</span>{fieldErrors.time && <span className="text-xs font-normal">— 시간을 선택해주세요</span>}
-                {dayInfo && !dayInfo.closed && <span className="text-xs font-normal text-gray-400">영업시간 · {dayInfo.open}~{dayInfo.close}</span>}
+                {dayInfo && !dayInfo.closed && <span className="text-xs font-normal text-gray-400">예약 가능 시간 · {dayInfo.open}~{dayInfo.close}</span>}
               </h3>
               {!selectedDate ? (
                 <p className="text-xs text-gray-400 px-1">날짜를 먼저 선택해주세요.</p>

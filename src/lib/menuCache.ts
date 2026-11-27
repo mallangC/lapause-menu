@@ -3,6 +3,7 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createClient } from "@supabase/supabase-js";
 import type { Product } from "@/types";
 import { menuCacheKey } from "@/lib/menuCacheKey";
+import { isDeadlinePassed, productDeadline, readSeasonDeadlines } from "@/lib/seasonDeadline";
 
 // 공개 메뉴판(/[slug])·상품 상세·장바구니·결제 페이지 공용 데이터 캐시 — Cloudflare KV(MENU_CACHE)에 매장별로 저장.
 // 손님이 메뉴판을 열 때마다 DB를 5번씩 조회하던 것을 캐시가 있으면 0번으로 줄인다.
@@ -58,7 +59,7 @@ async function loadMenuData(slug: string): Promise<MenuData | null> {
       settings:company_settings(
         logo_image, theme_bg, theme_accent,
         location_url, kakao_channel_url, instagram_url, youtube_url,
-        hidden_product_types, hidden_seasons, product_type_order, season_order, consult_enabled,
+        hidden_product_types, hidden_seasons, season_deadlines, product_type_order, season_order, consult_enabled,
         business_number, mail_order_number, address,
         shopping_bag_enabled, shopping_bag_price,
         preservative_enabled, preservative_price,
@@ -102,8 +103,32 @@ async function loadMenuData(slug: string): Promise<MenuData | null> {
   };
 }
 
+/**
+ * 시즌 예약 마감 — 캐시에는 마감 시각만 들어 있고, 마감 여부는 조회할 때마다 지금 시각으로 계산한다
+ * (캐시가 남아 있어도 마감 시각이 지나면 바로 '예약 마감').
+ * 상품마다 season_deadline(언제까지 주문할 수 있는지), 지났으면 season_closed 표시.
+ */
+function withSeasonDeadlines(data: MenuData): MenuData {
+  const deadlines = readSeasonDeadlines(data.settings.season_deadlines);
+  if (Object.keys(deadlines).length === 0) return data;
+  const now = Date.now();
+  return {
+    ...data,
+    products: data.products.map((p) => {
+      const deadline = productDeadline(p.seasons, deadlines);
+      if (!deadline) return p;
+      return { ...p, season_deadline: deadline, ...(isDeadlinePassed(deadline, now) ? { season_closed: true } : {}) };
+    }),
+  };
+}
+
 /** 메뉴판 데이터 조회 (캐시 우선). 같은 요청 안에서 layout·page가 함께 불러도 한 번만 실행된다. */
 export const getMenuData = cache(async (slug: string): Promise<MenuData | null> => {
+  const data = await getCachedMenuData(slug);
+  return data ? withSeasonDeadlines(data) : null;
+});
+
+async function getCachedMenuData(slug: string): Promise<MenuData | null> {
   const store = getKV();
   const key = menuCacheKey(slug);
 
@@ -126,7 +151,7 @@ export const getMenuData = cache(async (slug: string): Promise<MenuData | null> 
     );
   }
   return data;
-});
+}
 
 /** slug로 메뉴판 캐시 비우기 */
 export async function purgeMenuCache(slug: string | null | undefined) {

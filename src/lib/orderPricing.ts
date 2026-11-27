@@ -1,6 +1,7 @@
 import { reportOpsAlert } from "@/lib/opsAlert";
 import { normalizeOptions, resolveOptions } from "@/lib/productOptions";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { closedSeasonNames, isSeasonClosedProduct, readSeasonDeadlines } from "@/lib/seasonDeadline";
 
 // 손님 주문 금액 서버 검증 — 클라이언트가 보낸 가격을 믿지 않고 DB 상품가·매장 옵션가로 다시 계산한다.
 // 화면 계산식(장바구니: CheckoutClient, 맞춤 주문: ConsultClient)과 같은 규칙을 따른다.
@@ -53,13 +54,15 @@ export interface DbProduct {
   /** 재고 관리 */
   stock_enabled?: boolean | null;
   stock?: number | null;
+  /** 붙은 시즌 — 모두 예약 마감이면 주문할 수 없다 */
+  seasons?: string[] | null;
 }
 
 /** 이 매장의 상품만 가져온다 (다른 매장 상품 id로 바꿔치기 방지) */
 export async function loadCompanyProducts(db: SupabaseClient, companyId: string, ids: string[]) {
   const { data } = await db
     .from("products")
-    .select("id, price, name, product_type, bag_included, message_card_unavailable, preservative_unavailable, instant, options, status, stock_enabled, stock")
+    .select("id, price, name, product_type, bag_included, message_card_unavailable, preservative_unavailable, instant, options, status, stock_enabled, stock, seasons")
     .eq("company_id", companyId)
     .in("id", ids);
   return new Map((data as DbProduct[] | null ?? []).map((p) => [p.id, p]));
@@ -170,17 +173,26 @@ export function isPastPickup(desiredDate: string | undefined, desiredTime: strin
   return new Date(`${desiredDate}T${time}:00+09:00`).getTime() < Date.now();
 }
 
+/** 지금 예약 마감된 시즌 이름 (매장 설정은 서버 키로 읽는다) */
+export async function loadClosedSeasons(db: SupabaseClient, companyId: string): Promise<string[]> {
+  const { data } = await db.from("company_settings").select("season_deadlines").eq("company_id", companyId).maybeSingle();
+  return closedSeasonNames(readSeasonDeadlines(data?.season_deadlines));
+}
+
 /**
- * 품절·재고 확인 (결제 승인 전에) — 판매 중(active)이 아닌 상품이나 남은 재고보다 많이 주문하면 안내 문구를 돌려준다
+ * 품절·재고·시즌 예약 마감 확인 (결제 승인 전에) — 판매 중(active)이 아닌 상품, 붙은 시즌이 모두 마감된 상품,
+ * 남은 재고보다 많이 주문하면 안내 문구를 돌려준다
  * lines: 상품 id 와 개수 (같은 상품이 여러 줄이면 합쳐서 본다)
+ * closedSeasons: loadClosedSeasons 로 읽은 마감된 시즌
  */
-export function stockProblem(lines: { productId: string; quantity: number }[], products: Map<string, DbProduct>): string | null {
+export function stockProblem(lines: { productId: string; quantity: number }[], products: Map<string, DbProduct>, closedSeasons: string[] = []): string | null {
   const want = new Map<string, number>();
   for (const l of lines) want.set(l.productId, (want.get(l.productId) ?? 0) + (Number.isInteger(l.quantity) && l.quantity > 0 ? l.quantity : 1));
   for (const [id, qty] of want) {
     const p = products.get(id);
     if (!p) continue;
     if (p.status && p.status !== "active") return `'${p.name}'은(는) 품절됐어요. 장바구니를 다시 확인해 주세요.`;
+    if (isSeasonClosedProduct(p.seasons, closedSeasons)) return `'${p.name}'은(는) 예약이 마감됐어요. 장바구니를 다시 확인해 주세요.`;
     if (p.stock_enabled && (p.stock ?? 0) < qty) {
       return (p.stock ?? 0) > 0 ? `'${p.name}'은(는) ${p.stock}개만 남았어요. 수량을 줄여 주세요.` : `'${p.name}'은(는) 품절됐어요. 장바구니를 다시 확인해 주세요.`;
     }

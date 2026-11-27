@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import ProductGallery from "@/components/ProductGallery";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Product } from "@/types";
+import { useDetailImageFollow } from "@/hooks/useDetailImageFollow";
 import { FLOWER_COLOR_MAP, BADGE_COLORS, PRODUCT_TYPES, SEASONS } from "@/lib/constants";
 import PreviewFlowerNotice from "./PreviewFlowerNotice";
 import PreviewStoreHeader from "./PreviewStoreHeader";
@@ -41,6 +42,11 @@ export default function PreviewProductDetailClient({
   logoNode,
 }: ProductDetailClientProps) {
   const router = useRouter();
+  // PC 2단 — 사진은 상단 고정, 오른쪽이 올라와 버튼이 사진 아래 끝과 한 줄이 될 때까지 스크롤할 수 있게 (모자라면 맨 아래 여백)
+  const detailRowRef = useRef<HTMLDivElement>(null);
+  const detailImageRef = useRef<HTMLDivElement>(null);
+  const detailSpacerRef = useRef<HTMLDivElement>(null);
+  useDetailImageFollow(detailRowRef, detailImageRef, detailSpacerRef);
   const [noticeOpen, setNoticeOpen] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
@@ -98,10 +104,10 @@ export default function PreviewProductDetailClient({
       />
 
       {/* 상품 상세 — 2단 레이아웃 */}
-      <div className="flex flex-col md:flex-row">
+      <div ref={detailRowRef} className="flex flex-col md:flex-row md:pb-12">
 
-          {/* 왼쪽: 이미지 — PC에서는 오른쪽 정보가 길어도 화면에 붙어 있다가, 오른쪽이 끝나면 함께 올라간다 */}
-          <div data-detail-image className="md:w-1/2 shrink-0 w-full md:sticky md:top-[81px] md:self-start">
+          {/* 왼쪽: 이미지 — PC에서는 헤더 아래 고정, 오른쪽 버튼 아래 끝이 사진 아래 끝과 한 줄이 되면 함께 올라간다 */}
+          <div ref={detailImageRef} data-detail-image className="md:w-1/2 shrink-0 w-full md:sticky md:top-[81px] md:self-start">
             <div className="relative aspect-square bg-beige-100 overflow-hidden">
               {product.image_url ? (
                 <ProductGallery images={[product.image_url, ...(product.extra_images ?? [])]} alt={product.name} />
@@ -130,7 +136,7 @@ export default function PreviewProductDetailClient({
           </div>
 
           {/* 오른쪽: 정보 */}
-          <div className="md:w-1/2 flex flex-col justify-between px-6 py-6 md:px-8 md:py-12">
+          <div className="md:w-1/2 flex flex-col justify-between px-6 py-6 md:px-8 md:pt-12 md:pb-0">
             <div className="space-y-5 md:space-y-8">
               {/* 이름 & 가격 */}
               <div data-coach="detail-info">
@@ -300,6 +306,9 @@ export default function PreviewProductDetailClient({
           onClose={() => setNoticeOpen(false)}
         />
       )}
+
+      {/* 맨 아래 여백 — 버튼이 사진과 한 줄이 되기 전에 페이지가 끝나는 경우에만 높이가 생긴다 (useDetailImageFollow) */}
+      <div ref={detailSpacerRef} aria-hidden />
     </div>
   );
 }

@@ -10,6 +10,7 @@ import ProductGrid from "@/components/main/ProductGrid";
 import StoreHeader from "@/components/main/StoreHeader";
 import { sortByOrder } from "@/lib/productTypes";
 import StoreFooter from "@/components/main/StoreFooter";
+import { formatDeadline, isDeadlinePassed } from "@/lib/seasonDeadline";
 
 interface ProductsClientProps {
   slug: string;
@@ -19,6 +20,8 @@ interface ProductsClientProps {
   products: Product[];
   hiddenProductTypes: string[];
   hiddenSeasons: string[];
+  /** 시즌 예약 마감 시각 { 시즌 이름: 값 } — 시즌 메뉴 위 안내·메뉴 서랍 표시 */
+  seasonDeadlines?: Record<string, string>;
   customProductTypes: string[];
   customSeasons: string[];
   /** 사장님이 정한 상품 유형·시즌 순서 */
@@ -48,6 +51,7 @@ export default function ProductsClient({
   products,
   hiddenProductTypes,
   hiddenSeasons,
+  seasonDeadlines = {},
   customProductTypes,
   customSeasons,
   productTypeOrder,
@@ -92,6 +96,9 @@ export default function ProductsClient({
   }, [activeTab, typeParam, seasonParam]);
 
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+  // 지금 보는 시즌의 예약 마감 시각 (시즌 메뉴에서 시즌을 골랐을 때만)
+  const seasonDeadline = activeTab === "season" && seasonParam ? seasonDeadlines[seasonParam] : undefined;
+  const seasonClosed = !!seasonDeadline && isDeadlinePassed(seasonDeadline);
   const [openFilterDropdown, setOpenFilterDropdown] = useState<FilterKey | null>(null);
 
   // 사장님이 메뉴 설정에서 정한 순서대로
@@ -144,7 +151,21 @@ export default function ProductsClient({
           seasonList={seasonList}
           consultEnabled={consultEnabled}
           instantMenu={instantMenu && products.some((p) => p.instant) ? instantMenu.name : null}
+          seasonDeadlines={seasonDeadlines}
         />
+
+        {/* 시즌 예약 마감 띠 — 헤더 바로 아래 화면 폭 전체 (마감 전엔 언제까지, 마감 뒤엔 마감 안내. 상품은 그대로 보이고 예약 마감 표시) */}
+        {seasonDeadline && (
+          <div
+            className={`px-4 py-2 text-center text-xs md:text-sm font-medium text-white break-keep ${
+              seasonClosed ? "bg-gray-500" : "bg-gold-500"
+            }`}
+          >
+            {seasonClosed
+              ? `${seasonParam} 시즌 예약이 마감되었어요`
+              : `${seasonParam} 예약은 ${formatDeadline(seasonDeadline)}까지예요`}
+          </div>
+        )}
 
         {/* PC 필터 띠 */}
         <div className="hidden md:flex items-center gap-2 px-8 py-2 bg-white border-b border-gray-100">

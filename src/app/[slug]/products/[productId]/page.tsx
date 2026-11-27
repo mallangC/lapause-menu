@@ -1,8 +1,9 @@
 import { instantMenuName } from "@/lib/afterHours";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getMenuData } from "@/lib/menuCache";
 import { generateThemeVars, DEFAULT_THEME_BG, DEFAULT_THEME_ACCENT } from "@/lib/theme";
 import ProductDetailClient from "./ProductDetailClient";
+import { readSeasonDeadlines, unavailableLabel } from "@/lib/seasonDeadline";
 
 interface Props {
   params: Promise<{ slug: string; productId: string }>;
@@ -19,9 +20,10 @@ export default async function ProductDetailPage({ params }: Props) {
   if (!menu.plan || menu.plan === "none") notFound();
 
   const product = menu.products.find((p) => p.id === productId);
-  if (!product) notFound();
+  // 공유된 상품 링크인데 상품이 삭제됐거나 판매 중이 아니면 매장 메뉴판으로
+  if (!product) redirect(`/${slug}/menu`);
 
-  const allProducts = menu.products.filter((p) => p.id !== productId && p.status !== "soldout"); // 추천 상품에는 품절 빼고
+  const allProducts = menu.products.filter((p) => p.id !== productId && !unavailableLabel(p)); // 추천 상품에는 품절·예약 마감 빼고
   const customCats = menu.categories;
 
   const customProductTypes = (customCats ?? [])
@@ -57,6 +59,7 @@ export default async function ProductDetailPage({ params }: Props) {
       customSeasons={customSeasons}
       productTypeOrder={(s.product_type_order as string[] | null) ?? []}
       seasonOrder={(s.season_order as string[] | null) ?? []}
+      seasonDeadlines={readSeasonDeadlines(s.season_deadlines)}
       instantMenu={!s.instant_menu_hidden && menu.products.some((p) => p.instant) ? instantMenuName(s) : null}
     />
   );

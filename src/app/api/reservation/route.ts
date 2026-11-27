@@ -6,7 +6,7 @@ import { MESSAGE_CARD_MAX } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendReservationConfirmedOwner } from "@/lib/solapi";
-import { cancelTossPayment, consultMinimumTotal, isPastPickup, loadCompanyProducts, loadOptionPrices, productUnitPrice, stockProblem, takeStock } from "@/lib/orderPricing";
+import { cancelTossPayment, consultMinimumTotal, isPastPickup, loadClosedSeasons, loadCompanyProducts, loadOptionPrices, productUnitPrice, stockProblem, takeStock } from "@/lib/orderPricing";
 import { normalizeTrafficSource } from "@/lib/trafficSource";
 import { PHOTO_PRODUCT_ID, REF_DATA_PATTERN, isValidStyleBudget, isVirtualProductId, styleProductName } from "@/lib/styleOrder";
 import type { DbProduct } from "@/lib/orderPricing";
@@ -196,8 +196,8 @@ export async function POST(request: NextRequest) {
     // 상품 옵션 — 고른 옵션 금액을 상품 값에 더한다 (아래 최소 금액 확인·저장 모두 이 값으로)
     let productOptionsLabel: string | null = null;
     if (!isStyleOrder) {
-      // 품절·재고 부족 — 결제 승인 전에 막는다
-      const stockError = stockProblem([{ productId: dbProduct.id, quantity: 1 }], new Map([[dbProduct.id, dbProduct]]));
+      // 품절·재고 부족·시즌 예약 마감 — 결제 승인 전에 막는다
+      const stockError = stockProblem([{ productId: dbProduct.id, quantity: 1 }], new Map([[dbProduct.id, dbProduct]]), await loadClosedSeasons(adminClient, companyId));
       if (stockError) return NextResponse.json({ error: stockError }, { status: 409 });
       const unit = productUnitPrice(dbProduct, body.productOptions);
       if (!unit) {

@@ -44,6 +44,10 @@ export interface Product {
   stock_enabled?: boolean;
   /** 남은 재고 (재고 관리를 쓸 때만) */
   stock?: number | null;
+  /** 붙은 시즌이 모두 예약 마감 — 손님 화면에서만 계산해 붙는다 (DB 칸 아님, lib/seasonDeadline). 품절처럼 보이고 주문할 수 없다 */
+  season_closed?: boolean;
+  /** 예약 마감 시각 ("YYYY-MM-DD" | "YYYY-MM-DDTHH:mm") — 붙은 시즌이 모두 마감을 정했을 때 가장 늦은 것. 손님 화면에서만 붙는다 */
+  season_deadline?: string;
   created_at: string;
   bag_included: boolean;
   message_card_unavailable: boolean;

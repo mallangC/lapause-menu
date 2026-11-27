@@ -9,11 +9,13 @@ import StoreImage from "@/components/StoreImage";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Product } from "@/types";
+import { useDetailImageFollow } from "@/hooks/useDetailImageFollow";
 import { FLOWER_COLOR_MAP, BADGE_COLORS, PRODUCT_TYPES, SEASONS } from "@/lib/constants";
 import FlowerNoticeModal from "@/components/FlowerNoticeModal";
 import StoreHeader from "@/components/main/StoreHeader";
 import { sortByOrder } from "@/lib/productTypes";
 import { useCart, startDirectOrder } from "@/hooks/useCart";
+import { formatDeadline, isDeadlinePassed, unavailableLabel } from "@/lib/seasonDeadline";
 
 interface ProductDetailClientProps {
   slug: string;
@@ -32,6 +34,8 @@ interface ProductDetailClientProps {
   seasonOrder?: string[];
   /** 바로 구매 메뉴 이름 (숨겼거나 상품이 없으면 null) — 메뉴 서랍에 */
   instantMenu?: string | null;
+  /** 시즌 예약 마감 시각 { 시즌 이름: 값 } — 메뉴 서랍 표시 */
+  seasonDeadlines?: Record<string, string>;
 }
 
 export default function ProductDetailClient({
@@ -49,8 +53,14 @@ export default function ProductDetailClient({
   productTypeOrder,
   seasonOrder,
   instantMenu = null,
+  seasonDeadlines = {},
 }: ProductDetailClientProps) {
   const router = useRouter();
+  // PC 2단 — 사진은 상단 고정, 오른쪽이 올라와 버튼이 사진 아래 끝과 한 줄이 될 때까지 스크롤할 수 있게 (모자라면 맨 아래 여백)
+  const detailRowRef = useRef<HTMLDivElement>(null);
+  const detailImageRef = useRef<HTMLDivElement>(null);
+  const detailSpacerRef = useRef<HTMLDivElement>(null);
+  useDetailImageFollow(detailRowRef, detailImageRef, detailSpacerRef);
   const [noticeOpen, setNoticeOpen] = useState(false);
   const [quantity, setQuantity] = useState(1);
   // 실제로 받은 상품 — 이 상품을 주문한 손님에게 사장님이 보낸 완성 사진 중 공개한 것 (최근 몇 장)
@@ -77,8 +87,8 @@ export default function ProductDetailClient({
       .catch(() => {});
   }, [product.id]);
   const [added, setAdded] = useState(false);
-  // 품절 — 메뉴에는 보이지만 담기·예약은 막는다 (재고가 0개가 되면 자동으로 품절)
-  const soldOut = product.status === "soldout";
+  // 품절·시즌 예약 마감 — 메뉴에는 보이지만 담기·예약은 막는다 (재고가 0개가 되면 자동으로 품절)
+  const unavailable = unavailableLabel(product);
   const { addItem } = useCart(slug);
   // 상품 옵션 — 고른 항목 (처음엔 사장님이 정한 기본 선택), 금액은 상품 값에 더한다
   const optionGroups = normalizeOptions(product.options);
@@ -162,13 +172,30 @@ export default function ProductDetailClient({
         seasonList={seasonList}
         consultEnabled={consultEnabled}
         instantMenu={instantMenu}
+        seasonDeadlines={seasonDeadlines}
       />
 
-      {/* 상품 상세 — 2단 레이아웃 */}
-      <div className="flex flex-col md:flex-row">
+      {/* 시즌 예약 마감 띠 — 시즌 메뉴와 같은 모양. 헤더 아래에 두고 스크롤하면 함께 올라간다
+          (고정하면 PC 사진 고정 위치(헤더 아래)가 띠 높이만큼 어긋난다) */}
+      {product.season_deadline && (() => {
+        const deadline = product.season_deadline;
+        // 여러 시즌이면 마감이 가장 늦은 시즌 (상품 마감 시각과 같은 시즌)
+        const season = product.seasons.find((s) => seasonDeadlines[s] === deadline) ?? product.seasons[0];
+        const closed = isDeadlinePassed(deadline);
+        return (
+          <div className={`px-4 py-2 text-center text-xs md:text-sm font-medium text-white break-keep ${closed ? "bg-gray-500" : "bg-gold-500"}`}>
+            {closed ? `${season} 시즌 예약이 마감되었어요` : `${season} 예약은 ${formatDeadline(deadline)}까지예요`}
+          </div>
+        );
+      })()}
 
-          {/* 왼쪽: 이미지 — PC에서는 오른쪽 정보가 길어도 화면에 붙어 있다가, 오른쪽이 끝나면 함께 올라간다 */}
-          <div data-detail-image className="md:w-1/2 shrink-0 w-full md:sticky md:top-[81px] md:self-start">
+      {/* 상품 상세 — 2단 레이아웃
+          PC 아래 여백(48px)은 오른쪽 칸이 아니라 두 칸을 감싼 여기에 둔다 — 오른쪽 정보가 올라가다 멈출 때
+          버튼 아래 끝과 사진 아래 끝이 딱 맞고, 그 아래 여백도 양쪽이 같게 */}
+      <div ref={detailRowRef} className="flex flex-col md:flex-row md:pb-12">
+
+          {/* 왼쪽: 이미지 — PC에서는 헤더 아래 고정, 오른쪽 버튼 아래 끝이 사진 아래 끝과 한 줄이 되면 함께 올라간다 */}
+          <div ref={detailImageRef} data-detail-image className="md:w-1/2 shrink-0 w-full md:sticky md:top-[81px] md:self-start">
             <div className="relative aspect-square bg-beige-100 overflow-hidden">
               {product.image_url ? (
                 <ProductGallery images={[product.image_url, ...(product.extra_images ?? [])]} alt={product.name} />
@@ -197,7 +224,7 @@ export default function ProductDetailClient({
           </div>
 
           {/* 오른쪽: 정보 */}
-          <div className="md:w-1/2 flex flex-col justify-between px-6 py-6 md:px-8 md:py-12">
+          <div className="md:w-1/2 flex flex-col justify-between px-6 py-6 md:px-8 md:pt-12 md:pb-0">
             <div className="space-y-5 md:space-y-8">
               {/* 이름 & 가격 */}
               <div>
@@ -298,9 +325,13 @@ export default function ProductDetailClient({
               </div>
               )}
 
-              {/* 버튼 — 품절이면 담기·예약 대신 '품절' */}
-              {soldOut ? (
-                <div className="py-4 rounded-2xl bg-gray-100 text-center text-sm font-medium text-gray-500">품절된 상품이에요</div>
+              {/* 버튼 — 품절·예약 마감이면 담기·예약 대신 안내 */}
+              {unavailable ? (
+                <div className="py-4 rounded-2xl bg-gray-100 text-center text-sm font-medium text-gray-500">
+                  {unavailable === "품절"
+                    ? "품절된 상품이에요"
+                    : `예약이 마감된 상품이에요${product.season_deadline ? ` (${formatDeadline(product.season_deadline)}까지)` : ""}`}
+                </div>
               ) : (
               <div className="flex gap-3">
                 {consultEnabled && (
@@ -462,6 +493,9 @@ export default function ProductDetailClient({
           onClose={() => setNoticeOpen(false)}
         />
       )}
+
+      {/* 맨 아래 여백 — 버튼이 사진과 한 줄이 되기 전에 페이지가 끝나는 경우에만 높이가 생긴다 (useDetailImageFollow) */}
+      <div ref={detailSpacerRef} aria-hidden />
     </div>
   );
 }

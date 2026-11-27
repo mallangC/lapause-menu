@@ -5,9 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { DayHours, BusinessHours, DateOverrides } from "@/lib/businessHours";
 import SaveBar from "@/components/admin/SaveBar";
 import { useDirty } from "@/components/admin/useDirty";
-import DatePicker, { registerLocale } from "react-datepicker";
-import { ko } from "date-fns/locale";
-import "react-datepicker/dist/react-datepicker.css";
+import { DateField, TimeSelect } from "@/components/admin/DateTimeFields";
 import { notifyMenuChanged } from "@/lib/menuCacheClient";
 import type { CompanySettings } from "./companySettings";
 import { useSettingsSync } from "./useSettingsSync";
@@ -16,8 +14,6 @@ import { DEFAULT_TYPE_KEY } from "@/lib/productTypes";
 import { useStoreProductTypes } from "./useStoreProductTypes";
 import { AFTER_HOURS_END_OPTIONS, AFTER_HOURS_NOTE_MAX, AFTER_HOURS_START_OPTIONS, DEFAULT_AFTER_HOURS_END, DEFAULT_AFTER_HOURS_START, DEFAULT_INSTANT_MENU_NAME } from "@/lib/afterHours";
 
-registerLocale("ko", ko);
-
 interface Props {
   companyId: string;
   settings: CompanySettings;
@@ -25,8 +21,6 @@ interface Props {
 }
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
-const HOURS = Array.from({ length: 18 }, (_, i) => String(i + 6).padStart(2, "0"));
-const MINUTES = ["00", "30"];
 
 const toDateStr = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
@@ -35,57 +29,6 @@ const pruneOverrides = (overrides: DateOverrides): DateOverrides => {
   const todayStr = toDateStr(new Date());
   return Object.fromEntries(Object.entries(overrides).filter(([date]) => date >= todayStr));
 };
-
-function DateField({ value, onChange, placeholder }: { value: Date | null; onChange: (d: Date | null) => void; placeholder?: string }) {
-  return (
-    <DatePicker
-      locale="ko"
-      selected={value}
-      onChange={onChange}
-      dateFormat="yy년 M월 d일 (eee)"
-      minDate={new Date()}
-      placeholderText={placeholder ?? "날짜를 선택해주세요"}
-      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-500 bg-white cursor-pointer"
-      wrapperClassName="w-full"
-      calendarClassName="!font-sans !text-sm !border-gray-200 !rounded-xl !shadow-lg admin-modal-datepicker"
-      popperPlacement="bottom-start"
-      dayClassName={(date) => {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        return date < today ? "react-datepicker__day--past" : "";
-      }}
-      renderCustomHeader={({ date, decreaseMonth, increaseMonth, prevMonthButtonDisabled, nextMonthButtonDisabled }) => (
-        <div className="flex items-center justify-between px-3 py-1">
-          <button type="button" onClick={decreaseMonth} disabled={prevMonthButtonDisabled}
-            className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-gray-100 disabled:opacity-30 transition-colors text-gray-600">‹</button>
-          <span className="text-sm font-medium text-gray-800">{date.getMonth() + 1}월</span>
-          <button type="button" onClick={increaseMonth} disabled={nextMonthButtonDisabled}
-            className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-gray-100 disabled:opacity-30 transition-colors text-gray-600">›</button>
-        </div>
-      )}
-    />
-  );
-}
-
-// 시간 선택 — 시·분을 따로 고르지 않고 '09:00' 한 칸에서 고른다 (30분 단위라 목록이 짧고, 칸이 좁아 모바일 한 줄에 들어간다)
-const TIME_OPTIONS = HOURS.flatMap((hh) => MINUTES.map((mm) => `${hh}:${mm}`));
-
-function TimeSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  // 목록에 없는 값(예: 예전에 저장한 09:15)도 그대로 보이게 앞에 끼워 넣는다
-  const options = TIME_OPTIONS.includes(value) ? TIME_OPTIONS : [value, ...TIME_OPTIONS];
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      // 칸이 너무 작아 보이지 않게 최소 너비·여백을 둔다 (모바일 한 줄: 요일·스위치를 빼고 남는 폭 안에 두 칸이 들어가는 크기)
-      className="min-w-[92px] border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 bg-white focus:outline-none focus:border-gray-400 cursor-pointer"
-    >
-      {options.map((t) => (
-        <option key={t} value={t}>{t}</option>
-      ))}
-    </select>
-  );
-}
 
 const DEFAULT_HOURS: BusinessHours = Object.fromEntries(
   Array.from({ length: 7 }, (_, i) => [String(i), { closed: i === 0, open: "09:00", close: "18:00" }])
@@ -376,7 +319,7 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
         <div className="max-w-lg space-y-6">
           {/* 요일별 영업 시간 */}
           <div className="space-y-3">
-            <h3 className="text-sm font-medium text-gray-700">요일별 영업 시간</h3>
+            <h3 className="text-sm font-medium text-gray-700">요일별 예약 가능 시간</h3>
             {/* 모바일: 박스 없이 옅은 선으로만 나누고 왼쪽 끝을 제목에 맞춘다. 한 줄 = 요일(휴무면 '휴무') … 시간 · 스위치(오른쪽 끝)
                 PC: 지금처럼 박스 안 한 줄 (요일 · 스위치 · 영업/휴무 · 시간) — 순서는 order로 바꾼다 */}
             <div className="border-t border-gray-100 md:border md:border-gray-200 md:rounded-xl overflow-hidden divide-y divide-gray-100">
@@ -578,8 +521,8 @@ export default function BusinessSettingsTab({ companyId, settings, onSettingsSav
         <div className="max-w-lg space-y-6">
           {/* 특정 날짜 영업시간 변경 */}
           <div className="space-y-3">
-            <h3 className="text-sm font-medium text-gray-700">영업시간 변경</h3>
-            <p className="text-xs text-gray-400">이 날짜만 다르게 적용되고, 요일별 영업시간은 그대로예요.</p>
+            <h3 className="text-sm font-medium text-gray-700">예약 가능 시간 변경</h3>
+            <p className="text-xs text-gray-400">이 날짜만 다르게 적용되고, 요일별 예약 가능 시간은 그대로예요.</p>
             <div className="flex flex-col gap-2">
               <DateField value={overrideDate} onChange={handleOverrideDateChange} />
               <div className="flex items-center gap-2">

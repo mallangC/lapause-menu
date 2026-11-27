@@ -33,6 +33,8 @@ interface Props {
   logoImage?: string | null;
   productTypeList?: string[];
   seasonList?: string[];
+  /** 시즌 예약 마감 시각 — 메뉴 서랍 표시 */
+  seasonDeadlines?: Record<string, string>;
   notificationEmail?: string | null;
   products: Product[];
   businessHours: BusinessHours;
@@ -121,7 +123,7 @@ function scoreProducts(products: Product[], form: ConsultForm): Product[] {
   return recommendProducts(products, { productType: form.productType, mood: form.mood, budget });
 }
 
-export default function ConsultClient({ slug, companyName, logoImage = null, productTypeList = [], seasonList = [], notificationEmail, products, businessHours, closedDates, dateOverrides = {}, minLeadTimes = {}, consultNotice, storeAddress = null, deliveryEnabled = false, deliveryFees = {}, messageCardEnabled = false, messageCardPrice = 2000, shoppingBagEnabled = false, shoppingBagPrice = 2000, preservativeEnabled = false, preservativePrice = 500, isDemo = false, preselectedProduct = null, styleOrder = null, chatAnswers = null, todayColors = [], colorLeadDays = 0, colorPickEnabled = true, colorMinPrice = 0, afterHours = AFTER_HOURS_OFF, unattended = UNATTENDED_OFF, transferAvailable = false, initialQuantity = 1, initialOptions = null, initialPaymentId = null }: Props) {
+export default function ConsultClient({ slug, companyName, logoImage = null, productTypeList = [], seasonList = [], seasonDeadlines = {}, notificationEmail, products, businessHours, closedDates, dateOverrides = {}, minLeadTimes = {}, consultNotice, storeAddress = null, deliveryEnabled = false, deliveryFees = {}, messageCardEnabled = false, messageCardPrice = 2000, shoppingBagEnabled = false, shoppingBagPrice = 2000, preservativeEnabled = false, preservativePrice = 500, isDemo = false, preselectedProduct = null, styleOrder = null, chatAnswers = null, todayColors = [], colorLeadDays = 0, colorPickEnabled = true, colorMinPrice = 0, afterHours = AFTER_HOURS_OFF, unattended = UNATTENDED_OFF, transferAvailable = false, initialQuantity = 1, initialOptions = null, initialPaymentId = null }: Props) {
   // 첫 화면 대화에서 선물 정보·취향을 이미 받고 온 주문 (사장님 스타일·사진 주문·대화형 추천)
   const chat = styleOrder ?? chatAnswers;
   const fromChat = !!chat;
@@ -221,6 +223,7 @@ export default function ConsultClient({ slug, companyName, logoImage = null, pro
         logoImage={logoImage}
         productTypeList={productTypeList}
         seasonList={seasonList}
+        seasonDeadlines={seasonDeadlines}
         consultEnabled={true}
       />
   );

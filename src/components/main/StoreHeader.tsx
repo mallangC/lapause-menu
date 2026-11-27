@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useCart } from "@/hooks/useCart";
+import { isDeadlinePassed, shortDeadline } from "@/lib/seasonDeadline";
 
 interface StoreHeaderProps {
   slug: string;
@@ -14,6 +15,8 @@ interface StoreHeaderProps {
   consultEnabled: boolean;
   /** 바로 구매 메뉴 이름 — 숨겼거나 상품이 없으면 null */
   instantMenu?: string | null;
+  /** 시즌 예약 마감 시각 { 시즌 이름: 값 } — 시즌 이름 옆에 '~12/24' / '마감' */
+  seasonDeadlines?: Record<string, string>;
 }
 
 export default function StoreHeader({
@@ -24,6 +27,7 @@ export default function StoreHeader({
   seasonList,
   consultEnabled,
   instantMenu = null,
+  seasonDeadlines = {},
 }: StoreHeaderProps) {
   // 로고 → 첫 화면 대화 (판매를 꺼 둔 매장은 대화가 없어 메뉴판으로)
   const homeHref = consultEnabled ? `/${slug}` : `/${slug}/menu`;
@@ -138,16 +142,24 @@ export default function StoreHeader({
             <>
               <div className="mx-2 mt-3 border-t border-gray-100" />
               <p className={groupCls}>시즌 메뉴</p>
-              {seasonList.map((season) => (
-                <Link
-                  key={season}
-                  href={`/${slug}/menu?tab=season&season=${encodeURIComponent(season)}`}
-                  className={itemCls}
-                  onClick={() => setMenuOpen(false)}
-                >
-                  {season}
-                </Link>
-              ))}
+              {seasonList.map((season) => {
+                const deadline = seasonDeadlines[season];
+                return (
+                  <Link
+                    key={season}
+                    href={`/${slug}/menu?tab=season&season=${encodeURIComponent(season)}`}
+                    className={`${itemCls} flex items-baseline gap-2`}
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    {season}
+                    {deadline && (
+                      <span className="text-xs md:text-sm font-normal text-gray-400">
+                        {isDeadlinePassed(deadline) ? "마감" : shortDeadline(deadline)}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
             </>
           )}
           {/* 바로 구매 메뉴 — 이미 만들어 둔 꽃이라 맨 아래 따로 (상품 종류가 아니다) */}

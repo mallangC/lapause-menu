@@ -248,7 +248,7 @@ export function PickupTimeSection(p: {
         수령 시간 <span className="text-red-400">*</span>
         {p.day && !p.day.closed && (
           <span className="text-xs font-normal text-gray-400">
-            영업시간 · {p.day.open}~{p.day.close}
+            예약 가능 시간 · {p.day.open}~{p.day.close}
           </span>
         )}
         {p.error && <span className="text-xs font-normal">— 시간을 선택해주세요</span>}

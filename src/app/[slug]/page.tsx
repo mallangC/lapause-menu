@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { getMenuData } from "@/lib/menuCache";
+import { unavailableLabel } from "@/lib/seasonDeadline";
 import ServiceSuspended from "@/components/main/ServiceSuspended";
 import { generateThemeVars, DEFAULT_THEME_BG, DEFAULT_THEME_ACCENT } from "@/lib/theme";
 import StoreWelcomeClient from "./StoreWelcomeClient";
@@ -70,8 +71,8 @@ export default async function StoreWelcomePage({ params, searchParams }: Props) 
     preservative_unavailable: p.preservative_unavailable ?? false,
     options: p.options ?? [],
   });
-  // 대화 주문(추천·첫 인사 사진)에는 품절 상품을 내지 않는다
-  const orderable = menu.products.filter((p) => p.status !== "soldout");
+  // 대화 주문(추천·첫 인사 사진)에는 품절·예약 마감 상품을 내지 않는다
+  const orderable = menu.products.filter((p) => !unavailableLabel(p));
   const photoPoolProducts = orderable.filter((p) => p.image_url && (p.is_popular || p.is_recommended)).map(toIntro);
   const photoProducts = orderable
     .filter((p) => p.image_url)

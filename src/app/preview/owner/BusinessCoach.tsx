@@ -20,8 +20,8 @@ const STEPS: CoachStep[] = [
     mobileTo: ['[data-coach="bz-hours-thu"]'],
     mobileRadius: 0,
     mobilePadX: 16,
-    title: "요일별 영업 시간",
-    body: "요일마다 영업 여부와 시간을 정해요.\n손님은 영업시간 안에서만 수령 시간을 고를 수 있고,\n정기 휴무 요일은 예약 달력에서 막혀요.",
+    title: "요일별 예약 가능 시간",
+    body: "요일마다 영업 여부와 시간을 정해요.\n손님은 이 시간 안에서만 수령 시간을 고를 수 있고,\n정기 휴무 요일은 예약 달력에서 막혀요.",
   },
   {
     selectors: ['[data-coach="bz-closed"]'],
@@ -38,8 +38,8 @@ const STEPS: CoachStep[] = [
     // 모바일은 네모 + 여백을 조금 더
     mobileRadius: 0,
     mobilePad: 16,
-    title: "영업시간 변경",
-    body: "특정 날의 영업시간을 늘리거나 줄일 수 있어요.\n요일별 기본 영업시간은 그대로 유지돼요.",
+    title: "예약 가능 시간 변경",
+    body: "특정 날의 예약 가능 시간을 늘리거나 줄일 수 있어요.\n요일별 기본 예약 가능 시간은 그대로 유지돼요.",
   },
 ];
 
@@ -50,12 +50,12 @@ export default function BusinessCoach() {
       storageKey="preview_coach_owner_business"
       intro={{
         title: "영업 설정 화면이에요",
-        body: "영업시간과 휴무일, 상품별 준비 시간을 정해요.\n손님이 예약할 수 있는 날짜와 시간이\n이 설정에 맞춰 자동으로 정해져요.",
+        body: "예약 가능 시간과 휴무일, 상품별 준비 시간을 정해요.\n손님이 예약할 수 있는 날짜와 시간이\n이 설정에 맞춰 자동으로 정해져요.",
       }}
       steps={STEPS}
       outro={{
         title: "직접 바꿔보세요",
-        body: "영업시간을 바꾸거나 휴무일을 추가해보세요.\n미리보기라 실제로 저장되지는 않아요.",
+        body: "예약 가능 시간을 바꾸거나 휴무일을 추가해보세요.\n미리보기라 실제로 저장되지는 않아요.",
       }}
     />
   );

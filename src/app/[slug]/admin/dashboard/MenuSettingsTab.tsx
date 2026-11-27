@@ -10,6 +10,8 @@ import { removeStorageFiles } from "@/lib/storageCleanup";
 import { PRODUCT_TYPES_CHANGED, sortByOrder } from "@/lib/productTypes";
 import SortableChips, { type ChipItem } from "@/components/admin/SortableChips";
 import InstantMenuSettings from "./InstantMenuSettings";
+import { DateField, TimeDropdown } from "@/components/admin/DateTimeFields";
+import { formatDeadline, isDeadlinePassed, readSeasonDeadlines, type SeasonDeadlines } from "@/lib/seasonDeadline";
 
 interface Props {
   companyId: string;
@@ -24,6 +26,8 @@ type CustomCategory = { id: string; category_type: "product_type" | "season"; na
 
 const MAX_PRODUCT_TYPES = 10;
 const MAX_SEASONS = 5;
+
+const toDateStr = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, initialHiddenSeasons, onSave, onSettingsSaved }: Props) {
   const [hiddenProductTypes, setHiddenProductTypes] = useState<string[]>(initialHiddenProductTypes);
@@ -43,17 +47,23 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
   // 사장님이 정한 순서 (메뉴판 탭·필터·상담 유형 선택에 그대로 쓰인다)
   const [productTypeOrder, setProductTypeOrder] = useState<string[]>([]);
   const [seasonOrder, setSeasonOrder] = useState<string[]>([]);
+  // 시즌 예약 마감 — { 시즌 이름: "YYYY-MM-DD" | "YYYY-MM-DDTHH:mm" } (숨김과 별개, 숨긴 시즌에도 정할 수 있다)
+  const [seasonDeadlines, setSeasonDeadlines] = useState<SeasonDeadlines>({});
+  const [deadlineError, setDeadlineError] = useState(false);
+  // 시즌 칩을 누르면 여는 설정 창 — 숨김·예약 마감
+  const [editingSeason, setEditingSeason] = useState<string | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
     supabase.from("company_categories").select("*").eq("company_id", companyId).then(({ data }) => {
       if (data) setCustomCategories(data as CustomCategory[]);
     });
-    supabase.from("company_settings").select("product_type_order, season_order, removed_product_types, removed_seasons").eq("company_id", companyId).maybeSingle().then(({ data }) => {
+    supabase.from("company_settings").select("product_type_order, season_order, removed_product_types, removed_seasons, season_deadlines").eq("company_id", companyId).maybeSingle().then(({ data }) => {
       setProductTypeOrder((data?.product_type_order as string[] | null) ?? []);
       setSeasonOrder((data?.season_order as string[] | null) ?? []);
       setRemovedProductTypes((data?.removed_product_types as string[] | null) ?? []);
       setRemovedSeasons((data?.removed_seasons as string[] | null) ?? []);
+      setSeasonDeadlines(readSeasonDeadlines(data?.season_deadlines));
     });
   }, [companyId]);
 
@@ -67,6 +77,29 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
       notifyMenuChanged();
       window.dispatchEvent(new Event(PRODUCT_TYPES_CHANGED));
     }
+  };
+
+  /** 시즌 예약 마감 저장 — 날짜를 비우면 마감 없음, 시간을 비우면 그날 끝까지 */
+  const saveSeasonDeadline = async (name: string, date: string, time: string) => {
+    const next = { ...seasonDeadlines };
+    if (date) next[name] = time ? `${date}T${time}` : date;
+    else delete next[name];
+    const prev = seasonDeadlines;
+    setSeasonDeadlines(next);
+    const { error } = await supabase.from("company_settings").update({ season_deadlines: next }).eq("company_id", companyId);
+    if (error) {
+      setSeasonDeadlines(prev);
+      setDeadlineError(true);
+      return;
+    }
+    setDeadlineError(false);
+    notifyMenuChanged();
+  };
+  /** 시즌을 삭제하면 마감 시각도 지운다 (같은 이름으로 다시 추가했을 때 예전 마감이 걸리지 않게) */
+  const withoutDeadline = (name: string) => {
+    const next = { ...seasonDeadlines };
+    delete next[name];
+    return next;
   };
 
   /**
@@ -131,7 +164,12 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
     } else {
       setHiddenSeasons(hidden);
       setRemovedSeasons(removed);
-      await supabase.from("company_settings").update({ hidden_seasons: hidden, removed_seasons: removed }).eq("company_id", companyId);
+      const dropDeadline = next.removed && name in seasonDeadlines;
+      if (dropDeadline) setSeasonDeadlines(withoutDeadline(name));
+      await supabase
+        .from("company_settings")
+        .update({ hidden_seasons: hidden, removed_seasons: removed, ...(dropDeadline ? { season_deadlines: withoutDeadline(name) } : {}) })
+        .eq("company_id", companyId);
       onSave(hiddenProductTypes, hidden);
     }
     notifyMenuChanged();
@@ -196,7 +234,12 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
   };
 
   const deleteCategory = async (id: string) => {
+    const cat = customCategories.find((c) => c.id === id);
     await supabase.from("company_categories").delete().eq("id", id);
+    if (cat?.category_type === "season" && cat.name in seasonDeadlines) {
+      setSeasonDeadlines(withoutDeadline(cat.name));
+      await supabase.from("company_settings").update({ season_deadlines: withoutDeadline(cat.name) }).eq("company_id", companyId);
+    }
     notifyMenuChanged();
     setCustomCategories((prev) => prev.filter((c) => c.id !== id));
   };
@@ -209,24 +252,30 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
     customCategories.filter((c) => c.category_type === "season" && !c.hidden).length;
 
   /** 칩 — 누르면 숨김/보이기 (기본 항목·직접 추가한 항목 모두 같게) */
-  const chip = (name: string, hidden: boolean, onToggle: () => void, onDelete: () => void): ChipItem => ({
+  const chip = (name: string, hidden: boolean, onToggle: () => void, onDelete: () => void, closed = false, title?: string): ChipItem => ({
     name,
     label: (
       <button
         type="button"
         onClick={onToggle}
-        title={hidden ? "누르면 메뉴판에 다시 보여요" : "누르면 메뉴판에서 숨겨요"}
+        title={title ?? (hidden ? "누르면 메뉴판에 다시 보여요" : "누르면 메뉴판에서 숨겨요")}
         className={`w-full py-2 pl-7 pr-7 rounded-lg border text-sm text-center truncate transition-colors ${
           hidden ? "border-red-300 bg-red-50 text-red-500 font-medium" : "border-gray-200 text-gray-700 hover:border-gray-300"
         }`}
       >
-        {hidden ? `${name} (숨김)` : name}
+        {hidden ? `${name} (숨김)` : closed ? `${name} (마감)` : name}
       </button>
     ),
     onDelete,
     deleting: deleting === name,
   });
-  const customChip = (cat: CustomCategory, onDelete: () => void) => chip(cat.name, cat.hidden, () => toggleCustomHidden(cat.id), onDelete);
+  const customChip = (cat: CustomCategory, onDelete: () => void) =>
+    cat.category_type === "season"
+      ? seasonChip(cat.name, cat.hidden, onDelete)
+      : chip(cat.name, cat.hidden, () => toggleCustomHidden(cat.id), onDelete);
+  /** 시즌 칩 — 누르면 설정 창(숨김·예약 마감)을 연다 */
+  const seasonChip = (name: string, hidden: boolean, onDelete: () => void) =>
+    chip(name, hidden, () => setEditingSeason(name), onDelete, isDeadlinePassed(seasonDeadlines[name]), "누르면 숨김·예약 마감 설정");
 
   /** 사장님이 정한 순서대로 칩 정렬 (순서에 없는 새 항목은 뒤에) */
   const sortChips = (items: ChipItem[], order: string[]) => {
@@ -247,7 +296,7 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
   const seasonItems = sortChips(
     [
       ...SEASONS.filter((x) => !removedSeasons.includes(x)).map((x) =>
-        chip(x, hiddenSeasons.includes(x), () => toggleBuiltinHidden("season", x), () => setBuiltin("season", x, { hidden: true, removed: true })),
+        seasonChip(x, hiddenSeasons.includes(x), () => setBuiltin("season", x, { hidden: true, removed: true })),
       ),
       ...customCategories.filter((c) => c.category_type === "season").map((c) => customChip(c, () => deleteCategory(c.id))),
     ],
@@ -262,7 +311,7 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
     <div className="space-y-4">
       <div>
         <h2 className="text-xl font-medium text-gray-900 mb-1">메뉴 설정</h2>
-        <p className="text-xs text-gray-400 break-keep">누르면 메뉴판에서 숨김 · 왼쪽 ⠿를 끌어서 순서 변경</p>
+        <p className="text-xs text-gray-400 break-keep">상품 유형은 누르면 메뉴판에서 숨김 · 시즌은 누르면 숨김·예약 마감 설정 · 왼쪽 ⠿를 끌어서 순서 변경</p>
       </div>
       <div className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:p-6">
         <div className="space-y-8">
@@ -366,6 +415,95 @@ export default function MenuSettingsTab({ companyId, initialHiddenProductTypes, 
           <InstantMenuSettings companyId={companyId} onSettingsSaved={onSettingsSaved} />
         </div>
       </div>
+
+      {/* 시즌 설정 창 — 메뉴판에 보이기(숨김)·예약 마감 */}
+      {editingSeason && (() => {
+        const name = editingSeason;
+        const custom = customCategories.find((c) => c.category_type === "season" && c.name === name);
+        const hidden = custom ? custom.hidden : hiddenSeasons.includes(name);
+        const value = seasonDeadlines[name];
+        const [date = "", time = ""] = value ? value.split("T") : [];
+        const passed = isDeadlinePassed(value);
+        const close = () => { setEditingSeason(null); setDeadlineError(false); };
+        return (
+          <div className="fixed inset-0 z-60 flex items-end sm:items-center justify-center sm:p-4 bg-black/40" onClick={close}>
+            <div
+              role="dialog"
+              aria-label={`${name} 시즌 설정`}
+              className="bg-white w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl shadow-xl p-6 space-y-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <p className="text-base font-semibold text-gray-900">{name}</p>
+
+              {/* 메뉴 숨김 처리 */}
+              <div className="flex items-center justify-between gap-4">
+                <p className="text-sm font-medium text-gray-800">메뉴 숨김 처리</p>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={hidden}
+                  aria-label={`${name} 메뉴 숨김 처리`}
+                  onClick={() => (custom ? toggleCustomHidden(custom.id) : toggleBuiltinHidden("season", name))}
+                  className={`shrink-0 w-12 h-6 rounded-full transition-colors relative ${hidden ? "bg-gold-500" : "bg-gray-200"}`}
+                >
+                  <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${hidden ? "left-6" : "left-0.5"}`} />
+                </button>
+              </div>
+
+              {/* 예약 마감 */}
+              <div>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-medium text-gray-800">예약 마감</p>
+                  {value ? (
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${passed ? "bg-red-50 text-red-500" : "bg-gold-50 text-gold-600"}`}>
+                      {passed ? "마감됨" : `${formatDeadline(value)}${time ? "" : " 23:59"}까지`}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-gray-400">마감 없음</span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-2 mt-3">
+                  <div>
+                    <span className="block text-xs text-gray-500 mb-1">날짜</span>
+                    <DateField
+                      value={date ? new Date(`${date}T00:00:00`) : null}
+                      onChange={(d) => saveSeasonDeadline(name, d ? toDateStr(d) : "", time)}
+                      placeholder="날짜 선택"
+                    />
+                  </div>
+                  <div>
+                    <span className="block text-xs text-gray-500 mb-1">시간 (선택)</span>
+                    <TimeDropdown
+                      value={time}
+                      disabled={!date}
+                      onChange={(t) => saveSeasonDeadline(name, date, t)}
+                      emptyLabel="23:59"
+                    />
+                  </div>
+                </div>
+                {value && (
+                  <button
+                    type="button"
+                    onClick={() => saveSeasonDeadline(name, "", "")}
+                    className="mt-2 text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2"
+                  >
+                    마감 해제
+                  </button>
+                )}
+                {deadlineError && <p className="text-xs text-red-500 mt-2">저장하지 못했어요. 잠시 후 다시 시도해 주세요.</p>}
+              </div>
+
+              <button
+                type="button"
+                onClick={close}
+                className="w-full bg-gold-500 text-white py-3 rounded-xl font-medium text-sm hover:bg-gold-600 transition-colors"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* 연결된 상품이 있어 유형을 지울 수 없을 때 */}
       {blockedDelete && (

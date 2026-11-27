@@ -7,6 +7,7 @@ import { generateThemeVars, DEFAULT_THEME_BG, DEFAULT_THEME_ACCENT } from "@/lib
 import { formatPhone } from "@/lib/format";
 import { instantMenuName, readUnattended } from "@/lib/afterHours";
 import { SEASONS, PRODUCT_TYPES } from "@/lib/constants";
+import { readSeasonDeadlines } from "@/lib/seasonDeadline";
 import type { Metadata } from "next";
 
 interface Props {
@@ -69,6 +70,9 @@ export default async function CompanyMenuPage({ params, searchParams }: Props) {
     redirect(`/${slug}/menu`);
   }
 
+  // 시즌 예약 마감 시각 — 시즌 메뉴 위 안내·메뉴 서랍에 쓴다
+  const seasonDeadlines = readSeasonDeadlines(s.season_deadlines);
+
   const themeVars = generateThemeVars(
     (s.theme_bg as string | null) ?? DEFAULT_THEME_BG,
     (s.theme_accent as string | null) ?? DEFAULT_THEME_ACCENT
@@ -86,6 +90,7 @@ export default async function CompanyMenuPage({ params, searchParams }: Props) {
         customProductTypes={customProductTypes}
         hiddenSeasons={[...((s.hidden_seasons as string[]) ?? []), ...hiddenCustomSeasons]}
         customSeasons={customSeasons}
+        seasonDeadlines={seasonDeadlines}
         productTypeOrder={(s.product_type_order as string[] | null) ?? []}
         seasonOrder={(s.season_order as string[] | null) ?? []}
         consultEnabled={(s.consult_enabled as boolean) ?? false}

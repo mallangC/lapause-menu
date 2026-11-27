@@ -7,6 +7,7 @@ import { Product } from "@/types";
 import { FLOWER_COLOR_MAP, BADGE_COLORS } from "@/lib/constants";
 import { useCart } from "@/hooks/useCart";
 import { applyOptions, cartLineKey, defaultSelection, missingRequired, normalizeOptions } from "@/lib/productOptions";
+import { deadlineBadge, unavailableLabel } from "@/lib/seasonDeadline";
 
 interface ProductCardProps {
   product: Product;
@@ -18,6 +19,10 @@ export default function ProductCard({ product, consultEnabled, slug }: ProductCa
   const router = useRouter();
   const { addItem, removeItem, items } = useCart(slug ?? "");
   const inCart = items.some((i) => i.productId === product.id);
+  // 품절·시즌 예약 마감 — 메뉴에는 보이지만 담기는 막는다
+  const unavailable = unavailableLabel(product);
+  // 시즌 예약 마감 임박 — 3일 전부터 '마감 D-n' / '오늘 마감'
+  const deadlineSoon = unavailable ? null : deadlineBadge(product.season_deadline);
 
   const handleToggleCart = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -84,17 +89,22 @@ export default function ProductCard({ product, consultEnabled, slug }: ProductCa
               {BADGE_COLORS.recommended.label}
             </span>
           )}
+          {deadlineSoon && (
+            <span className="text-white text-xs px-2 py-0.5 font-medium" style={{ backgroundColor: BADGE_COLORS.deadline.bg }}>
+              {deadlineSoon}
+            </span>
+          )}
         </div>
 
-        {/* 품절 — 사진을 흐리게 덮고 가운데 '품절' (담기 버튼 없음) */}
-        {product.status === "soldout" && (
+        {/* 품절·예약 마감 — 사진을 흐리게 덮고 가운데 표시 (담기 버튼 없음) */}
+        {unavailable && (
           <div className="absolute inset-0 bg-white/55 flex items-center justify-center">
-            <span className="px-3 py-1 rounded-full bg-gray-900/80 text-white text-xs font-medium">품절</span>
+            <span className="px-3 py-1 rounded-full bg-gray-900/80 text-white text-xs font-medium">{unavailable}</span>
           </div>
         )}
 
         {/* 담기 버튼 */}
-        {consultEnabled && product.price > 0 && product.status !== "soldout" && (
+        {consultEnabled && product.price > 0 && !unavailable && (
           <button
             onClick={handleToggleCart}
             className={`absolute bottom-2 right-2 w-8 h-8 rounded-full flex items-center justify-center shadow-md transition-colors ${
