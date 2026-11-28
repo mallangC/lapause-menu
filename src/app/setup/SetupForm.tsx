@@ -169,7 +169,7 @@ export default function SetupForm({ initialOwnerName = "", initialOwnerPhone = "
             value={ownerName}
             onChange={(e) => setOwnerName(e.target.value)}
             placeholder="홍길동"
-            className="w-full border border-beige-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gold-400"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
           />
         </div>
         <div>
@@ -185,7 +185,7 @@ export default function SetupForm({ initialOwnerName = "", initialOwnerPhone = "
               if (d.length <= 11) setOwnerPhone(d);
             }}
             placeholder="010-0000-0000"
-            className="w-full border border-beige-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gold-400"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
           />
         </div>
       </div>
@@ -194,7 +194,7 @@ export default function SetupForm({ initialOwnerName = "", initialOwnerPhone = "
       <div>
         <label className="block text-sm font-medium text-gray-800 mb-2">로고 이미지</label>
         {logoUrl ? (
-          <div className="relative w-24 h-24 rounded-xl overflow-hidden border border-beige-300">
+          <div className="relative w-24 h-24 rounded-xl overflow-hidden border border-gray-300">
             <Image src={logoUrl} alt="로고" fill className="object-contain p-2" />
             <button
               type="button"
@@ -207,7 +207,7 @@ export default function SetupForm({ initialOwnerName = "", initialOwnerPhone = "
         ) : (
           <div
             onClick={() => fileInputRef.current?.click()}
-            className="w-24 h-24 rounded-xl border-2 border-dashed border-beige-300 flex flex-col items-center justify-center cursor-pointer hover:border-gold-400 transition-colors text-beige-400 hover:text-gold-400"
+            className="w-24 h-24 rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-gray-400 transition-colors text-gray-400 hover:text-gray-500"
           >
             {uploading ? <span className="text-xs">업로드 중...</span> : (
               <><span className="text-2xl">+</span><span className="text-xs mt-1">로고</span></>
@@ -227,7 +227,7 @@ export default function SetupForm({ initialOwnerName = "", initialOwnerPhone = "
           required
           value={name}
           onChange={(e) => handleNameChange(e.target.value)}
-          className="w-full border border-beige-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gold-400"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
           placeholder="플로에이드"
         />
       </div>
@@ -244,7 +244,7 @@ export default function SetupForm({ initialOwnerName = "", initialOwnerPhone = "
             required
             value={slug}
             onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
-            className="flex-1 border border-beige-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gold-400"
+            className="flex-1 border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-500"
             placeholder="flo-aide"
           />
         </div>

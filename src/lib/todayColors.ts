@@ -20,7 +20,7 @@ export function colorBusinessDate(now: Date = new Date()): string {
 
 type ColorSettings = { today_colors?: string[] | null; today_colors_date?: string | null; today_colors_enabled?: boolean | null };
 
-/** 오늘 꽃 색상 기능을 쓰는지 (사장님이 끌 수 있다, 기본 켜짐) */
+/** 오늘 꽃 색상 기능을 쓰는지 (사장님이 켜고 끈다 — 새로 가입한 매장은 꺼진 채 시작, /api/setup/company) */
 export const isTodayColorsEnabled = (s: ColorSettings | null | undefined) => s?.today_colors_enabled !== false;
 
 /** 오늘 색상을 정했는지 (색을 골랐거나 '오늘은 안내 없이'를 눌렀으면 true) */

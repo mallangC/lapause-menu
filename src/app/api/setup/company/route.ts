@@ -52,7 +52,8 @@ export async function POST(request: NextRequest) {
   const { error: settingsError } = await db.from("company_settings")
     .update({
       logo_image: logoUrl,
-      ...(wasPending ? { business_hours: defaultBusinessHours } : {}),
+      // 처음 가입한 매장은 '오늘 가능한 꽃 색상'을 끈 채 시작 — 사장님이 대시보드에서 켠다 (DB 기본값은 켜짐이라 여기서 끈다)
+      ...(wasPending ? { business_hours: defaultBusinessHours, today_colors_enabled: false } : {}),
     })
     .eq("company_id", company.id);
   if (settingsError) console.error("[setup/company] 매장 설정 저장 실패:", settingsError);

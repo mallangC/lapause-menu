@@ -399,15 +399,20 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
         const endLabel = trialEndsAt ? new Date(trialEndsAt).toLocaleDateString("ko-KR", { month: "long", day: "numeric" }) : null;
         return (
           <div className={warn ? "bg-red-500 text-white" : "bg-gold-500 text-white"}>
-            <div className="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
-              <p className="text-sm break-keep">
+            {/* 얇게 한 줄 — 좁은 화면에서는 '모든 기능을 무료로 이용할 수 있어요' 대신 '무료'만 */}
+            <div className="max-w-6xl mx-auto px-4 py-1.5 flex items-center justify-center gap-2.5 text-center">
+              <p className="text-[13px] break-keep truncate">
                 <span className="font-semibold">무료 체험 D-{daysLeft}</span>
-                {endLabel && <span className="opacity-90"> · {endLabel}까지 모든 기능을 무료로 이용할 수 있어요</span>}
+                {endLabel && (
+                  <span className="opacity-90">
+                    {" "}· {endLabel}까지<span className="sm:hidden"> 무료</span><span className="hidden sm:inline"> 모든 기능을 무료로 이용할 수 있어요</span>
+                  </span>
+                )}
               </p>
               <button
                 type="button"
                 onClick={() => goTab("plan")}
-                className={`shrink-0 px-3 py-1.5 rounded-lg bg-white text-xs font-semibold hover:bg-white/90 ${warn ? "text-red-500" : "text-gold-600"}`}
+                className={`shrink-0 px-2.5 py-1 rounded-md bg-white text-xs font-semibold leading-4 hover:bg-white/90 ${warn ? "text-red-500" : "text-gold-600"}`}
               >
                 구독하기
               </button>
