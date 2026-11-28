@@ -94,16 +94,16 @@ export default function RootLoginForm() {
       .eq("owner_id", authData.user.id)
       .single();
 
-    // 매장이 아직 없거나(신규 가입) 구독 결제 전이면 구독 결제 페이지로 — 결제 완료 후 매장 정보를 입력받는다.
+    // 매장이 아직 없으면(신규 가입) 매장 정보 입력으로 — 입력을 마치면 카드 없이 무료 체험이 시작된다.
     if (!company) {
-      router.push("/plan");
+      router.push("/setup");
       return;
     }
 
     const sub = (Array.isArray(company.subscription) ? company.subscription[0] : company.subscription) as { plan?: string; trial_ends_at?: string | null } | null;
-    // 구독 중이거나 구독한 적 있으면 대시보드 (구독이 끝났으면 거기서 보기 전용), 한 번도 구독 안 했으면 구독 페이지
+    // 구독 중이거나 구독한 적 있으면 대시보드 (구독이 끝났으면 거기서 보기 전용), 매장 정보를 아직 입력하지 않았으면 매장 정보 입력
     if (!isActivePlan(sub?.plan) && !hasEverSubscribed(company.slug, sub?.trial_ends_at)) {
-      router.push("/plan");
+      router.push("/setup");
       return;
     }
 

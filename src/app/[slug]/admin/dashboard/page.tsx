@@ -1,4 +1,4 @@
-import { hasEverSubscribed, isActivePlan } from "@/lib/subscriptionAccess";
+import { hasEverSubscribed, isActivePlan, type Plan } from "@/lib/subscriptionAccess";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
@@ -77,11 +77,11 @@ export default async function DashboardPage({ params }: Props) {
     ...(raw.subscription as unknown as Record<string, unknown> ?? {}),
   } as typeof raw & Record<string, unknown>;
 
-  const plan = (company.plan ?? "none") as "monthly" | "annual" | "none" | "free";
+  const plan = (company.plan ?? "none") as Plan;
 
-  // 구독이 없으면 — 구독한 적 있는 매장은 '보기 전용'으로 들어오고, 한 번도 구독하지 않았으면 구독 페이지로 (free는 구독 중)
+  // 구독이 없으면 — 구독한 적 있는 매장은 '보기 전용'으로 들어오고, 매장 정보를 아직 입력하지 않았으면 매장 정보 입력으로 (free·trial은 구독 중)
   const readOnly = !isActivePlan(plan);
-  if (readOnly && !hasEverSubscribed(slug, company.trial_ends_at as string | null)) redirect("/plan");
+  if (readOnly && !hasEverSubscribed(slug, company.trial_ends_at as string | null)) redirect("/setup");
 
   const [{ data: products }, appliedPromo] = await Promise.all([
     supabase
@@ -118,7 +118,7 @@ export default async function DashboardPage({ params }: Props) {
       hiddenProductTypes={(company.hidden_product_types as string[]) ?? []}
       hiddenSeasons={(company.hidden_seasons as string[]) ?? []}
       consultEnabled={(company.consult_enabled as boolean) ?? false}
-      plan={plan as "monthly" | "annual" | "none" | "free"}
+      plan={plan}
       subscriptionPlan={(company.subscription_plan as "monthly" | "annual" | null) ?? null}
       cancelAtPeriodEnd={(company.cancel_at_period_end as boolean) ?? false}
       trialEndsAt={(company.trial_ends_at as string | null) ?? null}

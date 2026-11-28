@@ -31,7 +31,7 @@ interface Company {
   /** 손님 문의 줄이기 판단에 쓰는 설정 (consult_enabled 포함) */
   settings: (InquirySettings & { consult_enabled: boolean }) | null;
   subscription: {
-    plan: "none" | "monthly" | "annual" | "free" | null;
+    plan: "none" | "trial" | "monthly" | "annual" | "free" | null;
     billing_key: string | null;
     plan_expires_at: string | null;
     trial_ends_at: string | null;

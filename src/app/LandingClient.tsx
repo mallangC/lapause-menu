@@ -107,7 +107,7 @@ const faqs = [
   { q: "고객이 예약하면 제가 직접 확정해야 하나요, 아니면 자동으로 되나요?", a: "기본적으로 관리자가 직접 확정하는 방식입니다. 예약 요청이 들어오면 알림을 받고, 관리 페이지에서 판매 가능한 예약건인지 확인 후 확정 또는 취소 처리를 할 수 있습니다." },
   { q: "메뉴에 가격을 표시하지 않을 수 있나요?", a: "네. 상품을 추가할 때 가격을 입력하지 않으면 가격이 표시되지 않습니다." },
   { q: "카카오 알림은 어떻게 작동하나요?", a: "고객이 예약을 완료하면 관리자에게, 관리자가 예약을 확정하거나 취소하면 고객 카카오톡으로 알림이 발송됩니다." },
-  { q: "비용은 얼마인가요?", a: `첫 1개월은 무료 체험입니다. 이후 월간 플랜 월 ${PLAN_PRICES.monthly.toLocaleString()}원, 연간 플랜 월 ${PLAN_PRICES.annual.toLocaleString()}원(연 ${PLAN_PRICES.annualTotal.toLocaleString()}원 일괄 결제, 월간 대비 약 ${ANNUAL_DISCOUNT_RATE}% 할인)으로 이용하실 수 있습니다. 두 플랜 모두 맞춤 주문·예약·통계·카카오 알림 등 모든 기능이 포함됩니다. Flo.Aide는 결제 수수료를 따로 받지 않으며, 카드 결제 시 기본 카드 수수료 ${PLATFORM_FEE_PERCENT_LABEL}(부가세 별도)만 발생합니다. 카드 수수료는 정책에 따라 변경될 수 있습니다.` },
+  { q: "비용은 얼마인가요?", a: `첫 1개월은 카드 등록 없이 무료로 체험할 수 있습니다. 이후 월간 플랜 월 ${PLAN_PRICES.monthly.toLocaleString()}원, 연간 플랜 월 ${PLAN_PRICES.annual.toLocaleString()}원(연 ${PLAN_PRICES.annualTotal.toLocaleString()}원 일괄 결제, 월간 대비 약 ${ANNUAL_DISCOUNT_RATE}% 할인)으로 이용하실 수 있습니다. 두 플랜 모두 맞춤 주문·예약·통계·카카오 알림 등 모든 기능이 포함됩니다. Flo.Aide는 결제 수수료를 따로 받지 않으며, 카드 결제 시 기본 카드 수수료 ${PLATFORM_FEE_PERCENT_LABEL}(부가세 별도)만 발생합니다. 카드 수수료는 정책에 따라 변경될 수 있습니다.` },
 ];
 
 export default function Landing() {
@@ -799,7 +799,7 @@ export default function Landing() {
           <FadeIn>
             <div className="rounded-2xl mb-6 py-5 px-6 text-center" style={{ background: "linear-gradient(135deg, #2c2416 0%, #18130e 100%)" }}>
               <p className="text-[15px] font-semibold tracking-widest uppercase mb-1.5" style={{ color: "#c9a96e" }}>첫 1개월 무료 체험</p>
-              <p className="text-[16px]" style={{ color: "rgba(255,255,255,0.7)" }}>카드 등록 후 30일, 구독료 없이 모든 기능을 이용해 보세요</p>
+              <p className="text-[16px]" style={{ color: "rgba(255,255,255,0.7)" }}>카드 등록 없이 가입만 하면 30일, 모든 기능을 무료로 이용해 보세요</p>
             </div>
           </FadeIn>
 

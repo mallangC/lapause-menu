@@ -100,16 +100,16 @@ export async function GET(request: NextRequest) {
 
         const sub = company?.subscription as { plan?: string; trial_ends_at?: string | null } | null;
         if (company?.slug) {
-          // 구독 중이거나 구독한 적 있으면 대시보드 (구독이 끝났으면 보기 전용), 한 번도 구독 안 했으면 구독 페이지
+          // 구독 중이거나 구독한 적 있으면 대시보드 (구독이 끝났으면 보기 전용), 매장 정보를 아직 입력하지 않았으면 매장 정보 입력
           if (!isActivePlan(sub?.plan) && !hasEverSubscribed(company.slug, sub?.trial_ends_at)) {
-            return NextResponse.redirect(`${origin}/plan`);
+            return NextResponse.redirect(`${origin}/setup`);
           }
           return NextResponse.redirect(`${origin}/${company.slug}/admin/dashboard`);
         }
       }
 
-      // 매장이 아직 없는 신규 가입자 — 구독 결제 페이지로(결제 완료 후 매장 정보 입력)
-      return NextResponse.redirect(`${origin}/plan`);
+      // 매장이 아직 없는 신규 가입자 — 매장 정보 입력으로 (입력을 마치면 카드 없이 무료 체험 시작)
+      return NextResponse.redirect(`${origin}/setup`);
     }
   }
 

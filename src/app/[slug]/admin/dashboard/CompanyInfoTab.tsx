@@ -8,6 +8,7 @@ import type { SaveButtonHandle } from "@/components/admin/SaveButton";
 import SaveBar from "@/components/admin/SaveBar";
 import { useDirty } from "@/components/admin/useDirty";
 import { notifyMenuChanged } from "@/lib/menuCacheClient";
+import type { Plan } from "@/lib/subscriptionAccess";
 
 interface Props {
   companyId: string;
@@ -21,7 +22,7 @@ interface Props {
   initialPhone: string | null;
   /** 주차 가능 여부 */
   initialParking: string | null;
-  plan: "monthly" | "annual" | "none" | "free";
+  plan: Plan;
   /** 공유 매장 설정 갱신 (대시보드 '손님 문의 줄이기'가 바로 반영되게) */
   onSettingsSaved?: (patch: Record<string, unknown>) => void;
   onSave: (name: string, logo: string | null, locationUrl: string | null, kakaoChannelUrl: string | null, instagramUrl: string | null, youtubeUrl: string | null) => void;

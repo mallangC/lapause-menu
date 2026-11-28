@@ -24,7 +24,7 @@ export default function TermsPage() {
         <div>
           <p className="text-xs font-semibold tracking-[0.2em] text-gold-500 uppercase mb-3">Terms of Service</p>
           <h1 className="text-2xl font-light text-gray-900 mb-2">서비스 이용약관</h1>
-          <p className="text-sm text-gray-400">최종 업데이트: 2026년 10월 12일</p>
+          <p className="text-sm text-gray-400">최종 업데이트: 2026년 11월 28일</p>
         </div>
 
         <div className="bg-white border-t border-b border-beige-200 text-sm text-gray-600 leading-relaxed">
@@ -59,7 +59,7 @@ export default function TermsPage() {
             <div className="bg-beige-50 rounded-xl p-4 text-xs text-gray-500 space-y-1.5">
               <p><span className="font-medium text-gray-700">월간 구독:</span> 월 {PLAN_PRICES.monthly.toLocaleString()}원 (매월 자동 결제)</p>
               <p><span className="font-medium text-gray-700">연간 구독:</span> 월 {PLAN_PRICES.annual.toLocaleString()}원 상당(월간 대비 약 {ANNUAL_DISCOUNT_RATE}% 할인), 연 {PLAN_PRICES.annualTotal.toLocaleString()}원 (1년 단위 자동 결제)</p>
-              <p><span className="font-medium text-gray-700">무료 체험:</span> 최초 가입 회원에 한해 30일간 무료로 이용할 수 있습니다.</p>
+              <p><span className="font-medium text-gray-700">무료 체험:</span> 최초 가입 회원에 한해 매장 정보 입력을 마친 날부터 30일간 카드 등록 없이 무료로 이용할 수 있습니다. 무료 체험이 끝날 때까지 구독하지 않으면 관리자 화면은 보기 전용으로 전환되고 매장 메뉴판은 비공개로 전환됩니다.</p>
             </div>
             <p>구독은 등록된 결제수단으로 매 결제 주기마다 자동 갱신되며 회원은 요금제 탭에서 언제든지 해지할 수 있습니다. 해지 시 현재 결제 주기가 끝나는 시점까지 서비스를 이용할 수 있습니다.</p>
             <p className="text-gray-400 text-xs">요금 정책이 변경될 경우 변경 전 최소 7일 전에 고지합니다.</p>

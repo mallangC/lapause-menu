@@ -120,6 +120,30 @@ export async function dispatchBillingRenewals(env: BillingEnv) {
 async function dispatchBillingRenewalsInner(env: BillingEnv) {
   const db = adminClient(env);
   const now = new Date();
+
+  // 카드 없이 시작한 무료체험(plan = trial)이 끝났으면 결제 없이 종료 → 대시보드 보기 전용, 손님 메뉴판 중지
+  // (체험 중 카드를 등록한 매장은 plan 이 monthly/annual 로 바뀌어 아래 정기결제로 넘어간다)
+  const expiredTrials = await must(
+    db.from("company_subscriptions")
+      .select("company_id")
+      .eq("plan", "trial")
+      .is("billing_key", null)
+      .lte("trial_ends_at", now.toISOString())
+  ) as { company_id: string }[] | null;
+  for (const t of expiredTrials ?? []) {
+    try {
+      await downgrade(db, t.company_id, env);
+    } catch (err) {
+      await reportOpsAlert(db, {
+        kind: "billing_renew_failed",
+        companyId: t.company_id,
+        title: "무료체험 종료 처리 실패 — 체험이 끝났는데 계속 이용 중일 수 있음",
+        detail: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+  if (expiredTrials?.length) console.log(`[billing-renew] 카드 없는 무료체험 종료: ${expiredTrials.length}건`);
+
   const subs = await must(
     db.from("company_subscriptions")
       .select(SUBSCRIPTION_COLUMNS)

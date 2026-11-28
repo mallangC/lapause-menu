@@ -489,9 +489,10 @@ export default function StoreManagementTab({ stores }: Props) {
                         store.plan === "annual" ? "bg-gold-100 text-gold-600" :
                         store.plan === "monthly" ? "bg-blue-50 text-blue-600" :
                         store.plan === "free" ? "bg-green-50 text-green-600" :
+                        store.plan === "trial" ? "bg-amber-50 text-amber-600" :
                         "bg-gray-100 text-gray-400"
                       }`}>
-                        {store.subscriptionPlan === "annual" ? "연간" : store.subscriptionPlan === "monthly" ? "월간" : store.plan === "free" ? "Free" : "—"}
+                        {store.subscriptionPlan === "annual" ? "연간" : store.subscriptionPlan === "monthly" ? "월간" : store.plan === "free" ? "Free" : store.plan === "trial" ? "체험(카드 없음)" : "—"}
                       </span>
                       {store.promo && (
                         <div

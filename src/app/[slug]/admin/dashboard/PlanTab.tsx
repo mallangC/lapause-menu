@@ -2,16 +2,18 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import BillingKeyFlow from "@/components/BillingKeyFlow";
 import PromoCodeBox from "@/components/PromoCodeBox";
 import { ANNUAL_DISCOUNT_RATE, PLAN_PRICES, PLAN_FEATURES } from "@/lib/constants";
 import { quoteCharge } from "@/lib/billingPrice";
 import type { AppliedPromo } from "@/lib/appliedPromo";
+import { TRIAL_WARN_DAYS, trialDaysLeft as getTrialDaysLeft, type Plan } from "@/lib/subscriptionAccess";
 
 interface Props {
   companyId: string;
   customerName: string;
-  plan: "monthly" | "annual" | "none" | "free";
+  plan: Plan;
   subscriptionPlan: "monthly" | "annual" | null;
   cancelAtPeriodEnd: boolean;
   trialEndsAt: string | null;
@@ -36,6 +38,8 @@ export default function PlanTab({ companyId, customerName, plan, subscriptionPla
   const [showPolicy, setShowPolicy] = useState(false);
   // 코드 적용 직후 새로고침 없이 금액 안내가 바뀌도록 로컬 상태로 둔다
   const [promoState, setPromoState] = useState<AppliedPromo>(appliedPromo);
+  // 청약 철회 제한 동의 (필수) — 체크해야 카드 등록·구독 버튼이 눌린다 (구독 환불 정책 2항의 근거)
+  const [withdrawalAgreed, setWithdrawalAgreed] = useState(false);
   const router = useRouter();
 
   const now = new Date();
@@ -66,6 +70,22 @@ export default function PlanTab({ companyId, customerName, plan, subscriptionPla
       cyclesRemaining={promoState.cyclesRemaining}
       onApplied={(promo, cyclesRemaining) => setPromoState({ promo, cyclesRemaining })}
     />
+  );
+
+  const consentBox = (
+    <label className="flex items-start gap-2.5 cursor-pointer rounded-xl border border-beige-200 bg-beige-50 px-3.5 py-3">
+      <input
+        type="checkbox"
+        checked={withdrawalAgreed}
+        onChange={(e) => setWithdrawalAgreed(e.target.checked)}
+        className="mt-0.5 accent-gold-500 shrink-0"
+      />
+      <span className="text-xs text-gray-500 leading-relaxed break-keep">
+        구독 시작 즉시 서비스 이용이 개시되며,{" "}
+        <Link href="/refund/subscription" target="_blank" className="underline text-gold-600 hover:text-gold-700">구독 환불 정책</Link>
+        에 따라 「전자상거래법」 제17조 제2항에 의해 결제 후 청약 철회가 제한될 수 있음을 확인하고 동의합니다. <span className="text-red-400">(필수)</span>
+      </span>
+    </label>
   );
 
   const hasPendingChange = plan !== "none" && subscriptionPlan !== null && plan !== subscriptionPlan;
@@ -124,6 +144,51 @@ export default function PlanTab({ companyId, customerName, plan, subscriptionPla
     router.refresh();
   };
 
+  // ── 카드 없이 쓰는 무료 체험 — 구독하면 남은 체험은 그대로, 체험 끝나는 날 첫 결제 ──
+  if (plan === "trial") {
+    const daysLeft = getTrialDaysLeft(trialEndsAt);
+    const warn = daysLeft <= TRIAL_WARN_DAYS;
+    return (
+      <div className="space-y-4">
+        <h2 className="text-xl font-medium text-gray-900">요금제</h2>
+        <div className="bg-white -mx-4 md:mx-0 py-5 px-4 md:rounded-2xl md:p-6">
+          <div className={`mb-5 p-4 rounded-xl border space-y-1 ${warn ? "bg-red-50 border-red-200" : "bg-gold-500/10 border-gold-400/30"}`}>
+            <p className={`text-sm font-semibold ${warn ? "text-red-500" : "text-gold-600"}`}>무료 체험 중 · D-{daysLeft}</p>
+            <p className="text-xs text-gray-500 break-keep">
+              {trialEndsAt ? `${formatDate(trialEndsAt)}까지` : "체험 기간 동안"} 모든 기능을 무료로 이용할 수 있어요.
+              체험이 끝나면 관리자 화면은 보기만 할 수 있고, 손님 메뉴판은 비공개로 전환돼요.
+            </p>
+            <p className="text-xs text-gray-500 break-keep">지금 구독하셔도 남은 무료 기간은 그대로이고, 체험이 끝나는 날부터 결제돼요.</p>
+          </div>
+          {success && (
+            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+              {success}
+            </div>
+          )}
+          <PlanCard
+            selectedCycle={selectedCycle}
+            onCycleChange={setSelectedCycle}
+            promoSlot={promoBox}
+            consentSlot={consentBox}
+            actionSlot={
+              <BillingKeyFlow
+                disabled={!withdrawalAgreed}
+                companyId={companyId}
+                customerName={customerName}
+                subscriptionPlan={selectedCycle}
+                onSuccess={() => {
+                  setSuccess(`${planLabel(selectedCycle)} 구독이 등록되었습니다.${trialEndsAt ? ` ${formatDate(trialEndsAt)}부터 결제돼요.` : ""}`);
+                  setTimeout(() => router.refresh(), 1000);
+                }}
+                buttonLabel={selectedCycle === "annual" ? "연간 구독하기" : "월간 구독하기"}
+              />
+            }
+          />
+        </div>
+      </div>
+    );
+  }
+
   // ── 프리 플랜 ──
   if (plan === "free") {
     return (
@@ -147,8 +212,10 @@ export default function PlanTab({ companyId, customerName, plan, subscriptionPla
           selectedCycle={selectedCycle}
           onCycleChange={setSelectedCycle}
           promoSlot={promoBox}
+          consentSlot={consentBox}
           actionSlot={
             <BillingKeyFlow
+              disabled={!withdrawalAgreed}
               companyId={companyId}
               customerName={customerName}
               subscriptionPlan={selectedCycle}
@@ -167,6 +234,8 @@ export default function PlanTab({ companyId, customerName, plan, subscriptionPla
   const canUndo = hasPendingChange && subscriptionPlan === selectedCycle && plan !== selectedCycle;
 
   let actionSlot: React.ReactNode;
+  // 새로 카드를 등록하는 경우에만 동의를 받는다 (이미 카드가 있으면 플랜 전환뿐)
+  const needsConsent = !isCurrent && !isPendingToSelected && !canUndo && !hasBillingKey;
 
   if (isCurrent) {
     actionSlot = (
@@ -207,6 +276,7 @@ export default function PlanTab({ companyId, customerName, plan, subscriptionPla
   } else if (!hasBillingKey) {
     actionSlot = (
       <BillingKeyFlow
+        disabled={!withdrawalAgreed}
         companyId={companyId}
         customerName={customerName}
         subscriptionPlan={selectedCycle}
@@ -287,6 +357,7 @@ export default function PlanTab({ companyId, customerName, plan, subscriptionPla
             onCycleChange={setSelectedCycle}
             currentPlan={plan as "monthly" | "annual"}
             promoSlot={promoBox}
+            consentSlot={needsConsent ? consentBox : undefined}
             actionSlot={actionSlot}
           />
 
@@ -402,12 +473,15 @@ function PlanCard({
   onCycleChange,
   currentPlan,
   promoSlot,
+  consentSlot,
   actionSlot,
 }: {
   selectedCycle: "monthly" | "annual";
   onCycleChange: (c: "monthly" | "annual") => void;
   currentPlan?: "monthly" | "annual";
   promoSlot?: React.ReactNode;
+  /** 청약 철회 제한 동의 — 카드 등록 버튼 바로 위 */
+  consentSlot?: React.ReactNode;
   actionSlot: React.ReactNode;
 }) {
   return (
@@ -470,6 +544,7 @@ function PlanCard({
 
       {/* 할인 코드 — 결제 버튼 위에 두어 결제 전에 할인 금액을 확인할 수 있게 */}
       {promoSlot && <div className="mb-4">{promoSlot}</div>}
+      {consentSlot && <div className="mb-3">{consentSlot}</div>}
       {actionSlot}
     </div>
   );

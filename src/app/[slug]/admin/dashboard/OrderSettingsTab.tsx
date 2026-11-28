@@ -11,10 +11,11 @@ import { useDirty } from "@/components/admin/useDirty";
 import { notifyMenuChanged } from "@/lib/menuCacheClient";
 import type { CompanySettings } from "./companySettings";
 import { useSettingsSync } from "./useSettingsSync";
+import type { Plan } from "@/lib/subscriptionAccess";
 
 interface Props {
   companyId: string;
-  plan: "monthly" | "annual" | "none" | "free";
+  plan: Plan;
   settings: CompanySettings;
   onSettingsSaved: (patch: CompanySettings) => void;
 }

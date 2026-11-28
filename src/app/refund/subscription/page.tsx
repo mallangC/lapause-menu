@@ -24,14 +24,14 @@ export default function SubscriptionRefundPage() {
         <div>
           <p className="text-xs font-semibold tracking-[0.2em] text-gold-500 uppercase mb-3">Subscription Refund Policy</p>
           <h1 className="text-2xl font-light text-gray-900 mb-2">구독 환불 정책</h1>
-          <p className="text-sm text-gray-400">최종 업데이트: 2026년 11월 1일</p>
+          <p className="text-sm text-gray-400">최종 업데이트: 2026년 11월 28일</p>
           <p className="text-sm text-gray-500 mt-3">Flo.Aide 월간·연간 플랜을 구독하는 매장(사장님)께 적용되는 정책입니다.</p>
         </div>
 
         <div className="bg-white border-t border-b border-beige-200 text-sm text-gray-600 leading-relaxed">
           <section className="p-6 border-b border-beige-100 space-y-3">
             <h2 className="font-semibold text-gray-900 text-base">1. 무료 체험 기간</h2>
-            <p>최초 구독 등록 시 30일간 무료 체험이 제공됩니다. 무료 체험 기간 중에는 요금이 청구되지 않으며, 체험 종료 전에 구독을 해지하면 비용이 발생하지 않습니다.</p>
+            <p>최초 가입 시 매장 정보 입력을 마친 날부터 30일간 카드 등록 없이 무료 체험이 제공됩니다. 무료 체험 기간 중에 구독(카드 등록)해도 남은 체험 기간은 그대로 유지되며, 첫 결제는 체험이 끝나는 날 진행됩니다. 체험 종료 전에 구독을 해지하면 비용이 발생하지 않습니다.</p>
           </section>
 
           <section className="p-6 border-b border-beige-100 space-y-3">

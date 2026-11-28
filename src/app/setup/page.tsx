@@ -9,11 +9,25 @@ export default async function SetupPage() {
   if (!user) redirect("/");
 
   // 이미 회사 있으면 프로필도 확인
-  const { data: companyRaw } = await supabase
+  let { data: companyRaw } = await supabase
     .from("companies")
     .select("slug, name, settings:company_settings(logo_image)")
     .eq("owner_id", user.id)
-    .single();
+    .maybeSingle();
+
+  // 아직 매장을 만들지 않은 신규 가입자 — 임시(pending-) 매장을 만들어 두고, 이 화면에서 이름·주소를 받아 채운다
+  // (저장하면 카드 없는 무료 체험이 시작된다 — /api/setup/company)
+  if (!companyRaw) {
+    const placeholderSlug = `pending-${user.id.slice(0, 8)}-${Date.now().toString(36)}`;
+    await supabase.from("companies").insert({ name: "", slug: placeholderSlug, owner_id: user.id });
+    // 거의 동시에 두 번 렌더링되면 늦은 쪽 insert 는 owner_id unique 로 실패하므로, 만들어진 매장을 다시 읽는다
+    ({ data: companyRaw } = await supabase
+      .from("companies")
+      .select("slug, name, settings:company_settings(logo_image)")
+      .eq("owner_id", user.id)
+      .maybeSingle());
+    if (!companyRaw) redirect("/login");
+  }
 
   const isPendingSlug = companyRaw?.slug?.startsWith("pending-") ?? false;
 
@@ -32,8 +46,8 @@ export default async function SetupPage() {
       .eq("user_id", user.id)
       .single();
 
-    // 회사 있고 프로필도 완성됐으면 대시보드로
-    if (profile?.name && profile?.phone_number) {
+    // 매장 정보(이름·주소)를 이미 입력했고 프로필도 완성됐으면 대시보드로
+    if (!isPendingSlug && profile?.name && profile?.phone_number) {
       redirect(`/${company.slug}/admin/dashboard`);
     }
 

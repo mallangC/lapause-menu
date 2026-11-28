@@ -1,6 +1,6 @@
 "use client";
 
-import { SUBSCRIPTION_INACTIVE_MESSAGE } from "@/lib/subscriptionAccess";
+import { SUBSCRIPTION_INACTIVE_MESSAGE, TRIAL_WARN_DAYS, trialDaysLeft, type Plan } from "@/lib/subscriptionAccess";
 import NaverMailPanel from "./NaverMailPanel";
 import NaverBell from "./NaverBell";
 import { hasUnsaved } from "@/components/admin/useDirty";
@@ -59,7 +59,7 @@ interface Props {
   hiddenProductTypes: string[];
   hiddenSeasons: string[];
   consultEnabled: boolean;
-  plan: "monthly" | "annual" | "none" | "free";
+  plan: Plan;
   subscriptionPlan: "monthly" | "annual" | null;
   cancelAtPeriodEnd: boolean;
   trialEndsAt: string | null;
@@ -391,6 +391,30 @@ export default function DashboardClient({ slug, userId, userEmail, isOAuth, prof
           </div>
         </div>
       )}
+
+      {/* 카드 없이 쓰는 무료 체험 — 남은 날을 늘 보여 주고, 7일 이하로 남으면 붉게 */}
+      {plan === "trial" && (() => {
+        const daysLeft = trialDaysLeft(trialEndsAt);
+        const warn = daysLeft <= TRIAL_WARN_DAYS;
+        const endLabel = trialEndsAt ? new Date(trialEndsAt).toLocaleDateString("ko-KR", { month: "long", day: "numeric" }) : null;
+        return (
+          <div className={warn ? "bg-red-500 text-white" : "bg-gold-500 text-white"}>
+            <div className="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
+              <p className="text-sm break-keep">
+                <span className="font-semibold">무료 체험 D-{daysLeft}</span>
+                {endLabel && <span className="opacity-90"> · {endLabel}까지 모든 기능을 무료로 이용할 수 있어요</span>}
+              </p>
+              <button
+                type="button"
+                onClick={() => goTab("plan")}
+                className={`shrink-0 px-3 py-1.5 rounded-lg bg-white text-xs font-semibold hover:bg-white/90 ${warn ? "text-red-500" : "text-gold-600"}`}
+              >
+                구독하기
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* 모바일 탭 내비게이션 */}
       <div className="md:hidden bg-white border-b border-gray-100 sticky top-[61px] z-30">

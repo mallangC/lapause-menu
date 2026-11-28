@@ -115,45 +115,20 @@ export default function SetupForm({ initialOwnerName = "", initialOwnerPhone = "
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { router.push("/"); return; }
 
-    // 구독 결제 단계(/plan)에서 미리 만들어둔 매장 레코드를 찾아 정보를 채운다.
-    const { data: existingCompany } = await supabase
-      .from("companies")
-      .select("id, slug")
-      .eq("owner_id", user.id)
-      .single();
-
-    if (!existingCompany) {
-      setError("매장 정보를 찾을 수 없습니다. 다시 로그인해 주세요.");
+    // 매장 이름·주소·로고 저장 + 카드 없는 무료 체험 시작 — 체험 전에는 DB가 사장님 키로 매장 수정을 막아 서버에서 처리한다
+    // (무료 체험은 한 번도 체험하지 않은 매장만 시작되고, 이미 체험·구독했으면 서버가 그냥 넘어간다)
+    const companyRes = await fetch("/api/setup/company", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, slug, logoUrl }),
+    }).catch(() => null);
+    const companyData = (await companyRes?.json().catch(() => null)) as { error?: string; wasPending?: boolean } | null;
+    if (!companyRes?.ok) {
+      setError(companyData?.error ?? "매장 정보를 저장하지 못했어요. 다시 시도해 주세요.");
       setLoading(false);
       return;
     }
-
-    const wasPending = existingCompany.slug.startsWith("pending-");
-
-    const { error: updateError } = await supabase
-      .from("companies")
-      .update({ name, slug })
-      .eq("id", existingCompany.id);
-
-    if (updateError) {
-      setError(
-        updateError.code === "23505"
-          ? "이미 사용 중인 URL입니다. 다른 슬러그를 입력해 주세요."
-          : updateError.message
-      );
-      setLoading(false);
-      return;
-    }
-
-    const defaultBusinessHours = Object.fromEntries(
-      Array.from({ length: 7 }, (_, i) => [String(i), { closed: i === 0, open: "09:00", close: "18:00" }])
-    );
-    await supabase.from("company_settings")
-      .update({
-        logo_image: logoUrl,
-        ...(wasPending ? { business_hours: defaultBusinessHours } : {}),
-      })
-      .eq("company_id", existingCompany.id);
+    const wasPending = !!companyData?.wasPending;
 
     const { error: profileError } = await supabase
       .from("profiles")
@@ -165,7 +140,7 @@ export default function SetupForm({ initialOwnerName = "", initialOwnerPhone = "
       return;
     }
 
-    // 처음 설정(결제 직후)이면 온보딩으로, 이미 설정돼 있던 매장이면 대시보드로
+    // 처음 설정이면 온보딩으로, 이미 설정돼 있던 매장이면 대시보드로
     router.push(wasPending ? `/${slug}/admin/onboarding` : `/${slug}/admin/dashboard`);
   };
 

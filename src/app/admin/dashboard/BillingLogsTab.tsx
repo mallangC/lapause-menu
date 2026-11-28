@@ -161,7 +161,7 @@ export default function BillingLogsTab({ logs }: Props) {
                         log.plan === "monthly" ? "bg-blue-50 text-blue-600" :
                         "bg-gray-100 text-gray-500"
                       }`}>
-                        {log.plan === "annual" ? "연간" : log.plan === "monthly" ? "월간" : log.plan}
+                        {log.plan === "annual" ? "연간" : log.plan === "monthly" ? "월간" : log.plan === "trial" ? "무료체험" : log.plan}
                       </span>
                     ) : <span className="text-gray-300">—</span>}
                   </td>

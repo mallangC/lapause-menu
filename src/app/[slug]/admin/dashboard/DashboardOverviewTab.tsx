@@ -11,11 +11,12 @@ import type { CompanySettings } from "./companySettings";
 import { TodayColorsCard } from "./TodayColors";
 import InquiryChecklist from "./InquiryChecklist";
 import { ONBOARDING_SECTIONS, onboardingSectionIndex } from "@/lib/onboarding";
+import type { Plan } from "@/lib/subscriptionAccess";
 
 interface Props {
   companyId: string;
   slug: string;
-  plan: "monthly" | "annual" | "none" | "free";
+  plan: Plan;
   onNavigate: (tab: string, statusFilter?: string) => void;
   settings: CompanySettings;
   /** 예약이 바뀔 때마다 증가 — 바뀌었을 때만 예약 집계를 다시 불러온다 */

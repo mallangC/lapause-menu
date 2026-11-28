@@ -22,12 +22,47 @@ export async function activateBillingKey(
 
   const { data: existingSub } = await supabase
     .from("company_subscriptions")
-    .select(`trial_ends_at, discount_cycles_remaining, promo:promo_codes(${PROMO_CODE_COLUMNS})`)
+    .select(`plan, trial_ends_at, plan_expires_at, discount_cycles_remaining, promo:promo_codes(${PROMO_CODE_COLUMNS})`)
     .eq("company_id", companyId)
     .single();
 
   const alreadyHadTrial = existingSub?.trial_ends_at != null;
   const now = new Date();
+
+  // 무료체험이 아직 남아 있으면(카드 없이 시작한 체험 포함) 지금 결제하지 않고 카드만 등록 — 남은 체험은 그대로, 체험 끝나는 날 첫 결제
+  const trialRunning =
+    alreadyHadTrial &&
+    existingSub?.plan !== "none" &&
+    !existingSub?.plan_expires_at &&
+    new Date(existingSub!.trial_ends_at as string) > now;
+  if (trialRunning) {
+    const { error } = await supabase
+      .from("company_subscriptions")
+      .update({
+        plan: subscriptionPlan,
+        billing_key: billingKey,
+        pg_provider: "toss",
+        subscription_plan: subscriptionPlan,
+        cancel_at_period_end: false,
+      })
+      .eq("company_id", companyId);
+    if (error) return { status: 500, body: { error: error.message } };
+
+    const { error: logError } = await supabase.from("billing_logs").insert({
+      company_id: companyId,
+      operator_id: null,
+      type: "charge",
+      plan: subscriptionPlan,
+      amount: 0,
+      payment_id: null,
+      success: true,
+      reason: "무료체험 중 카드 등록 · 체험 종료일에 첫 결제",
+    });
+    if (logError) console.error("[billingActivate] billing_logs 기록 실패(체험 중 카드 등록):", logError);
+
+    await purgeMenuCacheByCompanyId(companyId);
+    return { status: 200, body: { ok: true, trial: true } };
+  }
 
   if (!alreadyHadTrial) {
     const trialEndsAt = new Date(now);
